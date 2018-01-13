@@ -16,10 +16,12 @@ tracker.fov.height = 16
 tracker.xpos = 1
 tracker.ypos = 1
 tracker.xint = 0
+tracker.page = 4
 tracker.channels = 16
 tracker.displaychannels = 8
 tracker.selectcolor = {.7, 0, .5, 1}
 tracker.textcolor = {.7, .8, .8, 1}
+tracker.headercolor = {.5, .5, .8, 1}
 tracker.linecolor = {.1, .0, .4, .4}
 tracker.linecolor2 = {.3, .0, .6, .4}
 tracker.linecolor3 = {.4, .1, 1, 1}
@@ -61,21 +63,25 @@ function tracker:linkData()
   local datafield = {}
   local idx = {}
   local padsizes = {}  
+  local headers = {}
   for j = 1,self.displaychannels do
     -- Link up the note fields
     datafield[#datafield+1] = 'text'
     idx[#idx+1] = j-1
     colsizes[#colsizes + 1] = 3
     padsizes[#padsizes + 1] = 1
+    headers[#headers + 1] = string.format(' Ch%2d', j)
     
     -- Link up the velocity fields
     datafield[#datafield+1] = 'vel'
     idx[#idx+1] = j-1
     colsizes[#colsizes + 1] = 2
-    padsizes[#padsizes + 1] = 2    
+    padsizes[#padsizes + 1] = 2   
+    headers[#headers + 1] = ''     
   end
   local link = {}
   link.datafields = datafield
+  link.headers    = headers
   link.padsizes   = padsizes
   link.colsizes   = colsizes
   link.idxfields  = idx
@@ -84,7 +90,7 @@ end
 
 function tracker:grabLinkage()
   local link = self.link
-  return link.datafields, link.padsizes, link.colsizes, link.idxfields
+  return link.datafields, link.padsizes, link.colsizes, link.idxfields, link.headers
 end
 
 ------------------------------
@@ -92,19 +98,22 @@ end
 ------------------------------
 function tracker:updatePlotLink()
   local plotData = {}
-  local originx = 30
-  local originy = 30
+  local originx = 40
+  local originy = 40
   local dx = 8
   local dy = 20
   plotData.barpad = 10
   plotData.itempadx = 5
   plotData.itempady = 3
+  -- How far are the row indicators from the notes?
+  plotData.indicatorShiftX = 3 * dx + 2 * plotData.itempadx
+  plotData.indicatorShiftY = dy + plotData.itempady
 
   self.extracols = {}
   self.max_xpos = 2 * self.displaychannels + #self.extracols
   self.max_ypos = self.rows
 
-  local datafields, padsizes, colsizes, idxfields = self:grabLinkage()
+  local datafields, padsizes, colsizes, idxfields, headers = self:grabLinkage()
   
   -- Generate x locations for the columns
   local fov = self.fov
@@ -112,12 +121,14 @@ function tracker:updatePlotLink()
   local xwidth = {}
   local xlink = {}
   local dlink = {}
+  local header = {}
   local x = originx
   for j = fov.scrollx+1,math.min(#colsizes,fov.width+fov.scrollx) do
     xloc[#xloc + 1] = x
     xwidth[#xwidth + 1] = colsizes[j] * dx + padsizes[j]
     xlink[#xlink + 1] = idxfields[j]
     dlink[#dlink + 1] = datafields[j]
+    header[#header + 1] = headers[j]
     x = x + colsizes[j] * dx + padsizes[j] * dx
   end
   plotData.xloc = xloc
@@ -128,6 +139,7 @@ function tracker:updatePlotLink()
   -- Variable xlink indicates the index that is being displayed
   plotData.dlink = dlink
   plotData.xlink = xlink
+  plotData.headers = header
   
   -- Generate y locations for the columns
   local yloc = {}
@@ -195,11 +207,12 @@ function tracker:printGrid()
   
   local relx = tracker.xpos-fov.scrollx
   local rely = tracker.ypos-fov.scrolly
-  gfx.set(table.unpack(tracker.selectcolor))
+  gfx.set(table.unpack(self.selectcolor))
   gfx.rect(xloc[relx], yloc[rely]-plotData.yshift, xwidth[relx], yheight[rely])
   
   local dlink     = plotData.dlink
   local xlink     = plotData.xlink
+  local headers   = plotData.headers
   local tw        = plotData.totalwidth
   local itempadx  = plotData.itempadx
   local itempady  = plotData.itempady
@@ -207,8 +220,11 @@ function tracker:printGrid()
   
   -- Render in relative FOV coordinates
   for y=1,#yloc do
-    gfx.y = yloc[y]  
+    gfx.y = yloc[y]
+    gfx.x = xloc[1] - plotData.indicatorShiftX
     local absy = y + scrolly
+    gfx.set(table.unpack(self.headercolor))    
+    gfx.printf("%3d", absy)
     if ( (((absy-1)/4) - math.floor((absy-1)/4)) == 0 ) then
       gfx.set(table.unpack(tracker.linecolor2))
     else
@@ -220,6 +236,15 @@ function tracker:printGrid()
       gfx.set(table.unpack(tracker.textcolor))
       gfx.printf("%s", self[dlink[x]][rows*xlink[x]+absy-1])
     end
+  end
+  
+  -- Draw the headers so we don't get lost :)
+  gfx.set(table.unpack(self.headercolor))
+  gfx.y = yloc[1] - plotData.indicatorShiftY
+
+  for x=1,#xloc do
+    gfx.x = xloc[x]
+    gfx.printf("%s", headers[x])
   end
   
   gfx.set(table.unpack(tracker.linecolor3))
@@ -481,6 +506,12 @@ local function updateLoop()
   
   -- Check if the note data or take changed, if so, update the note contents
   tracker:checkChange()
+
+--[[-- 
+if ( char ~= 0 ) then
+  print(char)
+end
+--]]--
  
   if char == 1818584692 then
     tracker.xpos = tracker.xpos - 1
@@ -502,6 +533,12 @@ local function updateLoop()
     -- Insert
   elseif char == 8 then
     -- Backspace    
+  elseif char == 1885828464 then
+    -- Pg Up
+    tracker.ypos = tracker.ypos - tracker.page
+  elseif char == 1885824110 then
+    -- Pg Down
+    tracker.ypos = tracker.ypos + tracker.page    
   end
   
   tracker:forceCursorInRange()
