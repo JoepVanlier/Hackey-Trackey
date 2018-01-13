@@ -98,8 +98,8 @@ end
 ------------------------------
 function tracker:updatePlotLink()
   local plotData = {}
-  local originx = 40
-  local originy = 40
+  local originx = 45
+  local originy = 45
   local dx = 8
   local dy = 20
   plotData.barpad = 10
@@ -164,15 +164,12 @@ end
 ------------------------------
 function tracker:normalizePositionToSelf(cpos)
   local loc = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
-  local loc2 = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
+  local loc2 = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH") 
+  local row = ( cpos - loc ) * self.rowPerSec
+  row = row - self.fov.scrolly
+  local norm =  row / math.min(self.rows, self.fov.height)
   
-  if ( cpos < loc ) then
-    cpos = loc;
-  end
-  if ( cpos > loc2 ) then
-    cpos = loc2;
-  end
-  return ( cpos - loc ) * self.rowPerSec / self.rows
+  return norm
 end
 
 function tracker:getCursorLocation()
@@ -185,6 +182,14 @@ function tracker:getPlayLocation()
   else
     return self:normalizePositionToSelf( reaper.GetPlayPosition() )
   end
+end
+
+local function triangle( xc, yc, size, ori )
+    local gfx = gfx
+    ori = ori or 1
+    gfx.line(xc-size,yc-ori*size,xc,yc+ori*size)
+    gfx.line(xc,yc+ori*size,xc+size,yc-ori*size)
+    gfx.line(xc+size,yc-ori*size,xc-size,yc-ori*size)
 end
 
 ------------------------------
@@ -248,9 +253,23 @@ function tracker:printGrid()
   end
   
   gfx.set(table.unpack(tracker.linecolor3))
-  gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * self:getPlayLocation() - itempady, tw, 1)
-  gfx.set(table.unpack(tracker.linecolor4))
-  gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * self:getCursorLocation() - itempady, tw, 1)
+  local playLoc = self:getPlayLocation()
+  local xc = xloc[1] - .5 * plotData.indicatorShiftX
+  local yc = yloc[1] - .8 * plotData.indicatorShiftY  
+  if ( playLoc < 0 ) then   
+      triangle(xc, yc, 5, -1)
+  else
+    if ( playLoc > 1 ) then
+      triangle(xc, yc, 5, 1)    
+    else
+      gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * playLoc - itempady, tw, 1)
+    end
+  end
+  local markerLoc = self:getCursorLocation()
+  if ( markerLoc > 0 and markerLoc < 1 ) then
+    gfx.set(table.unpack(tracker.linecolor4))
+    gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * self:getCursorLocation() - itempady, tw, 1)
+  end
 end
 
 ------------------------------
@@ -288,6 +307,14 @@ function tracker:forceCursorInRange()
   end    
 end
 
+function tracker:toSeconds(seconds)
+  return seconds / self.rowPerSec
+end
+
+function tracker:toQn(seconds)
+  return self.rowPerQn * seconds / self.rowPerSec
+end
+
 ------------------------------
 -- Determine timing info
 -- returns true if something changed
@@ -300,19 +327,21 @@ function tracker:getRowInfo()
     
     self.qnCount = mediaLength * ppqPerSec / ppqPerQn
     self.rowPerQn = 4
+    self.rowPerPpq = self.rowPerQn / ppqPerQn
+    self.rowPerSec = ppqPerSec * self.rowPerQn / ppqPerQn
     local rows = self.rowPerQn * self.qnCount
     
     -- Do not allow zero rows in the tracker!
     if ( rows < self.eps ) then
-      reaper.SetMediaItemInfo_Value(self.item, "D_LENGTH", 1 / ( self.rowPerQn / ppqPerQn * ppqPerSec ) )
+      reaper.SetMediaItemInfo_Value(self.item, "D_LENGTH", self:toSeconds(1) )
       rows = 1
     end
     
     if ( ( self.rows ~= rows ) or ( self.ppqPerQn ~= ppqPerQn ) ) then
       self.rows = rows
       self.qnPerPpq = 1 / ppqPerQn
-      self.rowPerPpq = self.rowPerQn / ppqPerQn
-      self.rowPerSec = ppqPerSec * self.rowPerQn / ppqPerQn
+      
+      
       self.ppqPerQn = ppqPerQn
       return true
     else
@@ -490,6 +519,22 @@ function tracker:checkChange()
   end
 end
 
+local function togglePlayPause()
+  local reaper = reaper
+  local state = 0
+  local HasState = reaper.HasExtState("PlayPauseToggle", "ToggleValue")
+
+  if HasState == 1 then
+    state = reaperGetExtState("PlayPauseToggle", "ToggleValue")
+  end
+    
+  if ( state == 0 ) then
+    reaper.Main_OnCommand(40044, 0)
+  else
+    reaper.Main_OnCommand(40073, 0)
+  end
+end
+
 ------------------------------
 -- Main update loop
 -----------------------------
@@ -529,6 +574,14 @@ end
     -- End
   elseif char == 32 then
     -- Space
+    togglePlayPause()
+  elseif char == 13 then
+    -- Enter
+    local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+    local loc = reaper.AddProjectMarker(0, 0, tracker:toSeconds(tracker.ypos-1), 0, "", -1)
+    reaper.GoToMarker(0, loc, 0)
+    reaper.DeleteProjectMarker(0, loc, 0)
+    togglePlayPause()
   elseif char == 6909555 then
     -- Insert
   elseif char == 8 then
