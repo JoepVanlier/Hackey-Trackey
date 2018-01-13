@@ -7,6 +7,12 @@
 
 tracker = {}
 tracker.eps = 1e-3
+tracker.fov = {}
+tracker.fov.scrollx = 0
+tracker.fov.scrolly = 0
+tracker.fov.width = 8
+tracker.fov.height = 16
+
 tracker.xpos = 1
 tracker.ypos = 1
 tracker.xint = 0
@@ -29,7 +35,9 @@ local function print(...)
   reaper.ShowConsoleMsg("\n")
 end
 
--- Midi note => Pitch
+------------------------------
+-- Pitch => note
+------------------------------
 function tracker:generatePitches()
   local notes = { 'C-', 'C#', 'D-', 'D#', 'E-', 'F-', 'F#', 'G-', 'G#', 'A-', 'A#', 'B-' }
   local pitches = {}
@@ -43,21 +51,12 @@ function tracker:generatePitches()
   self.pitchTable = pitches
 end
 
--- This is where the grid that the tracker displays is linked to the internal data grids
-function tracker:establishGrid()
-  local originx = 30
-  local originy = 30
-  local dx = 8
-  local dy = 20
-  self.barpad = 10
-  self.itempadx = 5
-  self.itempady = 3
-
-  self.extracols = {}
-  self.max_xpos = 2 * self.displaychannels + #self.extracols
-  self.max_ypos = self.rows
-
+------------------------------
+-- Link GUI grid to data
+------------------------------
+function tracker:linkData()
   -- Here is where the linkage between the display and the actual data fields in "tracker" is made
+  -- TO DO: This probably doesn't need to be done upon scrolling.
   local colsizes = {}
   local datafield = {}
   local idx = {}
@@ -71,41 +70,81 @@ function tracker:establishGrid()
     
     -- Link up the velocity fields
     datafield[#datafield+1] = 'vel'
-    idx[#idx+1] = j-1    
+    idx[#idx+1] = j-1
     colsizes[#colsizes + 1] = 2
     padsizes[#padsizes + 1] = 2    
   end
-  self.datafields = datafield
-  self.idxfields = idx
+  local link = {}
+  link.datafields = datafield
+  link.padsizes   = padsizes
+  link.colsizes   = colsizes
+  link.idxfields  = idx
+  self.link = link
+end
+
+function tracker:grabLinkage()
+  local link = self.link
+  return link.datafields, link.padsizes, link.colsizes, link.idxfields
+end
+
+------------------------------
+-- Establish what is plotted
+------------------------------
+function tracker:updatePlotLink()
+  local plotData = {}
+  local originx = 30
+  local originy = 30
+  local dx = 8
+  local dy = 20
+  plotData.barpad = 10
+  plotData.itempadx = 5
+  plotData.itempady = 3
+
+  self.extracols = {}
+  self.max_xpos = 2 * self.displaychannels + #self.extracols
+  self.max_ypos = self.rows
+
+  local datafields, padsizes, colsizes, idxfields = self:grabLinkage()
   
   -- Generate x locations for the columns
+  local fov = self.fov
   local xloc = {}
   local xwidth = {}
+  local xlink = {}
+  local dlink = {}
   local x = originx
-  for j = 1,#colsizes do
+  for j = fov.scrollx+1,math.min(#colsizes,fov.width+fov.scrollx) do
     xloc[#xloc + 1] = x
     xwidth[#xwidth + 1] = colsizes[j] * dx + padsizes[j]
+    xlink[#xlink + 1] = idxfields[j]
+    dlink[#dlink + 1] = datafields[j]
     x = x + colsizes[j] * dx + padsizes[j] * dx
   end
-  self.xloc = xloc
-  self.xwidth = xwidth
-  self.totalwidth = x - padsizes[#padsizes] * dx - colsizes[#colsizes]*dx
-  self.xstart = originx
+  plotData.xloc = xloc
+  plotData.xwidth = xwidth
+  plotData.totalwidth = x - padsizes[#padsizes] * dx - colsizes[#colsizes]*dx
+  plotData.xstart = originx
+  -- Variable dlink indicates what field the data can be found
+  -- Variable xlink indicates the index that is being displayed
+  plotData.dlink = dlink
+  plotData.xlink = xlink
   
   -- Generate y locations for the columns
   local yloc = {}
   local yheight = {}
   local y = originy
-  for j = 0,self.rows-1 do
+  for j = 0,math.min(self.rows-1, fov.height-1) do
     yloc[#yloc + 1] = y
     yheight[#yheight + 1] = 0.7 * dy
     y = y + dy
   end
-  self.yloc = yloc
-  self.yheight = yheight
-  self.yshift = 0.2 * dy
-  self.totalheight = y - originy
-  self.ystart = originy
+  plotData.yloc = yloc
+  plotData.yheight = yheight
+  plotData.yshift = 0.2 * dy
+  plotData.totalheight = y - originy
+  plotData.ystart = originy
+  
+  self.plotData = plotData
 end
 
 ------------------------------
@@ -140,52 +179,60 @@ end
 -- Draw the GUI
 ------------------------------
 function tracker:printGrid()
-  local tracker = tracker
-  local gfx = gfx
-  local channels = self.displaychannels
-  local rows = self.rows
-  local text = self.text
-  local vel = self.vel
-
-  local xloc = self.xloc
-  local xwidth = self.xwidth
-  local yloc = self.yloc
-  local yheight = self.yheight
-  gfx.set(table.unpack(tracker.selectcolor))
-  gfx.printf("%s", yheight[tracker.ywidth])
-  gfx.rect(xloc[tracker.xpos], yloc[tracker.ypos]-self.yshift, xwidth[tracker.xpos], yheight[tracker.ypos])
+  local tracker   = tracker
+  local gfx       = gfx
+  local channels  = self.displaychannels
+  local rows      = self.rows
+  local text      = self.text
+  local vel       = self.vel
+  local fov       = self.fov
   
-  local datafield = self.datafields
-  local xidx = self.idxfields
-  local tw = self.totalwidth
-  local itempadx = self.itempadx
-  local itempady = self.itempady
+  local plotData  = self.plotData
+  local xloc      = plotData.xloc
+  local xwidth    = plotData.xwidth
+  local yloc      = plotData.yloc
+  local yheight   = plotData.yheight
+  
+  local relx = tracker.xpos-fov.scrollx
+  local rely = tracker.ypos-fov.scrolly
+  gfx.set(table.unpack(tracker.selectcolor))
+  gfx.rect(xloc[relx], yloc[rely]-plotData.yshift, xwidth[relx], yheight[rely])
+  
+  local dlink     = plotData.dlink
+  local xlink     = plotData.xlink
+  local tw        = plotData.totalwidth
+  local itempadx  = plotData.itempadx
+  local itempady  = plotData.itempady
+  local scrolly   = fov.scrolly
+  
+  -- Render in relative FOV coordinates
   for y=1,#yloc do
-    if ( (((y-1)/4) - math.floor((y-1)/4)) == 0 ) then
+    gfx.y = yloc[y]  
+    local absy = y + scrolly
+    if ( (((absy-1)/4) - math.floor((absy-1)/4)) == 0 ) then
       gfx.set(table.unpack(tracker.linecolor2))
     else
       gfx.set(table.unpack(tracker.linecolor))
     end
-    gfx.rect(xloc[1] - itempadx, yloc[y] - self.yshift, tw, yheight[1] + itempady)
+    gfx.rect(xloc[1] - itempadx, yloc[y] - plotData.yshift, tw, yheight[1] + itempady)
     for x=1,#xloc do
       gfx.x = xloc[x]
-      gfx.y = yloc[y]
-      
       gfx.set(table.unpack(tracker.textcolor))
-      gfx.printf("%s", self[datafield[x]][rows*xidx[x]+y-1])
+      gfx.printf("%s", self[dlink[x]][rows*xlink[x]+absy-1])
     end
   end
   
   gfx.set(table.unpack(tracker.linecolor3))
-  gfx.rect(self.xstart - itempadx, self.ystart + self.totalheight * self:getPlayLocation() - itempady, tw, 1)
+  gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * self:getPlayLocation() - itempady, tw, 1)
   gfx.set(table.unpack(tracker.linecolor4))
-  gfx.rect(self.xstart - itempadx, self.ystart + self.totalheight * self:getCursorLocation() - itempady, tw, 1)
+  gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * self:getCursorLocation() - itempady, tw, 1)
 end
 
 ------------------------------
 -- Force selector in range
 ------------------------------
 function tracker:forceCursorInRange()
+  local fov = self.fov
   if ( self.xpos < 1 ) then
     self.xpos = 1
   end
@@ -197,7 +244,23 @@ function tracker:forceCursorInRange()
   end
   if ( self.ypos > self.max_ypos ) then
     self.ypos = self.max_ypos
-  end   
+  end
+  -- Is the cursor off fov?
+  if ( ( self.ypos - fov.scrolly ) > self.fov.height ) then
+    self.fov.scrolly = self.ypos - self.fov.height
+  end
+  if ( ( self.ypos - fov.scrolly ) < 1 ) then
+    self.fov.scrolly = self.ypos - 1
+  end
+  -- Is the cursor off fov?
+  if ( ( self.xpos - fov.scrollx ) > self.fov.width ) then
+    self.fov.scrollx = self.xpos - self.fov.width
+    self:updatePlotLink()
+  end
+  if ( ( self.xpos - fov.scrollx ) < 1 ) then
+    self.fov.scrollx = self.xpos - 1
+    self:updatePlotLink()
+  end    
 end
 
 ------------------------------
@@ -216,7 +279,6 @@ function tracker:getRowInfo()
     
     -- Do not allow zero rows in the tracker!
     if ( rows < self.eps ) then
-      print( self.rowPerQn / ppqPerQn * ppqPerSec )
       reaper.SetMediaItemInfo_Value(self.item, "D_LENGTH", 1 / ( self.rowPerQn / ppqPerQn * ppqPerSec ) )
       rows = 1
     end
@@ -271,7 +333,7 @@ function tracker:assignFromMIDI(channel, idx)
     for y = ystart,yend,1 do      
       self.note[rows*channel+y] = idx      
     end
-    print("NOTE "..self.pitchTable[pitch] .. " on channel " .. channel .. " from " .. ystart .. " to " .. yend)    
+    --print("NOTE "..self.pitchTable[pitch] .. " on channel " .. channel .. " from " .. ystart .. " to " .. yend)    
     return true
   else
     return false
@@ -305,7 +367,8 @@ function tracker:update()
   local reaper = reaper
   if ( self.take and self.item ) then
     self:getRowInfo()
-    self:establishGrid()
+    self:linkData()
+    self:updatePlotLink()
     self:initializeGrid()
     
     -- Grab the notes and store them in channels
