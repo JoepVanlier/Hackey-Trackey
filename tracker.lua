@@ -18,6 +18,7 @@ tracker.linecolor = {.1, .0, .4, .4}
 tracker.linecolor2 = {.3, .0, .6, .4}
 tracker.linecolor3 = {.4, .1, 1, 1}
 tracker.linecolor4 = {.2, .0, 1, .5}
+tracker.hash = 0
 
 local function print(...)
   if ( not ... ) then
@@ -107,6 +108,9 @@ function tracker:establishGrid()
   self.ystart = originy
 end
 
+------------------------------
+-- Cursor and play position
+------------------------------
 function tracker:normalizePositionToSelf(cpos)
   local loc = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
   local loc2 = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
@@ -132,6 +136,9 @@ function tracker:getPlayLocation()
   end
 end
 
+------------------------------
+-- Draw the GUI
+------------------------------
 function tracker:printGrid()
   local tracker = tracker
   local gfx = gfx
@@ -175,6 +182,9 @@ function tracker:printGrid()
   gfx.rect(self.xstart - itempadx, self.ystart + self.totalheight * self:getCursorLocation() - itempady, tw, 1)
 end
 
+------------------------------
+-- Force selector in range
+------------------------------
 function tracker:forceCursorInRange()
   if ( self.xpos < 1 ) then
     self.xpos = 1
@@ -190,60 +200,42 @@ function tracker:forceCursorInRange()
   end   
 end
 
-local function updateLoop()
-  local tracker = tracker
-
-  -- Maintain the loop until the window is closed or escape is pressed
-  local char = gfx.getchar()
- 
-  if char == 1818584692 then
-    tracker.xpos = tracker.xpos - 1
-  elseif char == 1919379572 then
-    tracker.xpos = tracker.xpos + 1
-  elseif char == 30064 then
-    tracker.ypos = tracker.ypos - 1
-  elseif char == 1685026670 then
-    tracker.ypos = tracker.ypos + 1
-  elseif char == 6579564 then 
-    -- Delete
-  elseif char == 1752132965 then
-    -- Home
-  elseif char == 6647396 then
-    -- End
-  elseif char == 32 then
-    -- Space
-  elseif char == 6909555 then
-    -- Insert
-  elseif char == 8 then
-    -- Backspace    
-  end
-  
-  tracker:forceCursorInRange()
-  tracker:printGrid()
-  gfx.update()
-   
-  if char ~= 27 and char ~= -1 then
-    reaper.defer(updateLoop)
-  else
-    gfx.quit()
-  end
-end
-
--- Determine number of rows
+------------------------------
+-- Determine timing info
+-- returns true if something changed
+------------------------------
 function tracker:getRowInfo()
     -- How many rows do we need?
     local ppqPerQn = reaper.MIDI_GetPPQPosFromProjQN(self.take, 1)
     local ppqPerSec = 1.0 / reaper.MIDI_GetProjTimeFromPPQPos(self.take, 1)
     local mediaLength = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
+    
     self.qnCount = mediaLength * ppqPerSec / ppqPerQn
     self.rowPerQn = 4
-    self.rows = self.rowPerQn * self.qnCount
-    self.ppqPerQn = ppqPerQn
-    self.qnPerPpq = 1 / ppqPerQn
-    self.rowPerPpq = self.rowPerQn / ppqPerQn
-    self.rowPerSec = ppqPerSec * self.rowPerQn / ppqPerQn
+    local rows = self.rowPerQn * self.qnCount
+    
+    -- Do not allow zero rows in the tracker!
+    if ( rows < self.eps ) then
+      print( self.rowPerQn / ppqPerQn * ppqPerSec )
+      reaper.SetMediaItemInfo_Value(self.item, "D_LENGTH", 1 / ( self.rowPerQn / ppqPerQn * ppqPerSec ) )
+      rows = 1
+    end
+    
+    if ( ( self.rows ~= rows ) or ( self.ppqPerQn ~= ppqPerQn ) ) then
+      self.rows = rows
+      self.qnPerPpq = 1 / ppqPerQn
+      self.rowPerPpq = self.rowPerQn / ppqPerQn
+      self.rowPerSec = ppqPerSec * self.rowPerQn / ppqPerQn
+      self.ppqPerQn = ppqPerQn
+      return true
+    else
+      return false
+    end
 end
 
+------------------------------
+-- MIDI => Tracking
+------------------------------
 -- Check if a space in the column is already occupied
 function tracker:isFree(channel, y1, y2)
   local rows = self.rows
@@ -267,6 +259,11 @@ function tracker:assignFromMIDI(channel, idx)
   local ystart = math.floor( startppqpos * self.rowPerPpq + self.eps )
   local yend = math.ceil( endppqpos * self.rowPerPpq - self.eps )
   
+  -- This note is not actually present
+  if ( ystart > self.rows-1 ) then
+    return true
+  end
+  
   -- Is the space for the note free on this channel?
   if ( self:isFree( channel, ystart, yend ) ) then
     self.text[rows*channel+ystart] = pitchTable[pitch]
@@ -281,6 +278,9 @@ function tracker:assignFromMIDI(channel, idx)
   end  
 end
 
+------------------------------
+-- Internal data initialisation
+-----------------------------
 function tracker:initializeGrid()
   local x, y
   self.note = {}
@@ -297,7 +297,10 @@ function tracker:initializeGrid()
   end
 end
 
--- Update the grid
+------------------------------
+-- Update function
+-- heavy-ish, avoid calling too often
+-----------------------------
 function tracker:update()
   local reaper = reaper
   if ( self.take and self.item ) then
@@ -359,6 +362,9 @@ function tracker:update()
   local pitchSymbol = self.pitchTable[pitchOut]
 end
 
+------------------------------
+-- Selection management
+-----------------------------
 function tracker:setItem( item )
   self.item = item
 end
@@ -368,8 +374,81 @@ function tracker:setTake( take )
   if ( self.take ~= take ) then
     if ( reaper.TakeIsMIDI( take ) == true ) then
       self.take = take
+      -- Store note hash (second arg = notes only)
+      self.hash = reaper.MIDI_GetHash( self.take, true, "?" )
       self:update()
+      return true
     end
+  end
+  return false
+end
+
+------------------------------
+-- Check for note changes
+-----------------------------
+function tracker:checkChange()
+  local take = reaper.GetActiveTake(self.item)
+  if ( reaper.TakeIsMIDI( take ) == true ) then
+    if ( tracker:setTake( take ) == false ) then
+      -- Take did not change, but did the note data?
+      local retval, currentHash = reaper.MIDI_GetHash( self.take, true, "?" )
+      if ( retval == true ) then
+        if ( currentHash ~= self.hash ) then
+          self.hash = currentHash
+          self:update()
+        end
+      end
+    end
+  end
+end
+
+------------------------------
+-- Main update loop
+-----------------------------
+local function updateLoop()
+  local tracker = tracker
+
+  -- Maintain the loop until the window is closed or escape is pressed
+  local char = gfx.getchar()
+  
+  -- Check if the length changed, if so, update the time data
+  if ( tracker:getRowInfo() == true ) then
+    tracker:update()
+  end
+  
+  -- Check if the note data or take changed, if so, update the note contents
+  tracker:checkChange()
+ 
+  if char == 1818584692 then
+    tracker.xpos = tracker.xpos - 1
+  elseif char == 1919379572 then
+    tracker.xpos = tracker.xpos + 1
+  elseif char == 30064 then
+    tracker.ypos = tracker.ypos - 1
+  elseif char == 1685026670 then
+    tracker.ypos = tracker.ypos + 1
+  elseif char == 6579564 then 
+    -- Delete
+  elseif char == 1752132965 then
+    -- Home
+  elseif char == 6647396 then
+    -- End
+  elseif char == 32 then
+    -- Space
+  elseif char == 6909555 then
+    -- Insert
+  elseif char == 8 then
+    -- Backspace    
+  end
+  
+  tracker:forceCursorInRange()
+  tracker:printGrid()
+  gfx.update()
+   
+  if char ~= 27 and char ~= -1 then
+    reaper.defer(updateLoop)
+  else
+    gfx.quit()
   end
 end
 
