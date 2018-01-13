@@ -322,6 +322,7 @@ function tracker:insert()
   local dlink     = plotData.dlink
   local xlink     = plotData.xlink
   local data      = self.data
+  local singlerow = self:rowToPpq(1)
   
   -- Determine fieldtype, channel and row
   local ftype, chan, row = self:getLocation()
@@ -333,24 +334,47 @@ function tracker:insert()
     local text     = data.text
     local vel      = data.vel
     local rows     = self.rows
+    local notes    = self.notes
 
-    -- Are we inside a note? It needs to be elongated!
-    local elongate
-    if ( noteGrid[rows*chan+row] ) then
-      -- An OFF leads to an elongation of the last note
-      if ( noteGrid[rows*chan+row] == -1 ) then
+    -- Are we inside a note? ==> It needs to be elongated!
+    local elongate = noteGrid[rows*chan+row]
+    if ( elongate ) then
+      -- An OFF leads to an elongation of the previous note
+      if ( elongate == -1 ) then
         if ( row > 0 ) then
-          elongate = noteGrid[rows*chan+row]
+          elongate = noteGrid[rows*chan+row - 1]
         end
       end
+          
+      -- Let's elongate the note by a row!
+      local pitch, vel, startppqpos, endppqpos = table.unpack( notes[elongate] )
+      reaper.MIDI_SetNote(self.take, elongate, nil, nil, nil, endppqpos + singlerow, nil, nil, nil, true)
     end
 
     -- Everything below this note has to go one shift down
-    for i = self.rows,row,-1 do
-      
+    local lastnote = -2
+    for i = row,rows do
+      local note = noteGrid[rows*chan+i]
+      if ( note ~= lastnote ) then
+        if ( note and ( note > -1 ) ) then
+          local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
+          if ( i < rows ) then
+            reaper.MIDI_SetNote(self.take, note, nil, nil, startppqpos + singlerow, endppqpos + singlerow, nil, nil, nil, true)
+          else
+            reaper.MIDI_DeleteNote(self.take, note)
+          end
+        end
+      end
+      lastnote = note
     end
+      
+    --boolean reaper.MIDI_DeleteNote(self.take, elongate, noteidx)
+    --boolean reaper.MIDI_InsertNote(self.take, boolean selected, boolean muted, number startppqpos, number endppqpos, integer chan, integer pitch, integer vel, optional boolean noSortInOptional)
+    
 
     print( noteGrid[rows*chan+row] )
+
+    reaper.MIDI_Sort(self.take)
 
   elseif ( ftype == 'legato' ) then
 
@@ -400,6 +424,10 @@ function tracker:toSeconds(seconds)
   return seconds / self.rowPerSec
 end
 
+function tracker:rowToPpq(row)
+  return row * self.ppqPerRow
+end
+
 function tracker:toQn(seconds)
   return self.rowPerQn * seconds / self.rowPerSec
 end
@@ -417,6 +445,7 @@ function tracker:getRowInfo()
     self.qnCount = mediaLength * ppqPerSec / ppqPerQn
     self.rowPerQn = 4
     self.rowPerPpq = self.rowPerQn / ppqPerQn
+    self.ppqPerRow = 1 / self.rowPerPpq
     self.rowPerSec = ppqPerSec * self.rowPerQn / ppqPerQn
     local rows = self.rowPerQn * self.qnCount
     
@@ -746,7 +775,7 @@ local function Main()
   tracker.tick = 0
   tracker:generatePitches()
   tracker:initColors()
-  gfx.init("Hackey Trackey v0.1", 640, 480, 0, 200, 200)
+  gfx.init("Hackey Trackey v0.2", 640, 480, 0, 200, 200)
   
   local reaper = reaper
   if ( reaper.CountSelectedMediaItems(0) > 0 ) then
