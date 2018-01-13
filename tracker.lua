@@ -19,13 +19,14 @@ tracker.xint = 0
 tracker.page = 4
 tracker.channels = 16
 tracker.displaychannels = 8
-tracker.selectcolor = {.7, 0, .5, 1}
-tracker.textcolor = {.7, .8, .8, 1}
-tracker.headercolor = {.5, .5, .8, 1}
-tracker.linecolor = {.1, .0, .4, .4}
-tracker.linecolor2 = {.3, .0, .6, .4}
-tracker.linecolor3 = {.4, .1, 1, 1}
-tracker.linecolor4 = {.2, .0, 1, .5}
+tracker.colors = {}
+tracker.colors.selectcolor = {.7, 0, .5, 1}
+tracker.colors.textcolor = {.7, .8, .8, 1}
+tracker.colors.headercolor = {.5, .5, .8, 1}
+tracker.colors.linecolor = {.1, .0, .4, .4}
+tracker.colors.linecolor2 = {.3, .0, .6, .4}
+tracker.colors.linecolor3 = {.4, .1, 1, 1}
+tracker.colors.linecolor4 = {.2, .0, 1, .5}
 tracker.hash = 0
 
 local function print(...)
@@ -35,6 +36,16 @@ local function print(...)
   end
   reaper.ShowConsoleMsg(...)
   reaper.ShowConsoleMsg("\n")
+end
+
+function alpha(color, a)
+  return { color[1], color[2], color[3], color[4] * a }
+end
+
+function tracker:initColors()
+  tracker.colors.linecolors  = alpha( tracker.colors.linecolor, 1.3 )
+  tracker.colors.linecolor2s = alpha( tracker.colors.linecolor2, 1.3 )
+  tracker.colors.linecolor3s = alpha( tracker.colors.linecolor3, 0.5 )    
 end
 
 ------------------------------
@@ -64,6 +75,13 @@ function tracker:linkData()
   local idx = {}
   local padsizes = {}  
   local headers = {}
+  
+  datafield[#datafield+1] = 'legato'
+  idx[#idx+1] = 1
+  colsizes[#colsizes+1] = 1
+  padsizes[#padsizes+1] = 1
+  headers[#headers+1] = string.format( 'L' )
+  
   for j = 1,self.displaychannels do
     -- Link up the note fields
     datafield[#datafield+1] = 'text'
@@ -197,6 +215,7 @@ end
 ------------------------------
 function tracker:printGrid()
   local tracker   = tracker
+  local colors    = tracker.colors
   local gfx       = gfx
   local channels  = self.displaychannels
   local rows      = self.rows
@@ -212,65 +231,127 @@ function tracker:printGrid()
   
   local relx = tracker.xpos-fov.scrollx
   local rely = tracker.ypos-fov.scrolly
-  gfx.set(table.unpack(self.selectcolor))
+  
+  gfx.set(table.unpack(colors.selectcolor))
   gfx.rect(xloc[relx], yloc[rely]-plotData.yshift, xwidth[relx], yheight[rely])
   
   local dlink     = plotData.dlink
   local xlink     = plotData.xlink
   local headers   = plotData.headers
   local tw        = plotData.totalwidth
+  local th        = plotData.totalheight
   local itempadx  = plotData.itempadx
   local itempady  = plotData.itempady
   local scrolly   = fov.scrolly
   
   -- Render in relative FOV coordinates
+  local data      = self.data
   for y=1,#yloc do
     gfx.y = yloc[y]
     gfx.x = xloc[1] - plotData.indicatorShiftX
     local absy = y + scrolly
-    gfx.set(table.unpack(self.headercolor))    
+    gfx.set(table.unpack(colors.headercolor))    
     gfx.printf("%3d", absy)
+    local c1, c2
     if ( (((absy-1)/4) - math.floor((absy-1)/4)) == 0 ) then
-      gfx.set(table.unpack(tracker.linecolor2))
+      c1 = colors.linecolor2
+      c2 = colors.linecolor2s
     else
-      gfx.set(table.unpack(tracker.linecolor))
+      c1 = colors.linecolor
+      c2 = colors.linecolors
     end
+    gfx.set(table.unpack(c1))
     gfx.rect(xloc[1] - itempadx, yloc[y] - plotData.yshift, tw, yheight[1] + itempady)
+    gfx.set(table.unpack(c2))
+    gfx.rect(xloc[1] - itempadx, yloc[y] - plotData.yshift, tw, 1)
+    gfx.rect(xloc[1] - itempadx, yloc[y] - plotData.yshift, 1, yheight[y])
+    gfx.rect(xloc[1] - itempadx + tw + 0, yloc[y] - plotData.yshift, 1, yheight[y] + itempady)    
     for x=1,#xloc do
       gfx.x = xloc[x]
-      gfx.set(table.unpack(tracker.textcolor))
-      gfx.printf("%s", self[dlink[x]][rows*xlink[x]+absy-1])
+      gfx.set(table.unpack(colors.textcolor))
+      gfx.printf("%s", data[dlink[x]][rows*xlink[x]+absy-1])
     end
   end
   
   -- Draw the headers so we don't get lost :)
-  gfx.set(table.unpack(self.headercolor))
+  gfx.set(table.unpack(colors.headercolor))
   gfx.y = yloc[1] - plotData.indicatorShiftY
 
   for x=1,#xloc do
     gfx.x = xloc[x]
     gfx.printf("%s", headers[x])
   end
-  
-  gfx.set(table.unpack(tracker.linecolor3))
+ 
   local playLoc = self:getPlayLocation()
   local xc = xloc[1] - .5 * plotData.indicatorShiftX
   local yc = yloc[1] - .8 * plotData.indicatorShiftY  
   if ( playLoc < 0 ) then   
+      gfx.set(table.unpack(colors.linecolor3s))     
+      triangle(xc, yc+1, 3, -1)        
+      gfx.set(table.unpack(colors.linecolor3))
       triangle(xc, yc, 5, -1)
   else
     if ( playLoc > 1 ) then
+      gfx.set(table.unpack(colors.linecolor3s))
+      triangle(xc, yc-1, 3, 1)           
+      gfx.set(table.unpack(colors.linecolor3))
       triangle(xc, yc, 5, 1)    
     else
-      gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * playLoc - itempady, tw, 1)
+      gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * playLoc - itempady - 1, tw, 1)
     end
   end
   local markerLoc = self:getCursorLocation()
   if ( markerLoc > 0 and markerLoc < 1 ) then
-    gfx.set(table.unpack(tracker.linecolor4))
-    gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * self:getCursorLocation() - itempady, tw, 1)
+    gfx.set(table.unpack(colors.linecolor4))
+    gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * self:getCursorLocation() - itempady - 1, tw, 1)
   end
 end
+
+-- Returns fieldtype, channel and row
+function tracker:getLocation()
+  local plotData  = self.plotData
+  local dlink     = plotData.dlink
+  local xlink     = plotData.xlink
+  local relx      = tracker.xpos - tracker.fov.scrollx
+  
+  return dlink[relx], xlink[relx], tracker.xpos
+end
+
+function tracker:insert()
+  local plotData  = self.plotData
+  local dlink     = plotData.dlink
+  local xlink     = plotData.xlink
+  local data      = self.data
+  
+  -- Determine fieldtype, channel and row
+  local ftype, chan, row = self:getLocation()
+    
+  -- What are we manipulating here?
+  if ( ( ftype == 'text' ) or ( ftype == 'vel' ) ) then
+    -- Note
+  elseif ( ftype == 'legato' ) then
+  else
+    print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
+    return
+  end
+  
+  
+  -- Determine channel we are in
+  
+  local data = self.data
+
+    -- Link up the note fields
+  --  datafield[#datafield+1] = 'text'
+  --  idx[#idx+1] = j-1
+  --  colsizes[#colsizes + 1] = 3
+  --  padsizes[#padsizes + 1] = 1
+  --  headers[#headers + 1] = string.format(' Ch%2d', j)
+    
+    -- Link up the velocity fields
+  --  datafield[#datafield+1] = 'vel'  
+  
+end
+
 
 ------------------------------
 -- Force selector in range
@@ -284,10 +365,10 @@ function tracker:forceCursorInRange()
     self.ypos = 1
   end
   if ( self.xpos > self.max_xpos ) then
-    self.xpos = self.max_xpos
+    self.xpos = math.floor( self.max_xpos )
   end
   if ( self.ypos > self.max_ypos ) then
-    self.ypos = self.max_ypos
+    self.ypos = math.floor( self.max_ypos )
   end
   -- Is the cursor off fov?
   if ( ( self.ypos - fov.scrolly ) > self.fov.height ) then
@@ -321,8 +402,8 @@ end
 ------------------------------
 function tracker:getRowInfo()
     -- How many rows do we need?
-    local ppqPerQn = reaper.MIDI_GetPPQPosFromProjQN(self.take, 1)
-    local ppqPerSec = 1.0 / reaper.MIDI_GetProjTimeFromPPQPos(self.take, 1)
+    local ppqPerQn = reaper.MIDI_GetPPQPosFromProjQN(self.take, 1) - reaper.MIDI_GetPPQPosFromProjQN(self.take, 0)
+    local ppqPerSec = 1.0 / ( reaper.MIDI_GetProjTimeFromPPQPos(self.take, 1) - reaper.MIDI_GetProjTimeFromPPQPos(self.take, 0) )
     local mediaLength = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
     
     self.qnCount = mediaLength * ppqPerSec / ppqPerQn
@@ -355,7 +436,7 @@ end
 -- Check if a space in the column is already occupied
 function tracker:isFree(channel, y1, y2)
   local rows = self.rows
-  local notes = self.note
+  local notes = self.data.note
   for y=y1,y2 do
     -- Occupied
     if ( notes[rows*channel+y] ) then
@@ -381,11 +462,12 @@ function tracker:assignFromMIDI(channel, idx)
   end
   
   -- Is the space for the note free on this channel?
+  local data = self.data
   if ( self:isFree( channel, ystart, yend ) ) then
-    self.text[rows*channel+ystart] = pitchTable[pitch]
-    self.vel[rows*channel+ystart]  = string.format('%2d', vel )  
+    data.text[rows*channel+ystart] = pitchTable[pitch]
+    data.vel[rows*channel+ystart]  = string.format('%2d', vel )  
     for y = ystart,yend,1 do      
-      self.note[rows*channel+y] = idx      
+      data.note[rows*channel+y] = idx      
     end
     --print("NOTE "..self.pitchTable[pitch] .. " on channel " .. channel .. " from " .. ystart .. " to " .. yend)    
     return true
@@ -399,18 +481,26 @@ end
 -----------------------------
 function tracker:initializeGrid()
   local x, y
-  self.note = {}
-  self.text = {}
-  self.vel = {}
+  local data = {}
+  data.note = {}
+  data.text = {}
+  data.vel = {}
+  data.legato = {}
   local channels = self.channels
   local rows = self.rows
   for x=0,channels-1 do
     for y=0,rows-1 do
-      self.note[rows*x+y] = nil
-      self.text[rows*x+y] = '...'
-      self.vel[rows*x+y] = '..'
+      data.note[rows*x+y] = nil
+      data.text[rows*x+y] = '...'
+      data.vel[rows*x+y] = '..'
     end
   end
+  
+  for y=0,rows-1 do
+    data.legato[y] = 0
+  end
+  
+  self.data = data
 end
 
 ------------------------------
@@ -459,12 +549,15 @@ function tracker:update()
       for i,note in pairs(failures) do
         local targetChannel = 0
         local done = false
-        while( ( targetChannel < maxChannel ) and ( done == false ) ) do
+        while( done == false ) do
           if ( self:assignFromMIDI(targetChannel,note) == true ) then
             done = true
             ok = ok + 1
           else
             targetChannel = targetChannel + 1
+            if ( targetChannel > maxChannel ) then 
+              done=true
+            end
           end
         end
       end
@@ -570,8 +663,10 @@ end
     -- Delete
   elseif char == 1752132965 then
     -- Home
+    tracker.ypos = 0
   elseif char == 6647396 then
     -- End
+    tracker.ypos = tracker.rows
   elseif char == 32 then
     -- Space
     togglePlayPause()
@@ -584,6 +679,7 @@ end
     togglePlayPause()
   elseif char == 6909555 then
     -- Insert
+    tracker:insert()
   elseif char == 8 then
     -- Backspace    
   elseif char == 1885828464 then
@@ -609,6 +705,7 @@ local function Main()
   local tracker = tracker
   tracker.tick = 0
   tracker:generatePitches()
+  tracker:initColors()
   gfx.init("Hackey Trackey v0.1", 640, 480, 0, 200, 200)
   
   local reaper = reaper
