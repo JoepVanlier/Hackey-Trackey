@@ -10,7 +10,7 @@ tracker.eps = 1e-3
 tracker.fov = {}
 tracker.fov.scrollx = 0
 tracker.fov.scrolly = 0
-tracker.fov.width = 8
+tracker.fov.width = 16
 tracker.fov.height = 16
 
 tracker.xpos = 1
@@ -18,7 +18,7 @@ tracker.ypos = 1
 tracker.xint = 0
 tracker.page = 4
 tracker.channels = 16
-tracker.displaychannels = 8
+tracker.displaychannels = 16
 tracker.colors = {}
 tracker.colors.selectcolor = {.7, 0, .5, 1}
 tracker.colors.textcolor = {.7, .8, .8, 1}
@@ -314,7 +314,7 @@ function tracker:getLocation()
   local xlink     = plotData.xlink
   local relx      = tracker.xpos - tracker.fov.scrollx
   
-  return dlink[relx], xlink[relx], tracker.xpos
+  return dlink[relx], xlink[relx], tracker.ypos
 end
 
 function tracker:insert()
@@ -328,28 +328,36 @@ function tracker:insert()
     
   -- What are we manipulating here?
   if ( ( ftype == 'text' ) or ( ftype == 'vel' ) ) then
-    -- Note
+    -- Figure out what note is here (if any)
+    local noteGrid = data.note
+    local text     = data.text
+    local vel      = data.vel
+    local rows     = self.rows
+
+    -- Are we inside a note? It needs to be elongated!
+    local elongate
+    if ( noteGrid[rows*chan+row] ) then
+      -- An OFF leads to an elongation of the last note
+      if ( noteGrid[rows*chan+row] == -1 ) then
+        if ( row > 0 ) then
+          elongate = noteGrid[rows*chan+row]
+        end
+      end
+    end
+
+    -- Everything below this note has to go one shift down
+    for i = self.rows,row,-1 do
+      
+    end
+
+    print( noteGrid[rows*chan+row] )
+
   elseif ( ftype == 'legato' ) then
+
   else
     print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
     return
   end
-  
-  
-  -- Determine channel we are in
-  
-  local data = self.data
-
-    -- Link up the note fields
-  --  datafield[#datafield+1] = 'text'
-  --  idx[#idx+1] = j-1
-  --  colsizes[#colsizes + 1] = 3
-  --  padsizes[#padsizes + 1] = 1
-  --  headers[#headers + 1] = string.format(' Ch%2d', j)
-    
-    -- Link up the velocity fields
-  --  datafield[#datafield+1] = 'vel'  
-  
 end
 
 
@@ -420,9 +428,7 @@ function tracker:getRowInfo()
     
     if ( ( self.rows ~= rows ) or ( self.ppqPerQn ~= ppqPerQn ) ) then
       self.rows = rows
-      self.qnPerPpq = 1 / ppqPerQn
-      
-      
+      self.qnPerPpq = 1 / ppqPerQn      
       self.ppqPerQn = ppqPerQn
       return true
     else
@@ -460,14 +466,26 @@ function tracker:assignFromMIDI(channel, idx)
   if ( ystart > self.rows-1 ) then
     return true
   end
+  if ( ystart < 0 ) then
+    return true
+  end
+  if ( yend > self.rows - 1 ) then
+    yend = self.rows
+  end
   
-  -- Is the space for the note free on this channel?
+  -- Add the note if there is space on this channel, otherwise return false
   local data = self.data
   if ( self:isFree( channel, ystart, yend ) ) then
     data.text[rows*channel+ystart] = pitchTable[pitch]
     data.vel[rows*channel+ystart]  = string.format('%2d', vel )  
     for y = ystart,yend,1 do      
       data.note[rows*channel+y] = idx      
+    end
+    if ( yend+1 < rows ) then
+      if ( self:isFree( channel, yend+1, yend+1 ) ) then
+        data.text[rows*channel+yend+1] = 'OFF'
+        data.note[rows*channel+yend+1] = -1
+      end
     end
     --print("NOTE "..self.pitchTable[pitch] .. " on channel " .. channel .. " from " .. ystart .. " to " .. yend)    
     return true
@@ -593,11 +611,26 @@ function tracker:setTake( take )
   return false
 end
 
+-- I wish I knew of a cleaner way to do this. This hack tests
+-- whether the mediaItem still exists by calling it in a protected call
+-- if GetActiveTake fails, the user deleted the mediaItem and we must
+-- close the tracker window.
+function tracker:testGetTake()
+  reaper.GetActiveTake(tracker.item)
+end
+
 ------------------------------
 -- Check for note changes
 -----------------------------
 function tracker:checkChange()
-  local take = reaper.GetActiveTake(self.item)
+  local take
+  if not pcall( self.testGetTake ) then
+    return false
+  end
+  take = reaper.GetActiveTake(self.item)
+  if ( not take ) then
+    return false
+  end
   if ( reaper.TakeIsMIDI( take ) == true ) then
     if ( tracker:setTake( take ) == false ) then
       -- Take did not change, but did the note data?
@@ -609,7 +642,11 @@ function tracker:checkChange()
         end
       end
     end
+  else
+    return false
   end
+  
+  return true
 end
 
 local function togglePlayPause()
@@ -634,16 +671,19 @@ end
 local function updateLoop()
   local tracker = tracker
 
+  -- Check if the note data or take changed, if so, update the note contents
+  if ( not tracker:checkChange() ) then
+    gfx.quit()
+    return
+  end
+
   -- Maintain the loop until the window is closed or escape is pressed
   local char = gfx.getchar()
   
   -- Check if the length changed, if so, update the time data
   if ( tracker:getRowInfo() == true ) then
     tracker:update()
-  end
-  
-  -- Check if the note data or take changed, if so, update the note contents
-  tracker:checkChange()
+  end  
 
 --[[-- 
 if ( char ~= 0 ) then
