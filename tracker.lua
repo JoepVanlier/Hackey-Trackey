@@ -313,13 +313,65 @@ function tracker:getLocation()
   local xlink     = plotData.xlink
   local relx      = tracker.xpos - tracker.fov.scrollx
   
-  return dlink[relx], xlink[relx], tracker.ypos
+  return dlink[relx], xlink[relx], tracker.ypos - 1
 end
 
+---------------------
+-- Delete
+---------------------
+function tracker:delete()
+  local data      = self.data
+  local rows      = self.rows
+
+  -- Determine fieldtype, channel and row
+  local ftype, chan, row = self:getLocation()
+  
+  -- What are we manipulating here?
+  if ( ( ftype == 'text' ) or ( ftype == 'vel' ) ) then
+    local noteGrid = data.note
+       
+    -- OFF marker
+    if ( noteGrid[rows*chan+row] == -1 ) then
+      if ( row > 1 ) then
+        local noteToResize = noteGrid[rows*chan+row - 1]
+        
+        local k = row
+        while( k < rowsize ) do
+          if ( noteGrid[rows*chan+k] ) then
+            break;
+          end
+          k = k + 1
+        end
+        local resize = k-row
+        
+        local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToResize] )
+        reaper.Undo_OnStateChange2(0, "Tracker: Delete note OFF")
+        reaper.MarkProjectDirty(0)
+        reaper.MIDI_SetNote(self.take, noteToResize, nil, nil, startppqpos, endppqpos + singlerow * resize, nil, nil, nil, true)
+      end
+    end
+    
+  elseif ( ftype == 'legato' ) then
+  else
+    print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
+    return
+  end
+end
+
+function tracker:clampPpq(ppq)
+  if ( ppq > self.maxppq ) then
+    return self.maxppq
+  elseif ( ppq < self.minppq ) then
+    return self.minppq
+  else
+    return ppq
+  end
+end
+
+---------------------
+-- Insert
+---------------------
 function tracker:insert()
-  local plotData  = self.plotData
-  local dlink     = plotData.dlink
-  local xlink     = plotData.xlink
   local data      = self.data
   local singlerow = self:rowToPpq(1)
   
@@ -328,39 +380,43 @@ function tracker:insert()
   
   -- What are we manipulating here?
   if ( ( ftype == 'text' ) or ( ftype == 'vel' ) ) then
-    -- Figure out what note is here (if any)
     local noteGrid = data.note
+    local noteStart= data.noteStart    
     local text     = data.text
     local vel      = data.vel
     local rows     = self.rows
     local notes    = self.notes
 
     reaper.Undo_OnStateChange2(0, "Tracker: Insert")
-    reaper.MarkProjectDirty(0)    
-    -- Are we inside a note? ==> It needs to be elongated!
-    local elongate = noteGrid[rows*chan+row]
-    if ( elongate ) then
-      -- An OFF leads to an elongation of the previous note
-      if ( elongate == -1 ) then
-        if ( row > 0 ) then
-          elongate = noteGrid[rows*chan+row - 1]
+    reaper.MarkProjectDirty(0)
+    
+    local elongate
+    -- Are we inside a note? ==> It needs to be elongated!    
+    if ( not noteStart[rows*chan+row] ) then
+      elongate = noteGrid[rows*chan+row]
+      if ( elongate ) then
+        -- An OFF leads to an elongation of the previous note
+        if ( elongate == -1 ) then
+          if ( row > 0 ) then
+            elongate = noteGrid[rows*chan+row - 1]
+          end
         end
+        
+        -- Let's elongate the note by a row!
+        local pitch, vel, startppqpos, endppqpos = table.unpack( notes[elongate] )
+        reaper.MIDI_SetNote(self.take, elongate, nil, nil, nil, self:clampPpq(endppqpos + singlerow), nil, nil, nil, true)
       end
-          
-      -- Let's elongate the note by a row!
-      local pitch, vel, startppqpos, endppqpos = table.unpack( notes[elongate] )
-      reaper.MIDI_SetNote(self.take, elongate, nil, nil, nil, endppqpos + singlerow, nil, nil, nil, true)
     end
 
     -- Everything below this note has to go one shift down
-    local lastnote = -2
+    local lastnote = elongate
     for i = row,rows-1 do
       local note = noteGrid[rows*chan+i]
       if ( note ~= lastnote ) then
         if ( note and ( note > -1 ) ) then
           local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
           if ( i < rows-1 ) then
-            reaper.MIDI_SetNote(self.take, note, nil, nil, startppqpos + singlerow, endppqpos + singlerow, nil, nil, nil, true)
+            reaper.MIDI_SetNote(self.take, note, nil, nil, self:clampPpq(startppqpos + singlerow), self:clampPpq(endppqpos + singlerow), nil, nil, nil, true)
           else
             reaper.MIDI_DeleteNote(self.take, note)
           end
@@ -435,6 +491,9 @@ function tracker:getRowInfo()
     local ppqPerSec = 1.0 / ( reaper.MIDI_GetProjTimeFromPPQPos(self.take, 1) - reaper.MIDI_GetProjTimeFromPPQPos(self.take, 0) )
     local mediaLength = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
     
+    self.maxppq = ppqPerSec * reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
+    self.minppq = ppqPerSec * reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+    
     self.qnCount = mediaLength * ppqPerSec / ppqPerQn
     self.rowPerQn = 4
     self.rowPerPpq = self.rowPerQn / ppqPerQn
@@ -480,15 +539,16 @@ function tracker:assignFromMIDI(channel, idx)
   local rows = self.rows
   
   local notes = self.notes
+  local starts = self.noteStarts
   local pitch, vel, startppqpos, endppqpos = table.unpack( notes[idx] ) 
   local ystart = math.floor( startppqpos * self.rowPerPpq + self.eps )
-  local yend = math.ceil( endppqpos * self.rowPerPpq - self.eps )
+  local yend = math.floor( endppqpos * self.rowPerPpq - self.eps )
   
   -- This note is not actually present
   if ( ystart > self.rows-1 ) then
     return true
   end
-  if ( ystart < 0 ) then
+  if ( ystart < -self.eps ) then
     return true
   end
   if ( yend > self.rows - 1 ) then
@@ -498,10 +558,11 @@ function tracker:assignFromMIDI(channel, idx)
   -- Add the note if there is space on this channel, otherwise return false
   local data = self.data
   if ( self:isFree( channel, ystart, yend ) ) then
-    data.text[rows*channel+ystart] = pitchTable[pitch]
-    data.vel[rows*channel+ystart]  = string.format('%2d', vel )  
+    data.text[rows*channel+ystart]      = pitchTable[pitch]
+    data.vel[rows*channel+ystart]       = string.format('%2d', vel )  
+    data.noteStart[rows*channel+ystart] = idx
     for y = ystart,yend,1 do      
-      data.note[rows*channel+y] = idx      
+      data.note[rows*channel+y] = idx
     end
     if ( yend+1 < rows ) then
       if ( self:isFree( channel, yend+1, yend+1 ) ) then
@@ -522,6 +583,7 @@ end
 function tracker:initializeGrid()
   local x, y
   local data = {}
+  data.noteStart = {}
   data.note = {}
   data.text = {}
   data.vel = {}
@@ -575,11 +637,13 @@ function tracker:update()
     
       -- Assign the tracker assigned channels first
       local failures = {}
-      for channel=1,#channels do
-        for i,note in pairs( channels[channel] ) do
-          if ( self:assignFromMIDI(channel,note) == false ) then
-            -- Did we fail? Store the note for a second attempt at placement later
-            failures[#failures + 1] = note
+      for channel=1,self.channels do
+        if ( channels[channel] ) then
+          for i,note in pairs( channels[channel] ) do
+            if ( self:assignFromMIDI(channel,note) == false ) then
+              -- Did we fail? Store the note for a second attempt at placement later
+              failures[#failures + 1] = note
+            end
           end
         end
       end
@@ -739,6 +803,7 @@ end
     tracker.ypos = tracker.ypos + 1
   elseif char == 6579564 then 
     -- Delete
+    tracker:delete()
   elseif char == 1752132965 then
     -- Home
     tracker.ypos = 0
