@@ -322,6 +322,8 @@ end
 function tracker:delete()
   local data      = self.data
   local rows      = self.rows
+  local notes     = self.notes
+  local singlerow = self:rowToPpq(1)
 
   -- Determine fieldtype, channel and row
   local ftype, chan, row = self:getLocation()
@@ -335,8 +337,8 @@ function tracker:delete()
       if ( row > 1 ) then
         local noteToResize = noteGrid[rows*chan+row - 1]
         
-        local k = row
-        while( k < rowsize ) do
+        local k = row+1
+        while( k < rows ) do
           if ( noteGrid[rows*chan+k] ) then
             break;
           end
@@ -344,10 +346,13 @@ function tracker:delete()
         end
         local resize = k-row
         
+        print( "hiya")
+        print( resize )
+        
         local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToResize] )
         reaper.Undo_OnStateChange2(0, "Tracker: Delete note OFF")
         reaper.MarkProjectDirty(0)
-        reaper.MIDI_SetNote(self.take, noteToResize, nil, nil, startppqpos, endppqpos + singlerow * resize, nil, nil, nil, true)
+        reaper.MIDI_SetNote(self.take, noteToResize, nil, nil, startppqpos, self:clampPpq( endppqpos + singlerow * resize ), nil, nil, nil, true)
       end
     end
     
@@ -527,7 +532,10 @@ function tracker:isFree(channel, y1, y2)
   for y=y1,y2 do
     -- Occupied
     if ( notes[rows*channel+y] ) then
-      return false
+      -- -1 indicates an OFF, which is free :)
+      if ( notes[rows*channel+y] > -1 ) then
+        return false
+      end
     end
   end
   return true
