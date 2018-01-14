@@ -317,9 +317,40 @@ function tracker:getLocation()
 end
 
 ---------------------
--- Delete
+-- Check whether the previous note can grow if this one would be gone
+-- Shift indicates that the fields downwards of row will go up
 ---------------------
-function tracker:delete()
+function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, noteToDelete, shift)
+  local modify = 0
+  local offset = shift or 0
+  if ( row > 1 ) then
+    local noteToResize = noteGrid[rows*chan+row - 1]
+          
+    if ( noteToResize ) then
+      local k = row+1
+      while( k < rows ) do
+        if ( noteGrid[rows*chan+k] and ( not ( noteGrid[rows*chan+k] == noteToDelete ) ) ) then
+          break;
+        end
+        k = k + 1
+      end
+      local resize = k-row
+      if ( k < rows-1 ) then
+        resize = resize - offset
+      end
+      local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToResize] )
+      modify = 1
+      reaper.MarkProjectDirty(0)
+      reaper.MIDI_SetNote(self.take, noteToResize, nil, nil, startppqpos, self:clampPpq( endppqpos + singlerow * resize ), nil, nil, nil, true)
+    end
+  end
+  return modify
+end
+
+---------------------
+-- Backspace
+---------------------
+function tracker:backspace()
   local data      = self.data
   local rows      = self.rows
   local notes     = self.notes
@@ -328,38 +359,96 @@ function tracker:delete()
   -- Determine fieldtype, channel and row
   local ftype, chan, row = self:getLocation()
   
+   -- What are we manipulating here?
+  if ( ( ftype == 'text' ) or ( ftype == 'vel' ) ) then
+    local noteGrid = data.note
+    local noteStart = data.noteStart      
+    
+    reaper.Undo_OnStateChange2(0, "Tracker: Delete note (Backspace)")
+    reaper.MarkProjectDirty(0)          
+    
+    local lastnote
+    local note = noteGrid[rows*chan+row]
+    local noteToDelete = noteStart[rows*chan+row]    
+    -- Are we on the start of a note or an OFF symbol?
+    if ( noteToDelete or ( note and note == -1 ) ) then
+      -- Check whether there is a note before this, and elongate it until the next blockade
+      self:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, noteStart[rows*chan+row], 1)
+    
+    elseif ( note and ( note > -1 ) ) then
+      local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
+      reaper.MIDI_SetNote(self.take, note, nil, nil, startppqpos, endppqpos - singlerow, nil, nil, nil, true)
+      lastnote = note
+    end         
+          
+    -- Everything below this note has to shift one up
+    for i = row,rows-1 do
+      local note = noteGrid[rows*chan+i]
+      if ( note ~= lastnote ) then
+        if ( note and ( note > -1 ) ) then
+          local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
+          reaper.MIDI_SetNote(self.take, note, nil, nil, startppqpos - singlerow,endppqpos - singlerow, nil, nil, nil, true)
+        end
+      end
+      lastnote = note
+    end
+    
+    -- Were we on a note start? ==> Kill it
+    if ( noteToDelete ) then
+      reaper.MIDI_DeleteNote(self.take, noteToDelete)
+    end
+    
+    reaper.MIDI_Sort(self.take)
+    
+  elseif ( ftype == 'legato' ) then
+  else
+    print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
+    return
+  end
+end
+
+---------------------
+-- Delete
+---------------------
+function tracker:delete()
+  local data      = self.data
+  local rows      = self.rows
+  local notes     = self.notes
+  local singlerow = self:rowToPpq(1)
+  local modify    = 0
+
+  reaper.Undo_OnStateChange2(0, "Tracker: Delete (Del)")
+
+  -- Determine fieldtype, channel and row
+  local ftype, chan, row = self:getLocation()
+  
   -- What are we manipulating here?
   if ( ( ftype == 'text' ) or ( ftype == 'vel' ) ) then
     local noteGrid = data.note
+    local noteStart = data.noteStart
        
     -- OFF marker
     if ( noteGrid[rows*chan+row] == -1 ) then
-      if ( row > 1 ) then
-        local noteToResize = noteGrid[rows*chan+row - 1]
-        
-        local k = row+1
-        while( k < rows ) do
-          if ( noteGrid[rows*chan+k] ) then
-            break;
-          end
-          k = k + 1
-        end
-        local resize = k-row
-        
-        print( "hiya")
-        print( resize )
-        
-        local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToResize] )
-        reaper.Undo_OnStateChange2(0, "Tracker: Delete note OFF")
-        reaper.MarkProjectDirty(0)
-        reaper.MIDI_SetNote(self.take, noteToResize, nil, nil, startppqpos, self:clampPpq( endppqpos + singlerow * resize ), nil, nil, nil, true)
-      end
+      -- Check whether the previous note can grow now that this one is gone
+      tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow)
+    end
+    
+    -- Note
+    local noteToDelete = noteStart[rows*chan+row]
+    if ( noteToDelete ) then
+      modify = 1
+      reaper.MarkProjectDirty(0)      
+      self:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, noteToDelete)
+      reaper.MIDI_DeleteNote(self.take, noteToDelete)
     end
     
   elseif ( ftype == 'legato' ) then
   else
     print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
     return
+  end
+  if ( modify == 1 ) then
+    reaper.MIDI_Sort(self.take)
   end
 end
 
@@ -410,6 +499,16 @@ function tracker:insert()
         -- Let's elongate the note by a row!
         local pitch, vel, startppqpos, endppqpos = table.unpack( notes[elongate] )
         reaper.MIDI_SetNote(self.take, elongate, nil, nil, nil, self:clampPpq(endppqpos + singlerow), nil, nil, nil, true)
+      end
+    else
+      -- We are at a note start... maybe there is a previous note who wants to be elongated?
+      if ( row > 1 ) then
+        local note = noteGrid[rows*chan+row-1]
+        if ( note and ( note > -1 ) ) then
+          -- Yup
+          local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
+          reaper.MIDI_SetNote(self.take, note, nil, nil, nil, self:clampPpq(endppqpos + singlerow), nil, nil, nil, true)          
+        end
       end
     end
 
@@ -832,7 +931,8 @@ end
     -- Insert
     tracker:insert()
   elseif char == 8 then
-    -- Backspace    
+    -- Backspace
+    tracker:backspace()
   elseif char == 1885828464 then
     -- Pg Up
     tracker.ypos = tracker.ypos - tracker.page
