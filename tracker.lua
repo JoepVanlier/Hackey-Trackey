@@ -1099,6 +1099,49 @@ local function togglePlayPause()
   end
 end
 
+keys = {}
+--                  CTRL  ALT SHIFT Keycode
+keys.left       = { 0,    0,  0,    1818584692 } -- <-
+keys.right      = { 0,    0,  0,    1919379572 } -- ->
+keys.up         = { 0,    0,  0,    30064 }      -- /\
+keys.down       = { 0,    0,  0,    1685026670 } -- \/
+keys.off        = { 0,    0,  0,    45 }         -- -
+keys.delete     = { 0,    0,  0,    6579564 }    -- Del
+keys.home       = { 0,    0,  0,    1752132965 } -- Home
+keys.End        = { 0,    0,  0,    6647396 }    -- End
+keys.toggle     = { 0,    0,  0,    32 }         -- Space
+keys.playfrom   = { 0,    0,  0,    13 }         -- Enter
+keys.insert     = { 0,    0,  0,    6909555 }    -- Insert
+keys.remove     = { 0,    0,  0,    8 }          -- Backspace
+keys.pgup       = { 0,    0,  0,    1885828464 } -- Page up
+keys.pgdown     = { 0,    0,  0,    1885824110 } -- Page down
+keys.undo       = { 1,    0,  0,    26 }         -- CTRL + Z
+keys.redo       = { 1,    0,  1,    26 }         -- CTRL + SHIFT + Z
+
+local function inputs( name )
+  -- Bitmask oddly enough doesn't behave as expected
+  local control = gfx.mouse_cap & 4
+  if ( control > 0 ) then control = 1 end  
+  local shift   = gfx.mouse_cap & 8
+  if ( shift > 0 ) then shift = 1 end  
+  local alt     = gfx.mouse_cap & 16
+  if ( alt > 0 ) then alt = 1 end
+
+  local checkMask = keys[name]
+  if ( checkMask[1] == control ) then
+    if ( checkMask[2] == alt ) then
+      if ( checkMask[3] == shift ) then
+        if ( lastChar == checkMask[4] ) then
+        print("MASK FOR "..name)
+          return true
+        end
+      end
+    end
+  end
+  
+  return false
+end
+
 ------------------------------
 -- Main update loop
 -----------------------------
@@ -1112,67 +1155,60 @@ local function updateLoop()
   end
 
   -- Maintain the loop until the window is closed or escape is pressed
-  local char = gfx.getchar()
+  lastChar = gfx.getchar()
   
   -- Check if the length changed, if so, update the time data
   if ( tracker:getRowInfo() == true ) then
     tracker:update()
   end  
 
---[[--
-if ( char ~= 0 ) then
-  print(char)
-end
- --]]--
+if ( lastChar ~= 0 ) then
+  print(lastChar)
+end 
  
-  if char == 1818584692 then
+  if inputs('left') then
     tracker.xpos = tracker.xpos - 1
-  elseif char == 45 then
-    tracker:placeOff()
-  elseif char == 1919379572 then
+  elseif inputs('right') then
     tracker.xpos = tracker.xpos + 1
-  elseif char == 30064 then
+  elseif inputs('up') then
     tracker.ypos = tracker.ypos - 1
-  elseif char == 1685026670 then
+  elseif inputs('down') then
     tracker.ypos = tracker.ypos + 1
-  elseif char == 6579564 then 
-    -- Delete
+  elseif inputs('off') then
+    tracker:placeOff()
+  elseif inputs('delete') then 
     tracker:delete()
-  elseif char == 1752132965 then
-    -- Home
+  elseif inputs('home') then
     tracker.ypos = 0
-  elseif char == 6647396 then
-    -- End
+  elseif inputs('End') then
     tracker.ypos = tracker.rows
-  elseif char == 32 then
-    -- Space
+  elseif inputs('toggle') then
     togglePlayPause()
-  elseif char == 13 then
-    -- Enter
+  elseif inputs('playfrom') then
     local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
     local loc = reaper.AddProjectMarker(0, 0, tracker:toSeconds(tracker.ypos-1), 0, "", -1)
     reaper.GoToMarker(0, loc, 0)
     reaper.DeleteProjectMarker(0, loc, 0)
     togglePlayPause()
-  elseif char == 6909555 then
-    -- Insert
+  elseif inputs('insert') then
     tracker:insert()
-  elseif char == 8 then
-    -- Backspace
+  elseif inputs('remove') then
     tracker:backspace()
-  elseif char == 1885828464 then
-    -- Pg Up
+  elseif inputs('pgup') then
     tracker.ypos = tracker.ypos - tracker.page
-  elseif char == 1885824110 then
-    -- Pg Down
-    tracker.ypos = tracker.ypos + tracker.page    
+  elseif inputs('pgdown') then
+    tracker.ypos = tracker.ypos + tracker.page  
+  elseif inputs('undo') then
+    reaper.Undo_DoUndo2(0) 
+  elseif inputs('redo') then
+    reaper.Undo_DoRedo2(0)         
   end
   
   tracker:forceCursorInRange()
   tracker:printGrid()
   gfx.update()
    
-  if char ~= 27 and char ~= -1 then
+  if lastChar ~= 27 and lastChar ~= -1 then
     reaper.defer(updateLoop)
   else
     gfx.quit()
