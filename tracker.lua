@@ -10,15 +10,15 @@ tracker.eps = 1e-3
 tracker.fov = {}
 tracker.fov.scrollx = 0
 tracker.fov.scrolly = 0
-tracker.fov.width = 16
+tracker.fov.width = 15
 tracker.fov.height = 16
 
 tracker.xpos = 1
 tracker.ypos = 1
 tracker.xint = 0
 tracker.page = 4
-tracker.channels = 16
-tracker.displaychannels = 16
+tracker.channels = 16 -- Max channel (0 is not shown)
+tracker.displaychannels = 15
 tracker.colors = {}
 tracker.colors.selectcolor = {.7, 0, .5, 1}
 tracker.colors.textcolor = {.7, .8, .8, 1}
@@ -85,14 +85,14 @@ function tracker:linkData()
   for j = 1,self.displaychannels do
     -- Link up the note fields
     datafield[#datafield+1] = 'text'
-    idx[#idx+1] = j-1
+    idx[#idx+1] = j
     colsizes[#colsizes + 1] = 3
     padsizes[#padsizes + 1] = 1
     headers[#headers + 1] = string.format(' Ch%2d', j)
     
     -- Link up the velocity fields
     datafield[#datafield+1] = 'vel'
-    idx[#idx+1] = j-1
+    idx[#idx+1] = j
     colsizes[#colsizes + 1] = 2
     padsizes[#padsizes + 1] = 2   
     headers[#headers + 1] = ''     
@@ -128,10 +128,9 @@ function tracker:updatePlotLink()
   plotData.indicatorShiftY = dy + plotData.itempady
 
   self.extracols = {}
-  self.max_xpos = 2 * self.displaychannels + #self.extracols
-  self.max_ypos = self.rows
-
   local datafields, padsizes, colsizes, idxfields, headers = self:grabLinkage()
+  self.max_xpos = #headers
+  self.max_ypos = self.rows
   
   -- Generate x locations for the columns
   local fov = self.fov
@@ -325,8 +324,8 @@ function tracker:insert()
   local singlerow = self:rowToPpq(1)
   
   -- Determine fieldtype, channel and row
-  local ftype, chan, row = self:getLocation()
-    
+  local ftype, chan, row = self:getLocation()  
+  
   -- What are we manipulating here?
   if ( ( ftype == 'text' ) or ( ftype == 'vel' ) ) then
     -- Figure out what note is here (if any)
@@ -336,6 +335,8 @@ function tracker:insert()
     local rows     = self.rows
     local notes    = self.notes
 
+    reaper.Undo_OnStateChange2(0, "Tracker: Insert")
+    reaper.MarkProjectDirty(0)    
     -- Are we inside a note? ==> It needs to be elongated!
     local elongate = noteGrid[rows*chan+row]
     if ( elongate ) then
@@ -353,12 +354,12 @@ function tracker:insert()
 
     -- Everything below this note has to go one shift down
     local lastnote = -2
-    for i = row,rows do
+    for i = row,rows-1 do
       local note = noteGrid[rows*chan+i]
       if ( note ~= lastnote ) then
         if ( note and ( note > -1 ) ) then
           local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
-          if ( i < rows ) then
+          if ( i < rows-1 ) then
             reaper.MIDI_SetNote(self.take, note, nil, nil, startppqpos + singlerow, endppqpos + singlerow, nil, nil, nil, true)
           else
             reaper.MIDI_DeleteNote(self.take, note)
@@ -367,15 +368,7 @@ function tracker:insert()
       end
       lastnote = note
     end
-      
-    --boolean reaper.MIDI_DeleteNote(self.take, elongate, noteidx)
-    --boolean reaper.MIDI_InsertNote(self.take, boolean selected, boolean muted, number startppqpos, number endppqpos, integer chan, integer pitch, integer vel, optional boolean noSortInOptional)
-    
-
-    print( noteGrid[rows*chan+row] )
-
     reaper.MIDI_Sort(self.take)
-
   elseif ( ftype == 'legato' ) then
 
   else
@@ -566,6 +559,7 @@ function tracker:update()
     local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
     if ( retval > 0 ) then
       local channels = {}
+      channels[0] = {}
       local notes = {}
       for i=0,notecntOut do
         local retval, selected, muted, startppqpos, endppqpos, chan, pitch, vel = reaper.MIDI_GetNote(self.take, i)
@@ -579,9 +573,9 @@ function tracker:update()
       end
       self.notes = notes
     
-      -- Go through the channels in reverse order (this way tracker assigned notes are typically first)
+      -- Assign the tracker assigned channels first
       local failures = {}
-      for channel=#channels,0,-1 do
+      for channel=1,#channels do
         for i,note in pairs( channels[channel] ) do
           if ( self:assignFromMIDI(channel,note) == false ) then
             -- Did we fail? Store the note for a second attempt at placement later
@@ -590,20 +584,32 @@ function tracker:update()
         end
       end
       
+      -- Things in channel zero are new and need to be reassigned!
+      for i,note in pairs( channels[0] ) do
+        failures[#failures + 1] = note
+      end
+      
+      if ( #failures > 0 ) then
+        -- We are going to be changing the data, so add an undo point
+        reaper.Undo_OnStateChange2(0, "Tracker: Channel reassignment")
+        reaper.MarkProjectDirty(0)
+      end
+      
       -- Attempt to find a channel for them
       local ok = 0
       local maxChannel = self.channels
       for i,note in pairs(failures) do
-        local targetChannel = 0
+        local targetChannel = 1
         local done = false
         while( done == false ) do
           if ( self:assignFromMIDI(targetChannel,note) == true ) then
+            reaper.MIDI_SetNote(self.take, note, nil, nil, nil, nil, targetChannel, nil, nil, true)
             done = true
             ok = ok + 1
           else
             targetChannel = targetChannel + 1
             if ( targetChannel > maxChannel ) then 
-              done=true
+              done = true
             end
           end
         end
@@ -614,6 +620,9 @@ function tracker:update()
         print( "WARNING: FAILED TO PLACE SOME OF THE NOTES IN THE TRACKER" )
       end
       
+      if ( channels[0] ) then
+        reaper.MIDI_Sort(self.take)
+      end
     end
   end
   local pitchSymbol = self.pitchTable[pitchOut]
