@@ -34,15 +34,20 @@ tracker.fov.scrolly = 0
 tracker.fov.width = 15
 tracker.fov.height = 16
 
+tracker.hex = 1
 tracker.preserveOff = 1
 tracker.xpos = 1
 tracker.ypos = 1
 tracker.xint = 0
 tracker.page = 4
-tracker.cpstart = -1
-tracker.cpstop = -1
-tracker.cpall = 0
-tracker.cpx = -1
+
+tracker.cp = {}
+tracker.cp.xstart = -1
+tracker.cp.ystart = -1
+tracker.cp.xstop = -1
+tracker.cp.ystop = -1
+tracker.cp.all = 0
+
 tracker.channels = 16 -- Max channel (0 is not shown)
 tracker.displaychannels = 15
 tracker.colors = {}
@@ -97,32 +102,44 @@ end
 function tracker:linkData()
   -- Here is where the linkage between the display and the actual data fields in "tracker" is made
   -- TO DO: This probably doesn't need to be done upon scrolling.
-  local colsizes = {}
+  local colsizes  = {}
   local datafield = {}
-  local idx = {}
-  local padsizes = {}  
-  local headers = {}
+  local idx       = {}
+  local padsizes  = {}  
+  local headers   = {}
+  local grouplink = {}    -- Stores what other columns are linked to this one (some act as groups)
   
   datafield[#datafield+1] = 'legato'
-  idx[#idx+1] = 1
-  colsizes[#colsizes+1] = 1
-  padsizes[#padsizes+1] = 1
-  headers[#headers+1] = string.format( 'L' )
+  idx[#idx+1]             = 1
+  colsizes[#colsizes+1]   = 1
+  padsizes[#padsizes+1]   = 1
+  grouplink[#grouplink+1] = {0}
+  headers[#headers+1]     = string.format( 'L' )
   
   for j = 1,self.displaychannels do
     -- Link up the note fields
     datafield[#datafield+1] = 'text'
-    idx[#idx+1] = j
+    idx[#idx+1]             = j
     colsizes[#colsizes + 1] = 3
     padsizes[#padsizes + 1] = 1
-    headers[#headers + 1] = string.format(' Ch%2d', j)
+    grouplink[#grouplink+1] = {1, 2}
+    headers[#headers + 1]   = string.format(' Ch%2d', j)
     
     -- Link up the velocity fields
-    datafield[#datafield+1] = 'vel'
-    idx[#idx+1] = j
-    colsizes[#colsizes + 1] = 2
-    padsizes[#padsizes + 1] = 2   
-    headers[#headers + 1] = ''     
+    datafield[#datafield+1] = 'vel1'
+    idx[#idx+1]             = j
+    colsizes[#colsizes + 1] = 1
+    padsizes[#padsizes + 1] = 0
+    grouplink[#grouplink+1] = {-1, 1}       
+    headers[#headers + 1]   = ''     
+    
+    -- Link up the velocity fields
+    datafield[#datafield+1] = 'vel2'
+    idx[#idx+1]             = j
+    colsizes[#colsizes + 1] = 1
+    padsizes[#padsizes + 1] = 2
+    grouplink[#grouplink+1] = {-2, -1}       
+    headers[#headers + 1]   = ''     
   end
   local link = {}
   link.datafields = datafield
@@ -130,12 +147,13 @@ function tracker:linkData()
   link.padsizes   = padsizes
   link.colsizes   = colsizes
   link.idxfields  = idx
-  self.link = link
+  link.grouplink  = grouplink
+  self.link       = link
 end
 
 function tracker:grabLinkage()
   local link = self.link
-  return link.datafields, link.padsizes, link.colsizes, link.idxfields, link.headers
+  return link.datafields, link.padsizes, link.colsizes, link.idxfields, link.headers, link.grouplink
 end
 
 ------------------------------
@@ -155,7 +173,7 @@ function tracker:updatePlotLink()
   plotData.indicatorShiftY = dy + plotData.itempady
 
   self.extracols = {}
-  local datafields, padsizes, colsizes, idxfields, headers = self:grabLinkage()
+  local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
   self.max_xpos = #headers
   self.max_ypos = self.rows
   
@@ -165,6 +183,7 @@ function tracker:updatePlotLink()
   local xwidth = {}
   local xlink = {}
   local dlink = {}
+  local glink = {}
   local header = {}
   local x = originx
   for j = fov.scrollx+1,math.min(#colsizes,fov.width+fov.scrollx) do
@@ -172,6 +191,7 @@ function tracker:updatePlotLink()
     xwidth[#xwidth + 1] = colsizes[j] * dx + padsizes[j]
     xlink[#xlink + 1] = idxfields[j]
     dlink[#dlink + 1] = datafields[j]
+    glink[#glink + 1] = grouplink[j]
     header[#header + 1] = headers[j]
     x = x + colsizes[j] * dx + padsizes[j] * dx
   end
@@ -183,6 +203,7 @@ function tracker:updatePlotLink()
   -- Variable xlink indicates the index that is being displayed
   plotData.dlink = dlink
   plotData.xlink = xlink
+  plotData.glink = glink
   plotData.headers = header
   
   -- Generate y locations for the columns
@@ -236,6 +257,36 @@ local function triangle( xc, yc, size, ori )
     gfx.line(xc+size,yc-ori*size,xc-size,yc-ori*size)
 end
 
+local function gmin( list )
+  local c = 0
+  for i,v in pairs( list ) do
+    if ( v < c ) then
+      c = v
+    end
+  end
+  return c
+end
+
+local function gmax( list )
+  local c = 0
+  for i,v in pairs( list ) do
+    if ( v > c ) then
+      c = v
+    end
+  end
+  return c
+end
+
+local function clamp( min, max, val )
+  if ( val > max ) then
+    return max
+  elseif ( val < min ) then
+    return min
+  else
+    return val
+  end
+end
+
 ------------------------------
 -- Draw the GUI
 ------------------------------
@@ -245,8 +296,6 @@ function tracker:printGrid()
   local gfx       = gfx
   local channels  = self.displaychannels
   local rows      = self.rows
-  local text      = self.text
-  local vel       = self.vel
   local fov       = self.fov
   
   local plotData  = self.plotData
@@ -263,6 +312,7 @@ function tracker:printGrid()
   
   local dlink     = plotData.dlink
   local xlink     = plotData.xlink
+  local glink     = plotData.glink
   local headers   = plotData.headers
   local tw        = plotData.totalwidth
   local th        = plotData.totalheight
@@ -308,19 +358,28 @@ function tracker:printGrid()
     gfx.printf("%s", headers[x])
   end
   
-  gfx.rect(xloc[relx], yloc[rely]-plotData.yshift, xwidth[relx], yheight[rely])
+  ------------------------------
   -- Clipboard block drawing
-  if ( self.cpstart > 0 ) then
-    local xl = self.cpx-fov.scrollx
-    local yl = self.cpstart-fov.scrolly  
+  ------------------------------
+  local cp = self.cp
+  if ( cp.ystart > 0 ) then
+    local xl  = clamp(1, fov.width,  cp.xstart - fov.scrollx)
+    local xe  = clamp(1, fov.width,  cp.xstop  - fov.scrollx)  
+    local yl  = clamp(1, fov.height, cp.ystart - fov.scrolly)
+    local ye  = clamp(1, fov.height, cp.ystop  - fov.scrolly)
+    local xmi = clamp(1, fov.width,  xl + gmin(glink[xl]))
+    local xma = clamp(1, fov.width,  xe + gmax(glink[xe]))
     gfx.set(table.unpack(colors.copypaste))    
-    if ( self.cpall == 0 ) then
-      gfx.rect(xloc[xl] - itempadx, yloc[yl] - plotData.yshift, xwidth[xl], yheight[1] + (self.cpstop-self.cpstart)*yheight[1] + itempady + plotData.yshift*2)
+    if ( cp.all == 0 ) then
+      gfx.rect(xloc[xmi], yloc[yl] - plotData.yshift, xloc[xma] + xwidth[xma] - xloc[xmi], yloc[ye]-yloc[yl]+yheight[ye] )
     else
-      gfx.rect(xloc[1] - itempadx, yloc[yl] - plotData.yshift, tw, yheight[1] + (self.cpstop-self.cpstart)*yheight[1] + itempady + plotData.yshift*2)
+      gfx.rect(xloc[1] - itempadx, yloc[yl] - plotData.yshift, tw, yloc[ye]-yloc[yl]+yheight[ye] )
     end
   end
     
+  ------------------------------
+  -- Play location indicator
+  ------------------------------    
   local playLoc = self:getPlayLocation()
   local xc = xloc[1] - .5 * plotData.indicatorShiftX
   local yc = yloc[1] - .8 * plotData.indicatorShiftY  
@@ -370,7 +429,7 @@ function tracker:placeOff()
   local idx = chan*rows+row
   local note = noteGrid[idx]
   local start = noteStart[idx]
-  if ( ( ftype == 'text' ) or ( ftype == 'vel' ) ) then  
+  if ( ( ftype == 'text' ) or ( ftype == 'vel' ) or ( ftype == 'vel2' ) ) then  
     -- If there is no note here add a marker for the note off event
     if ( not note ) then
       ppq = self:rowToPpq(row)
@@ -393,7 +452,6 @@ function tracker:placeOff()
       -- We need to check whether the note was already terminated by an OFF, in this case, we need to add a new OFF
       -- symbol at that location to not lose that one.
       local lastend = self:ppqToRow(endppqpos)
-      print(lastend)
       if ( noteGrid[chan*rows+lastend] and ( noteGrid[chan*rows+lastend] < 0 ) ) then
         ppq = self:rowToPpq(lastend)
         self:addNoteOFF(ppq, chan)
@@ -453,7 +511,7 @@ function tracker:backspace()
   local ftype, chan, row = self:getLocation()
   
    -- What are we manipulating here?
-  if ( ( ftype == 'text' ) or ( ftype == 'vel' ) ) then
+  if ( ( ftype == 'text' ) or ( ftype == 'vel' ) or ( ftype == 'vel2' ) ) then
     local noteGrid = data.note
     local noteStart = data.noteStart      
     
@@ -568,7 +626,7 @@ function tracker:delete()
   local ftype, chan, row = self:getLocation()
   
   -- What are we manipulating here?
-  if ( ( ftype == 'text' ) or ( ftype == 'vel' ) ) then
+  if ( ( ftype == 'text' ) or ( ftype == 'vel' ) or ( ftype == 'vel2' ) ) then
     local noteGrid = data.note
     local noteStart = data.noteStart
     local delete
@@ -670,11 +728,9 @@ function tracker:insert()
   local ftype, chan, row = self:getLocation()  
   
   -- What are we manipulating here?
-  if ( ( ftype == 'text' ) or ( ftype == 'vel' ) ) then
+  if ( ( ftype == 'text' ) or ( ftype == 'vel' ) or ( ftype == 'vel2' ) ) then
     local noteGrid = data.note
     local noteStart= data.noteStart    
-    local text     = data.text
-    local vel      = data.vel
     local rows     = self.rows
     local notes    = self.notes
 
@@ -810,7 +866,7 @@ function tracker:getRowInfo()
     self.rowPerPpq = self.rowPerQn / ppqPerQn
     self.ppqPerRow = 1 / self.rowPerPpq
     self.rowPerSec = ppqPerSec * self.rowPerQn / ppqPerQn
-    local rows = self.rowPerQn * self.qnCount
+    local rows = math.floor( self.rowPerQn * self.qnCount )
     
     -- Do not allow zero rows in the tracker!
     if ( rows < self.eps ) then
@@ -864,6 +920,14 @@ function tracker:assignOFF(channel, idx)
   data.note[rows*channel + row] = -idx - 2
 end
 
+function tracker:velToField( vel, id )
+  if ( self.hex == 1 ) then
+    return string.sub( string.format('%2X', math.floor(vel*(255/127)) ), id, id )
+  else
+    return string.sub( string.format('%2d', vel ), id, id )
+  end
+end
+
 -- Assign a note that is already in the MIDI data
 function tracker:assignFromMIDI(channel, idx)
   local pitchTable = self.pitchTable
@@ -890,7 +954,9 @@ function tracker:assignFromMIDI(channel, idx)
   local data = self.data
   if ( self:isFree( channel, ystart, yend ) ) then
     data.text[rows*channel+ystart]      = pitchTable[pitch]
-    data.vel[rows*channel+ystart]       = string.format('%2d', vel )  
+    data.vel1[rows*channel+ystart]      = self:velToField(vel, 1)
+    data.vel2[rows*channel+ystart]      = self:velToField(vel, 2)    
+
     data.noteStart[rows*channel+ystart] = idx
     for y = ystart,yend,1 do      
       data.note[rows*channel+y] = idx
@@ -917,7 +983,8 @@ function tracker:initializeGrid()
   data.noteStart = {}
   data.note = {}
   data.text = {}
-  data.vel = {}
+  data.vel1 = {}
+  data.vel2 = {}    
   data.legato = {}
   local channels = self.channels
   local rows = self.rows
@@ -925,7 +992,8 @@ function tracker:initializeGrid()
     for y=0,rows-1 do
       data.note[rows*x+y] = nil
       data.text[rows*x+y] = '...'
-      data.vel[rows*x+y] = '..'
+      data.vel1[rows*x+y] = '.'
+      data.vel2[rows*x+y] = '.'            
     end
   end
   
@@ -1101,27 +1169,45 @@ function tracker:checkChange()
   return true
 end
 
+tracker.cp.xstart = -1
+tracker.cp.ystart = -1
+tracker.cp.xstop = -1
+tracker.cp.ystop = -1
+tracker.cp.all = 0
+
 function tracker:beginBlock()
-  if ( self.cpstart == self.ypos ) then
-    self.cpall    = 1 - self.cpall
+  local cp = self.cp
+  if ( cp.ystart == self.ypos ) then
+    cp.all = 1 - cp.all
   end
-  self.cpx     = self.xpos
-  self.cpstart = self.ypos
-  self.cpstop  = self.ypos + 1 
+  cp.xstart = self.xpos
+  cp.ystart = self.ypos  
+  if ( cp.ystart > cp.ystop ) then
+    cp.ystop  = self.ypos
+  end
+  if ( cp.xstart > cp.xstop ) then
+    cp.xstop  = self.xpos
+  end  
 end
 function tracker:endBlock()
-  if ( self.cpstop == self.ypos ) then
-    self.cpall    = 1 - self.cpall
+  local cp = self.cp
+  if ( self.ypos < cp.ystart ) then
+    self:resetBlock()
   end
-  self.cpx        = self.xpos  
-  self.cpstop     = self.ypos
+  if ( ( cp.ystop == self.ypos ) and ( cp.xstop == self.xpos ) ) then
+    cp.all = 1 - cp.all
+  end
+  cp.xstop = self.xpos  
+  cp.ystop = self.ypos
 end
 
 function tracker:resetBlock()
-  self.cpstart  = -1
-  self.cpstop   = -1
-  self.cpall    =  0
-  self.cpx      = -1
+  local cp = self.cp
+  cp.ystart  = -1
+  cp.ystop   = -1
+  cp.all     =  0
+  cp.xstart  = -1
+  cp.xstop   = -1    
 end
 
 function tracker:cutBlock()
@@ -1188,7 +1274,6 @@ local function inputs( name )
     if ( checkMask[2] == alt ) then
       if ( checkMask[3] == shift ) then
         if ( lastChar == checkMask[4] ) then
-        print("MASK FOR "..name)
           return true
         end
       end
@@ -1218,9 +1303,9 @@ local function updateLoop()
     tracker:update()
   end  
 
-if ( lastChar ~= 0 ) then
+--[[--if ( lastChar ~= 0 ) then
   print(lastChar)
-end 
+end --]]--
  
   if inputs('left') then
     tracker.xpos = tracker.xpos - 1
