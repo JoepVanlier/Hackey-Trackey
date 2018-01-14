@@ -21,10 +21,11 @@
 --    A lightweight LUA tracker for REAPER
 --
 --    Simply highlight a MIDI item and start the script.
---    This will bring up the MIDI item as a tracked sequence
+--    This will bring up the MIDI item as a tracked sequence.
 --
 --    Work in progress. Input not yet implemented.
 --
+
 tracker = {}
 tracker.eps = 1e-3
 tracker.fov = {}
@@ -33,6 +34,7 @@ tracker.fov.scrolly = 0
 tracker.fov.width = 15
 tracker.fov.height = 16
 
+tracker.preserveOff = 1
 tracker.xpos = 1
 tracker.ypos = 1
 tracker.xint = 0
@@ -336,6 +338,34 @@ function tracker:getLocation()
   return dlink[relx], xlink[relx], tracker.ypos - 1
 end
 
+function tracker:placeOff()
+  local rows      = self.rows
+  local notes     = self.notes
+  local data      = self.data
+  local noteGrid  = data.note
+  local noteStart = data.noteStart 
+  
+  -- Determine fieldtype, channel and row
+  local ftype, chan, row = self:getLocation()
+  
+  -- Note off is only sensible for note fields
+  local idx = chan*rows+row
+  local note = noteGrid[idx]
+  local start = noteStart[idx]
+  if ( ( ftype == 'text' ) or ( ftype == 'vel' ) ) then  
+    -- If there is no note here add a marker for the note off event
+    if ( not note ) then
+      ppq = self:rowToPpq(row)
+      self:addNoteOFF(ppq, chan)
+      return
+    elseif ( start > -1 ) then
+      -- If it was the start of a note, this note requires deletion and the previous note may have to be extended
+      
+    end
+  end
+  
+end
+
 ---------------------
 -- Check whether the previous note can grow if this one would be gone
 -- Shift indicates that the fields downwards of row will go up
@@ -363,7 +393,6 @@ function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, note
       end
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToResize] )
       modify = 1
-      reaper.MarkProjectDirty(0)
       reaper.MIDI_SetNote(self.take, noteToResize, nil, nil, startppqpos, self:clampPpq( endppqpos + singlerow * resize ), nil, nil, nil, true)
     end
   end
@@ -418,7 +447,7 @@ function tracker:backspace()
     
     -- Were we on a note start? ==> Kill it
     if ( noteToDelete ) then
-      reaper.MIDI_DeleteNote(self.take, noteToDelete)
+      self:deleteNote(chan, row)
     end
     
     reaper.MIDI_Sort(self.take)
@@ -429,6 +458,47 @@ function tracker:backspace()
     return
   end
 end
+
+---------------------
+-- Add OFF flag
+---------------------
+function tracker:addNoteOFF(ppq, channel)
+  reaper.MIDI_InsertTextSysexEvt(self.take, false, false, ppq, 1, string.format('OFF%2d', channel))
+end
+
+---------------------
+-- Delete note
+---------------------
+function tracker:deleteNote(channel, row)
+  local rows      = self.rows
+  local notes     = self.notes
+  local noteGrid  = self.data.note
+
+  -- Deleting note requires some care, in some cases, there may be an OFF trigger which needs to be stored separately
+  -- since we don't want them disappearing with the notes.
+  noteToDelete = noteGrid[rows*channel+row]
+  if ( tracker.preserveOff == 1 ) then
+      local k = row+1
+      while( k < rows ) do
+        if ( noteGrid[rows*channel+k] ) then
+          if ( ( noteGrid[rows*channel+k] > -1 ) and ( noteGrid[rows*channel+k] ~= noteToDelete) ) then
+            -- It's another note, we're cool. Don't need explicit OFF symbol
+            break;
+          else
+            -- It's an off symbol, we need to store it separately
+            local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToDelete] )
+            tracker:addNoteOFF(endppqpos, channel)            
+            reaper.MIDI_DeleteNote(self.take, noteToDelete)
+            break;
+          end
+        end
+      end   
+  else
+    -- No off preservation, just delete it.
+    reaper.MIDI_DeleteNote(self.take, noteToDelete)
+  end
+end
+
 
 ---------------------
 -- Delete
@@ -462,7 +532,7 @@ function tracker:delete()
       modify = 1
       reaper.MarkProjectDirty(0)      
       self:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, noteToDelete)
-      reaper.MIDI_DeleteNote(self.take, noteToDelete)
+      self:deleteNote(chan, row)
     end
     
   elseif ( ftype == 'legato' ) then
@@ -545,7 +615,7 @@ function tracker:insert()
           if ( i < rows-1 ) then
             reaper.MIDI_SetNote(self.take, note, nil, nil, self:clampPpq(startppqpos + singlerow), self:clampPpq(endppqpos + singlerow), nil, nil, nil, true)
           else
-            reaper.MIDI_DeleteNote(self.take, note)
+            self:deleteNote(chan, i)
           end
         end
       end
@@ -604,6 +674,10 @@ function tracker:rowToPpq(row)
   return row * self.ppqPerRow
 end
 
+function tracker:rowToAbsPpq(row)
+  return row * self.ppqPerRow + self.minppq
+end
+
 function tracker:toQn(seconds)
   return self.rowPerQn * seconds / self.rowPerSec
 end
@@ -648,19 +722,36 @@ end
 -- MIDI => Tracking
 ------------------------------
 -- Check if a space in the column is already occupied
-function tracker:isFree(channel, y1, y2)
+function tracker:isFree(channel, y1, y2, treatOffAsFree)
   local rows = self.rows
   local notes = self.data.note
+  local offFree = treatOffAsFree or 0
   for y=y1,y2 do
     -- Occupied
     if ( notes[rows*channel+y] ) then
-      -- -1 indicates an OFF, which is free :)
-      if ( notes[rows*channel+y] > -1 ) then
-        return false
+      if ( offFree == 1 ) then
+        -- -1 indicates an OFF, which is considered free when treatOffAsFree is on :)
+        if ( notes[rows*channel+y] > -1 ) then
+          return false
+        end
+      else
+        offFree = 0
       end
     end
   end
   return true
+end
+
+-- Assign off locations
+function tracker:assignOFF(channel, idx)
+  local data = self.data
+  local rows = self.rows
+  local offList = self.offList
+  
+  local ppq = table.unpack( offList[idx] )
+  local row = math.floor( ppq * self.rowPerPpq )
+  data.text[rows*channel + row] = 'OFF'
+  data.note[rows*channel + row] = -idx - 1
 end
 
 -- Assign a note that is already in the MIDI data
@@ -695,7 +786,7 @@ function tracker:assignFromMIDI(channel, idx)
       data.note[rows*channel+y] = idx
     end
     if ( yend+1 < rows ) then
-      if ( self:isFree( channel, yend+1, yend+1 ) ) then
+      if ( self:isFree( channel, yend+1, yend+1, 1 ) ) then
         data.text[rows*channel+yend+1] = 'OFF'
         data.note[rows*channel+yend+1] = -1
       end
@@ -718,6 +809,7 @@ function tracker:initializeGrid()
   data.text = {}
   data.vel = {}
   data.legato = {}
+  data.offs = {}
   local channels = self.channels
   local rows = self.rows
   for x=0,channels-1 do
@@ -749,7 +841,25 @@ function tracker:update()
     
     -- Grab the notes and store them in channels
     local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+    local i
     if ( retval > 0 ) then
+      -- Find the 'offs' and place them first. They could have only come from the tracker sytem
+      -- so don't worry too much.
+      local offs = {}
+      self.offList = offs
+      for i=0,textsyxevtcntOut do
+        local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
+        if ( typeidx == 1 ) then
+          if ( string.sub(msg,1,3) == 'OFF' ) then
+            -- If it crashes here, OFF-like events with invalid data were added by something
+            local substr = string.sub(msg,4,5)
+            local channel = tonumber( substr )
+            offs[i] = {ppqpos}
+            self:assignOFF(channel, i)
+          end
+        end
+      end
+    
       local channels = {}
       channels[0] = {}
       local notes = {}
@@ -917,14 +1027,16 @@ local function updateLoop()
     tracker:update()
   end  
 
---[[-- 
+--[[--
 if ( char ~= 0 ) then
   print(char)
 end
---]]--
+ --]]--
  
   if char == 1818584692 then
     tracker.xpos = tracker.xpos - 1
+  elseif char == 45 then
+    tracker:placeOff()
   elseif char == 1919379572 then
     tracker.xpos = tracker.xpos + 1
   elseif char == 30064 then
@@ -980,7 +1092,7 @@ local function Main()
   tracker.tick = 0
   tracker:generatePitches()
   tracker:initColors()
-  gfx.init("Hackey Trackey v0.2", 640, 480, 0, 200, 200)
+  gfx.init("Hackey Trackey v0.3", 640, 480, 0, 200, 200)
   
   local reaper = reaper
   if ( reaper.CountSelectedMediaItems(0) > 0 ) then
