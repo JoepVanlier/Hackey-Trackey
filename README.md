@@ -13,6 +13,12 @@ specific purposes then this plugin is not useful to you.
 If your plugins simply need their MIDI data to arrive at a specific channel, then 
 you can always remap the MIDI channel by forcing a specific MIDI output channel.
 
+Note that non-tracker input should be assigned to channel 0, to make the plugin 
+work as intended. The plugin will then remap the data in channel 0 to MIDI 
+channel 1-16. It does so after assigning the notes already in channel 1-16.
+The layout of the tracker view will be stable as long as no data is entered into 
+MIDI channels other than zero via the piano roll or other methods.
+
 # Issues
 There are some things which are unfortunately not possible as far as I am aware.
 Voice stealing between different tracked patterns is one of them. Since the 
