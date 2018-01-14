@@ -1,10 +1,30 @@
--- A lightweight LUA tracker for REAPER
+-- Copyright (c) Joep Vanlier 2018
 --
--- Simply highlight a MIDI item and start the script.
--- This will bring up the MIDI item as a tracked sequence
+--    Permission is hereby granted, free of charge, to any person obtaining
+--    a copy of this software and associated documentation files (the "Software"),
+--    to deal in the Software without restriction, including without limitation
+--    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+--    and/or sell copies of the Software, and to permit persons to whom the Software
+--    is furnished to do so, subject to the following conditions:
 --
--- Work in progress. Input not yet implemented.
-
+--    The above copyright notice and this permission notice shall be included in
+--    all copies or substantial portions of the Software.
+--
+--    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+--    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+--    OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+--    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+--    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+--    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+--    OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+--
+--    A lightweight LUA tracker for REAPER
+--
+--    Simply highlight a MIDI item and start the script.
+--    This will bring up the MIDI item as a tracked sequence
+--
+--    Work in progress. Input not yet implemented.
+--
 tracker = {}
 tracker.eps = 1e-3
 tracker.fov = {}
@@ -335,6 +355,9 @@ function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, note
         k = k + 1
       end
       local resize = k-row
+      
+      -- If we are the last note, then it may go to the end of the track, hence only subtract
+      -- the shift offset if we are not the last note in the pattern
       if ( k < rows-1 ) then
         resize = resize - offset
       end
