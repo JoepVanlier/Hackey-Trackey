@@ -39,6 +39,10 @@ tracker.xpos = 1
 tracker.ypos = 1
 tracker.xint = 0
 tracker.page = 4
+tracker.cpstart = -1
+tracker.cpstop = -1
+tracker.cpall = 0
+tracker.cpx = -1
 tracker.channels = 16 -- Max channel (0 is not shown)
 tracker.displaychannels = 15
 tracker.colors = {}
@@ -49,6 +53,7 @@ tracker.colors.linecolor = {.1, .0, .4, .4}
 tracker.colors.linecolor2 = {.3, .0, .6, .4}
 tracker.colors.linecolor3 = {.4, .1, 1, 1}
 tracker.colors.linecolor4 = {.2, .0, 1, .5}
+tracker.colors.copypaste = {5.0, .7, 0.1, .2}
 tracker.hash = 0
 
 local function print(...)
@@ -302,7 +307,20 @@ function tracker:printGrid()
     gfx.x = xloc[x]
     gfx.printf("%s", headers[x])
   end
- 
+  
+  gfx.rect(xloc[relx], yloc[rely]-plotData.yshift, xwidth[relx], yheight[rely])
+  -- Clipboard block drawing
+  if ( self.cpstart > 0 ) then
+    local xl = self.cpx-fov.scrollx
+    local yl = self.cpstart-fov.scrolly  
+    gfx.set(table.unpack(colors.copypaste))    
+    if ( self.cpall == 0 ) then
+      gfx.rect(xloc[xl] - itempadx, yloc[yl] - plotData.yshift, xwidth[xl], yheight[1] + (self.cpstop-self.cpstart)*yheight[1] + itempady + plotData.yshift*2)
+    else
+      gfx.rect(xloc[1] - itempadx, yloc[yl] - plotData.yshift, tw, yheight[1] + (self.cpstop-self.cpstart)*yheight[1] + itempady + plotData.yshift*2)
+    end
+  end
+    
   local playLoc = self:getPlayLocation()
   local xc = xloc[1] - .5 * plotData.indicatorShiftX
   local yc = yloc[1] - .8 * plotData.indicatorShiftY  
@@ -1083,6 +1101,39 @@ function tracker:checkChange()
   return true
 end
 
+function tracker:beginBlock()
+  if ( self.cpstart == self.ypos ) then
+    self.cpall    = 1 - self.cpall
+  end
+  self.cpx     = self.xpos
+  self.cpstart = self.ypos
+  self.cpstop  = self.ypos + 1 
+end
+function tracker:endBlock()
+  if ( self.cpstop == self.ypos ) then
+    self.cpall    = 1 - self.cpall
+  end
+  self.cpx        = self.xpos  
+  self.cpstop     = self.ypos
+end
+
+function tracker:resetBlock()
+  self.cpstart  = -1
+  self.cpstop   = -1
+  self.cpall    =  0
+  self.cpx      = -1
+end
+
+function tracker:cutBlock()
+  self:resetBlock()
+end
+function tracker:pasteBlock()
+  self:resetBlock()
+end
+function tracker:copyBlock()
+  self:resetBlock()
+end
+
 local function togglePlayPause()
   local reaper = reaper
   local state = 0
@@ -1117,13 +1168,18 @@ keys.pgup       = { 0,    0,  0,    1885828464 } -- Page up
 keys.pgdown     = { 0,    0,  0,    1885824110 } -- Page down
 keys.undo       = { 1,    0,  0,    26 }         -- CTRL + Z
 keys.redo       = { 1,    0,  1,    26 }         -- CTRL + SHIFT + Z
+keys.beginBlock = { 1,    0,  0,    2 }          -- CTRL + B
+keys.endBlock   = { 1,    0,  0,    5 }          -- CTRL + E
+keys.cutBlock   = { 1,    0,  0,    24 }         -- CTRL + X
+keys.pasteBlock = { 1,    0,  0,    22 }         -- CTRL + V
+keys.copyBlock  = { 1,    0,  0,    3 }          -- CTRL + C
 
 local function inputs( name )
   -- Bitmask oddly enough doesn't behave as expected
   local control = gfx.mouse_cap & 4
   if ( control > 0 ) then control = 1 end  
   local shift   = gfx.mouse_cap & 8
-  if ( shift > 0 ) then shift = 1 end  
+  if ( shift > 0 ) then shift = 1 end
   local alt     = gfx.mouse_cap & 16
   if ( alt > 0 ) then alt = 1 end
 
@@ -1201,7 +1257,17 @@ end
   elseif inputs('undo') then
     reaper.Undo_DoUndo2(0) 
   elseif inputs('redo') then
-    reaper.Undo_DoRedo2(0)         
+    reaper.Undo_DoRedo2(0)  
+  elseif inputs('beginBlock') then
+    tracker:beginBlock()
+  elseif inputs('endBlock') then
+    tracker:endBlock()
+  elseif inputs('cutBlock') then
+    tracker:cutBlock()
+  elseif inputs('pasteBlock') then
+    tracker:pasteBlock()
+  elseif inputs('copyBlock') then
+    tracker:copyBlock()                           
   end
   
   tracker:forceCursorInRange()
