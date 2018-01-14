@@ -48,6 +48,8 @@ tracker.cp.xstop = -1
 tracker.cp.ystop = -1
 tracker.cp.all = 0
 
+tracker.transpose = 3
+
 tracker.channels = 16 -- Max channel (0 is not shown)
 tracker.displaychannels = 15
 tracker.colors = {}
@@ -60,6 +62,55 @@ tracker.colors.linecolor3 = {.4, .1, 1, 1}
 tracker.colors.linecolor4 = {.2, .0, 1, .5}
 tracker.colors.copypaste = {5.0, .7, 0.1, .2}
 tracker.hash = 0
+
+keys = {}
+--                  CTRL  ALT SHIFT Keycode
+keys.left       = { 0,    0,  0,    1818584692 } -- <-
+keys.right      = { 0,    0,  0,    1919379572 } -- ->
+keys.up         = { 0,    0,  0,    30064 }      -- /\
+keys.down       = { 0,    0,  0,    1685026670 } -- \/
+keys.off        = { 0,    0,  0,    45 }         -- -
+keys.delete     = { 0,    0,  0,    6579564 }    -- Del
+keys.home       = { 0,    0,  0,    1752132965 } -- Home
+keys.End        = { 0,    0,  0,    6647396 }    -- End
+keys.toggle     = { 0,    0,  0,    32 }         -- Space
+keys.playfrom   = { 0,    0,  0,    13 }         -- Enter
+keys.insert     = { 0,    0,  0,    6909555 }    -- Insert
+keys.remove     = { 0,    0,  0,    8 }          -- Backspace
+keys.pgup       = { 0,    0,  0,    1885828464 } -- Page up
+keys.pgdown     = { 0,    0,  0,    1885824110 } -- Page down
+keys.undo       = { 1,    0,  0,    26 }         -- CTRL + Z
+keys.redo       = { 1,    0,  1,    26 }         -- CTRL + SHIFT + Z
+keys.beginBlock = { 1,    0,  0,    2 }          -- CTRL + B
+keys.endBlock   = { 1,    0,  0,    5 }          -- CTRL + E
+keys.cutBlock   = { 1,    0,  0,    24 }         -- CTRL + X
+keys.pasteBlock = { 1,    0,  0,    22 }         -- CTRL + V
+keys.copyBlock  = { 1,    0,  0,    3 }          -- CTRL + C
+
+-- Base pitches
+keys.pitches = {}
+keys.pitches.z = 24
+keys.pitches.x = 26
+keys.pitches.c = 28
+keys.pitches.v = 29
+keys.pitches.b = 31
+keys.pitches.n = 33
+keys.pitches.m = 35
+keys.pitches.s = 25
+keys.pitches.d = 27
+keys.pitches.g = 30
+keys.pitches.h = 32
+keys.pitches.j = 34
+keys.pitches.q = 36
+keys.pitches.w = 38
+keys.pitches.e = 40
+keys.pitches.r = 41
+keys.pitches.t = 43
+keys.pitches.y = 45
+keys.pitches.u = 47
+keys.pitches.i = 48
+keys.pitches.o = 50
+keys.pitches.p = 52
 
 local function print(...)
   if ( not ... ) then
@@ -462,8 +513,28 @@ function tracker:placeOff()
       reaper.MIDI_SetNote(self.take, note, nil, nil, startppqpos, ppq, nil, nil, nil, true)
     end
   end
-  
 end
+
+---------------------
+-- Add note
+---------------------
+function tracker:addNote()
+  -- Determine fieldtype, channel and row
+  local ftype, chan, row = self:getLocation()
+  
+   -- What are we manipulating here?
+  if ( ftype == 'text' ) then
+    local note = keys.pitches[string.lower(string.char(lastChar))]
+    if ( note ) then
+      -- Note is present, we are good to go!
+      local pitch = note + tracker.transpose * 12
+      print(pitch)
+    end
+  elseif ( ftype == 'vel' ) then
+  elseif ( ftype == 'vel2' ) then
+  end  
+end
+
 
 ---------------------
 -- Check whether the previous note can grow if this one would be gone
@@ -1175,6 +1246,30 @@ tracker.cp.xstop = -1
 tracker.cp.ystop = -1
 tracker.cp.all = 0
 
+function tracker:selectMIDIItems()
+  -- MIDI EDITOR
+  --40010  Edit: Copy
+  --40011  Edit: paste
+  --40012  Edit: Cut
+  --40214  Edit: unselect all
+  
+  -- MAIN WINDOW
+  -- 40698  Edit -> Copy items
+  -- 40699  Edit -> Cut items
+  
+  -- Deselect all
+  reaper.MIDI_SelectAll(self.take, false)
+end
+
+function tracker:myClippy()
+  local newclipboard = {}
+  
+  
+  
+  
+  clipboard = newclipboard
+end
+
 function tracker:beginBlock()
   local cp = self.cp
   if ( cp.ystart == self.ypos ) then
@@ -1189,6 +1284,7 @@ function tracker:beginBlock()
     cp.xstop  = self.xpos
   end  
 end
+
 function tracker:endBlock()
   local cp = self.cp
   if ( self.ypos < cp.ystart ) then
@@ -1235,30 +1331,6 @@ local function togglePlayPause()
     reaper.Main_OnCommand(40073, 0)
   end
 end
-
-keys = {}
---                  CTRL  ALT SHIFT Keycode
-keys.left       = { 0,    0,  0,    1818584692 } -- <-
-keys.right      = { 0,    0,  0,    1919379572 } -- ->
-keys.up         = { 0,    0,  0,    30064 }      -- /\
-keys.down       = { 0,    0,  0,    1685026670 } -- \/
-keys.off        = { 0,    0,  0,    45 }         -- -
-keys.delete     = { 0,    0,  0,    6579564 }    -- Del
-keys.home       = { 0,    0,  0,    1752132965 } -- Home
-keys.End        = { 0,    0,  0,    6647396 }    -- End
-keys.toggle     = { 0,    0,  0,    32 }         -- Space
-keys.playfrom   = { 0,    0,  0,    13 }         -- Enter
-keys.insert     = { 0,    0,  0,    6909555 }    -- Insert
-keys.remove     = { 0,    0,  0,    8 }          -- Backspace
-keys.pgup       = { 0,    0,  0,    1885828464 } -- Page up
-keys.pgdown     = { 0,    0,  0,    1885824110 } -- Page down
-keys.undo       = { 1,    0,  0,    26 }         -- CTRL + Z
-keys.redo       = { 1,    0,  1,    26 }         -- CTRL + SHIFT + Z
-keys.beginBlock = { 1,    0,  0,    2 }          -- CTRL + B
-keys.endBlock   = { 1,    0,  0,    5 }          -- CTRL + E
-keys.cutBlock   = { 1,    0,  0,    24 }         -- CTRL + X
-keys.pasteBlock = { 1,    0,  0,    22 }         -- CTRL + V
-keys.copyBlock  = { 1,    0,  0,    3 }          -- CTRL + C
 
 local function inputs( name )
   -- Bitmask oddly enough doesn't behave as expected
@@ -1352,7 +1424,10 @@ end --]]--
   elseif inputs('pasteBlock') then
     tracker:pasteBlock()
   elseif inputs('copyBlock') then
-    tracker:copyBlock()                           
+    tracker:copyBlock()  
+  elseif ( gfx.mouse_cap == 0 ) then
+    -- Notes here
+    tracker:addNote()
   end
   
   tracker:forceCursorInRange()
