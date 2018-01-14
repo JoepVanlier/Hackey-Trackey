@@ -444,15 +444,16 @@ function tracker:backspace()
     
     local lastnote
     local note = noteGrid[rows*chan+row]
-    local noteToDelete = noteStart[rows*chan+row]    
-    -- Are we on the start of a note or an OFF symbol?
-    if ( noteToDelete or ( note and note < 0 ) ) then
-      -- TO DO: Remove manually created OFF symbol
+    local noteToDelete = noteStart[rows*chan+row]
     
+    -- Note == -1 is a natural OFF (based on the previous note), hence note < 0 as criterion
+    -- since removing this would lead to a necessary check for elongation of the previous note
+    if ( noteToDelete or ( note and note < 0 ) ) then    
+      -- Are we on the start of a note or an OFF symbol? This would mean that the previous note can grow
       -- Check whether there is a note before this, and elongate it until the next blockade
       self:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, noteStart[rows*chan+row], 1)
-    
     elseif ( note and ( note > -1 ) ) then
+      -- We are in the middle of a note, so it must get smaller
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
       reaper.MIDI_SetNote(self.take, note, nil, nil, startppqpos, endppqpos - singlerow, nil, nil, nil, true)
       lastnote = note
@@ -462,16 +463,15 @@ function tracker:backspace()
     for i = row,rows-1 do
       local note = noteGrid[rows*chan+i]
       if ( note ~= lastnote ) then
-        if ( note and ( note > -1 ) ) then
-          local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
-          reaper.MIDI_SetNote(self.take, note, nil, nil, startppqpos - singlerow,endppqpos - singlerow, nil, nil, nil, true)
+        if ( note ) then
+          self:shiftNote(chan, i, -1)
         end
       end
       lastnote = note
     end
     
-    -- Were we on a note start? ==> Kill it
-    if ( noteToDelete ) then
+    -- Were we on a note start or a custom OFF? ==> Kill it
+    if ( noteToDelete or ( note and ( note < -1 ) ) ) then
       self:deleteNote(chan, row)
     end
     
@@ -619,13 +619,12 @@ function tracker:shiftNote(chan, row, shift)
   local rows        = self.rows
   local gridValue   = noteGrid[rows*chan+row]
 
-  reaper.MarkProjectDirty(0) 
   if ( gridValue > -1 ) then
     -- It is a note
     local notes = self.notes
     local pitch, vel, startppqpos, endppqpos = table.unpack( notes[gridValue] )
     if ( row < rows-1 ) then
-      reaper.MIDI_SetNote(self.take, gridValue, nil, nil, self:clampPpq(startppqpos + singlerow), self:clampPpq(endppqpos + singlerow), nil, nil, nil, true)
+      reaper.MIDI_SetNote(self.take, gridValue, nil, nil, self:clampPpq(startppqpos + shift*singlerow), self:clampPpq(endppqpos + shift*singlerow), nil, nil, nil, true)
     else
       self:deleteNote(chan, row)
     end
@@ -635,7 +634,7 @@ function tracker:shiftNote(chan, row, shift)
     local offidx = self:gridValueToOFFidx( gridValue )
     local ppq = table.unpack( offList[offidx] )
     if ( row < rows-1 ) then
-      reaper.MIDI_SetTextSysexEvt(self.take, offidx, nil, nil, self:clampPpq(ppq + singlerow), nil, "", true)
+      reaper.MIDI_SetTextSysexEvt(self.take, offidx, nil, nil, self:clampPpq(ppq + shift*singlerow), nil, "", true)
     else
       reaper.MIDI_DeleteTextSysexEvt(self.take, offidx)
     end
@@ -843,7 +842,7 @@ function tracker:assignOFF(channel, idx)
   
   local ppq = table.unpack( offList[idx] )
   local row = math.floor( ppq * self.rowPerPpq )
-  data.text[rows*channel + row] = 'OFF'
+  data.text[rows*channel + row] = 'OFC'
   data.note[rows*channel + row] = -idx - 2
 end
 
