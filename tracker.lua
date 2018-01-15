@@ -131,6 +131,16 @@ function tracker:initColors()
   tracker.colors.linecolor3s = alpha( tracker.colors.linecolor3, 0.5 )    
 end
 
+local function validHex( char )
+  hex = {'A','B','C','D','E','F','a','b','c','d','e','f','0','1','2','3','4','5','6','7','8','9'}
+  for i,v in pairs(hex) do
+    if ( char == v ) then
+      return true
+    end
+  end
+  return false
+end
+
 ------------------------------
 -- Pitch => note
 ------------------------------
@@ -480,7 +490,7 @@ function tracker:placeOff()
   local idx = chan*rows+row
   local note = noteGrid[idx]
   local start = noteStart[idx]
-  if ( ( ftype == 'text' ) or ( ftype == 'vel' ) or ( ftype == 'vel2' ) ) then  
+  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) ) then  
     -- If there is no note here add a marker for the note off event
     if ( not note ) then
       ppq = self:rowToPpq(row)
@@ -518,21 +528,44 @@ end
 ---------------------
 -- Add note
 ---------------------
-function tracker:addNote()
+function tracker:addNote( inChar )
+  local char      = string.lower(string.char(inChar))
+  local data      = self.data
+  local notes     = self.notes
+  local noteGrid  = data.note
+  local noteStart = data.noteStart  
+  local rows      = self.rows
+
   -- Determine fieldtype, channel and row
   local ftype, chan, row = self:getLocation()
-  
+  local noteToEdit = noteStart[rows*chan+row]
+  local noteToInterrupt = noteGrid[rows*chan+row]
+   
+  reaper.Undo_OnStateChange2(0, "Tracker: Add note / Edit volume")
+  reaper.MarkProjectDirty(0)       
+
    -- What are we manipulating here?
   if ( ftype == 'text' ) then
-    local note = keys.pitches[string.lower(string.char(lastChar))]
+    local note = keys.pitches[char]
     if ( note ) then
       -- Note is present, we are good to go!
       local pitch = note + tracker.transpose * 12
-      print(pitch)
     end
-  elseif ( ftype == 'vel' ) then
-  elseif ( ftype == 'vel2' ) then
+  elseif ( ( ftype == 'vel1' ) and validHex( char ) ) then
+    if ( noteToEdit ) then
+      local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToEdit] )
+      newvel = tracker:editVelField( vel, 1, char )
+      reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, nil, newvel, true)
+    end
+  elseif ( ( ftype == 'vel2' ) and validHex( char ) ) then
+    if ( noteToEdit ) then
+      local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToEdit] )    
+      newvel = tracker:editVelField( vel, 2, char )      
+      reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, nil, newvel, true)
+    end
   end  
+  
+  reaper.MIDI_Sort(self.take)
 end
 
 
@@ -582,7 +615,7 @@ function tracker:backspace()
   local ftype, chan, row = self:getLocation()
   
    -- What are we manipulating here?
-  if ( ( ftype == 'text' ) or ( ftype == 'vel' ) or ( ftype == 'vel2' ) ) then
+  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) ) then
     local noteGrid = data.note
     local noteStart = data.noteStart      
     
@@ -697,7 +730,7 @@ function tracker:delete()
   local ftype, chan, row = self:getLocation()
   
   -- What are we manipulating here?
-  if ( ( ftype == 'text' ) or ( ftype == 'vel' ) or ( ftype == 'vel2' ) ) then
+  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) ) then
     local noteGrid = data.note
     local noteStart = data.noteStart
     local delete
@@ -799,7 +832,7 @@ function tracker:insert()
   local ftype, chan, row = self:getLocation()  
   
   -- What are we manipulating here?
-  if ( ( ftype == 'text' ) or ( ftype == 'vel' ) or ( ftype == 'vel2' ) ) then
+  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) ) then
     local noteGrid = data.note
     local noteStart= data.noteStart    
     local rows     = self.rows
@@ -979,6 +1012,13 @@ function tracker:isFree(channel, y1, y2, treatOffAsFree)
   return true
 end
 
+local function round(x)
+  if x%2 ~= 0.5 then
+    return math.floor(x+0.5)
+  end
+  return x-0.5
+end
+
 -- Assign off locations
 function tracker:assignOFF(channel, idx)
   local data = self.data
@@ -991,12 +1031,22 @@ function tracker:assignOFF(channel, idx)
   data.note[rows*channel + row] = -idx - 2
 end
 
+-- (255/127)
+hexdec = 2
 function tracker:velToField( vel, id )
-  if ( self.hex == 1 ) then
-    return string.sub( string.format('%2X', math.floor(vel*(255/127)) ), id, id )
-  else
-    return string.sub( string.format('%2d', vel ), id, id )
-  end
+  return string.sub( string.format('%2X', math.floor(vel*hexdec) ), id, id )
+end
+
+function tracker:editVelField( vel, id, val )
+  -- Convert to Hex first
+  local newvel = string.format('%2X', math.floor(vel*hexdec) )
+  print(newvel)
+  -- Replace the digit in question
+  newvel = newvel:sub( 1, id-1 ) .. val ..  newvel:sub( id+1 )
+  print(newvel)
+  newvel = math.floor( tonumber( "0x"..newvel ) / hexdec )
+  print(newvel)  
+  return newvel
 end
 
 -- Assign a note that is already in the MIDI data
@@ -1425,9 +1475,10 @@ end --]]--
     tracker:pasteBlock()
   elseif inputs('copyBlock') then
     tracker:copyBlock()  
+  elseif ( lastChar == 0 ) then
   elseif ( gfx.mouse_cap == 0 ) then
     -- Notes here
-    tracker:addNote()
+    tracker:addNote(lastChar)
   end
   
   tracker:forceCursorInRange()
