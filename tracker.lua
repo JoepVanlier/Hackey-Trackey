@@ -497,30 +497,36 @@ function tracker:placeOff()
       ppq = self:rowToPpq(row)
       self:addNoteOFF(ppq, chan)
       return
-    elseif ( start ) then
-      -- If it was the start of a note, this note requires deletion. If there is no previous note, then we
-      -- should also place an off at this position
-      if ( row > 1 ) then
-        if ( not noteGrid[idx-1] ) then
-          ppq = self:rowToPpq(row)
+    else
+      if ( note > -1 ) then
+        -- We need to check whether the note we are about to delete or shorten was already terminated by an OFF
+        -- In this case, we need to add a new OFF symbol at that location to not lose that one.
+        local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
+        local lastend = self:ppqToRow(endppqpos)
+        if ( noteGrid[chan*rows+lastend] and ( noteGrid[chan*rows+lastend] < 0 ) ) then
+          ppq = self:rowToPpq(lastend)
           self:addNoteOFF(ppq, chan)
         end
+        
+        if ( start ) then
+          -- If it was the start of a note, this note requires deletion as well.
+          if ( row > 1 ) then
+            if ( not noteGrid[idx-1] ) then
+              ppq = self:rowToPpq(row)
+              self:addNoteOFF(ppq, chan)
+            end
+          end
+          
+          -- If there is no note at the end
+          self:deleteNote(chan, row)
+        else
+          local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
+         
+          -- Make sure that the current note is resized accordingly
+          ppq = self:rowToPpq(row)
+          reaper.MIDI_SetNote(self.take, note, nil, nil, startppqpos, ppq, nil, nil, nil, true)
+        end
       end
-      self:deleteNote(chan, row)
-    elseif ( note > -1 ) then
-      local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
-      
-      -- We need to check whether the note was already terminated by an OFF, in this case, we need to add a new OFF
-      -- symbol at that location to not lose that one.
-      local lastend = self:ppqToRow(endppqpos)
-      if ( noteGrid[chan*rows+lastend] and ( noteGrid[chan*rows+lastend] < 0 ) ) then
-        ppq = self:rowToPpq(lastend)
-        self:addNoteOFF(ppq, chan)
-      end
-
-      -- Make sure that the current note is resized accordingly
-      ppq = self:rowToPpq(row)
-      reaper.MIDI_SetNote(self.take, note, nil, nil, startppqpos, ppq, nil, nil, nil, true)
     end
   end
 end
@@ -577,13 +583,14 @@ function tracker:addNote( inChar )
         -- Open problem: Here two deletions can occur. The problem arises when the user overwrites a custom OFF
         -- with a note that is terminated by a custom OFF. Both these OFFs need to be deleted.             
         -- It's a custom OFF symbol which must be deleted now that the note takes over its job
-        --local extraDeletion
-        --if ( noteGrid[rows*chan+k] ) then
-        --  if ( noteGrid[rows*chan+k] < -1 ) then
-        --    extraDeletion = noteGrid[rows*chan+k]
-        --    self:deleteNote(chan, k)
-        --  end
-        --end
+        local extraDeletion
+        if ( noteGrid[rows*chan+k] ) then
+          if ( noteGrid[rows*chan+k] < -1 ) then
+            print("Looks like there is a dead one here")          
+            extraDeletion = noteGrid[rows*chan+k]
+            self:deleteNote(chan, k)
+          end
+        end
         
         -- If we interrupted a note, that note needs to be shortened / removed!
         -- If we overwrote an OFF marker that was still here, then it needs to be removed as well. 
@@ -621,6 +628,56 @@ function tracker:addNote( inChar )
   reaper.MIDI_Sort(self.take)
 end
 
+--------------------------
+-- Delay deletion because otherwise we get sorting
+-- issues with our matrix going out of date
+--------------------------
+function tracker:clearDeleteLists()
+  tracker.deleteNotes = {}
+  tracker.deleteText = {}
+end
+
+function tracker:SAFE_DeleteNote( take, note )
+  tracker.deleteNotes[note] = note
+end
+
+function tracker:SAFE_DeleteText( take, txt )
+  tracker.deleteText[txt] = txt
+end
+
+function orderedpairs(inTable, order)
+  if ( not inTable ) then
+    print( "Warning! Error in iterator: passed nil to spairs" )
+    return function() return nil end
+  end
+
+  local keys = {}
+  for k in pairs(inTable) do table.insert(keys, k) end
+  table.sort(keys, function(a,b) return a > b end)
+
+  local i = 0
+  return function()
+    i = i + 1
+    if ( keys[i] ) then
+      return keys[i], inTable[keys[i]]
+    end
+  end
+end
+
+function tracker:deleteNow( )
+  local deleteNotes = self.deleteNotes
+  local deleteText  = self.deleteNotes
+  local i
+
+  local deleteNotes = tracker.deleteNotes
+  for i,v in orderedpairs(deleteNotes) do
+    reaper.MIDI_DeleteNote(self.take, v)
+  end
+  local deleteText = tracker.deleteText
+  for i,v in orderedpairs(deleteText) do
+    reaper.MIDI_DeleteTextSysexEvt(self.take, v)
+  end    
+end
 
 ---------------------
 -- Check whether the previous note can grow if this one would be gone
@@ -640,7 +697,7 @@ function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, note
         end
         k = k + 1
       end
-      local resize = k-row
+      local resize = k-row     
       
       -- If we are the last note, then it may go to the end of the track, hence only subtract
       -- the shift offset if we are not the last note in the pattern
@@ -650,7 +707,31 @@ function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, note
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToResize] )
       modify = 1
       reaper.MIDI_SetNote(self.take, noteToResize, nil, nil, startppqpos, self:clampPpq( endppqpos + singlerow * resize ), nil, nil, nil, true)
+      
+      -- Is there an OFF symbol at this location?
+      -- TO DO: Check whether this is dangerous with indexing!
+      if ( k < rows - 1 ) then
+        if ( noteGrid[rows*chan+k] < -1 ) then
+          tracker:deleteNote(chan, k)
+          reaper.MIDI_Sort(self.take)
+        end
+      end
     end
+  end
+end
+
+---------------------
+-- Shrink a note
+---------------------
+function tracker:shrinkNote(note, size)
+  local notes     = self.notes
+  local singlerow = self:rowToPpq(1)
+  local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
+  
+  -- Is it the last note with an open end, then stay that way.
+  -- There is nothingness outside our pattern! :)
+  if ( endppqpos <= self:rowToPpq( self.rows-1 ) ) then
+    reaper.MIDI_SetNote(self.take, note, nil, nil, startppqpos, endppqpos - singlerow, nil, nil, nil, true)
   end
 end
 
@@ -686,8 +767,7 @@ function tracker:backspace()
       self:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, noteStart[rows*chan+row], 1)
     elseif ( note and ( note > -1 ) ) then
       -- We are in the middle of a note, so it must get smaller
-      local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
-      reaper.MIDI_SetNote(self.take, note, nil, nil, startppqpos, endppqpos - singlerow, nil, nil, nil, true)
+      self:shrinkNote(note, 1)
       lastnote = note
     end         
           
@@ -736,33 +816,49 @@ function tracker:deleteNote(channel, row, shiftIn)
   local notes     = self.notes
   local noteGrid  = self.data.note
   local shift     = shiftIn or 0
-  
+
   -- Deleting note requires some care, in some cases, there may be an OFF trigger which needs to be stored separately
   -- since we don't want them disappearing with the notes.
   noteToDelete = noteGrid[rows*channel+row]
   if ( tracker.preserveOff == 1 ) then
     if ( noteToDelete > -1 ) then
       -- We are deleting a note
-      -- If on the row where the current note currently ends, there is another note, then we're cool
-      -- Otherwise, we need to add an explicit OFF symbol
+
+      -- We need a noteOFF iff
+      --   - There is no note on the previous row
+      local shouldBeEmpty1
+      if ( row > 0 ) then 
+        shouldBeEmpty1 = noteGrid[rows*channel+row-1]
+        if ( shouldBeEmpty1 ) then
+          shouldBeEmpty1 = shouldBeEmpty1 > -1
+        end
+      end
+      
+      --   - There is no note where the current note currently ends
+      local shouldBeEmpty2
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToDelete] )
       local endrow = self:ppqToRow(endppqpos)
-      if ( not noteGrid[rows*channel+endrow+shift+2] ) then    -- <== TO-DO: figure out why this is +2, expected +1
+      shouldBeEmpty2 = noteGrid[rows*channel+endrow+shift]
+      
+      --   - The current note ended before the end of the pattern
+      -- This one is automatically fulfilled because events outside of the time range get deleted by reaper
+
+      if ( ( not shouldBeEmpty1 ) and ( not shouldBeEmpty2 ) ) then    -- <== TO-DO: figure out why this is +2, expected +1
         -- We need an explicit OFF symbol. We need to store this separately!
         tracker:addNoteOFF(endppqpos, channel)      
       end
-      reaper.MIDI_DeleteNote(self.take, noteToDelete)      
+      self:SAFE_DeleteNote(self.take, noteToDelete)      
     else
       -- We are deleting a custom OFF symbol
       if ( noteToDelete < -1 ) then
         -- It is an OFF
         local offidx = self:gridValueToOFFidx( noteToDelete )
-        reaper.MIDI_DeleteTextSysexEvt(self.take, offidx)
+        self:SAFE_DeleteText(self.take, offidx)
       end
     end
   else
     -- No off preservation, just delete it.
-    reaper.MIDI_DeleteNote(self.take, noteToDelete)
+    self:SAFE_DeleteNote(self.take, noteToDelete)
   end
 end
 
@@ -877,7 +973,7 @@ function tracker:shiftNote(chan, row, shift)
     if ( row < rows-1 ) then
       reaper.MIDI_SetTextSysexEvt(self.take, offidx, nil, nil, ppq + shift*singlerow, nil, "", true)
     else
-      reaper.MIDI_DeleteTextSysexEvt(self.take, offidx)
+      self:SAFE_DeleteTextSysexEvt(self.take, offidx)
     end
   end
 end
@@ -1057,7 +1153,7 @@ function tracker:isFree(channel, y1, y2, treatOffAsFree)
   local rows = self.rows
   local notes = self.data.note
   local offFree = treatOffAsFree or 1
-  offFree = 1
+  --offFree = 1
   for y=y1,y2 do
     -- Occupied
     if ( notes[rows*channel+y] ) then
@@ -1273,6 +1369,8 @@ function tracker:update()
             done = true
             ok = ok + 1
           else
+            --reaper.ShowMessageBox(string msg, string title, integer type)
+            print("Warning: A note that should have been assigned was shifted")
             targetChannel = targetChannel + 1
             if ( targetChannel > maxChannel ) then 
               done = true
@@ -1291,7 +1389,6 @@ function tracker:update()
       end
     end
   end
-  local pitchSymbol = self.pitchTable[pitchOut]
 end
 
 ------------------------------
@@ -1474,6 +1571,8 @@ end
 local function updateLoop()
   local tracker = tracker
 
+  tracker:clearDeleteLists()
+
   -- Check if the note data or take changed, if so, update the note contents
   if ( not tracker:checkChange() ) then
     gfx.quit()
@@ -1550,6 +1649,8 @@ end
   tracker:forceCursorInRange()
   tracker:printGrid()
   gfx.update()
+   
+  tracker:deleteNow()
    
   if lastChar ~= 27 and lastChar ~= -1 then
     reaper.defer(updateLoop)
