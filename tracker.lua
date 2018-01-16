@@ -40,6 +40,7 @@ tracker.xpos = 1
 tracker.ypos = 1
 tracker.xint = 0
 tracker.page = 4
+tracker.lastVel = 96
 
 tracker.cp = {}
 tracker.cp.xstart = -1
@@ -499,14 +500,13 @@ function tracker:placeOff()
     elseif ( start ) then
       -- If it was the start of a note, this note requires deletion. If there is no previous note, then we
       -- should also place an off at this position
-      
-      -- TO DO: Deletion
       if ( row > 1 ) then
-        if noteGrid[idx-1] then
+        if ( not noteGrid[idx-1] ) then
           ppq = self:rowToPpq(row)
           self:addNoteOFF(ppq, chan)
         end
       end
+      self:deleteNote(chan, row)
     elseif ( note > -1 ) then
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
       
@@ -535,6 +535,7 @@ function tracker:addNote( inChar )
   local noteGrid  = data.note
   local noteStart = data.noteStart  
   local rows      = self.rows
+  local singlerow = self:rowToPpq(1)
 
   -- Determine fieldtype, channel and row
   local ftype, chan, row = self:getLocation()
@@ -550,18 +551,70 @@ function tracker:addNote( inChar )
     if ( note ) then
       -- Note is present, we are good to go!
       local pitch = note + tracker.transpose * 12
+      
+      -- Is there already a note starting here? Simply change the note.
+      if ( noteToEdit ) then
+        reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, pitch, nil, true)
+      else
+        -- No note yet? See how long the new note can get. Note that we have to ignore any note
+        -- we might be interrupting (placed in the middle of)
+        local k = row+1
+        while( k < rows ) do
+          if ( noteGrid[rows*chan+k] and not ( noteGrid[rows*chan+k] == noteToInterrupt ) ) then
+            break;
+          end
+          k = k + 1
+        end       
+
+        -- Create the new note!
+        local startppqpos = self:rowToPpq(row)
+        local endppqpos = self:rowToPpq(k)
+        reaper.MIDI_InsertNote(self.take, false, false, startppqpos, endppqpos, chan, pitch, self.lastVel, true)
+      
+        
+        -- Solved alternatively ==> When updating the grid, find places where note end overlaps with 
+        -- TO DO:
+        -- Open problem: Here two deletions can occur. The problem arises when the user overwrites a custom OFF
+        -- with a note that is terminated by a custom OFF. Both these OFFs need to be deleted.             
+        -- It's a custom OFF symbol which must be deleted now that the note takes over its job
+        --local extraDeletion
+        --if ( noteGrid[rows*chan+k] ) then
+        --  if ( noteGrid[rows*chan+k] < -1 ) then
+        --    extraDeletion = noteGrid[rows*chan+k]
+        --    self:deleteNote(chan, k)
+        --  end
+        --end
+        
+        -- If we interrupted a note, that note needs to be shortened / removed!
+        -- If we overwrote an OFF marker that was still here, then it needs to be removed as well. 
+        if ( noteToInterrupt ) then
+          -- Note
+          if ( noteToInterrupt > -1 ) then
+            -- Shorten the note
+            local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToInterrupt] )
+            reaper.MIDI_SetNote(self.take, noteToInterrupt, nil, nil, nil, endppqpos - self:rowToPpq(k-row), nil, nil, nil, true)
+          end
+          -- OFF marker
+          if ( noteToInterrupt < -1 ) then
+            self:deleteNote(chan, row)
+          end
+        end
+                
+      end
     end
   elseif ( ( ftype == 'vel1' ) and validHex( char ) ) then
     if ( noteToEdit ) then
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToEdit] )
       newvel = tracker:editVelField( vel, 1, char )
-      reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, nil, newvel, true)
+      self.lastVel = newvel
+      reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, pitch, nil, true)
     end
   elseif ( ( ftype == 'vel2' ) and validHex( char ) ) then
     if ( noteToEdit ) then
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToEdit] )    
       newvel = tracker:editVelField( vel, 2, char )      
-      reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, nil, newvel, true)
+      self.lastVel = newvel      
+      reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, pitch, nil, true)
     end
   end  
   
@@ -576,7 +629,7 @@ end
 function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, noteToDelete, shift)
   local modify = 0
   local offset = shift or 0
-  if ( row > 1 ) then
+  if ( row > -1 ) then
     local noteToResize = noteGrid[rows*chan+row - 1]
           
     if ( noteToResize and ( noteToResize > -1 ) ) then
@@ -599,7 +652,6 @@ function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, note
       reaper.MIDI_SetNote(self.take, noteToResize, nil, nil, startppqpos, self:clampPpq( endppqpos + singlerow * resize ), nil, nil, nil, true)
     end
   end
-  return modify
 end
 
 ---------------------
@@ -652,7 +704,7 @@ function tracker:backspace()
     
     -- Were we on a note start or a custom OFF? ==> Kill it
     if ( noteToDelete or ( note and ( note < -1 ) ) ) then
-      self:deleteNote(chan, row)
+      self:deleteNote(chan, row, 0)
     end
     
     reaper.MIDI_Sort(self.take)
@@ -667,38 +719,39 @@ end
 ---------------------
 -- Add OFF flag
 ---------------------
-function tracker:addNoteOFF(ppq, channel)
-  reaper.MIDI_InsertTextSysexEvt(self.take, false, false, ppq, 1, string.format('OFF%2d', channel))
+function tracker:addNoteOFF(ppq, channel) 
+  -- Is it within pattern range?
+  if ( ppq < self:rowToPpq( self.rows ) ) then
+    reaper.MIDI_InsertTextSysexEvt(self.take, false, false, ppq, 1, string.format('OFF%2d', channel))
+  end
 end
 
 ---------------------
 -- Delete note
 ---------------------
-function tracker:deleteNote(channel, row)
+-- The shift argument can be used if the row below the row at which things are being deleted
+-- have to be interpreted as being shifted by a note (legacy).
+function tracker:deleteNote(channel, row, shiftIn)
   local rows      = self.rows
   local notes     = self.notes
   local noteGrid  = self.data.note
-
+  local shift     = shiftIn or 0
+  
   -- Deleting note requires some care, in some cases, there may be an OFF trigger which needs to be stored separately
   -- since we don't want them disappearing with the notes.
   noteToDelete = noteGrid[rows*channel+row]
   if ( tracker.preserveOff == 1 ) then
     if ( noteToDelete > -1 ) then
-      local k = row+1
-      while( k < rows ) do
-        if ( noteGrid[rows*channel+k] ) then
-          if ( ( noteGrid[rows*channel+k] > -1 ) and ( noteGrid[rows*channel+k] ~= noteToDelete) ) then
-            -- It's another note, we're cool. Don't need explicit OFF symbol
-            break;
-          else
-            -- It's an off symbol, we need to store it separately
-            local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToDelete] )
-            tracker:addNoteOFF(endppqpos, channel)            
-            reaper.MIDI_DeleteNote(self.take, noteToDelete)
-            break;
-          end
-        end
+      -- We are deleting a note
+      -- If on the row where the current note currently ends, there is another note, then we're cool
+      -- Otherwise, we need to add an explicit OFF symbol
+      local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToDelete] )
+      local endrow = self:ppqToRow(endppqpos)
+      if ( not noteGrid[rows*channel+endrow+shift+2] ) then    -- <== TO-DO: figure out why this is +2, expected +1
+        -- We need an explicit OFF symbol. We need to store this separately!
+        tracker:addNoteOFF(endppqpos, channel)      
       end
+      reaper.MIDI_DeleteNote(self.take, noteToDelete)      
     else
       -- We are deleting a custom OFF symbol
       if ( noteToDelete < -1 ) then
@@ -734,7 +787,7 @@ function tracker:delete()
     local noteGrid = data.note
     local noteStart = data.noteStart
     local delete
-       
+  
     -- OFF marker
     if ( noteGrid[rows*chan+row] and ( noteGrid[rows*chan+row] < 0 ) ) then
       -- Check whether the previous note can grow now that this one is gone
@@ -803,8 +856,16 @@ function tracker:shiftNote(chan, row, shift)
     -- It is a note
     local notes = self.notes
     local pitch, vel, startppqpos, endppqpos = table.unpack( notes[gridValue] )
+    local newEnd = endppqpos + shift*singlerow
+    
+    -- Is it the last note with an open end, then stay that way.
+    -- There is nothingness outside our pattern! :)
+    if ( endppqpos > self:rowToPpq( self.rows-1 ) ) then
+      newEnd = endppqpos
+    end
+    
     if ( row < rows-1 ) then
-      reaper.MIDI_SetNote(self.take, gridValue, nil, nil, self:clampPpq(startppqpos + shift*singlerow), self:clampPpq(endppqpos + shift*singlerow), nil, nil, nil, true)
+      reaper.MIDI_SetNote(self.take, gridValue, nil, nil,startppqpos + shift*singlerow, newEnd, nil, nil, nil, true)
     else
       self:deleteNote(chan, row)
     end
@@ -814,7 +875,7 @@ function tracker:shiftNote(chan, row, shift)
     local offidx = self:gridValueToOFFidx( gridValue )
     local ppq = table.unpack( offList[offidx] )
     if ( row < rows-1 ) then
-      reaper.MIDI_SetTextSysexEvt(self.take, offidx, nil, nil, self:clampPpq(ppq + shift*singlerow), nil, "", true)
+      reaper.MIDI_SetTextSysexEvt(self.take, offidx, nil, nil, ppq + shift*singlerow, nil, "", true)
     else
       reaper.MIDI_DeleteTextSysexEvt(self.take, offidx)
     end
@@ -995,58 +1056,22 @@ end
 function tracker:isFree(channel, y1, y2, treatOffAsFree)
   local rows = self.rows
   local notes = self.data.note
-  local offFree = treatOffAsFree or 0
+  local offFree = treatOffAsFree or 1
+  offFree = 1
   for y=y1,y2 do
     -- Occupied
     if ( notes[rows*channel+y] ) then
       if ( offFree == 1 ) then
         -- -1 indicates an OFF, which is considered free when treatOffAsFree is on :)
-        if ( notes[rows*channel+y] > -1 ) then
+        if ( ( notes[rows*channel+y] > -1 ) or ( notes[rows*channel+y] < -1 ) ) then
           return false
         end
       else
-        offFree = 0
+        return false
       end
     end
   end
   return true
-end
-
-local function round(x)
-  if x%2 ~= 0.5 then
-    return math.floor(x+0.5)
-  end
-  return x-0.5
-end
-
--- Assign off locations
-function tracker:assignOFF(channel, idx)
-  local data = self.data
-  local rows = self.rows
-  local offList = self.offList
-  
-  local ppq = table.unpack( offList[idx] )
-  local row = math.floor( ppq * self.rowPerPpq )
-  data.text[rows*channel + row] = 'OFC'
-  data.note[rows*channel + row] = -idx - 2
-end
-
--- (255/127)
-hexdec = 2
-function tracker:velToField( vel, id )
-  return string.sub( string.format('%2X', math.floor(vel*hexdec) ), id, id )
-end
-
-function tracker:editVelField( vel, id, val )
-  -- Convert to Hex first
-  local newvel = string.format('%2X', math.floor(vel*hexdec) )
-  print(newvel)
-  -- Replace the digit in question
-  newvel = newvel:sub( 1, id-1 ) .. val ..  newvel:sub( id+1 )
-  print(newvel)
-  newvel = math.floor( tonumber( "0x"..newvel ) / hexdec )
-  print(newvel)  
-  return newvel
 end
 
 -- Assign a note that is already in the MIDI data
@@ -1093,6 +1118,44 @@ function tracker:assignFromMIDI(channel, idx)
   else
     return false
   end  
+end
+
+-- Assign off locations
+function tracker:assignOFF(channel, idx)
+  local data = self.data
+  local rows = self.rows
+  local offList = self.offList
+  
+  local ppq = table.unpack( offList[idx] )
+  local row = math.floor( ppq * self.rowPerPpq )
+  data.text[rows*channel + row] = 'OFC'
+  data.note[rows*channel + row] = -idx - 2
+end
+
+------------------------
+-- Helper functions
+------------------------
+local function round(x)
+  if x%2 ~= 0.5 then
+    return math.floor(x+0.5)
+  end
+  return x-0.5
+end
+
+-- (255/127)
+hexdec = 1 --255/127
+function tracker:velToField( vel, id )
+  return string.sub( string.format('%02X', math.floor(vel*hexdec) ), id, id )
+end
+
+function tracker:editVelField( vel, id, val )
+  -- Convert to Hex first
+  local newvel = string.format('%2X', math.floor(vel*hexdec) )
+  -- Replace the digit in question
+  newvel = newvel:sub( 1, id-1 ) .. val ..  newvel:sub( id+1 )
+  newvel = math.floor( tonumber( "0x"..newvel ) / hexdec )
+  newvel = clamp(1, 127, newvel)
+  return newvel
 end
 
 ------------------------------
@@ -1425,9 +1488,9 @@ local function updateLoop()
     tracker:update()
   end  
 
---[[--if ( lastChar ~= 0 ) then
+if ( lastChar ~= 0 ) then
   print(lastChar)
-end --]]--
+end
  
   if inputs('left') then
     tracker.xpos = tracker.xpos - 1
@@ -1476,6 +1539,9 @@ end --]]--
   elseif inputs('copyBlock') then
     tracker:copyBlock()  
   elseif ( lastChar == 0 ) then
+    -- No input
+  elseif ( lastChar == -1 ) then      
+    -- Closed window
   elseif ( gfx.mouse_cap == 0 ) then
     -- Notes here
     tracker:addNote(lastChar)
