@@ -50,15 +50,19 @@ mimick the same end behaviour.
 | Key                   | Action 						|
 | --------------------- | ----------------------------------------------------- |
 | Arrow keys 		| Navigate						|
-| CTRL + Z   		| Undo							|
-| CTRL + SHIFT + Z 	| Redo							|
-| CTRL + X 		| Cut							|
-| CTRL + V 		| Paste							|
-| CTRL + C 		| Copy							|
 | Backspace 		| Delete item and move all subsequent rows one up	|
 | Del 			| Delete item						|
 | Insert 		| Shift all items down by one				|
 | \- 			| Place note OFF					|
+| CTRL + B 		| Start selection block 				|
+| CTRL + E 		| End selection block 					|
+| CTRL + Z   		| Undo							|
+| CTRL + SHIFT + Z 	| Redo							|
+| CTRL + X 		| Cut (To do)						|
+| CTRL + V 		| Paste (To do)						|
+| CTRL + C 		| Copy (To do)						|
+| Shift + Numpad +	| Shift all elements in selection one up		|
+| Shift + Numpad -	| Shift all elements in selection one down		|
 
 # Planned features
 - Cut/Copy pasting blocks within the tracker.
