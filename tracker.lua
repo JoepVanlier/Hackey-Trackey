@@ -49,6 +49,7 @@ tracker.cp.xstop = -1
 tracker.cp.ystop = -1
 tracker.cp.all = 0
 
+tracker.selectionBehavior = 0
 tracker.transpose = 3
 tracker.advance = 1
 
@@ -167,7 +168,6 @@ end
 ------------------------------
 function tracker:linkData()
   -- Here is where the linkage between the display and the actual data fields in "tracker" is made
-  -- TO DO: This probably doesn't need to be done upon scrolling.
   local colsizes  = {}
   local datafield = {}
   local idx       = {}
@@ -188,8 +188,11 @@ function tracker:linkData()
     idx[#idx+1]             = j
     colsizes[#colsizes + 1] = 3
     padsizes[#padsizes + 1] = 1
-    --grouplink[#grouplink+1] = {1, 2}
-    grouplink[#grouplink+1] = {0}    
+    if ( self.selectionBehavior == 1 ) then
+      grouplink[#grouplink+1] = {1, 2}
+    else
+      grouplink[#grouplink+1] = {0}    
+    end
     headers[#headers + 1]   = string.format(' Ch%2d', j)
     
     -- Link up the velocity fields
@@ -197,8 +200,11 @@ function tracker:linkData()
     idx[#idx+1]             = j
     colsizes[#colsizes + 1] = 1
     padsizes[#padsizes + 1] = 0
---    grouplink[#grouplink+1] = {-1, 1}
-    grouplink[#grouplink+1] = {1}    
+    if ( self.selectionBehavior == 1 ) then
+      grouplink[#grouplink+1] = {-1, 1}
+    else
+      grouplink[#grouplink+1] = {1}
+    end
     headers[#headers + 1]   = ''     
     
     -- Link up the velocity fields
@@ -206,8 +212,11 @@ function tracker:linkData()
     idx[#idx+1]             = j
     colsizes[#colsizes + 1] = 1
     padsizes[#padsizes + 1] = 2
---    grouplink[#grouplink+1] = {-2, -1}       
-    grouplink[#grouplink+1] = {-1}    
+    if ( self.selectionBehavior == 1 ) then
+      grouplink[#grouplink+1] = {-2, -1}
+    else       
+      grouplink[#grouplink+1] = {-1}    
+    end
     headers[#headers + 1]   = ''     
   end
   local link = {}
@@ -1546,11 +1555,22 @@ function tracker:selectMIDIItems()
   reaper.MIDI_SelectAll(self.take, false)
 end
 
+-- TO DO
 function tracker:myClippy()
   local newclipboard = {}
+  local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+  local noteStart = self.data.note  
+  local notes = self.notes
   
+  local chan = idxfields[x]
+  local selected = noteStart[ chan*self.rows + y - 1 ]
+  local note = notes[selected]
   
-  
+  for jx = cp.xstart, cp.xstop do
+    for jy = cp.ystart, cp.ystop do
+      local pitch, vel, startppqpos, endppqpos = table.unpack( note )
+    end
+  end
   
   clipboard = newclipboard
 end
