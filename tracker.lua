@@ -88,6 +88,9 @@ keys.endBlock   = { 1,    0,  0,    5 }          -- CTRL + E
 keys.cutBlock   = { 1,    0,  0,    24 }         -- CTRL + X
 keys.pasteBlock = { 1,    0,  0,    22 }         -- CTRL + V
 keys.copyBlock  = { 1,    0,  0,    3 }          -- CTRL + C
+keys.shiftup    = { 0,    0,  1,    43 }         -- SHIFT + Num pad+
+keys.shiftdown  = { 0,    0,  1,    45 }         -- SHIFT + Num pad-
+--
 
 -- Base pitches
 keys.pitches = {}
@@ -185,7 +188,8 @@ function tracker:linkData()
     idx[#idx+1]             = j
     colsizes[#colsizes + 1] = 3
     padsizes[#padsizes + 1] = 1
-    grouplink[#grouplink+1] = {1, 2}
+    --grouplink[#grouplink+1] = {1, 2}
+    grouplink[#grouplink+1] = {0}    
     headers[#headers + 1]   = string.format(' Ch%2d', j)
     
     -- Link up the velocity fields
@@ -193,7 +197,8 @@ function tracker:linkData()
     idx[#idx+1]             = j
     colsizes[#colsizes + 1] = 1
     padsizes[#padsizes + 1] = 0
-    grouplink[#grouplink+1] = {-1, 1}       
+--    grouplink[#grouplink+1] = {-1, 1}
+    grouplink[#grouplink+1] = {1}    
     headers[#headers + 1]   = ''     
     
     -- Link up the velocity fields
@@ -201,7 +206,8 @@ function tracker:linkData()
     idx[#idx+1]             = j
     colsizes[#colsizes + 1] = 1
     padsizes[#padsizes + 1] = 2
-    grouplink[#grouplink+1] = {-2, -1}       
+--    grouplink[#grouplink+1] = {-2, -1}       
+    grouplink[#grouplink+1] = {-1}    
     headers[#headers + 1]   = ''     
   end
   local link = {}
@@ -530,6 +536,65 @@ function tracker:placeOff()
       end
     end
   end
+end
+
+---------------------
+-- Shift operator
+---------------------
+function tracker:shiftAt( x, y, shift )
+  local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+  local noteStart = self.data.noteStart  
+  local notes = self.notes
+  
+  local chan = idxfields[x]
+  local selected = noteStart[ chan*self.rows + y - 1 ]
+  
+  if ( selected ) then
+    local note = notes[selected]
+    if ( datafields[x] == 'text' ) then
+      -- Note
+      local pitch, vel, startppqpos, endppqpos = table.unpack( note )
+      reaper.MIDI_SetNote(self.take, selected, nil, nil, nil, nil, nil, pitch+shift, nil, true) 
+    elseif ( datafields[x] == 'vel1' ) or ( datafields[x] == 'vel2' ) then
+      -- Velocity
+      local pitch, vel, startppqpos, endppqpos = table.unpack( note )
+      reaper.MIDI_SetNote(self.take, selected,   nil, nil, nil, nil, nil, nil, vel+shift, true)     
+    end
+  end
+end
+
+function tracker:shiftup()
+  local cp = self.cp
+  reaper.Undo_OnStateChange2(0, "Tracker: Shift operation")
+  reaper.MarkProjectDirty(0)
+  
+  if ( cp.ystop == -1 ) then
+    self:shiftAt( tracker.xpos, tracker.ypos, 1 )
+  else
+    for jx = cp.xstart, cp.xstop do
+      for jy = cp.ystart, cp.ystop do
+        self:shiftAt( jx, jy, 1 )
+      end
+    end
+  end
+  reaper.MIDI_Sort(self.take)
+end
+
+function tracker:shiftdown()
+  local cp = self.cp
+  reaper.Undo_OnStateChange2(0, "Tracker: Shift operation")
+  reaper.MarkProjectDirty(0)
+  
+  if ( cp.ystop == -1 ) then  
+    self:shiftAt( tracker.xpos, tracker.ypos, -1 )
+  else
+    for jx = cp.xstart, cp.xstop do
+      for jy = cp.ystart, cp.ystop do
+        self:shiftAt( jx, jy, -1 )
+      end
+    end
+  end
+  reaper.MIDI_Sort(self.take)
 end
 
 ---------------------
@@ -1647,6 +1712,10 @@ end
     tracker:pasteBlock()
   elseif inputs('copyBlock') then
     tracker:copyBlock()  
+  elseif inputs('shiftup') then
+    tracker:shiftup()
+  elseif inputs('shiftdown') then
+    tracker:shiftdown()
   elseif ( lastChar == 0 ) then
     -- No input
   elseif ( lastChar == -1 ) then      
