@@ -49,6 +49,8 @@ tracker.cp.xstop = -1
 tracker.cp.ystop = -1
 tracker.cp.all = 0
 
+tracker.magicOverlap = 0.01337
+
 tracker.selectionBehavior = 0
 tracker.transpose = 3
 tracker.advance = 1
@@ -621,10 +623,7 @@ function tracker:addNote( inChar )
   -- Determine fieldtype, channel and row
   local ftype, chan, row = self:getLocation()
   local noteToEdit = noteStart[rows*chan+row]
-  local noteToInterrupt = noteGrid[rows*chan+row]
-   
-  reaper.Undo_OnStateChange2(0, "Tracker: Add note / Edit volume")
-  reaper.MarkProjectDirty(0)       
+  local noteToInterrupt = noteGrid[rows*chan+row] 
 
    -- What are we manipulating here?
   if ( ftype == 'text' ) then
@@ -694,10 +693,7 @@ function tracker:addNote( inChar )
       reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, nil, newvel, true)
       self.ypos = self.ypos + self.advance
     end
-  end
-  
-  tracker:deleteNow()
-  reaper.MIDI_Sort(self.take)
+  end  
 end
 
 --------------------------
@@ -959,8 +955,6 @@ function tracker:delete()
   local singlerow = self:rowToPpq(1)
   local modify    = 0
 
-  reaper.Undo_OnStateChange2(0, "Tracker: Delete (Del)")
-
   -- Determine fieldtype, channel and row
   local ftype, chan, row = self:getLocation()
   
@@ -992,10 +986,7 @@ function tracker:delete()
   else
     print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
     return
-  end
-  
-  tracker:deleteNow()
-  reaper.MIDI_Sort(self.take)
+  end  
 end
 
 -- REAPER seems to be doing this already
@@ -1555,21 +1546,95 @@ function tracker:selectMIDIItems()
   reaper.MIDI_SelectAll(self.take, false)
 end
 
--- TO DO
+-- For later, when we want to share clipboard data between trackers
+function serializeTable(val, name, depth)
+    depth = depth or 0
+
+    local tmp = string.rep(" ", depth)
+    if name then tmp = tmp .. name .. " = " end
+
+    if type(val) == "table" then
+        tmp = tmp .. "{" 
+        for k, v in pairs(val) do
+            tmp =  tmp .. serializeTable(v, k, depth + 1) .. ","
+        end
+
+        tmp = tmp .. string.rep(" ", depth) .. "}"
+    elseif type(val) == "number" then
+        tmp = tmp .. tostring(val)
+    elseif type(val) == "string" then
+        tmp = tmp .. string.format("%q", val)
+    elseif type(val) == "boolean" then
+        tmp = tmp .. (val and "true" or "false")
+    end
+
+    return tmp
+end
+
+-- A list of the channels is maintained so that we can verify that the paste
+-- list is compatible.
+function tracker:addChannelToClipboard(clipboard, channel)
+  if ( not clipboard.channels ) then
+    clipboard.channels = {}
+  end
+  clipboard.channels[#clipboard.channels + 1] = {}
+  clipboard.channels[#clipboard.channels + 1].fieldtype = channel
+end
+
+function tracker:addNoteToClipboard(clipboard, note)
+  if ( not clipboard.channels[#clipboard.channels].notes ) then
+    clipboard.channels[#clipboard.channels].notes = {}
+  end
+  clipboard.channels[#clipboard.channels].notes[#clipboard.channels[#clipboard.channels].notes+1] = note
+end
+
+function tracker:addTxtToClipboard(clipboard, txt)
+  if ( not clipboard.channels[#clipboard.channels].notes ) then
+    clipboard.channels[#clipboard.channels].txts = {}
+  end
+  clipboard.channels[#clipboard.channels].txts[#clipboard.channels[#clipboard.channels].txts+1] = txt 
+end
+
+-- TO DO clipboard functionality
 function tracker:myClippy()
   local newclipboard = {}
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
-  local noteStart = self.data.note  
-  local notes = self.notes
+  local data      = self.data
+  local noteGrid  = data.note
+  local noteStart = data.noteStart  
+  local notes     = self.notes
+  local offList   = self.offList
+  local rows      = self.rows
   
   local chan = idxfields[x]
   local selected = noteStart[ chan*self.rows + y - 1 ]
   local note = notes[selected]
-  
-  for jx = cp.xstart, cp.xstop do
+   
+  -- All we should be copying is note starts and note stops
+  local jx = cp.xstart
+  while ( jx < cp.xstop ) do
+    self:addChannelToClipboard( newclipboard, datafields[jx] )
     for jy = cp.ystart, cp.ystop do
-      local pitch, vel, startppqpos, endppqpos = table.unpack( note )
+      if ( ( datafields[jx] == 'text' ) or ( datafields[jx] == 'vel1' ) or ( datafields[jx] == 'vel2' ) ) then
+        local chan = idxfields[jx]
+        local loc = chan * rows + jy
+        if ( noteStart[ loc ] ) then
+          -- A note
+          self:addNoteToClipboard( newclipboard, jx, fieldtype, notes[ noteStart[loc] ] )
+          
+        elseif ( noteGrid[ loc ] < -1 ) then
+          -- An OFF symbol
+          local offidx = self:gridValueToOFFidx( noteGrid[loc] )
+          self:addTxtToClipboard( newclipboard, offList[ offidx ] )
+        end
+      end
     end
+    if ( datafields[jx] == 'text' ) then
+      jx = jx + 2
+    elseif ( datafields[jx] == 'vel1' ) then
+      jx = jx + 1
+    end
+    jx = jx + 1
   end
   
   clipboard = newclipboard
@@ -1683,7 +1748,6 @@ local function updateLoop()
   end  
 
 if ( lastChar ~= 0 ) then
-  print(lastChar)
 end
  
   if inputs('left') then
@@ -1697,7 +1761,10 @@ end
   elseif inputs('off') then
     tracker:placeOff()
   elseif inputs('delete') then 
+    reaper.Undo_OnStateChange2(0, "Tracker: Delete (Del)")
     tracker:delete()
+    tracker:deleteNow()
+    reaper.MIDI_Sort(tracker.take)
   elseif inputs('home') then
     tracker.ypos = 0
   elseif inputs('End') then
@@ -1742,7 +1809,11 @@ end
     -- Closed window
   elseif ( gfx.mouse_cap == 0 ) then
     -- Notes here
+    reaper.Undo_OnStateChange2(0, "Tracker: Add note / Edit volume")
+    reaper.MarkProjectDirty(0)  
     tracker:addNote(lastChar)
+    tracker:deleteNow()
+    reaper.MIDI_Sort(tracker.take)
   end
   
   tracker:forceCursorInRange()
