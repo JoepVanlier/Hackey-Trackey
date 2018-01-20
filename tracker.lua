@@ -49,7 +49,8 @@ tracker.cp.xstop = -1
 tracker.cp.ystop = -1
 tracker.cp.all = 0
 
-tracker.magicOverlap = 0.01337
+tracker.outChannel = 1
+tracker.magicOverlap = 1.337
 
 tracker.selectionBehavior = 0
 tracker.transpose = 3
@@ -178,7 +179,7 @@ function tracker:linkData()
   local grouplink = {}    -- Stores what other columns are linked to this one (some act as groups)
   
   datafield[#datafield+1] = 'legato'
-  idx[#idx+1]             = 1
+  idx[#idx+1]             = 0
   colsizes[#colsizes+1]   = 1
   padsizes[#padsizes+1]   = 1
   grouplink[#grouplink+1] = {0}
@@ -693,6 +694,8 @@ function tracker:addNote( inChar )
       reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, nil, newvel, true)
       self.ypos = self.ypos + self.advance
     end
+  elseif ( ftype == 'legato' ) then
+    self:addLegato( row )
   end  
 end
 
@@ -703,6 +706,14 @@ end
 function tracker:clearDeleteLists()
   tracker.deleteNotes = {}
   tracker.deleteText = {}
+end
+
+function tracker:clearInsertLists()
+  tracker.insertTxt = {}
+end
+
+function tracker:SAFE_InsertTextSysexEvt(ppq, txtType, str)
+  table.insert( tracker.insertTxt, {ppq, txtType, str} )
 end
 
 function tracker:SAFE_DeleteNote( take, note )
@@ -732,16 +743,20 @@ function orderedpairs(inTable, order)
   end
 end
 
+function tracker:insertNow( )
+  for i,v in pairs( tracker.insertTxt ) do
+    reaper.MIDI_InsertTextSysexEvt(self.take, false, false, v[1], v[2], v[3])
+  end
+end
+
 function tracker:deleteNow( )
   local deleteNotes = self.deleteNotes
-  local deleteText  = self.deleteNotes
+  local deleteText  = self.deleteText
   local i
 
-  local deleteNotes = tracker.deleteNotes
   for i,v in orderedpairs(deleteNotes) do
     reaper.MIDI_DeleteNote(self.take, v)
   end
-  local deleteText = tracker.deleteText
   for i,v in orderedpairs(deleteText) do
     reaper.MIDI_DeleteTextSysexEvt(self.take, v)
   end    
@@ -818,11 +833,7 @@ function tracker:backspace()
    -- What are we manipulating here?
   if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) ) then
     local noteGrid = data.note
-    local noteStart = data.noteStart      
-    
-    reaper.Undo_OnStateChange2(0, "Tracker: Delete note (Backspace)")
-    reaper.MarkProjectDirty(0)          
-    
+    local noteStart = data.noteStart          
     local lastnote
     local note = noteGrid[rows*chan+row]
     local noteToDelete = noteStart[rows*chan+row]
@@ -854,11 +865,17 @@ function tracker:backspace()
     if ( noteToDelete or ( note and ( note < -1 ) ) ) then
       self:deleteNote(chan, row, -1)
     end
-    
-    tracker:deleteNow()
-    reaper.MIDI_Sort(self.take)
-    
   elseif ( ftype == 'legato' ) then
+    local lastleg = false
+    local legato = self.legato
+    for i = rows-1,row,-1 do
+      if ( ( lastleg == true ) and ( legato[i] == -1 ) ) then
+        self:addLegato( i )
+      elseif ( ( lastleg == false ) and ( legato[i] > -1 ) ) then
+        self:deleteLegato( i )
+      end
+      lastleg = legato[i]>-1
+    end
   else
     print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
     return
@@ -927,7 +944,6 @@ function tracker:deleteNote(channel, row, shiftIn)
       if ( ( not shouldBeEmpty1 ) and ( not shouldBeEmpty2 ) ) then    -- <== TO-DO: figure out why this is +2, expected +1
         -- We need an explicit OFF symbol. We need to store this separately!
         tracker:addNoteOFF(endppqpos + shift * singlerow, channel)      
-        print("we are adding a note off from the deleted note")
       end
       self:SAFE_DeleteNote(self.take, noteToDelete)      
     else
@@ -981,8 +997,8 @@ function tracker:delete()
       self:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, noteToDelete)
       self:deleteNote(chan, row)
     end
-    
   elseif ( ftype == 'legato' ) then
+    self:deleteLegato(row)
   else
     print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
     return
@@ -1016,7 +1032,7 @@ end
 -- MIDI editing will take place, since it will invalidate the notes matrices
 ---------------------------------------------------------------------------------------------------
 function tracker:shiftNote(chan, row, shift) 
-  local offList     = self.offList
+  local txtList     = self.txtList
   local singlerow   = self:rowToPpq(1)
   local noteGrid    = self.data.note
   local rows        = self.rows
@@ -1043,7 +1059,7 @@ function tracker:shiftNote(chan, row, shift)
   if ( gridValue < -1 ) then
     -- It is an OFF
     local offidx = self:gridValueToOFFidx( gridValue )
-    local ppq = table.unpack( offList[offidx] )
+    local ppq = table.unpack( txtList[offidx] )
     if ( row < rows-1 ) then
       reaper.MIDI_SetTextSysexEvt(self.take, offidx, nil, nil, ppq + shift*singlerow, nil, "", true)
     else
@@ -1058,6 +1074,7 @@ end
 function tracker:insert()
   local data      = self.data
   local singlerow = self:rowToPpq(1)
+  local rows     = self.rows
   
   -- Determine fieldtype, channel and row
   local ftype, chan, row = self:getLocation()  
@@ -1066,11 +1083,7 @@ function tracker:insert()
   if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) ) then
     local noteGrid = data.note
     local noteStart= data.noteStart    
-    local rows     = self.rows
     local notes    = self.notes
-
-    reaper.Undo_OnStateChange2(0, "Tracker: Insert")
-    reaper.MarkProjectDirty(0)
     
     local elongate
     -- Are we inside a note? ==> It needs to be elongated!    
@@ -1118,10 +1131,16 @@ function tracker:insert()
       end
       lastnote = note
     end
-    tracker:deleteNow()
-    reaper.MIDI_Sort(self.take)
   elseif ( ftype == 'legato' ) then
-
+    local lastleg = false
+    for i = row,rows-1 do
+      if ( ( lastleg == true ) and ( self.legato[i] == -1 ) ) then
+        self:addLegato( i )
+      elseif ( ( lastleg == false ) and ( self.legato[i] > -1 ) ) then
+        self:deleteLegato( i )
+      end
+      lastleg = self.legato[i]>-1
+    end
   else
     print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
     return
@@ -1254,7 +1273,16 @@ function tracker:assignFromMIDI(channel, idx)
   local starts = self.noteStarts
   local pitch, vel, startppqpos, endppqpos = table.unpack( notes[idx] ) 
   local ystart = math.floor( startppqpos * self.rowPerPpq + self.eps )
+
+  -- Is this a legato note? Pretend it is shorter.
+  if ( channel == 1 ) then
+    local endrow = math.floor( endppqpos * self.rowPerPpq )  
+    if ( self.legato[endrow-1] and self.legato[endrow-1] > -1 ) then
+      endppqpos = endppqpos - tracker.magicOverlap
+    end
+  end
   local yend = math.floor( endppqpos * self.rowPerPpq - self.eps )
+  
   
   -- This note is not actually present
   if ( ystart > self.rows-1 ) then
@@ -1295,9 +1323,9 @@ end
 function tracker:assignOFF(channel, idx)
   local data = self.data
   local rows = self.rows
-  local offList = self.offList
+  local txtList = self.txtList
   
-  local ppq = table.unpack( offList[idx] )
+  local ppq = table.unpack( txtList[idx] )
   local row = math.floor( ppq * self.rowPerPpq )
   data.text[rows*channel + row] = 'OFC'
   data.note[rows*channel + row] = -idx - 2
@@ -1341,22 +1369,86 @@ function tracker:initializeGrid()
   data.vel1 = {}
   data.vel2 = {}    
   data.legato = {}
+  self.legato = {}
   local channels = self.channels
   local rows = self.rows
   for x=0,channels-1 do
     for y=0,rows-1 do
-      data.note[rows*x+y] = nil
-      data.text[rows*x+y] = '...'
-      data.vel1[rows*x+y] = '.'
-      data.vel2[rows*x+y] = '.'            
+      data.note[rows*x+y]   = nil
+      data.text[rows*x+y]   = '...'
+      data.vel1[rows*x+y]   = '.'
+      data.vel2[rows*x+y]   = '.'            
+             
     end
   end
   
   for y=0,rows-1 do
-    data.legato[y] = 0
+    self.legato[y] = -1
+    data.legato[y] = '.' 
   end
   
   self.data = data
+end
+
+function tracker:deleteLegato( row )
+  local data      = self.data
+  local noteGrid  = data.note
+  local noteStart = data.noteStart  
+  local notes     = self.notes
+  local rows      = self.rows
+
+  local idx = self.legato[row]
+  if ( idx and idx > -1 ) then
+    if ( row < rows-1 ) then
+      -- If we delete a legato, check whether there is a note transition next to it, and shorten
+      -- that note transition if required.
+      
+      local npos = rows+row
+      local noteOfInterest = noteGrid[npos]
+      if ( noteOfInterest and noteStart[npos+1] ) then
+        if ( ( noteOfInterest > -1 ) and ( noteStart[npos+1] > -1 ) ) then
+          local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteOfInterest] )
+          reaper.MIDI_SetNote(self.take, noteOfInterest, nil, nil, nil, endppqpos - tracker.magicOverlap, nil, nil, nil, true)
+        end
+      end  
+    end  
+    self:SAFE_DeleteText(self.take, idx)
+  end
+end
+
+function tracker:addLegato( row )
+  local data      = self.data
+  local noteGrid  = data.note
+  local noteStart = data.noteStart  
+  local notes     = self.notes
+  local rows      = self.rows
+
+  local npos = rows+row
+  if ( self.legato[row] == -1 ) then
+    if ( row < self.rows-1 ) then
+      -- If we add a legato, where there was none, we need to check whether there is a note switch next to it
+      -- if so, extend that one.
+      local noteOfInterest = noteGrid[npos]
+      if ( noteOfInterest and noteStart[npos+1] ) then
+        if ( ( noteOfInterest > -1 ) and ( noteStart[npos+1] > -1 ) ) then
+          local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteOfInterest] )
+          reaper.MIDI_SetNote(self.take, noteOfInterest, nil, nil, nil, endppqpos + tracker.magicOverlap, nil, nil, nil, true)
+        end
+      end      
+    end
+    
+    -- Mark it
+    local ppq = self:rowToPpq(row)
+    self:SAFE_InsertTextSysexEvt(ppq, 1, 'LEG')    
+  end
+end
+
+function tracker:readLegato( ppqpos, i )
+  local data    = self.data
+  local row     = self:ppqToRow(ppqpos)
+  local legato  = self.legato
+  data.legato[row] = "1"
+  legato[row] = i
 end
 
 --------------------------------------------------------------
@@ -1378,7 +1470,7 @@ function tracker:update()
       -- Find the OFF markers and place them first. They could have only come from the tracker sytem
       -- so don't worry too much.
       local offs = {}
-      self.offList = offs
+      self.txtList = offs
       for i=0,textsyxevtcntOut do
         local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
         if ( typeidx == 1 ) then
@@ -1388,6 +1480,10 @@ function tracker:update()
             local channel = tonumber( substr )
             offs[i] = {ppqpos}
             self:assignOFF(channel, i)
+          end
+          if ( string.sub(msg,1,3) == 'LEG' ) then
+            offs[i] = {ppqpos}
+            self:readLegato(ppqpos, i)
           end
         end
       end
@@ -1603,7 +1699,7 @@ function tracker:myClippy()
   local noteGrid  = data.note
   local noteStart = data.noteStart  
   local notes     = self.notes
-  local offList   = self.offList
+  local txtList   = self.txtList
   local rows      = self.rows
   
   local chan = idxfields[x]
@@ -1625,7 +1721,7 @@ function tracker:myClippy()
         elseif ( noteGrid[ loc ] < -1 ) then
           -- An OFF symbol
           local offidx = self:gridValueToOFFidx( noteGrid[loc] )
-          self:addTxtToClipboard( newclipboard, offList[ offidx ] )
+          self:addTxtToClipboard( newclipboard, txtList[ offidx ] )
         end
       end
     end
@@ -1725,13 +1821,28 @@ local function inputs( name )
   return false
 end
 
+function tracker:setOutChannel( ch )
+  local retval, str = reaper.GetItemStateChunk( self.item, "zzzzzzzzz")
+
+  if ( not string.find( str, "OUTCH" ) ) then
+    local strOut = string.gsub(str, "<SOURCE MIDI", "<SOURCE MIDI\nOUTCH 1")
+    reaper.SetItemStateChunk( self.item, strOut )
+  end
+end
+
 ------------------------------
 -- Main update loop
 -----------------------------
 local function updateLoop()
   local tracker = tracker
 
+  if ( tracker.outChannel ) then
+    --reaper.GetItemStateChunk ( tracker.item, "OUTCH", false )
+    tracker:setOutChannel()
+  end
+
   tracker:clearDeleteLists()
+  tracker:clearInsertLists()
 
   -- Check if the note data or take changed, if so, update the note contents
   if ( not tracker:checkChange() ) then
@@ -1778,9 +1889,17 @@ end
     reaper.DeleteProjectMarker(0, loc, 0)
     togglePlayPause()
   elseif inputs('insert') then
+    reaper.Undo_OnStateChange2(0, "Tracker: Insert")
+    reaper.MarkProjectDirty(0)
     tracker:insert()
+    tracker:deleteNow()
+    reaper.MIDI_Sort(tracker.take)
   elseif inputs('remove') then
+    reaper.Undo_OnStateChange2(0, "Tracker: Backspace")
+    reaper.MarkProjectDirty(0)  
     tracker:backspace()
+    tracker:deleteNow()
+    reaper.MIDI_Sort(tracker.take)
   elseif inputs('pgup') then
     tracker.ypos = tracker.ypos - tracker.page
   elseif inputs('pgdown') then
@@ -1818,8 +1937,9 @@ end
   
   tracker:forceCursorInRange()
   tracker:printGrid()
-  gfx.update()  
-   
+  gfx.update()
+  tracker:insertNow()
+  
   if lastChar ~= 27 and lastChar ~= -1 then
     reaper.defer(updateLoop)
   else
