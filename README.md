@@ -14,16 +14,27 @@ specific purposes then this plugin is not useful to you. Note that depending on
 what you are doing, the plugin may also add text events to your MIDI data to keep 
 track of information Hackey Trackey needs to preserve the tracked layout.
 
-Note that non-tracker input should be drawn with channel 0, to make the plugin 
-work as intended. The plugin remaps data in channel 0 to MIDI channel 1-16. 
-It does so after assigning the notes already in channel 1-16 to their respective 
-columns in the tracker. If your plugins simply need their MIDI data to arrive at 
-a specific channel, then you can always remap the MIDI channel by forcing a 
-specific MIDI output channel. This limits you to one channel output per MIDI block 
-however.
+The plugin uses the MIDI note channel property to store which column a note 
+is in. OFF and legato symbols not associated with a normal end are stored in text.
+
+Because the plugin remaps the channel, non-tracker input should be created with 
+channel 0. The plugin remaps data in channel 0 to MIDI channel 1-16, automatically
+assigning new incoming notes to a column where enough room is free. Notes in 
+channel 1-16 are assigned first, to keep anything that was made in the tracker 
+stable.
 
 The location of the notes in the tracker view will be stable as long as no data 
 is entered into MIDI channels other than zero via the piano roll or other methods.
+
+Because typically, it is preferred to have MIDI data go to a specific out channel, 
+the plugin optionally maps all the MIDI data to a specific channel via the out-channel 
+property.
+
+By default, tracked notes do not overlap. However, for some purposes, overlap may be
+desirable (some monophonic VSTs interpret this as glide/legato mode). For this, one can 
+use the column L. Setting 1 in a row here, means that this note will be glided into. 
+This is implementing by simpliy stretching the previous note a little bit (the amount 
+is stored in tracker.magicOverlap). Legato is only applied to channel 1 in the tracker.
 
 # Issues/Limitations
 There are some things which are unfortunately not possible as far as I am aware.
@@ -46,6 +57,13 @@ to assign multiple velocities to a single MIDI note. By default, when entering a
 velocity in a new line, the last MIDI note on that tracked channel will be copied to 
 mimick the same end behaviour.
 
+Note that when using the legato mode, it is no longer possible to have the same note 
+be repeated on channel 1. Doing so would cause problems when playing the MIDI. Hence
+1 D-2
+1 D-2
+would be merged into one single MIDI note. I have not found a good workaround for this 
+so far, but if you have a good idea, please contact me.
+
 # Special keys
 | Key                   | Action 								|
 | --------------------- | --------------------------------------------------------------------- |
@@ -66,13 +84,9 @@ mimick the same end behaviour.
 
 # Planned features
 - Cut/Copy pasting blocks within the tracker.
-- Legato vs non-legato playing (non-legato makes sure that the MIDI notes do not touch).
-  This is meant for monophonic plugins which 'glide' from one note to another when notes 
-  overlap.
 - Interpolation.
 
 # Features to be investigated whether they are feasible/reasonable
 - Columns for MIDI controls.
 - Cutting/Copying to MIDI editor clipboard.
-- Showing columns arising from different MIDI objects side by side
 

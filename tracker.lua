@@ -641,12 +641,6 @@ function tracker:shiftdown()
   reaper.MIDI_Sort(self.take)
 end
 
--- When two consecutive identically pitched notes appear and they are legato, this presents
--- a problem, since something weird happens to the second, shortening the whole thing.
-function tracker:checkMerge()
-
-end
-
 function tracker:addNote(startrow, endrow, chan, pitch, velocity)
   local startppqpos = self:rowToPpq(startrow)
   local endppqpos   = self:rowToPpq(endrow)
@@ -1575,6 +1569,42 @@ function tracker:readLegato( ppqpos, i )
   legato[row] = i
 end
 
+-----------------------------
+-- Merge problematic overlaps
+-----------------------------
+function tracker:mergeOverlaps()
+  -- Grab the notes and store them in channels
+  local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+
+  lastpitch = -1;
+
+  -- Fetch the notes
+  -- We only have potential mergers in channel 1 (the legato channel) and at most one.
+  -- Only adjacent notes will be merged.
+  local ch1notes = {}
+  for i=0,notecntOut do
+    local retval, selected, muted, startppqpos, endppqpos, chan, pitch, vel = reaper.MIDI_GetNote(self.take, i)
+    if ( retval == true ) then
+      if ( chan == 1 ) then
+        if ( lastpitch == pitch ) then
+          if ( startppqpos < lastend ) then
+            -- Kill this one
+            reaper.MIDI_SetNote(self.take, i-1, nil, nil, nil, endppqpos, nil, nil, nil, true)
+            tracker:SAFE_DeleteNote( self.take, i )
+          end
+        end
+
+        --if ( not ch1notes[pitch] ) then
+        --  ch1notes[pitch] = {};
+        --end
+        --ch1notes[pitch][#ch1notes[pitch]+1] = { startppqpos, endppqpos, i }
+        lastpitch = pitch;
+        lastend = endppqpos;
+      end
+    end
+  end
+end
+
 --------------------------------------------------------------
 -- Update function
 -- heavy-ish, avoid calling too often (only on MIDI changes)
@@ -1586,6 +1616,11 @@ function tracker:update()
     self:linkData()
     self:updatePlotLink()
     self:initializeGrid()
+    
+    -- Remove duplicates potentially caused by legato system
+    tracker:clearDeleteLists()
+    self:mergeOverlaps()
+    tracker:deleteNow()
     
     -- Grab the notes and store them in channels
     local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
