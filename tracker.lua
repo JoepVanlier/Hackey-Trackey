@@ -820,8 +820,11 @@ end
 ---------------------
 -- Check whether the previous note can grow if this one would be gone
 -- Shift indicates that the fields downwards of row will go up
+-- legatoWasOff indicates that the old note end position was capped by
+-- a custom OFF and therefore set to not be legato despite what the field
+-- says.
 ---------------------
-function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, noteToDelete, shift)
+function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, noteToDelete, shift, legatoWasOff)
   local modify = 0
   local offset = shift or 0
   if ( row > -1 ) then
@@ -843,8 +846,13 @@ function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, note
       local magic = 0
       if ( k < rows ) then
         resize = resize - offset
-        -- We might want to add some extra for legato
-        magic = self:legatoResize(0, self.legato[row], self.legato[k])
+        -- We might want to add some extra for legato. Note that coming from an OFF symbol,
+        -- we need to take into account that these have forced legato offs.
+        if ( legatoWasOff ) then
+          magic = self:legatoResize(0, -1, self.legato[k])        
+        else
+          magic = self:legatoResize(0, self.legato[row], self.legato[k])
+        end
       end
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToResize] )
       reaper.MIDI_SetNote(self.take, noteToResize, nil, nil, startppqpos, self:clampPpq( endppqpos + singlerow * resize + magic ), nil, nil, nil, true)
@@ -951,7 +959,13 @@ function tracker:backspace()
     if ( noteToDelete or ( note and note < 0 ) ) then    
       -- Are we on the start of a note or an OFF symbol? This would mean that the previous note can grow
       -- Check whether there is a note before this, and elongate it until the next blockade
-      self:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, noteStart[rows*chan+row], 1)
+      if ( note < 0 ) then
+        -- OFFs are special, in the sense that they block the legato extension. This means 
+        -- that we should set the final flag to one to convey this to checkNoteGrow
+        self:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, noteStart[rows*chan+row], 1,   1)
+      else
+        self:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, noteStart[rows*chan+row], 1)      
+      end
     elseif ( note and ( note > -1 ) ) then
       -- We are in the middle of a note, so it must get smaller
       self:shrinkNote(chan, row, 1)
@@ -1086,7 +1100,7 @@ function tracker:delete()
     -- OFF marker
     if ( noteGrid[rows*chan+row] and ( noteGrid[rows*chan+row] < 0 ) ) then
       -- Check whether the previous note can grow now that this one is gone
-      tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow)
+      tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, nil, nil, 1)
       if ( noteGrid[rows*chan+row] < -1 ) then
         self:deleteNote(chan, row)
       end
