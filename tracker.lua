@@ -553,7 +553,6 @@ function tracker:placeOff()
                 if ( prevnote ) then
                   local p2, v2, startppq2, endppq2 = table.unpack( notes[prevnote] )
                   endppq2 = endppq2-self.magicOverlap
-                  print(self.pitchTable[p2])
                   reaper.MIDI_SetNote(self.take, prevnote, nil, nil, nil, endppq2, nil, nil, nil, true)
                 end
               end
@@ -845,9 +844,7 @@ function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, note
       if ( k < rows ) then
         resize = resize - offset
         -- We might want to add some extra for legato
-        if ( self.legato[k] > -1 ) then
-          magic = tracker.magicOverlap
-        end
+        magic = self:legatoResize(0, self.legato[row], self.legato[k])
       end
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToResize] )
       reaper.MIDI_SetNote(self.take, noteToResize, nil, nil, startppqpos, self:clampPpq( endppqpos + singlerow * resize + magic ), nil, nil, nil, true)
@@ -1593,11 +1590,6 @@ function tracker:mergeOverlaps()
             tracker:SAFE_DeleteNote( self.take, i )
           end
         end
-
-        --if ( not ch1notes[pitch] ) then
-        --  ch1notes[pitch] = {};
-        --end
-        --ch1notes[pitch][#ch1notes[pitch]+1] = { startppqpos, endppqpos, i }
         lastpitch = pitch;
         lastend = endppqpos;
       end
@@ -1621,6 +1613,7 @@ function tracker:update()
     tracker:clearDeleteLists()
     self:mergeOverlaps()
     tracker:deleteNow()
+    reaper.MIDI_Sort(self.take)
     
     -- Grab the notes and store them in channels
     local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
