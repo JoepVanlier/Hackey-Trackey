@@ -31,8 +31,9 @@ tracker.eps = 1e-3
 tracker.fov = {}
 tracker.fov.scrollx = 0
 tracker.fov.scrolly = 0
-tracker.fov.width = 15
+tracker.fov.width = 16
 tracker.fov.height = 16
+tracker.fov.abswidth = 450
 
 tracker.hex = 1
 tracker.preserveOff = 1
@@ -41,6 +42,7 @@ tracker.ypos = 1
 tracker.xint = 0
 tracker.page = 4
 tracker.lastVel = 96
+tracker.rowPerQn = 4
 
 tracker.cp = {}
 tracker.cp.xstart = -1
@@ -96,6 +98,8 @@ keys.pasteBlock = { 1,    0,  0,    22 }         -- CTRL + V
 keys.copyBlock  = { 1,    0,  0,    3 }          -- CTRL + C
 keys.shiftup    = { 0,    0,  1,    43 }         -- SHIFT + Num pad+
 keys.shiftdown  = { 0,    0,  1,    45 }         -- SHIFT + Num pad-
+keys.octaveup   = { 1,    0,  0,    30064 }      -- CTRL + /\
+keys.octavedown = { 1,    0,  0,    1685026670 } -- CTRL + \/
 --
 
 -- Base pitches
@@ -122,6 +126,18 @@ keys.pitches.u = 47-12
 keys.pitches.i = 48-12
 keys.pitches.o = 50-12
 keys.pitches.p = 52-12
+
+keys.octaves = {}
+keys.octaves['0'] = 0
+keys.octaves['1'] = 1
+keys.octaves['2'] = 2
+keys.octaves['3'] = 3
+keys.octaves['4'] = 4
+keys.octaves['5'] = 5
+keys.octaves['6'] = 6
+keys.octaves['7'] = 7
+keys.octaves['8'] = 8
+keys.octaves['9'] = 9
 
 local function print(...)
   if ( not ... ) then
@@ -187,7 +203,7 @@ function tracker:linkData()
   padsizes[#padsizes+1]   = 1
   grouplink[#grouplink+1] = {0}
   headers[#headers+1]     = string.format( 'L' )
-  hints[#hints+1]         = 'Slide into this note from the last'
+  hints[#hints+1]         = 'Legato toggle'
   
   for j = 1,self.displaychannels do
     -- Link up the note fields
@@ -250,8 +266,8 @@ end
 ------------------------------
 function tracker:updatePlotLink()
   local plotData = {}
-  local originx = 45
-  local originy = 45
+  local originx = 35
+  local originy = 35
   local dx = 8
   local dy = 20
   plotData.barpad = 10
@@ -276,7 +292,13 @@ function tracker:updatePlotLink()
   local header = {}
   local description = {}
   local x = originx
-  for j = fov.scrollx+1,math.min(#colsizes,fov.width+fov.scrollx) do
+--  for j = fov.scrollx+1,math.min(#colsizes,fov.width+fov.scrollx) do
+  local q
+  for j = fov.scrollx+1,#colsizes do
+    xpred = x + colsizes[j] * dx + padsizes[j] * dx
+    if ( xpred > fov.abswidth ) then
+      break;
+    end
     xloc[#xloc + 1] = x
     xwidth[#xwidth + 1] = colsizes[j] * dx + padsizes[j]
     xlink[#xlink + 1] = idxfields[j]
@@ -285,10 +307,12 @@ function tracker:updatePlotLink()
     header[#header + 1] = headers[j]
     description[#hints + 1] = hints[j]
     x = x + colsizes[j] * dx + padsizes[j] * dx
+    q = j
   end
+  fov.width = q-fov.scrollx
   plotData.xloc = xloc
   plotData.xwidth = xwidth
-  plotData.totalwidth = x - padsizes[#padsizes] * dx - colsizes[#colsizes]*dx
+  plotData.totalwidth = 400 --x - padsizes[#padsizes] * dx - colsizes[#colsizes] * dx
   plotData.xstart = originx
   -- Variable dlink indicates what field the data can be found
   -- Variable xlink indicates the index that is being displayed
@@ -442,10 +466,37 @@ function tracker:printGrid()
     end
   end
   
+  -- Field descriptor
   gfx.x = plotData.xstart
   gfx.y = yloc[#yloc] + 1 * yheight[1] + itempady
   gfx.set(table.unpack(colors.headercolor))
   gfx.printf("%s", description[relx])
+  
+  str = string.format("Octave [%d] Advance [%d]", self.transpose, self.advance, self.rowPerQn)
+  gfx.x = plotData.xstart + tw - 8.2 * string.len(str)
+  gfx.y = yloc[#yloc] + 1 * yheight[1] + itempady
+  gfx.set(table.unpack(colors.headercolor))
+  gfx.printf(str)
+
+  --[[--
+  -- Octave
+  gfx.x = plotData.xstart + tw + itempadx * 2
+  gfx.y = yloc[1] + 1 * yheight[1] + itempady
+  gfx.set(table.unpack(colors.headercolor))
+  gfx.printf("Octave: %d", self.transpose)
+  
+  -- Advance
+  gfx.x = plotData.xstart + tw + itempadx * 2
+  gfx.y = yloc[1] + 3 * yheight[1] + itempady
+  gfx.set(table.unpack(colors.headercolor))
+  gfx.printf("Advance: %d", self.advance)  
+  
+  -- Rows / Qn
+  gfx.x = plotData.xstart + tw + itempadx * 2
+  gfx.y = yloc[1] + 5 * yheight[1] + itempady
+  gfx.set(table.unpack(colors.headercolor))
+  gfx.printf("Resolution: %d", self.rowPerQn)    
+  --]]--
   
   -- Draw the headers so we don't get lost :)
   gfx.set(table.unpack(colors.headercolor))
@@ -550,7 +601,7 @@ function tracker:placeOff()
             if ( row > 0 ) then
               if ( self.legato[row] > -1 ) then
                 local prevnote = noteGrid[idx-1]
-                if ( prevnote ) then
+                if ( prevnote and ( prevnote > -1 ) ) then
                   local p2, v2, startppq2, endppq2 = table.unpack( notes[prevnote] )
                   endppq2 = endppq2-self.magicOverlap
                   reaper.MIDI_SetNote(self.take, prevnote, nil, nil, nil, endppq2, nil, nil, nil, true)
@@ -559,12 +610,15 @@ function tracker:placeOff()
             end
           end
         
-          -- If it was the start of a note, this note requires deletion as well.
-          if ( row > 1 ) then
-            if ( not noteGrid[idx-1] ) then
+          if ( row > 0 ) then
+            local chk = noteGrid[idx-1]
+            if ( not chk or ( chk < 0 ) ) then
               ppq = self:rowToPpq(row)
               self:addNoteOFF(ppq, chan)
             end
+          else
+            ppq = self:rowToPpq(row)
+            self:addNoteOFF(ppq, chan)
           end
           
           -- If there is no note at the end
@@ -579,6 +633,7 @@ function tracker:placeOff()
       end
     end
   end
+  self.ypos = self.ypos + self.advance
 end
 
 ---------------------
@@ -655,6 +710,11 @@ end
 -- Add note
 ---------------------
 function tracker:createNote( inChar )
+
+  if ( not inChar or ( inChar > 256 ) ) then
+    return
+  end
+
   local char      = string.lower(string.char(inChar))
   local data      = self.data
   local notes     = self.notes
@@ -668,9 +728,11 @@ function tracker:createNote( inChar )
   local noteToEdit = noteStart[rows*chan+row]
   local noteToInterrupt
   if ( row > 0 ) then
-    noteToInterrupt = noteGrid[rows*chan+row-1] 
+    noteToInterrupt = noteGrid[rows*chan+row-1]
+  else
+    noteToInterrupt = noteGrid[rows*chan+row]
   end
-
+  
    -- What are we manipulating here?
   if ( ftype == 'text' ) then
     local note = keys.pitches[char]
@@ -697,7 +759,7 @@ function tracker:createNote( inChar )
       
         local extraDeletion
         if ( noteGrid[rows*chan+k] ) then
-          if ( noteGrid[rows*chan+k] < -1 ) then     
+          if ( noteGrid[rows*chan+k] < -1 ) then    
             extraDeletion = noteGrid[rows*chan+k]
             self:deleteNote(chan, k)
           end
@@ -717,7 +779,7 @@ function tracker:createNote( inChar )
             if ( chan == 1 ) then
               local legato = self.legato
               if ( legato[row] and ( legato[row] > -1 ) ) then
-               endppqpos = endppqpos + tracker.magicOverlap          
+                endppqpos = endppqpos + tracker.magicOverlap          
               end
             end
             
@@ -732,6 +794,16 @@ function tracker:createNote( inChar )
         end
       end
       self.ypos = self.ypos + self.advance
+    else
+      local octave = keys.octaves[char]
+      if ( octave ) then
+        if ( noteToEdit ) then
+          local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToEdit] )
+          pitch = pitch - math.floor(pitch/12)*12 + (octave+1) * 12        
+          reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, pitch, nil, true)
+        end
+        self.ypos = self.ypos + self.advance
+      end
     end
   elseif ( ( ftype == 'vel1' ) and validHex( char ) ) then
     if ( noteToEdit ) then
@@ -750,7 +822,14 @@ function tracker:createNote( inChar )
       self.ypos = self.ypos + self.advance
     end
   elseif ( ftype == 'legato' ) then
-    self:addLegato( row )
+    if ( char == '1' ) then
+      self:addLegato( row )
+    elseif ( char == '0' ) then
+      self:deleteLegato( row )
+    elseif ( char == '.' ) then
+      self:deleteLegato( row )    
+    end
+    self.ypos = self.ypos + self.advance
   end  
 end
 
@@ -840,7 +919,7 @@ function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, note
         k = k + 1
       end
       local resize = k-row
-      
+
       -- If we are the last note, then it may go to the end of the track, hence only subtract
       -- the shift offset if we are not the last note in the pattern
       local magic = 0
@@ -1038,38 +1117,40 @@ function tracker:deleteNote(channel, row, shiftIn)
   -- since we don't want them disappearing with the notes.
   noteToDelete = noteGrid[rows*channel+row]
   if ( tracker.preserveOff == 1 ) then
-    if ( noteToDelete > -1 ) then
-      -- We are deleting a note
-
-      -- We need a noteOFF iff
-      --   - There is no note on the previous row
-      local shouldBeEmpty1
-      if ( row > 0 ) then 
-        shouldBeEmpty1 = noteGrid[rows*channel+row-1]
-        shouldBeEmpty1 = shouldBeEmpty1 and ( shouldBeEmpty1 > -1 )
-      end
-            
-      --   - There is no note where the current note currently ends
-      local shouldBeEmpty2
-      local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToDelete] )
-      local endrow = self:ppqToRow(endppqpos)
-      shouldBeEmpty2 = noteGrid[rows*channel+endrow]
-      shouldBeEmpty2 = shouldBeEmpty2 and ( shouldBeEmpty2 > -1 )
-            
-      --   - The current note ended before the end of the pattern
-      -- This one is automatically fulfilled because events outside of the time range get deleted by reaper
-
-      if ( ( not shouldBeEmpty1 ) and ( not shouldBeEmpty2 ) ) then
-        -- We need an explicit OFF symbol. We need to store this separately!
-        tracker:addNoteOFF(endppqpos + shift * singlerow, channel)      
-      end
-      self:SAFE_DeleteNote(self.take, noteToDelete)      
-    else
-      -- We are deleting a custom OFF symbol
-      if ( noteToDelete < -1 ) then
-        -- It is an OFF
-        local offidx = self:gridValueToOFFidx( noteToDelete )
-        self:SAFE_DeleteText(self.take, offidx)
+    if ( noteToDelete ) then
+      if ( noteToDelete > -1 ) then
+        -- We are deleting a note
+  
+        -- We need a noteOFF iff
+        --   - There is no note on the previous row
+        local shouldBeEmpty1
+        if ( row > 0 ) then 
+          shouldBeEmpty1 = noteGrid[rows*channel+row-1]
+          shouldBeEmpty1 = shouldBeEmpty1 and ( shouldBeEmpty1 > -1 )
+        end
+              
+        --   - There is no note where the current note currently ends
+        local shouldBeEmpty2
+        local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToDelete] )
+        local endrow = self:ppqToRow(endppqpos)
+        shouldBeEmpty2 = noteGrid[rows*channel+endrow]
+        shouldBeEmpty2 = shouldBeEmpty2 and ( shouldBeEmpty2 > -1 )
+              
+        --   - The current note ended before the end of the pattern
+        -- This one is automatically fulfilled because events outside of the time range get deleted by reaper
+  
+        if ( ( not shouldBeEmpty1 ) and ( not shouldBeEmpty2 ) ) then
+          -- We need an explicit OFF symbol. We need to store this separately!
+          tracker:addNoteOFF(endppqpos + shift * singlerow, channel)      
+        end
+        self:SAFE_DeleteNote(self.take, noteToDelete)      
+      else
+        -- We are deleting a custom OFF symbol
+        if ( noteToDelete < -1 ) then
+          -- It is an OFF
+          local offidx = self:gridValueToOFFidx( noteToDelete )
+          self:SAFE_DeleteText(self.take, offidx)
+        end
       end
     end
   else
@@ -1338,7 +1419,6 @@ function tracker:getRowInfo()
     self.minppq = ppqPerSec * reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
     
     self.qnCount = mediaLength * ppqPerSec / ppqPerQn
-    self.rowPerQn = 4
     self.rowPerPpq = self.rowPerQn / ppqPerQn
     self.ppqPerRow = 1 / self.rowPerPpq
     self.rowPerSec = ppqPerSec * self.rowPerQn / ppqPerQn
@@ -1588,7 +1668,7 @@ function tracker:mergeOverlaps()
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
 
   lastpitch = -1;
-
+  
   -- Fetch the notes
   -- We only have potential mergers in channel 1 (the legato channel) and at most one.
   -- Only adjacent notes will be merged.
@@ -1774,7 +1854,7 @@ function tracker:checkChange()
       -- Take did not change, but did the note data?
       local retval, currentHash = reaper.MIDI_GetHash( self.take, false, "?" )
       if ( retval == true ) then
-        if ( currentHash ~= self.hash ) then
+        if ( ( currentHash ~= self.hash ) or ( self.modified == 1 ) ) then
           self.hash = currentHash
           self:update()
         end
@@ -1988,6 +2068,10 @@ local function inputs( name )
 end
 
 function tracker:setOutChannel( ch )
+  if not pcall( self.testGetTake ) then
+    return false
+  end
+
   if ( self.item ) then
     local retval, str = reaper.GetItemStateChunk( self.item, "zzzzzzzzz")
 
@@ -2027,8 +2111,9 @@ local function updateLoop()
   end  
 
 if ( lastChar ~= 0 ) then
+  --print(lastChar)
 end
- 
+  local modified = 0
   if inputs('left') then
     tracker.xpos = tracker.xpos - 1
   elseif inputs('right') then
@@ -2038,12 +2123,14 @@ end
   elseif inputs('down') then
     tracker.ypos = tracker.ypos + 1
   elseif inputs('off') then
+    modified = 1
     reaper.Undo_OnStateChange2(0, "Tracker: Place OFF")
     reaper.MarkProjectDirty(0)    
     tracker:placeOff()
     tracker:deleteNow()
     reaper.MIDI_Sort(tracker.take)
-  elseif inputs('delete') then 
+  elseif inputs('delete') then
+    modified = 1
     reaper.Undo_OnStateChange2(0, "Tracker: Delete (Del)")
     tracker:delete()
     tracker:deleteNow()
@@ -2061,12 +2148,14 @@ end
     reaper.DeleteProjectMarker(0, loc, 0)
     togglePlayPause()
   elseif inputs('insert') then
+    modified = 1
     reaper.Undo_OnStateChange2(0, "Tracker: Insert")
     reaper.MarkProjectDirty(0)
     tracker:insert()
     tracker:deleteNow()
     reaper.MIDI_Sort(tracker.take)
   elseif inputs('remove') then
+    modified = 1
     reaper.Undo_OnStateChange2(0, "Tracker: Backspace")
     reaper.MarkProjectDirty(0)  
     tracker:backspace()
@@ -2077,29 +2166,40 @@ end
   elseif inputs('pgdown') then
     tracker.ypos = tracker.ypos + tracker.page  
   elseif inputs('undo') then
+    modified = 1
     reaper.Undo_DoUndo2(0) 
   elseif inputs('redo') then
+    modified = 1  
     reaper.Undo_DoRedo2(0)  
   elseif inputs('beginBlock') then
     tracker:beginBlock()
   elseif inputs('endBlock') then
     tracker:endBlock()
   elseif inputs('cutBlock') then
+    modified = 1  
     tracker:cutBlock()
   elseif inputs('pasteBlock') then
+    modified = 1
     tracker:pasteBlock()
   elseif inputs('copyBlock') then
     tracker:copyBlock()  
   elseif inputs('shiftup') then
+    modified = 1
     tracker:shiftup()
   elseif inputs('shiftdown') then
+    modified = 1
     tracker:shiftdown()
+  elseif inputs('octaveup') then
+    tracker.transpose = tracker.transpose - 1  
+  elseif inputs('octavedown') then
+    tracker.transpose = tracker.transpose + 1  
   elseif ( lastChar == 0 ) then
     -- No input
   elseif ( lastChar == -1 ) then      
     -- Closed window
   elseif ( gfx.mouse_cap == 0 ) then
     -- Notes here
+    modified = 1
     reaper.Undo_OnStateChange2(0, "Tracker: Add note / Edit volume")
     reaper.MarkProjectDirty(0)  
     tracker:createNote(lastChar)
@@ -2111,6 +2211,14 @@ end
   tracker:printGrid()
   gfx.update()
   tracker:insertNow()
+  
+  -- Remove duplicates potentially caused by legato system
+  if ( modified == 1 ) then
+    tracker:clearDeleteLists()
+    tracker:mergeOverlaps()
+    tracker:deleteNow()
+    reaper.MIDI_Sort(tracker.take)
+  end
   
   if lastChar ~= 27 and lastChar ~= -1 then
     reaper.defer(updateLoop)
@@ -2124,7 +2232,7 @@ local function Main()
   tracker.tick = 0
   tracker:generatePitches()
   tracker:initColors()
-  gfx.init("Hackey Trackey v0.6", 640, 480, 0, 200, 200)
+  gfx.init("Hackey Trackey v0.6", 450, 385, 0, 200, 200)
   
   local reaper = reaper
   if ( reaper.CountSelectedMediaItems(0) > 0 ) then
