@@ -35,6 +35,7 @@ tracker.fov.width = 16
 tracker.fov.height = 16
 tracker.fov.abswidth = 450
 
+tracker.trackFX = 1           -- Do we also want to track the automation?
 tracker.hex = 1
 tracker.preserveOff = 1
 tracker.xpos = 1
@@ -42,6 +43,8 @@ tracker.ypos = 1
 tracker.xint = 0
 tracker.page = 4
 tracker.lastVel = 96
+tracker.lastEnv = 1
+tracker.envShape = 1
 tracker.rowPerQn = 4
 
 tracker.cp = {}
@@ -71,35 +74,43 @@ tracker.colors.linecolor4 = {.2, .0, 1, .5}
 tracker.colors.copypaste = {5.0, .7, 0.1, .2}
 tracker.hash = 0
 
+tracker.envShapes = {}
+tracker.envShapes[0] = 'Lin'
+tracker.envShapes[1] = 'S&H'
+tracker.envShapes[2] = 'Exp'
+
 tracker.hint = '';
 
 keys = {}
---                  CTRL  ALT SHIFT Keycode
-keys.left       = { 0,    0,  0,    1818584692 } -- <-
-keys.right      = { 0,    0,  0,    1919379572 } -- ->
-keys.up         = { 0,    0,  0,    30064 }      -- /\
-keys.down       = { 0,    0,  0,    1685026670 } -- \/
-keys.off        = { 0,    0,  0,    45 }         -- -
-keys.delete     = { 0,    0,  0,    6579564 }    -- Del
-keys.home       = { 0,    0,  0,    1752132965 } -- Home
-keys.End        = { 0,    0,  0,    6647396 }    -- End
-keys.toggle     = { 0,    0,  0,    32 }         -- Space
-keys.playfrom   = { 0,    0,  0,    13 }         -- Enter
-keys.insert     = { 0,    0,  0,    6909555 }    -- Insert
-keys.remove     = { 0,    0,  0,    8 }          -- Backspace
-keys.pgup       = { 0,    0,  0,    1885828464 } -- Page up
-keys.pgdown     = { 0,    0,  0,    1885824110 } -- Page down
-keys.undo       = { 1,    0,  0,    26 }         -- CTRL + Z
-keys.redo       = { 1,    0,  1,    26 }         -- CTRL + SHIFT + Z
-keys.beginBlock = { 1,    0,  0,    2 }          -- CTRL + B
-keys.endBlock   = { 1,    0,  0,    5 }          -- CTRL + E
-keys.cutBlock   = { 1,    0,  0,    24 }         -- CTRL + X
-keys.pasteBlock = { 1,    0,  0,    22 }         -- CTRL + V
-keys.copyBlock  = { 1,    0,  0,    3 }          -- CTRL + C
-keys.shiftup    = { 0,    0,  1,    43 }         -- SHIFT + Num pad+
-keys.shiftdown  = { 0,    0,  1,    45 }         -- SHIFT + Num pad-
-keys.octaveup   = { 1,    0,  0,    30064 }      -- CTRL + /\
-keys.octavedown = { 1,    0,  0,    1685026670 } -- CTRL + \/
+--                    CTRL  ALT SHIFT Keycode
+keys.left         = { 0,    0,  0,    1818584692 } -- <-
+keys.right        = { 0,    0,  0,    1919379572 } -- ->
+keys.up           = { 0,    0,  0,    30064 }      -- /\
+keys.down         = { 0,    0,  0,    1685026670 } -- \/
+keys.off          = { 0,    0,  0,    45 }         -- -
+keys.delete       = { 0,    0,  0,    6579564 }    -- Del
+keys.home         = { 0,    0,  0,    1752132965 } -- Home
+keys.End          = { 0,    0,  0,    6647396 }    -- End
+keys.toggle       = { 0,    0,  0,    32 }         -- Space
+keys.playfrom     = { 0,    0,  0,    13 }         -- Enter
+keys.insert       = { 0,    0,  0,    6909555 }    -- Insert
+keys.remove       = { 0,    0,  0,    8 }          -- Backspace
+keys.pgup         = { 0,    0,  0,    1885828464 } -- Page up
+keys.pgdown       = { 0,    0,  0,    1885824110 } -- Page down
+keys.undo         = { 1,    0,  0,    26 }         -- CTRL + Z
+keys.redo         = { 1,    0,  1,    26 }         -- CTRL + SHIFT + Z
+keys.beginBlock   = { 1,    0,  0,    2 }          -- CTRL + B
+keys.endBlock     = { 1,    0,  0,    5 }          -- CTRL + E
+keys.cutBlock     = { 1,    0,  0,    24 }         -- CTRL + X
+keys.pasteBlock   = { 1,    0,  0,    22 }         -- CTRL + V
+keys.copyBlock    = { 1,    0,  0,    3 }          -- CTRL + C
+keys.shiftup      = { 0,    0,  1,    43 }         -- SHIFT + Num pad+
+keys.shiftdown    = { 0,    0,  1,    45 }         -- SHIFT + Num pad-
+keys.octaveup     = { 1,    0,  0,    30064 }      -- CTRL + /\
+keys.octavedown   = { 1,    0,  0,    1685026670 } -- CTRL + \/
+keys.envshapeup   = { 1,    0,  1,    30064 }      -- CTRL + SHIFT + /\
+keys.envshapedown = { 1,    0,  1,    1685026670 } -- CTRL + SHIFT + /\
+
 --
 
 -- Base pitches
@@ -158,6 +169,41 @@ function tracker:initColors()
   tracker.colors.linecolor3s = alpha( tracker.colors.linecolor3, 0.5 )    
 end
 
+-- Print contents of `tbl`, with indentation.
+-- `indent` sets the initial level of indentation.
+function tprint (tbl, indent, maxindent, verbose)
+  if ( type(tbl) == "table" ) then 
+    if not maxindent then maxindent = 2 end
+    if not indent then indent = 0 end
+    for k, v in pairs(tbl) do
+      local formatting = string.rep(" ", indent) .. k .. ": "
+      if type(v) == "table" then
+        if ( indent < maxindent ) then
+          print(formatting)
+          tprint(v, indent+1, maxindent)
+        end
+      else
+        -- Hide the functions in shared.lua for clarity
+        if ( not verbose ) then
+          if type(v) == 'boolean' then
+            print(formatting .. tostring(v))
+          elseif type(v) == 'number' then
+            print(formatting .. tostring(v))
+          elseif (type(v) == 'userdata') and ( v.y ) then
+            print(formatting .. " " .. tostring(v) .. ": ".. "x: "..v.x..", y: "..v.y)
+          else
+            print(formatting .. tostring(v))
+          end
+        end
+      end
+    end
+  else
+    if ( type(tbl) == "function" ) then 
+      print('Function supplied to tprint instead of table')
+    end
+  end
+end 
+
 local function validHex( char )
   hex = {'A','B','C','D','E','F','a','b','c','d','e','f','0','1','2','3','4','5','6','7','8','9'}
   for i,v in pairs(hex) do
@@ -184,10 +230,20 @@ function tracker:generatePitches()
   self.pitchTable = pitches
 end
 
+function namerep(str)
+  str = str:gsub(" / ", "/")
+  str = str:gsub("GUI", "")
+  
+  return str
+end
+
 ------------------------------
 -- Link GUI grid to data
 ------------------------------
 function tracker:linkData()
+
+  local fx        = self.fx
+  
   -- Here is where the linkage between the display and the actual data fields in "tracker" is made
   local colsizes  = {}
   local datafield = {}
@@ -196,6 +252,26 @@ function tracker:linkData()
   local headers   = {}
   local grouplink = {}    -- Stores what other columns are linked to this one (some act as groups)
   local hints     = {}
+  
+  if ( fx.names ) then
+    for j = 1,#fx.names do
+      datafield[#datafield+1] = 'fx1'
+      idx[#idx+1]             = j
+      colsizes[#colsizes+1]   = 1
+      padsizes[#padsizes+1]   = 0
+      grouplink[#grouplink+1] = {1}
+      headers[#headers+1]     = 'FX'
+      hints[#hints+1]         = namerep(fx.names[j])
+      
+      datafield[#datafield+1] = 'fx2'
+      idx[#idx+1]             = j
+      colsizes[#colsizes+1]   = 1
+      padsizes[#padsizes+1]   = 2
+      grouplink[#grouplink+1] = {-1}
+      headers[#headers+1]     = ''
+      hints[#hints+1]         = namerep(fx.names[j])
+    end
+  end
   
   datafield[#datafield+1] = 'legato'
   idx[#idx+1]             = 0
@@ -472,7 +548,7 @@ function tracker:printGrid()
   gfx.set(table.unpack(colors.headercolor))
   gfx.printf("%s", description[relx])
   
-  str = string.format("Octave [%d] Advance [%d]", self.transpose, self.advance, self.rowPerQn)
+  str = string.format("Oct [%d] Adv [%d] Env [%s]", self.transpose, self.advance, tracker.envShapes[tracker.envShape])
   gfx.x = plotData.xstart + tw - 8.2 * string.len(str)
   gfx.y = yloc[#yloc] + 1 * yheight[1] + itempady
   gfx.set(table.unpack(colors.headercolor))
@@ -821,6 +897,20 @@ function tracker:createNote( inChar )
       reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, nil, newvel, true)
       self.ypos = self.ypos + self.advance
     end
+  elseif ( ( ftype == 'fx1' ) and validHex( char ) ) then
+    local atime, env, shape, tension = tracker:getEnvPt(chan, self:toSeconds(self.ypos))
+    env = env or self.lastEnv
+    local newEnv = tracker:editEnvField( env, 1, char )
+    self:addEnvPt(chan, self:toSeconds(self.ypos-1), newEnv, self.envShape)
+    self.ypos = self.ypos + self.advance
+    self.lastEnv = newEnv
+  elseif ( ( ftype == 'fx2' ) and validHex( char ) ) then
+    local atime, env, shape, tension = tracker:getEnvPt(chan, self:toSeconds(self.ypos))
+    env = env or self.lastEnv  
+    local newvel = tracker:editEnvField( env, 2, char )
+    self:addEnvPt(chan, self:toSeconds(self.ypos-1), newEnv, self.envShape)    
+    self.ypos = self.ypos + self.advance
+    self.lastEnv = newEnv
   elseif ( ftype == 'legato' ) then
     if ( char == '1' ) then
       self:addLegato( row )
@@ -1198,24 +1288,12 @@ function tracker:delete()
     end
   elseif ( ftype == 'legato' ) then
     self:deleteLegato(row)
+  elseif ( ftype == 'fx1' or ftype == 'fx2' ) then
+    self:deleteEnvPt(chan, self:toSeconds(row) )
   else
     print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
     return
   end  
-end
-
--- REAPER seems to be doing this already
-function tracker:clampPpq(ppq)
-  return ppq
-  --[[--
-  if ( ppq > self.maxppq ) then
-    return self.maxppq
-  elseif ( ppq < self.minppq ) then
-    return self.minppq
-  else
-    return ppq
-  end
-  --]]--
 end
 
 ---------------------
@@ -1385,8 +1463,8 @@ function tracker:forceCursorInRange()
   end    
 end
 
-function tracker:toSeconds(seconds)
-  return seconds / self.rowPerSec
+function tracker:toSeconds(row)
+  return row / self.rowPerSec
 end
 
 function tracker:rowToPpq(row)
@@ -1415,8 +1493,11 @@ function tracker:getRowInfo()
     local ppqPerSec = 1.0 / ( reaper.MIDI_GetProjTimeFromPPQPos(self.take, 1) - reaper.MIDI_GetProjTimeFromPPQPos(self.take, 0) )
     local mediaLength = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
     
-    self.maxppq = ppqPerSec * reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
-    self.minppq = ppqPerSec * reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+    self.length   = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
+    self.position = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+    
+    self.maxppq   = ppqPerSec * self.length
+    self.minppq   = ppqPerSec * self.position
     
     self.qnCount = mediaLength * ppqPerSec / ppqPerQn
     self.rowPerPpq = self.rowPerQn / ppqPerQn
@@ -1512,7 +1593,6 @@ function tracker:assignFromMIDI(channel, idx)
         data.note[rows*channel+yend+1] = -1
       end
     end
-    --print("NOTE "..self.pitchTable[pitch] .. " on channel " .. channel .. " from " .. ystart .. " to " .. yend)    
     return true
   else
     return false
@@ -1557,6 +1637,17 @@ function tracker:editVelField( vel, id, val )
   return newvel
 end
 
+function tracker:editEnvField( vel, id, val )
+  -- Convert to Hex first
+  local newvel = string.format('%2X', math.floor(vel*255) )
+  -- Replace the digit in question
+  newvel = newvel:sub( 1, id-1 ) .. val ..  newvel:sub( id+1 )
+  newvel = math.floor( tonumber( "0x"..newvel ) / hexdec )
+  newvel = clamp(0, 255, newvel)
+  newvel = newvel / 255
+  return newvel
+end
+
 ------------------------------
 -- Internal data initialisation
 -----------------------------
@@ -1570,6 +1661,8 @@ function tracker:initializeGrid()
   data.vel2 = {}    
   data.legato = {}
   self.legato = {}
+  data.fx1 = {}
+  data.fx2 = {}
   local channels = self.channels
   local rows = self.rows
   for x=0,channels-1 do
@@ -1577,8 +1670,16 @@ function tracker:initializeGrid()
       data.note[rows*x+y]   = nil
       data.text[rows*x+y]   = '...'
       data.vel1[rows*x+y]   = '.'
-      data.vel2[rows*x+y]   = '.'            
-             
+      data.vel2[rows*x+y]   = '.'      
+    end
+  end
+  
+  if ( self.fx.names ) then
+    for y=0,rows-1 do
+      for x=1,#self.fx.names do
+        data.fx1[rows*x+y]   = '.'
+        data.fx2[rows*x+y]   = '.'
+      end
     end
   end
   
@@ -1691,22 +1792,200 @@ function tracker:mergeOverlaps()
   end
 end
 
+--function tracker:getParam
+--number retval, number minval, number maxval = reaper.TrackFX_GetParam(MediaTrack track, integer fx, integer param)
+
+function tracker:createDefaultEnvelopes()
+  local fxcnt = reaper.TrackFX_GetCount(self.track)
+  for fidx = 0,fxcnt-1 do
+    local pcnt = reaper.TrackFX_GetNumParams(self.track, fidx)
+    for pidx = 0,pcnt-1 do
+      local retval, name = reaper.TrackFX_GetParamName(self.track, fidx, pidx, '')
+      print(name)
+      local envelope = reaper.GetFXEnvelope(self.track, fidx, pidx, false)
+    end
+  end
+end
+
+function tracker:findMyAutomation(envelope)
+  for i=0,reaper.CountAutomationItems(envelope) do
+    local pos = reaper.GetSetAutomationItemInfo(envelope, i, "D_POSITION", 1, false)
+    local len = reaper.GetSetAutomationItemInfo(envelope, i, "D_LENGTH", 1, false)    
+    if ( self.position == pos ) then
+      if ( self.length ~= length ) then
+        local len = reaper.GetSetAutomationItemInfo(envelope, i, "D_LENGTH", self.length, true)    
+      end
+    
+      -- Found it!
+      return i
+    end
+  end
+  return nil
+end
+
+function tracker:deleteEnvPt(fxid, t1, t2)
+  local fx      = self.fx
+  local envidx  = fx.envelopeidx[fxid]
+  local autoidx = fx.autoidx[fxid]
+  local tend    = t2 or t1 + self:toSeconds(1)
+  
+  reaper.DeleteEnvelopePointRangeEx(envidx, autoidx, t1, tend - tracker.eps)
+end
+
+function tracker:getEnvIdx(fxid, time)
+  local fx = self.fx
+  local envidx = fx.envelopeidx[fxid]
+  local autoidx = fx.autoidx[fxid]
+  local loc = time or .1
+  loc = loc + self.position
+  
+  local ptidx = reaper.GetEnvelopePointByTimeEx(envidx, autoidx, loc+tracker.enveps)
+
+  -- Are we close enough to consider this our envelope point?
+  if ( ptidx ) then
+    local retval, atime = reaper.GetEnvelopePointEx(envidx, autoidx, ptidx)
+    if ( math.abs(atime - loc) < 2 * tracker.enveps ) then
+      found = 1
+      loc = atime
+      return ptidx, loc
+    end
+  end
+  return nil, loc
+end
+
+function tracker:getEnvPt(fxid, time)
+  local fx = self.fx
+  local envidx = fx.envelopeidx[fxid]
+  local autoidx = fx.autoidx[fxid]
+  
+  ptidx = self:getEnvIdx(fxid, time)
+  if ( ptidx ) then
+    local retval, atime, value, shape, tension = reaper.GetEnvelopePointEx(envidx, autoidx, ptidx)
+    return atime, value, shape, tension
+  end
+end
+
+tracker.enveps = 1e-4
+---------------------------------
+function tracker:addEnvPt(fxid, time, value, shape)
+  local fx = self.fx
+  local envidx = fx.envelopeidx[fxid]
+  local autoidx = fx.autoidx[fxid]
+
+  if ( not envidx or not autoidx ) then
+    print("FATAL: FX channel does not exist?")
+    return
+  end
+  
+  local loc = time or .1
+  loc = loc + self.position  
+  local val = value or 5
+  local envShape = shape or 0
+  local envTension = nil
+    
+  ptidx, loc = self:getEnvIdx(fxid, time)
+  if ( ptidx ) then
+    reaper.SetEnvelopePointEx(envidx, autoidx, ptidx, loc, val, envShape, envTension, false, true)
+  else
+    reaper.InsertEnvelopePointEx(envidx, autoidx, loc, val, envShape, 0.5, false, true)     
+  end
+  
+  reaper.Envelope_SortPointsEx(envidx, autoidx)
+end
+---------------------------------
+
+tracker.autoCleanup = 1
+function tracker:consolidateAutomation(envelope)
+  for i=0,reaper.CountAutomationItems(envelope) do
+    local pos = reaper.GetSetAutomationItemInfo(envelope, i, "D_POSITION", 1, false)
+    local len = reaper.GetSetAutomationItemInfo(envelope, i, "D_LENGTH", 1, false)  
+    
+    -- We overlap yes
+    if ( ( pos >= self.position ) and ( pos < ( self.position + self.length ) ) ) then
+      -- Copy all the events
+    
+      if ( tracker.autoCleanup ) then
+      end
+    end   
+  end
+end
+
+---------------------------------
+-- Construct or fetch automation envelopes associated with this pattern
+---------------------------------
+function tracker:getTakeEnvelopes()
+
+  self.fx = {}
+  if ( self.trackFX == 1 ) then
+    local autoidxs = {}
+    local envelopeidxs = {}
+    local names = {}
+  
+    local cnt = reaper.CountTrackEnvelopes(self.track)
+    local autoidx = nil
+    for i = 0,cnt-1 do
+      local envelope = reaper.GetTrackEnvelope(self.track, i)
+      local retval, name = reaper.GetEnvelopeName(envelope, '')
+      
+      autoidx = self:findMyAutomation( envelope )
+      if ( not autoidx ) then
+        autoidx = reaper.InsertAutomationItem(envelope, -1, self.position, self.length)
+        
+        -- Consolidate all automation curves into this one and clean up
+      end     
+      
+      envelopeidxs[#envelopeidxs + 1] = envelope
+      autoidxs[#autoidxs + 1] = autoidx
+      names[#names + 1] = name
+    end
+    
+    self.fx.envelopeidx = envelopeidxs
+    self.fx.autoidx = autoidxs
+    self.fx.names   = names
+  end 
+end
+
+-- Add envelope node
+--  self:addEnvPt(2, .23, 1)
+
+
+function tracker:updateEnvelopes()
+  local rows = self.rows
+  local data = self.data
+  if ( self.fx.names ) then
+    for ch=1,#self.fx.names do
+      for i=0,rows-1 do
+        local atime, value, shape, tension = self:getEnvPt(ch, self:toSeconds(i))
+        if ( value ) then
+          local hexEnv = string.format('%2X', math.floor(value*255) )
+--          data.shape
+          data.fx1[rows*ch+i] = hexEnv:sub(1,1)
+          data.fx2[rows*ch+i] = hexEnv:sub(2,2)
+        end
+      end
+    end
+  end
+end
+
 --------------------------------------------------------------
 -- Update function
 -- heavy-ish, avoid calling too often (only on MIDI changes)
 --------------------------------------------------------------
 function tracker:update()
   local reaper = reaper
-  if ( self.take and self.item ) then
+  if ( self.take and self.item ) then 
+  
     self:getRowInfo()
+    self:getTakeEnvelopes()
     self:linkData()
     self:updatePlotLink()
     self:initializeGrid()
+    self:updateEnvelopes()
     
     -- Remove duplicates potentially caused by legato system
-    tracker:clearDeleteLists()
+    self:clearDeleteLists()
     self:mergeOverlaps()
-    tracker:deleteNow()
+    self:deleteNow()
     reaper.MIDI_Sort(self.take)
     
     -- Grab the notes and store them in channels
@@ -1820,6 +2099,7 @@ function tracker:setTake( take )
   if ( self.take ~= take ) then
     if ( reaper.TakeIsMIDI( take ) == true ) then
       self.take = take
+      self.track = reaper.GetMediaItem_Track(self.item)
       -- Store note hash (second arg = notes only)
       self.hash = reaper.MIDI_GetHash( self.take, false, "?" )
       self:update()
@@ -1846,6 +2126,8 @@ function tracker:checkChange()
     return false
   end
   take = reaper.GetActiveTake(self.item)
+  self.track = reaper.GetMediaItem_Track(self.item)
+  
   if ( not take ) then
     return false
   end
@@ -2190,9 +2472,19 @@ end
     modified = 1
     tracker:shiftdown()
   elseif inputs('octaveup') then
-    tracker.transpose = tracker.transpose - 1  
+    tracker.transpose = tracker.transpose + 1
   elseif inputs('octavedown') then
-    tracker.transpose = tracker.transpose + 1  
+    tracker.transpose = tracker.transpose - 1  
+  elseif inputs('envshapeup') then
+    tracker.envShape = tracker.envShape + 1
+    if ( tracker.envShape > #tracker.envShapes ) then
+      tracker.envShape = 0
+    end
+  elseif inputs('envshapedown') then
+    tracker.envShape = tracker.envShape - 1
+    if ( tracker.envShape < 0 ) then
+      tracker.envShape = #tracker.envShapes
+    end    
   elseif ( lastChar == 0 ) then
     -- No input
   elseif ( lastChar == -1 ) then      
@@ -2218,6 +2510,7 @@ end
     tracker:mergeOverlaps()
     tracker:deleteNow()
     reaper.MIDI_Sort(tracker.take)
+    tracker.hash = math.random()
   end
   
   if lastChar ~= 27 and lastChar ~= -1 then
@@ -2232,7 +2525,7 @@ local function Main()
   tracker.tick = 0
   tracker:generatePitches()
   tracker:initColors()
-  gfx.init("Hackey Trackey v0.6", 450, 385, 0, 200, 200)
+  gfx.init("Hackey Trackey v0.8", 450, 385, 0, 200, 200)
   
   local reaper = reaper
   if ( reaper.CountSelectedMediaItems(0) > 0 ) then
