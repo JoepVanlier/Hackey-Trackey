@@ -116,8 +116,11 @@ mimick the same end behaviour.
 
 Note that when using the legato mode, it is no longer possible to have the same note 
 be repeated on channel 1. Doing so would cause problems when playing the MIDI. Hence
+
 1 D-2
+
 1 D-2
+
 would be merged into one single MIDI note. I have not found a good workaround for this 
 so far, but if you have a good idea, please contact me.
 
