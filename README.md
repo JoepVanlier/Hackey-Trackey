@@ -1,36 +1,29 @@
 # Hackey-Trackey
+## What is it?
 A lightweight tracker plugin for REAPER 5.x and up. Hackey-Trackey is a small 
-tracker for visualizing and editing MIDI data within REAPER. Note that it does not
-function as a sampler. Designed to mimick the pattern editor of Jeskola Buzz, this
-tracker is meant to enable note entry in a tracked manner.
+tracker for visualizing and editing MIDI data within REAPER. Designed to mimick 
+the pattern editor of Jeskola Buzz, this tracker is meant to enable MIDI note 
+entry and effect automation in a tracked manner.
+
+## What is it not?
+A sampler. Hackey-Trackey does not handle sample playback. For this you would 
+need to add an additional VST that handles sample playback. Have a look at 
+ReViSiT or linking Renoise to REAPER if this is what you seek.
 
 ![Using Hackey Trackey](https://i.imgur.com/o6QXh8X.png)
 
-Hackey trackey maps already existing MIDI data to a tracked format and allows 
-editing of such data in a tracker based manner. If the MIDI data was 
-entered via another method than Hackey Trackey, the default behaviour is to 
-map the notes to non-overlapping channels. Once this is done, the channels for 
-the MIDI data are remapped such that the column in which a note appears can be 
-maintained. Note that if your instruments use the MIDI channel information for 
-specific purposes then this plugin is not useful to you. Note that depending on 
-what you are doing, the plugin may also add text events to your MIDI data to keep 
-track of information Hackey Trackey needs to preserve the tracked layout.
+## How do I use it?
+Select a MIDI object and start the script. Note that scripts can be bound to 
+shortcut keys, which I'd recommend if you're going to be using it.
 
-The plugin uses the MIDI note channel property to store which column a note 
-is in. OFF and legato symbols not associated with a normal end are stored in text.
+Note that the plugin remaps your MIDI data to different channels. New MIDI 
+data that was not tracked has to come in on channel 0. Note also that the 
+tracker outputs everything to MIDI channel 0 by default.
 
-Because the plugin remaps the channel, non-tracker input should be created with 
-channel 0. The plugin remaps data in channel 0 to MIDI channel 1-16, automatically
-assigning new incoming notes to a column where enough room is free. Notes in 
-channel 1-16 are assigned first, to keep anything that was made in the tracker 
-stable.
-
-The location of the notes in the tracker view will be stable as long as no data 
-is entered into MIDI channels other than zero via the piano roll or other methods.
-
-Because typically, it is preferred to have MIDI data go to a specific out channel, 
-the plugin optionally maps all the MIDI data to a specific channel via the out-channel 
-property.
+Parameters for which envelopes are active (see automation panel in image below), 
+will automatically show up in the tracker. The tracker will store the tracked 
+points in an automation take.
+![Using FX](https://i.imgur.com/pZ0TV7k.png)
 
 By default, tracked notes do not overlap. However, for some purposes, overlap may be
 desirable (some monophonic VSTs interpret this as glide/legato mode). For this, one can 
@@ -38,12 +31,7 @@ use the column L. Setting 1 in a row here, means that this note will be glided i
 This is implementing by simpliy stretching the previous note a little bit (the amount 
 is stored in tracker.magicOverlap). Legato is only applied to channel 1 in the tracker.
 
-Parameters for which envelopes are active (see automation panel), will automatically 
-show up in the tracker. The tracker will store the tracked points in an automation take.
-
-![Using FX](https://i.imgur.com/pZ0TV7k.png)
-
-# Special keys
+## Special keys
 | Key                   | Action 								|
 | --------------------- | --------------------------------------------------------------------- |
 | Arrow keys 		| Navigate								|
@@ -67,7 +55,36 @@ show up in the tracker. The tracker will store the tracked points in an automati
 | Shift + Numpad +	| Shift all elements in selection one up (for notes C-1 -> C#1)		|
 | Shift + Numpad -	| Shift all elements in selection one down				|
 
-# Issues/Limitations
+## How does it work?
+Hackey trackey maps already existing MIDI data to a tracked format and allows 
+editing of such data in a tracker based manner. If the MIDI data was 
+entered via another method than Hackey Trackey, the default behaviour is to 
+map the notes to non-overlapping channels. Once this is done, the channels for 
+the MIDI data are remapped such that the column in which a note appears can be 
+stable from that point on. Note that if your instruments use the MIDI channel 
+information for specific purposes then this plugin is not useful to you. Note 
+that depending on what you are doing, the plugin may also add text events to 
+your MIDI data to keep track of information Hackey Trackey needs to preserve 
+the tracked layout.
+
+The plugin uses the MIDI note channel property to store which column a note 
+is in. OFF note termination symbols not associated with a normal note end 
+and legato symbols are stored in text (OFF+channel and LEG respectively).
+
+Because the plugin remaps the channel, non-tracker input should be created with 
+channel 0. The plugin remaps data in channel 0 to MIDI channel 1-16, automatically
+assigning new incoming notes to a column where enough room is available. Notes in 
+channel 1-16 are assigned first, to keep anything that was made in the tracker 
+stable.
+
+The location of the notes in the tracker view will be stable as long as no data 
+is entered into MIDI channels other than zero via the piano roll or other methods.
+
+Because typically, it is preferred to have MIDI data go to a specific out channel, 
+the plugin optionally maps all the MIDI data to a specific channel via the out-channel 
+property.
+
+## Issues/Limitations
 There are some things which are unfortunately not possible as far as I am aware.
 Voice stealing when placing overlapping tracked patterns is one of them. In Jeskola 
 Buzz it was possible to play different patterns on the same row in the sequencer. 
@@ -95,10 +112,10 @@ be repeated on channel 1. Doing so would cause problems when playing the MIDI. H
 would be merged into one single MIDI note. I have not found a good workaround for this 
 so far, but if you have a good idea, please contact me.
 
-# Planned features
+### Planned features
 - Cut/Copy pasting blocks within the tracker.
 - Interpolation.
 
-# Features to be investigated whether they are feasible/reasonable
+### Features to be investigated whether they are feasible/reasonable
 - Columns for MIDI controls.
 - Cutting/Copying to MIDI editor clipboard.
