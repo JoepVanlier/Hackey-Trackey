@@ -129,6 +129,8 @@ keys.envshapeup   = { 1,    0,  1,    30064 }      -- CTRL + SHIFT + /\
 keys.envshapedown = { 1,    0,  1,    1685026670 } -- CTRL + SHIFT + /\
 keys.outchandown  = { 0,    0,  0,    26161 }      -- F1
 keys.outchanup    = { 0,    0,  0,    26162 }      -- F2
+keys.advancedown  = { 0,    0,  0,    26163 }      -- F3
+keys.advanceup    = { 0,    0,  0,    26164 }      -- F4
 
 -- Base pitches
 -- Can customize the 'keyboard' here, if they aren't working for you
@@ -2589,6 +2591,13 @@ end
       tracker.outChannel = 16
     end
     tracker:setOutChannel( tracker.outChannel )
+  elseif inputs('advanceup') then
+    tracker.advance = tracker.advance + 1
+  elseif inputs('advancedown') then
+    tracker.advance = tracker.advance - 1
+    if ( tracker.advance < 0 ) then
+      tracker.advance = 0
+    end
   elseif ( lastChar == 0 ) then
     -- No input
   elseif ( lastChar == -1 ) then      
