@@ -37,6 +37,7 @@ will result in the second note not displaying in the tracker. This is not a bug,
 workaround to fix note OFF issues with the resulting MIDI item.
 
 ## Special keys
+
 | Key                   | Action                                                                |
 |:----------------------|:----------------------------------------------------------------------|
 | Arrow keys            | Navigate                                                              |
