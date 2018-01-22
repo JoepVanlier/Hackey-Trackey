@@ -127,8 +127,8 @@ keys.octaveup     = { 1,    0,  0,    30064 }      -- CTRL + /\
 keys.octavedown   = { 1,    0,  0,    1685026670 } -- CTRL + \/
 keys.envshapeup   = { 1,    0,  1,    30064 }      -- CTRL + SHIFT + /\
 keys.envshapedown = { 1,    0,  1,    1685026670 } -- CTRL + SHIFT + /\
-keys.outchanup    = { 0,    0,  0,    26161 }      -- F1
-keys.outchandown  = { 0,    0,  0,    26162 }      -- F2
+keys.outchandown  = { 0,    0,  0,    26161 }      -- F1
+keys.outchanup    = { 0,    0,  0,    26162 }      -- F2
 
 -- Base pitches
 -- Can customize the 'keyboard' here, if they aren't working for you
@@ -2442,7 +2442,7 @@ function tracker:setOutChannel( ch )
 
   if ( self.item ) then
     local retval, str = reaper.GetItemStateChunk( self.item, "zzzzzzzzz")
-    print(str)
+
     -- Are we setting a channel?
     if ( ch > 0 ) then
       if ( not string.find( str, "OUTCH" ) ) then
@@ -2485,7 +2485,7 @@ local function updateLoop()
   end  
 
 if ( lastChar ~= 0 ) then
-  print(lastChar)
+  --print(lastChar)
 end
   local modified = 0
   if inputs('left') then
