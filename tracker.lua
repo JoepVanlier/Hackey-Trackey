@@ -28,7 +28,27 @@
 --    Happy trackin'! :)
 
 tracker = {}
+
+-- Map output to specific MIDI channel
+--   Zero makes the tracker use a separate channel for each column. Column 
+--   one being mapped to MIDI channel 2. Any other value forces the output on 
+--   a specific channel.
+tracker.outChannel = 1
+
+-- How much overlap is used for legato?
+tracker.magicOverlap = 10
+
+-- Enable FX automation?
+tracker.trackFX = 1
+
+-- Defaults
+tracker.transpose = 3
+tracker.advance = 1
+
+-- Slack used in notes and automation to check whether a point is the point specified
 tracker.eps = 1e-3
+tracker.enveps = 1e-4
+
 tracker.fov = {}
 tracker.fov.scrollx = 0
 tracker.fov.scrolly = 0
@@ -36,7 +56,6 @@ tracker.fov.width = 16
 tracker.fov.height = 16
 tracker.fov.abswidth = 450
 
-tracker.trackFX = 1           -- Do we also want to track the automation?
 tracker.hex = 1
 tracker.preserveOff = 1
 tracker.xpos = 1
@@ -55,13 +74,8 @@ tracker.cp.xstop = -1
 tracker.cp.ystop = -1
 tracker.cp.all = 0
 
-tracker.outChannel = 1
-tracker.magicOverlap = 10 --13.37
-
 tracker.selectionBehavior = 0
-tracker.transpose = 3
-tracker.advance = 1
-tracker.automationBug = 1
+tracker.automationBug = 1 -- This fixes a bug in v5.70
 
 tracker.channels = 16 -- Max channel (0 is not shown)
 tracker.displaychannels = 15
@@ -83,6 +97,7 @@ tracker.envShapes[2] = 'Exp'
 
 tracker.hint = '';
 
+-- Can customize the shortcut keys here, if they aren't working for you
 keys = {}
 --                    CTRL  ALT SHIFT Keycode
 keys.left         = { 0,    0,  0,    1818584692 } -- <-
@@ -112,8 +127,11 @@ keys.octaveup     = { 1,    0,  0,    30064 }      -- CTRL + /\
 keys.octavedown   = { 1,    0,  0,    1685026670 } -- CTRL + \/
 keys.envshapeup   = { 1,    0,  1,    30064 }      -- CTRL + SHIFT + /\
 keys.envshapedown = { 1,    0,  1,    1685026670 } -- CTRL + SHIFT + /\
+keys.outchanup    = { 0,    0,  0,    26161 }      -- F1
+keys.outchandown  = { 0,    0,  0,    26162 }      -- F2
 
 -- Base pitches
+-- Can customize the 'keyboard' here, if they aren't working for you
 keys.pitches = {}
 keys.pitches.z = 24-12
 keys.pitches.x = 26-12
@@ -479,6 +497,14 @@ local function clamp( min, max, val )
   end
 end
 
+function tracker:outString()
+  if ( tracker.outChannel == 0 ) then
+    return 'C'
+  else
+    return string.format('%d', tracker.outChannel)
+  end
+end
+
 ------------------------------
 -- Draw the GUI
 ------------------------------
@@ -548,9 +574,9 @@ function tracker:printGrid()
   gfx.set(table.unpack(colors.headercolor))
   gfx.printf("%s", description[relx])
   
-  str = string.format("Oct [%d] Adv [%d] Env [%s]", self.transpose, self.advance, tracker.envShapes[tracker.envShape])
+  str = string.format("Oct [%d] Adv [%d] Env [%s] Out [%s]", self.transpose, self.advance, tracker.envShapes[tracker.envShape], self:outString() )
   gfx.x = plotData.xstart + tw - 8.2 * string.len(str)
-  gfx.y = yloc[#yloc] + 1 * yheight[1] + itempady
+  gfx.y = yloc[#yloc] + 2 * yheight[1] + itempady
   gfx.set(table.unpack(colors.headercolor))
   gfx.printf(str)
 
@@ -1942,7 +1968,6 @@ function tracker:getEnvPt(fxid, time)
   end
 end
 
-tracker.enveps = 1e-4
 -------------------
 -- Add envelope point
 -------------------
@@ -2417,10 +2442,21 @@ function tracker:setOutChannel( ch )
 
   if ( self.item ) then
     local retval, str = reaper.GetItemStateChunk( self.item, "zzzzzzzzz")
-
-    if ( not string.find( str, "OUTCH" ) ) then
-      local strOut = string.gsub(str, "<SOURCE MIDI", "<SOURCE MIDI\nOUTCH 1")
-      reaper.SetItemStateChunk( self.item, strOut )
+    print(str)
+    -- Are we setting a channel?
+    if ( ch > 0 ) then
+      if ( not string.find( str, "OUTCH" ) ) then
+        local strOut = string.gsub(str, "<SOURCE MIDI", "<SOURCE MIDI\nOUTCH "..ch)
+        reaper.SetItemStateChunk( self.item, strOut )
+      else
+        local strOut = string.gsub(str, "\nOUTCH [-]*%d+", "\nOUTCH "..ch)
+        reaper.SetItemStateChunk( self.item, strOut )
+      end
+    else
+      if ( string.find( str, "OUTCH" ) ) then
+        local strOut = string.gsub(str, "\nOUTCH [-]*%d+", "")
+        reaper.SetItemStateChunk( self.item, strOut )
+      end
     end
   end
 end
@@ -2430,11 +2466,6 @@ end
 -----------------------------
 local function updateLoop()
   local tracker = tracker
-
-  if ( tracker.outChannel ) then
-    --reaper.GetItemStateChunk ( tracker.item, "OUTCH", false )
-    tracker:setOutChannel()
-  end
 
   tracker:clearDeleteLists()
   tracker:clearInsertLists()
@@ -2454,7 +2485,7 @@ local function updateLoop()
   end  
 
 if ( lastChar ~= 0 ) then
-  --print(lastChar)
+  print(lastChar)
 end
   local modified = 0
   if inputs('left') then
@@ -2545,7 +2576,19 @@ end
     tracker.envShape = tracker.envShape - 1
     if ( tracker.envShape < 0 ) then
       tracker.envShape = #tracker.envShapes
-    end    
+    end 
+  elseif inputs('outchanup') then
+    tracker.outChannel = tracker.outChannel + 1
+    if ( tracker.outChannel > 16 ) then
+      tracker.outChannel = 0
+    end
+    tracker:setOutChannel( tracker.outChannel )
+  elseif inputs('outchandown') then
+    tracker.outChannel = tracker.outChannel - 1
+    if ( tracker.outChannel < 0) then
+      tracker.outChannel = 16
+    end
+    tracker:setOutChannel( tracker.outChannel )
   elseif ( lastChar == 0 ) then
     -- No input
   elseif ( lastChar == -1 ) then      
@@ -2586,7 +2629,7 @@ local function Main()
   tracker.tick = 0
   tracker:generatePitches()
   tracker:initColors()
-  gfx.init("Hackey Trackey v0.8", 450, 385, 0, 200, 200)
+  gfx.init("Hackey Trackey v0.81", 450, 385, 0, 200, 200)
   
   local reaper = reaper
   if ( reaper.CountSelectedMediaItems(0) > 0 ) then
@@ -2595,6 +2638,11 @@ local function Main()
     if ( reaper.TakeIsMIDI( take ) == true ) then
       tracker:setItem( item )
       tracker:setTake( take )
+      
+      if ( tracker.outChannel ) then
+        tracker:setOutChannel( tracker.outChannel )
+      end
+      
       reaper.defer(updateLoop)
     end
   end
