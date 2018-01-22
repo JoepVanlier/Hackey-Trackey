@@ -60,6 +60,7 @@ tracker.magicOverlap = 10 --13.37
 tracker.selectionBehavior = 0
 tracker.transpose = 3
 tracker.advance = 1
+tracker.automationBug = 1
 
 tracker.channels = 16 -- Max channel (0 is not shown)
 tracker.displaychannels = 15
@@ -110,8 +111,6 @@ keys.octaveup     = { 1,    0,  0,    30064 }      -- CTRL + /\
 keys.octavedown   = { 1,    0,  0,    1685026670 } -- CTRL + \/
 keys.envshapeup   = { 1,    0,  1,    30064 }      -- CTRL + SHIFT + /\
 keys.envshapedown = { 1,    0,  1,    1685026670 } -- CTRL + SHIFT + /\
-
---
 
 -- Base pitches
 keys.pitches = {}
@@ -907,7 +906,7 @@ function tracker:createNote( inChar )
   elseif ( ( ftype == 'fx2' ) and validHex( char ) ) then
     local atime, env, shape, tension = tracker:getEnvPt(chan, self:toSeconds(self.ypos))
     env = env or self.lastEnv  
-    local newvel = tracker:editEnvField( env, 2, char )
+    local newEnv = tracker:editEnvField( env, 2, char )
     self:addEnvPt(chan, self:toSeconds(self.ypos-1), newEnv, self.envShape)    
     self.ypos = self.ypos + self.advance
     self.lastEnv = newEnv
@@ -1024,7 +1023,7 @@ function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, note
         end
       end
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToResize] )
-      reaper.MIDI_SetNote(self.take, noteToResize, nil, nil, startppqpos, self:clampPpq( endppqpos + singlerow * resize + magic ), nil, nil, nil, true)
+      reaper.MIDI_SetNote(self.take, noteToResize, nil, nil, startppqpos, endppqpos + singlerow * resize + magic, nil, nil, nil, true)
       
       -- Is there an OFF symbol at this location?
       if ( k < rows ) then
@@ -1163,6 +1162,8 @@ function tracker:backspace()
       self:setLegato( i, lastleg )
       lastleg = legato[i]>-1
     end
+  elseif( ftype == 'fx1' or ftype == 'fx2' ) then
+    self:backspaceEnvPt(chan, self:toSeconds(self.ypos-1))
   else
     print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
     return
@@ -1421,12 +1422,13 @@ function tracker:insert()
       self:setLegato( i, lastleg )
       lastleg = self.legato[i]>-1
     end
+  elseif( ftype == 'fx1' or ftype == 'fx2' ) then
+    self:insertEnvPt(chan, self:toSeconds(self.ypos-1))
   else
     print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
     return
   end
 end
-
 
 ------------------------------
 -- Force selector in range
@@ -1629,7 +1631,7 @@ end
 
 function tracker:editVelField( vel, id, val )
   -- Convert to Hex first
-  local newvel = string.format('%2X', math.floor(vel*hexdec) )
+  local newvel = string.format('%02X', math.floor(vel*hexdec) )
   -- Replace the digit in question
   newvel = newvel:sub( 1, id-1 ) .. val ..  newvel:sub( id+1 )
   newvel = math.floor( tonumber( "0x"..newvel ) / hexdec )
@@ -1639,7 +1641,7 @@ end
 
 function tracker:editEnvField( vel, id, val )
   -- Convert to Hex first
-  local newvel = string.format('%2X', math.floor(vel*255) )
+  local newvel = string.format('%02X', math.floor(vel*255) )
   -- Replace the digit in question
   newvel = newvel:sub( 1, id-1 ) .. val ..  newvel:sub( id+1 )
   newvel = math.floor( tonumber( "0x"..newvel ) / hexdec )
@@ -1795,6 +1797,9 @@ end
 --function tracker:getParam
 --number retval, number minval, number maxval = reaper.TrackFX_GetParam(MediaTrack track, integer fx, integer param)
 
+-------------------
+-- Create automation items for enabled parameters
+-------------------
 function tracker:createDefaultEnvelopes()
   local fxcnt = reaper.TrackFX_GetCount(self.track)
   for fidx = 0,fxcnt-1 do
@@ -1807,6 +1812,9 @@ function tracker:createDefaultEnvelopes()
   end
 end
 
+-------------------
+-- Find automation item associated with my take
+-------------------
 function tracker:findMyAutomation(envelope)
   for i=0,reaper.CountAutomationItems(envelope) do
     local pos = reaper.GetSetAutomationItemInfo(envelope, i, "D_POSITION", 1, false)
@@ -1823,15 +1831,87 @@ function tracker:findMyAutomation(envelope)
   return nil
 end
 
+-------------------
+-- Delete specific envelope point
+-------------------
 function tracker:deleteEnvPt(fxid, t1, t2)
   local fx      = self.fx
   local envidx  = fx.envelopeidx[fxid]
   local autoidx = fx.autoidx[fxid]
-  local tend    = t2 or t1 + self:toSeconds(1)
+  local tstart  = t1 + self.position
+  local tend    = t2 or tstart + self:toSeconds(1)
   
-  reaper.DeleteEnvelopePointRangeEx(envidx, autoidx, t1, tend - tracker.eps)
+  reaper.DeleteEnvelopePointRangeEx(envidx, autoidx, tstart - tracker.enveps, tend - tracker.enveps)
 end
 
+-------------------
+-- Insert operation on envelope
+-------------------
+function tracker:insertEnvPt(fxid, t1)
+  local fx      = self.fx
+  local envidx  = fx.envelopeidx[fxid]
+  local autoidx = fx.autoidx[fxid]
+
+  local npoints
+  if ( self.automationBug == 1 ) then
+    npoints = 2 * self.rows
+  else
+    npoints = reaper.CountEnvelopePointsEx(envidx, autoidx)
+  end
+
+  -- Remove the ones that are going to fall off
+  self:deleteEnvPt(fxid, self.length-self:toSeconds(1)-tracker.enveps)
+  reaper.Envelope_SortPointsEx(envidx, autoidx)
+
+  -- Shift all envelope points by one time unit
+  print("self.position" .. self.position)
+  print("self.length"..self.length)
+  local abstime = t1 + self.position + self.length - tracker.enveps
+  local ptidx
+  for ptidx=0,npoints do
+    local retval, envtime = reaper.GetEnvelopePointEx(envidx, autoidx, ptidx)
+    if ( envtime >= abstime ) then
+      envtime = envtime + self:toSeconds(1)
+      reaper.SetEnvelopePointEx(envidx, autoidx, ptidx, envtime, nil, nil, nil, nil, true)
+    end
+  end
+  
+  reaper.Envelope_SortPointsEx(envidx, autoidx)
+end
+
+-------------------
+-- Backspace operation on envelope
+-------------------
+function tracker:backspaceEnvPt(fxid, t1)
+  local fx      = self.fx
+  local envidx  = fx.envelopeidx[fxid]
+  local autoidx = fx.autoidx[fxid]
+
+  self:deleteEnvPt(fxid, t1)
+
+  local npoints
+  if ( self.automationBug == 1 ) then
+    npoints = 2 * self.rows
+  else
+    npoints = reaper.CountEnvelopePointsEx(envidx, autoidx)
+  end
+
+  -- Shift all envelope points by one time unit
+  
+  local abstime = t1 + self.position + self.length - self.enveps
+  for ptidx=0,npoints do
+    local retval, envtime = reaper.GetEnvelopePointEx(envidx, autoidx, ptidx)
+    if ( envtime > ( abstime + self:toSeconds(1) ) ) then
+      envtime = envtime - self:toSeconds(1)
+      reaper.SetEnvelopePointEx(envidx, autoidx, ptidx, envtime, nil, nil, nil, nil, true)
+    end
+  end
+  reaper.Envelope_SortPointsEx(envidx, autoidx)
+end
+
+-------------------
+-- Get envelope index from time
+-------------------
 function tracker:getEnvIdx(fxid, time)
   local fx = self.fx
   local envidx = fx.envelopeidx[fxid]
@@ -1853,6 +1933,9 @@ function tracker:getEnvIdx(fxid, time)
   return nil, loc
 end
 
+-------------------
+-- Get envelope data from time
+-------------------
 function tracker:getEnvPt(fxid, time)
   local fx = self.fx
   local envidx = fx.envelopeidx[fxid]
@@ -1866,7 +1949,9 @@ function tracker:getEnvPt(fxid, time)
 end
 
 tracker.enveps = 1e-4
----------------------------------
+-------------------
+-- Add envelope point
+-------------------
 function tracker:addEnvPt(fxid, time, value, shape)
   local fx = self.fx
   local envidx = fx.envelopeidx[fxid]
@@ -1877,8 +1962,6 @@ function tracker:addEnvPt(fxid, time, value, shape)
     return
   end
   
-  local loc = time or .1
-  loc = loc + self.position  
   local val = value or 5
   local envShape = shape or 0
   local envTension = nil
@@ -1894,6 +1977,9 @@ function tracker:addEnvPt(fxid, time, value, shape)
 end
 ---------------------------------
 
+-------------------
+-- Deprecated
+-------------------
 tracker.autoCleanup = 1
 function tracker:consolidateAutomation(envelope)
   for i=0,reaper.CountAutomationItems(envelope) do
@@ -1945,20 +2031,20 @@ function tracker:getTakeEnvelopes()
   end 
 end
 
--- Add envelope node
---  self:addEnvPt(2, .23, 1)
-
-
+-------------------
+-- Set the envelope text in the tracker view
+-------------------
 function tracker:updateEnvelopes()
   local rows = self.rows
   local data = self.data
+  local str =  string.format('%2X', math.floor(97) )
+
   if ( self.fx.names ) then
     for ch=1,#self.fx.names do
       for i=0,rows-1 do
         local atime, value, shape, tension = self:getEnvPt(ch, self:toSeconds(i))
         if ( value ) then
-          local hexEnv = string.format('%2X', math.floor(value*255) )
---          data.shape
+          local hexEnv = string.format('%02X', math.floor(value*255) )
           data.fx1[rows*ch+i] = hexEnv:sub(1,1)
           data.fx2[rows*ch+i] = hexEnv:sub(2,2)
         end
