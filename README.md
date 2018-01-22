@@ -46,19 +46,19 @@ workaround to fix note OFF issues with the resulting MIDI item.
 | \-                    | Place note OFF                                                        |
 | ENTER                 | Start play at cursor position                                         |
 | Space                 | Start/Stop                                                            |
-| CTRL + B              | Start selection block                                                 |
-| CTRL + E              | End selection block                                                   |
-| CTRL + Z              | Undo                                                                  |
-| CTRL + SHIFT + Z      | Redo                                                                  |
-| CTRL + X              | Cut (To do)                                                           |
-| CTRL + V              | Paste (To do)                                                         |
-| CTRL + C              | Copy (To do)                                                          |
-| CTRL + /\             | Shift current octave up                                               |
-| CTRL + \/             | Shift current octave down                                             |
-| SHIFT + CTRL + /\     | Switch envelope mode (for effects automation)                         |
-| SHIFT + CTRL + \/     | Switch envelope mode (for effects automation)                         |
-| Shift + Numpad +      | Shift all elements in selection one up (for notes C-1 -> C#1)         |
-| Shift + Numpad -      | Shift all elements in selection one down                              |
+| CTRL \+ B             | Start selection block                                                 |
+| CTRL \+ E             | End selection block                                                   |
+| CTRL \+ Z             | Undo                                                                  |
+| CTRL \+ SHIFT + Z     | Redo                                                                  |
+| CTRL \+ X             | Cut \(To do\)                                                         |
+| CTRL \+ V             | Paste \(To do\)                                                       |
+| CTRL \+ C             | Copy \(To do\)                                                        |
+| CTRL \+ /\\           | Shift current octave up                                               |
+| CTRL \+ \\/           | Shift current octave down                                             |
+| SHIFT \+ CTRL \+ /\\  | Switch envelope mode \(for effects automation\)                       |
+| SHIFT \+ CTRL \+ \\/  | Switch envelope mode \(for effects automation\)                       |
+| Shift \+ Numpad \+    | Shift all elements in selection one up \(for notes C\-1 -> C\#1\)     |
+| Shift \+ Numpad \-    | Shift all elements in selection one down                              |
 
 ## Feature requests
 Feature requests are always welcome, preferably with an idea of how to achieve it with the Reaper API ( https://www.reaper.fm/sdk/reascript/reascripthelp.html#l ). If you've implemented a feature yourself and want it added to the trunk, submit a pull requests. If possible, try and make sure that the pull request is up to date with the latest version. I will do my best to review and incorporate these.
