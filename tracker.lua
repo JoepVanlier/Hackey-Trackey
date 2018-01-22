@@ -2634,14 +2634,14 @@ end
 end
 
 local function Main()
-  local tracker = tracker
-  tracker.tick = 0
-  tracker:generatePitches()
-  tracker:initColors()
-  gfx.init("Hackey Trackey v0.81", 450, 385, 0, 200, 200)
-  
+  local tracker = tracker  
   local reaper = reaper
   if ( reaper.CountSelectedMediaItems(0) > 0 ) then
+    tracker.tick = 0
+    tracker:generatePitches()
+    tracker:initColors()
+    gfx.init("Hackey Trackey v0.81", 450, 385, 0, 200, 200)
+  
     local item = reaper.GetSelectedMediaItem(0, 0)
     local take = reaper.GetActiveTake(item)
     if ( reaper.TakeIsMIDI( take ) == true ) then
@@ -2654,6 +2654,8 @@ local function Main()
       
       reaper.defer(updateLoop)
     end
+  else
+    reaper.ShowMessageBox("Please select a MIDI item before starting the tracker", "No MIDI item selected", 0)
   end
 end
 
