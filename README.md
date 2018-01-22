@@ -28,8 +28,10 @@ points in an automation take.
 By default, tracked notes do not overlap. However, for some purposes, overlap may be
 desirable (some monophonic VSTs interpret this as glide/legato mode). For this, one can 
 use the column L. Setting 1 in a row here, means that this note will be glided into. 
-This is implementing by simpliy stretching the previous note a little bit (the amount 
-is stored in tracker.magicOverlap). Legato is only applied to channel 1 in the tracker.
+This is implemented by simpliy stretching the previous note. Legato is only applied 
+to channel 1 in the tracker. Note that performing a legato from and to the same note 
+will result in the second note not displaying in the tracker. This is not a bug, but a 
+workaround to fix note OFF issues with the resulting MIDI item.
 
 ## Special keys
 | Key                   | Action 								|
@@ -57,10 +59,10 @@ is stored in tracker.magicOverlap). Legato is only applied to channel 1 in the t
 
 ## How does it work?
 Hackey trackey maps already existing MIDI data to a tracked format and allows 
-editing of such data in a tracker based manner. If the MIDI data was 
+editing of such data in a tracker-based manner. If the MIDI data was 
 entered via another method than Hackey Trackey, the default behaviour is to 
 map the notes to non-overlapping channels. Once this is done, the channels for 
-the MIDI data are remapped such that the column in which a note appears can be 
+the MIDI data are remapped such that the column in which a note appears is 
 stable from that point on. Note that if your instruments use the MIDI channel 
 information for specific purposes then this plugin is not useful to you. Note 
 that depending on what you are doing, the plugin may also add text events to 
