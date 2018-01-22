@@ -18,13 +18,14 @@
 --    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 --    OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 --
---    A lightweight LUA tracker for REAPER
+--    A simple LUA tracker for REAPER. Simply highlight a MIDI item and start the 
+--    script. This will bring up the MIDI item as a tracked sequence. For more 
+--    information, please refer to the readme file.
 --
---    Simply highlight a MIDI item and start the script.
---    This will bring up the MIDI item as a tracked sequence.
+--    If you use and/or enjoy this plugin, let me/others know.
+--    I would also appreciate music for my videogame.
 --
---    Work in progress. Input not yet implemented.
---
+--    Happy trackin'! :)
 
 tracker = {}
 tracker.eps = 1e-3
@@ -1794,9 +1795,6 @@ function tracker:mergeOverlaps()
   end
 end
 
---function tracker:getParam
---number retval, number minval, number maxval = reaper.TrackFX_GetParam(MediaTrack track, integer fx, integer param)
-
 -------------------
 -- Create automation items for enabled parameters
 -------------------
@@ -1806,7 +1804,6 @@ function tracker:createDefaultEnvelopes()
     local pcnt = reaper.TrackFX_GetNumParams(self.track, fidx)
     for pidx = 0,pcnt-1 do
       local retval, name = reaper.TrackFX_GetParamName(self.track, fidx, pidx, '')
-      print(name)
       local envelope = reaper.GetFXEnvelope(self.track, fidx, pidx, false)
     end
   end
@@ -1864,8 +1861,6 @@ function tracker:insertEnvPt(fxid, t1)
   reaper.Envelope_SortPointsEx(envidx, autoidx)
 
   -- Shift all envelope points by one time unit
-  print("self.position" .. self.position)
-  print("self.length"..self.length)
   local abstime = t1 + self.position + self.length - tracker.enveps
   local ptidx
   for ptidx=0,npoints do
@@ -1897,7 +1892,6 @@ function tracker:backspaceEnvPt(fxid, t1)
   end
 
   -- Shift all envelope points by one time unit
-  
   local abstime = t1 + self.position + self.length - self.enveps
   for ptidx=0,npoints do
     local retval, envtime = reaper.GetEnvelopePointEx(envidx, autoidx, ptidx)
@@ -1976,25 +1970,6 @@ function tracker:addEnvPt(fxid, time, value, shape)
   reaper.Envelope_SortPointsEx(envidx, autoidx)
 end
 ---------------------------------
-
--------------------
--- Deprecated
--------------------
-tracker.autoCleanup = 1
-function tracker:consolidateAutomation(envelope)
-  for i=0,reaper.CountAutomationItems(envelope) do
-    local pos = reaper.GetSetAutomationItemInfo(envelope, i, "D_POSITION", 1, false)
-    local len = reaper.GetSetAutomationItemInfo(envelope, i, "D_LENGTH", 1, false)  
-    
-    -- We overlap yes
-    if ( ( pos >= self.position ) and ( pos < ( self.position + self.length ) ) ) then
-      -- Copy all the events
-    
-      if ( tracker.autoCleanup ) then
-      end
-    end   
-  end
-end
 
 ---------------------------------
 -- Construct or fetch automation envelopes associated with this pattern
