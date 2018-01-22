@@ -41,7 +41,7 @@ workaround to fix note OFF issues with the resulting MIDI item.
 | Key                   | Action                                                                |
 |:----------------------|:----------------------------------------------------------------------|
 | Arrow keys            | Navigate                                                              |
-| Backspace             | Delete item and move all subsequent rows one up                       |
+| Backspace             | Delete item and shift rows up                                         |
 | Del                   | Delete item                                                           |
 | Insert                | Shift all items down by one                                           |
 | \-                    | Place note OFF                                                        |
