@@ -57,7 +57,7 @@ workaround to fix note OFF issues with the resulting MIDI item.
 | CTRL \+ \\/           | Shift current octave down                                             |
 | SHIFT \+ CTRL \+ /\\  | Switch envelope mode \(for effects automation\)                       |
 | SHIFT \+ CTRL \+ \\/  | Switch envelope mode \(for effects automation\)                       |
-| Shift \+ Numpad \+    | Shift all elements in selection one up \(for notes C\-1 -> C\#1\)     |
+| Shift \+ Numpad \+    | Shift all elements in selection one up \(for notes C\-1 \-> C\#1\)    |
 | Shift \+ Numpad \-    | Shift all elements in selection one down                              |
 
 ## Feature requests
