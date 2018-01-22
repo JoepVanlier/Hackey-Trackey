@@ -12,11 +12,14 @@ A sampler. Hackey-Trackey does not handle sample playback. For this you would
 need to add an additional VST that handles sample playback. Have a look at 
 ReViSiT or linking Renoise to REAPER if this is what you seek.
 
+## Small disclaimer
+Hackey Trackey is still actively being developed. Not all planned features are finished yet. Be sure to check back in the future if you want to be kept up to date with the latest features.
+
 ## How do I use it?
 Select a MIDI object and start the script. Note that scripts can be bound to 
 shortcut keys, which I'd recommend if you're going to be using it.
 
-Note that the plugin remaps your MIDI data to different channels. New MIDI 
+The plugin remaps your MIDI data to different channels. New MIDI 
 data that was not tracked has to come in on channel 0. Note also that the 
 tracker outputs everything to MIDI channel 0 by default.
 
@@ -56,6 +59,9 @@ workaround to fix note OFF issues with the resulting MIDI item.
 | SHIFT + CTRL + \/	| Switch envelope mode (for effects automation)				|
 | Shift + Numpad +	| Shift all elements in selection one up (for notes C-1 -> C#1)		|
 | Shift + Numpad -	| Shift all elements in selection one down				|
+
+## Feature requests
+Feature requests are always welcome, preferably with an idea of how to achieve it with the Reaper API ( https://www.reaper.fm/sdk/reascript/reascripthelp.html#l ). If you've implemented a feature yourself and want it added to the trunk, submit a pull requests. If possible, try and make sure that the pull request is up to date with the latest version. I will do my best to review and incorporate these.
 
 ## How does it work?
 Hackey trackey maps already existing MIDI data to a tracked format and allows 
