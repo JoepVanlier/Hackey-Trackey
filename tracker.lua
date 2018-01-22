@@ -44,11 +44,13 @@ tracker.trackFX = 1
 -- Defaults
 tracker.transpose = 3
 tracker.advance = 1
+tracker.showloop = 1
 
 -- Slack used in notes and automation to check whether a point is the point specified
 tracker.eps = 1e-3
 tracker.enveps = 1e-4
 
+tracker.printKeys = 0
 tracker.fov = {}
 tracker.fov.scrollx = 0
 tracker.fov.scrolly = 0
@@ -87,6 +89,7 @@ tracker.colors.linecolor = {.1, .0, .4, .4}
 tracker.colors.linecolor2 = {.3, .0, .6, .4}
 tracker.colors.linecolor3 = {.4, .1, 1, 1}
 tracker.colors.linecolor4 = {.2, .0, 1, .5}
+tracker.colors.loopcolor = {.2, .3, .8, .5}
 tracker.colors.copypaste = {5.0, .7, 0.1, .2}
 tracker.hash = 0
 
@@ -131,9 +134,12 @@ keys.outchandown  = { 0,    0,  0,    26161 }      -- F1
 keys.outchanup    = { 0,    0,  0,    26162 }      -- F2
 keys.advancedown  = { 0,    0,  0,    26163 }      -- F3
 keys.advanceup    = { 0,    0,  0,    26164 }      -- F4
+keys.setloop      = { 1,    0,  0,    12 }         -- CTRL + L
+keys.setloopstart = { 1,    0,  0,    17 }         -- CTRL + Q
+keys.setloopend   = { 1,    0,  0,    23 }         -- CTRL + W
 
--- Base pitches
--- Can customize the 'keyboard' here, if they aren't working for you
+--- Base pitches
+--- Can customize the 'keyboard' here, if they aren't working for you
 keys.pitches = {}
 keys.pitches.z = 24-12
 keys.pitches.x = 26-12
@@ -449,6 +455,13 @@ function tracker:normalizePositionToSelf(cpos)
   return norm
 end
 
+function tracker:getLoopLocations()
+  local lStart, lEnd = reaper.GetSet_LoopTimeRange2(0, false, 1, 0, 0, false)
+  lStart = self:normalizePositionToSelf( lStart )
+  lEnd = self:normalizePositionToSelf( lEnd )    
+  return lStart, lEnd
+end
+
 function tracker:getCursorLocation()
   return self:normalizePositionToSelf( reaper.GetCursorPosition() )
 end
@@ -627,6 +640,21 @@ function tracker:printGrid()
       gfx.rect(xloc[xmi], yloc[yl] - plotData.yshift, xloc[xma] + xwidth[xma] - xloc[xmi], yloc[ye]-yloc[yl]+yheight[ye] )
     else
       gfx.rect(xloc[1] - itempadx, yloc[yl] - plotData.yshift, tw, yloc[ye]-yloc[yl]+yheight[ye] )
+    end
+  end
+    
+  ------------------------------
+  -- Loop indicator
+  ------------------------------
+  if ( self.showloop == 1 ) then
+    local lStart, lEnd = self:getLoopLocations()
+    if ( ( lStart >= 0 ) and ( lStart <= 1 ) ) then
+      gfx.set(table.unpack(colors.loopcolor))
+      gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * lStart - 2*itempady - 1, tw, 2)
+    end
+    if ( ( lEnd >= 0 ) and ( lEnd <= 1 ) ) then
+      gfx.set(table.unpack(colors.loopcolor))
+      gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * lEnd - 2*itempady - 1, tw, 2)
     end
   end
     
@@ -2463,6 +2491,29 @@ function tracker:setOutChannel( ch )
   end
 end
 
+function tracker:setLoopStart()
+    local mPos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+    local lPos, lEnd = reaper.GetSet_LoopTimeRange2(0, false, 1, 0, 0, false)
+    
+    lPos = mPos + tracker:toSeconds(tracker.ypos-1)
+    if ( lPos > lEnd ) then
+      lEnd = lPos + tracker:toSeconds(1)
+    end
+    reaper.GetSet_LoopTimeRange2(0, true, true, lPos, lEnd, true)
+
+end
+
+function tracker:setLoopEnd()
+    local mPos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+    local lPos, lEnd = reaper.GetSet_LoopTimeRange2(0, false, 1, 0, 0, false)
+    
+    lEnd = mPos + tracker:toSeconds(tracker.ypos)
+    if ( lPos > lEnd ) then
+      lPos = lEnd - tracker:toSeconds(1)
+    end
+    reaper.GetSet_LoopTimeRange2(0, true, true, lPos, lEnd, true)    
+end
+
 ------------------------------
 -- Main update loop
 -----------------------------
@@ -2486,9 +2537,12 @@ local function updateLoop()
     tracker:update()
   end  
 
-if ( lastChar ~= 0 ) then
-  --print(lastChar)
-end
+  if ( tracker.printKeys == 1 ) then
+    if ( lastChar ~= 0 ) then
+      print(lastChar)
+    end
+  end
+
   local modified = 0
   if inputs('left') then
     tracker.xpos = tracker.xpos - 1
@@ -2519,7 +2573,7 @@ end
     togglePlayPause()
   elseif inputs('playfrom') then
     local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
-    local loc = reaper.AddProjectMarker(0, 0, tracker:toSeconds(tracker.ypos-1), 0, "", -1)
+    local loc = reaper.AddProjectMarker(0, 0, mpos + tracker:toSeconds(tracker.ypos-1), 0, "", -1)
     reaper.GoToMarker(0, loc, 0)
     reaper.DeleteProjectMarker(0, loc, 0)
     togglePlayPause()
@@ -2598,6 +2652,14 @@ end
     if ( tracker.advance < 0 ) then
       tracker.advance = 0
     end
+  elseif inputs('setloop') then
+    local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+    local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")      
+    reaper.GetSet_LoopTimeRange2(0, true, true, mpos, mpos+mlen, true)
+  elseif inputs('setloopstart') then
+    tracker:setLoopStart()  
+  elseif inputs('setloopend') then
+    tracker:setLoopEnd()   
   elseif ( lastChar == 0 ) then
     -- No input
   elseif ( lastChar == -1 ) then      
