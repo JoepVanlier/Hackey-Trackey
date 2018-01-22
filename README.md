@@ -38,7 +38,7 @@ workaround to fix note OFF issues with the resulting MIDI item.
 
 ## Special keys
 | Key                   | Action 								|
-| --------------------- | --------------------------------------------------------------------- |
+|:----------------------|:----------------------------------------------------------------------|
 | Arrow keys 		| Navigate								|
 | Backspace 		| Delete item and move all subsequent rows one up			|
 | Del 			| Delete item								|
