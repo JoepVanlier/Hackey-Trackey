@@ -43,6 +43,30 @@ show up in the tracker. The tracker will store the tracked points in an automati
 
 ![Using FX](https://i.imgur.com/pZ0TV7k.png)
 
+# Special keys
+| Key                   | Action 								|
+| --------------------- | --------------------------------------------------------------------- |
+| Arrow keys 		| Navigate								|
+| Backspace 		| Delete item and move all subsequent rows one up			|
+| Del 			| Delete item								|
+| Insert 		| Shift all items down by one						|
+| \- 			| Place note OFF							|
+| ENTER 		| Start play at cursor position						|
+| Space 		| Start/Stop								|
+| CTRL + B 		| Start selection block 						|
+| CTRL + E 		| End selection block 							|
+| CTRL + Z   		| Undo									|
+| CTRL + SHIFT + Z 	| Redo									|
+| CTRL + X 		| Cut (To do)								|
+| CTRL + V 		| Paste (To do)								|
+| CTRL + C 		| Copy (To do)								|
+| CTRL + /\ 		| Shift current octave up 						|
+| CTRL + \/		| Shift current octave down						|
+| SHIFT + CTRL + /\ 	| Switch envelope mode (for effects automation)				|
+| SHIFT + CTRL + \/	| Switch envelope mode (for effects automation)				|
+| Shift + Numpad +	| Shift all elements in selection one up (for notes C-1 -> C#1)		|
+| Shift + Numpad -	| Shift all elements in selection one down				|
+
 # Issues/Limitations
 There are some things which are unfortunately not possible as far as I am aware.
 Voice stealing when placing overlapping tracked patterns is one of them. In Jeskola 
@@ -70,30 +94,6 @@ be repeated on channel 1. Doing so would cause problems when playing the MIDI. H
 1 D-2
 would be merged into one single MIDI note. I have not found a good workaround for this 
 so far, but if you have a good idea, please contact me.
-
-# Special keys
-| Key                   | Action 								|
-| --------------------- | --------------------------------------------------------------------- |
-| Arrow keys 		| Navigate								|
-| Backspace 		| Delete item and move all subsequent rows one up			|
-| Del 			| Delete item								|
-| Insert 		| Shift all items down by one						|
-| \- 			| Place note OFF							|
-| ENTER 		| Start play at cursor position						|
-| Space 		| Start/Stop								|
-| CTRL + B 		| Start selection block 						|
-| CTRL + E 		| End selection block 							|
-| CTRL + Z   		| Undo									|
-| CTRL + SHIFT + Z 	| Redo									|
-| CTRL + X 		| Cut (To do)								|
-| CTRL + V 		| Paste (To do)								|
-| CTRL + C 		| Copy (To do)								|
-| CTRL + /\ 		| Shift current octave up 						|
-| CTRL + \/		| Shift current octave down						|
-| SHIFT + CTRL + /\ 	| Switch envelope mode (for effects automation)				|
-| SHIFT + CTRL + \/	| Switch envelope mode (for effects automation)				|
-| Shift + Numpad +	| Shift all elements in selection one up (for notes C-1 -> C#1)		|
-| Shift + Numpad -	| Shift all elements in selection one down				|
 
 # Planned features
 - Cut/Copy pasting blocks within the tracker.
