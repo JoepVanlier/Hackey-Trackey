@@ -13,7 +13,7 @@ need to add an additional VST that handles sample playback. Have a look at
 ReViSiT or linking Renoise to REAPER if this is what you seek.
 
 ## Small disclaimer
-Hackey Trackey is still actively being developed. Not all planned features are finished yet. Be sure to check back in the future if you want to be kept up to date with the latest features.
+Hackey Trackey is still actively being developed. Not all planned features are finished yet. Be sure to check back in the future if you want to be kept up to date with the latest features. That said, basic tracking functionality works (note entry, FX sequencing) and directly updates MIDI and automation data.
 
 ## How do I use it?
 Select a MIDI object and start the script. Note that scripts can be bound to 
