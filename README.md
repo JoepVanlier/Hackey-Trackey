@@ -4,6 +4,8 @@ tracker for visualizing and editing MIDI data within REAPER. Note that it does n
 function as a sampler. Designed to mimick the pattern editor of Jeskola Buzz, this
 tracker is meant to enable note entry in a tracked manner.
 
+![Using Hackey Trackey](https://i.imgur.com/o6QXh8X.png)
+
 Hackey trackey maps already existing MIDI data to a tracked format and allows 
 editing of such data in a tracker based manner. If the MIDI data was 
 entered via another method than Hackey Trackey, the default behaviour is to 
@@ -35,6 +37,11 @@ desirable (some monophonic VSTs interpret this as glide/legato mode). For this, 
 use the column L. Setting 1 in a row here, means that this note will be glided into. 
 This is implementing by simpliy stretching the previous note a little bit (the amount 
 is stored in tracker.magicOverlap). Legato is only applied to channel 1 in the tracker.
+
+Parameters for which envelopes are active (see automation panel), will automatically 
+show up in the tracker. The tracker will store the tracked points in an automation take.
+
+![Using FX](https://i.imgur.com/pZ0TV7k.png)
 
 # Issues/Limitations
 There are some things which are unfortunately not possible as far as I am aware.
@@ -72,6 +79,8 @@ so far, but if you have a good idea, please contact me.
 | Del 			| Delete item								|
 | Insert 		| Shift all items down by one						|
 | \- 			| Place note OFF							|
+| ENTER 		| Start play at cursor position						|
+| Space 		| Start/Stop								|
 | CTRL + B 		| Start selection block 						|
 | CTRL + E 		| End selection block 							|
 | CTRL + Z   		| Undo									|
@@ -79,6 +88,10 @@ so far, but if you have a good idea, please contact me.
 | CTRL + X 		| Cut (To do)								|
 | CTRL + V 		| Paste (To do)								|
 | CTRL + C 		| Copy (To do)								|
+| CTRL + /\ 		| Shift current octave up 						|
+| CTRL + \/		| Shift current octave down						|
+| SHIFT + CTRL + /\ 	| Switch envelope mode (for effects automation)				|
+| SHIFT + CTRL + \/	| Switch envelope mode (for effects automation)				|
 | Shift + Numpad +	| Shift all elements in selection one up (for notes C-1 -> C#1)		|
 | Shift + Numpad -	| Shift all elements in selection one down				|
 
@@ -89,4 +102,3 @@ so far, but if you have a good idea, please contact me.
 # Features to be investigated whether they are feasible/reasonable
 - Columns for MIDI controls.
 - Cutting/Copying to MIDI editor clipboard.
-
