@@ -19,18 +19,21 @@ Hackey Trackey is still actively being developed. Not all planned features are f
 Select a MIDI object and start the script. Note that scripts can be bound to 
 shortcut keys, which I'd recommend if you're going to be using it.
 
+### To what channel is the MIDI data being sent?
 The plugin remaps your MIDI data to different channels. New MIDI 
-data that was not tracked has to come in on channel 1. Note also that the 
-tracker outputs everything to MIDI channel 1 by default. The output channel 
-can be changed with the F1 (down) and F2 (up) keys. Setting the output 
-channel to zero (displays as C) maps each column to a separate MIDI channel.
-Note that column one goes to MIDI channel 2 and so forth.
+data that was not tracked has to come in on channel 1. Note also that 
+the tracker outputs everything to MIDI channel 1 by default. The output 
+channel (OUT) can be changed with the F1 (down) and F2 (up) keys. Setting 
+the output channel to zero (displays as C) maps each column to a separate 
+MIDI channel. Note that column one goes to MIDI channel 2 and so forth.
 
-Parameters for which envelopes are active (see automation panel in image below), 
-will automatically show up in the tracker. The tracker will store the tracked 
-points in an automation take.
+### Can I automate parameters?
+Yes! Parameters for which envelopes are active (see automation panel in image 
+below), will automatically show up in the tracker. The tracker will store the 
+tracked points in an automation take.
 ![Using FX](https://i.imgur.com/pZ0TV7k.png)
 
+### All my notes sound very staccato? What's going on?
 By default, tracked notes do not overlap. However, for some purposes, overlap may be
 desirable (some monophonic VSTs interpret this as glide/legato mode). For this, one can 
 use the column L. Setting 1 in a row here, means that this note will be glided into. 
