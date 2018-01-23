@@ -70,6 +70,7 @@ tracker.envShape = 1
 tracker.rowPerQn = 4
 
 tracker.cp = {}
+tracker.cp.lastShiftCoord = nil
 tracker.cp.xstart = -1
 tracker.cp.ystart = -1
 tracker.cp.xstop = -1
@@ -82,15 +83,15 @@ tracker.automationBug = 1 -- This fixes a bug in v5.70
 tracker.channels = 16 -- Max channel (0 is not shown)
 tracker.displaychannels = 15
 tracker.colors = {}
-tracker.colors.selectcolor = {.7, 0, .5, 1}
-tracker.colors.textcolor = {.7, .8, .8, 1}
-tracker.colors.headercolor = {.5, .5, .8, 1}
-tracker.colors.linecolor = {.1, .0, .4, .4}
-tracker.colors.linecolor2 = {.3, .0, .6, .4}
-tracker.colors.linecolor3 = {.4, .1, 1, 1}
-tracker.colors.linecolor4 = {.2, .0, 1, .5}
-tracker.colors.loopcolor = {.2, .3, .8, .5}
-tracker.colors.copypaste = {5.0, .7, 0.1, .2}
+tracker.colors.selectcolor  = {.7, 0, .5, 1}
+tracker.colors.textcolor    = {.7, .8, .8, 1}
+tracker.colors.headercolor  = {.5, .5, .8, 1}
+tracker.colors.linecolor    = {.1, .0, .4, .4}
+tracker.colors.linecolor2   = {.3, .0, .6, .4}
+tracker.colors.linecolor3   = {.4, .1, 1, 1}
+tracker.colors.linecolor4   = {.2, .0, 1, .5}
+tracker.colors.loopcolor    = {.2, .3, .8, .5}
+tracker.colors.copypaste    = {5.0, .7, 0.1, .2}
 tracker.hash = 0
 
 tracker.envShapes = {}
@@ -138,6 +139,11 @@ keys.setloop      = { 1,    0,  0,    12 }         -- CTRL + L
 keys.setloopstart = { 1,    0,  0,    17 }         -- CTRL + Q
 keys.setloopend   = { 1,    0,  0,    23 }         -- CTRL + W
 keys.interpolate  = { 1,    0,  0,    9 }          -- CTRL + I
+keys.shiftleft    = { 0,    0,  1,    1818584692 } -- Shift + <-
+keys.shiftright   = { 0,    0,  1,    1919379572 } -- Shift + ->
+keys.shiftup      = { 0,    0,  1,    30064 }      -- Shift + /\
+keys.shiftdown    = { 0,    0,  1,    1685026670 } -- Shift + \/
+keys.deleteBlock  = { 0,    0,  1,    6579564 }    -- Shift + Del
 
 --- Base pitches
 --- Can customize the 'keyboard' here, if they aren't working for you
@@ -692,8 +698,8 @@ function tracker:getLocation()
   local plotData  = self.plotData
   local dlink     = plotData.dlink
   local xlink     = plotData.xlink
-  local relx      = tracker.xpos - tracker.fov.scrollx
   
+  local relx = tracker.xpos - tracker.fov.scrollx
   return dlink[relx], xlink[relx], tracker.ypos - 1
 end
 
@@ -1444,7 +1450,7 @@ end
 function tracker:insert()
   local data      = self.data
   local singlerow = self:rowToPpq(1)
-  local rows     = self.rows
+  local rows      = self.rows
   
   -- Determine fieldtype, channel and row
   local ftype, chan, row = self:getLocation()  
@@ -1786,7 +1792,6 @@ function tracker:deleteLegato( row, skipMarker )
   if ( idx and idx > -1 ) then
       -- If we delete a legato, check whether there is a note transition next to it, and shorten
       -- that note transition if required.
-        
     local npos = rows+row - 1
     local noteOfInterest = noteGrid[npos]
     if ( noteOfInterest and noteStart[npos+1] ) then
@@ -1798,6 +1803,8 @@ function tracker:deleteLegato( row, skipMarker )
     if ( not skipMarker ) then
       self:SAFE_DeleteText(self.take, idx)
     end
+    
+    self.legato[row] = -1
   end
 end
 
@@ -1917,7 +1924,7 @@ function tracker:deleteEnvPt(fxid, t1, t2)
   local envidx  = fx.envelopeidx[fxid]
   local autoidx = fx.autoidx[fxid]
   local tstart  = t1 + self.position
-  local tend    = t2 or tstart + self:toSeconds(1)
+  local tend    = t2 + self.position or tstart + self:toSeconds(1)
   
   reaper.DeleteEnvelopePointRangeEx(envidx, autoidx, tstart - tracker.enveps, tend - tracker.enveps)
 end
@@ -2290,12 +2297,6 @@ function tracker:checkChange()
   return true
 end
 
-tracker.cp.xstart = -1
-tracker.cp.ystart = -1
-tracker.cp.xstop = -1
-tracker.cp.ystop = -1
-tracker.cp.all = 0
-
 function tracker:selectMIDIItems()
   -- MIDI EDITOR
   --40010  Edit: Copy
@@ -2336,8 +2337,51 @@ function serializeTable(val, name, depth)
     return tmp
 end
 
+------------------
+-- Delete block
+------------------
+function tracker:deleteBlock()
+  local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+  local data      = self.data
+  local notes     = self.notes
+  local noteGrid  = data.note
+  local noteStart = data.noteStart
+  local rows      = self.rows
+  local singlerow = self:rowToPpq(1)
+  local cp = self.cp
+
+  -- Cut out the block. Note that this creates 'stops' at the start of the block  
+  for jx = cp.xstart, cp.xstop do
+    local chan = idxfields[ jx ]
+    if ( datafields[jx] == 'text' ) then 
+      for jy = cp.ystart, cp.ystop do
+        self:deleteNoteSimple(chan, jy-1)
+      end
+      -- If the note has a preceding note and the start of this was a start of a note
+      if ( chan == 1 and self.legato[cp.ystart-1] > -1 ) then
+        tracker:deleteLegato( cp.ystart-1, 1 )
+      end
+    elseif ( datafields[jx] == 'legato' ) then
+      for jy = cp.ystart, cp.ystop do
+        self:deleteLegato( jy-1 )
+      end
+    elseif ( ( datafields[jx] == 'fx1' ) or ( datafields[jx] == 'fx2' ) ) then
+      self:deleteEnvPt(chan, self:toSeconds(cp.ystart-1), self:toSeconds(cp.ystop-1)+tracker.eps )
+    end
+  end
+  
+  self:deleteNow()
+end
+
+------------------
+-- Force the note grids to update
+------------------
+function tracker:forceUpdate()
+  self.hash = 0
+  self:update()
+end
+
 function tracker:interpolate()
-  local newclipboard = {}
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
   local data      = self.data
   local noteGrid  = data.note
@@ -2364,8 +2408,9 @@ function tracker:interpolate()
           self:deleteNoteSimple(chan, jy - 1)
         end
         self:deleteNow()
-        self.hash = 0
-        self:update()
+        
+        -- Force a grid update since all the note locations are invalid now
+        self:forceUpdate()
 
         idx = 0
         notelen = 1
@@ -2468,6 +2513,45 @@ function tracker:myClippy()
   clipboard = newclipboard
 end
 
+function tracker:resetShiftSelect()
+  local cp = self.cp
+  self:forceCursorInRange()
+  if ( cp.lastShiftCoord ) then
+    cp.lastShiftCoord = nil
+    self:resetBlock()
+  end
+end
+
+function tracker:dragBlock()
+  local cp = self.cp
+  if ( not cp.lastShiftCoord ) then
+    cp.lastShiftCoord = {}
+    cp.lastShiftCoord.x = tracker.xpos
+    cp.lastShiftCoord.y = tracker.ypos
+  end
+  local xstart, xend, ystart, yend
+  if ( tracker.xpos > cp.lastShiftCoord.x ) then
+    xstart  = cp.lastShiftCoord.x
+    xend    = tracker.xpos
+  else
+    xstart  = tracker.xpos
+    xend    = cp.lastShiftCoord.x
+  end
+  if ( tracker.ypos > cp.lastShiftCoord.y ) then
+    ystart  = cp.lastShiftCoord.y
+    yend    = tracker.ypos
+  else
+    ystart  = tracker.ypos
+    yend    = cp.lastShiftCoord.y
+  end
+  
+  cp.xstart  = xstart
+  cp.xstop   = xend
+  cp.all     = 0
+  cp.ystart  = ystart
+  cp.ystop   = yend
+end
+
 function tracker:beginBlock()
   local cp = self.cp
   if ( cp.ystart == self.ypos ) then
@@ -2480,7 +2564,9 @@ function tracker:beginBlock()
   end
   if ( cp.xstart > cp.xstop ) then
     cp.xstop  = self.xpos
-  end  
+  end
+  
+  cp.lastShiftCoord = nil
 end
 
 function tracker:endBlock()
@@ -2493,6 +2579,8 @@ function tracker:endBlock()
   end
   cp.xstop = self.xpos  
   cp.ystop = self.ypos
+  
+  cp.lastShiftCoord = nil
 end
 
 function tracker:resetBlock()
@@ -2501,7 +2589,7 @@ function tracker:resetBlock()
   cp.ystop   = -1
   cp.all     =  0
   cp.xstart  = -1
-  cp.xstop   = -1    
+  cp.xstop   = -1
 end
 
 function tracker:cutBlock()
@@ -2629,17 +2717,41 @@ local function updateLoop()
     if ( lastChar ~= 0 ) then
       print(lastChar)
     end
-  end
+  end  
 
   local modified = 0
   if inputs('left') then
     tracker.xpos = tracker.xpos - 1
+    tracker:resetShiftSelect()
   elseif inputs('right') then
     tracker.xpos = tracker.xpos + 1
+    tracker:resetShiftSelect()
   elseif inputs('up') then
     tracker.ypos = tracker.ypos - 1
+    tracker:resetShiftSelect()
   elseif inputs('down') then
     tracker.ypos = tracker.ypos + 1
+    tracker:resetShiftSelect()
+  elseif inputs('shiftleft') then
+    tracker:dragBlock()
+    tracker.xpos = tracker.xpos - 1
+    tracker:forceCursorInRange()
+    tracker:dragBlock()
+  elseif inputs('shiftright') then
+    tracker:dragBlock()
+    tracker.xpos = tracker.xpos + 1
+    tracker:forceCursorInRange()
+    tracker:dragBlock()
+  elseif inputs('shiftup') then
+    tracker:dragBlock()
+    tracker.ypos = tracker.ypos - 1
+    tracker:forceCursorInRange()
+    tracker:dragBlock()
+  elseif inputs('shiftdown') then
+    tracker:dragBlock()
+    tracker.ypos = tracker.ypos + 1
+    tracker:forceCursorInRange()
+    tracker:dragBlock()
   elseif inputs('off') then
     modified = 1
     reaper.Undo_OnStateChange2(0, "Tracker: Place OFF")
@@ -2688,7 +2800,13 @@ local function updateLoop()
     reaper.Undo_DoUndo2(0) 
   elseif inputs('redo') then
     modified = 1  
-    reaper.Undo_DoRedo2(0)  
+    reaper.Undo_DoRedo2(0)
+  elseif inputs('deleteBlock') then
+    modified = 1
+    reaper.Undo_OnStateChange2(0, "Tracker: Delete block")
+    reaper.MarkProjectDirty(0)
+    tracker:deleteBlock()
+    reaper.MIDI_Sort(tracker.take)
   elseif inputs('beginBlock') then
     tracker:beginBlock()
   elseif inputs('endBlock') then
