@@ -137,6 +137,7 @@ keys.advanceup    = { 0,    0,  0,    26164 }      -- F4
 keys.setloop      = { 1,    0,  0,    12 }         -- CTRL + L
 keys.setloopstart = { 1,    0,  0,    17 }         -- CTRL + Q
 keys.setloopend   = { 1,    0,  0,    23 }         -- CTRL + W
+keys.interpolate  = { 1,    0,  0,    9 }          -- CTRL + I
 
 --- Base pitches
 --- Can customize the 'keyboard' here, if they aren't working for you
@@ -831,8 +832,10 @@ function tracker:addNote(startrow, endrow, chan, pitch, velocity)
   local startppqpos = self:rowToPpq(startrow)
   local endppqpos   = self:rowToPpq(endrow)
 
-  if ( self.legato[endrow] > -1 ) then
-    endppqpos = endppqpos + tracker.magicOverlap
+  if ( chan == 1 ) then
+    if ( self.legato[endrow] > -1 ) then
+      endppqpos = endppqpos + tracker.magicOverlap
+    end
   end
 
   reaper.MIDI_InsertNote( self.take, false, false, startppqpos, endppqpos, chan, pitch, velocity, true )
@@ -1246,6 +1249,28 @@ function printbool( bool )
     end
   else
     print("false")
+  end
+end
+
+---------------------
+-- Delete note simple
+---------------------
+function tracker:deleteNoteSimple(channel, row)
+  local rows      = self.rows
+  local notes     = self.notes
+  local noteGrid  = self.data.note
+  local shift     = shiftIn or 0
+  local singlerow = self:rowToPpq(1)
+  
+  noteToDelete = noteGrid[rows*channel+row]
+  if ( noteToDelete ) then
+    if ( noteToDelete > -1 ) then
+      self:SAFE_DeleteNote(self.take, noteToDelete)
+    end
+    if ( noteToDelete < -1 ) then
+      local offidx = self:gridValueToOFFidx( noteToDelete )
+      self:SAFE_DeleteText(self.take, offidx)
+    end
   end
 end
 
@@ -2311,6 +2336,69 @@ function serializeTable(val, name, depth)
     return tmp
 end
 
+function tracker:interpolate()
+  local newclipboard = {}
+  local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+  local data      = self.data
+  local noteGrid  = data.note
+  local noteStart = data.noteStart  
+  local notes     = self.notes
+  local txtList   = self.txtList
+  local rows      = self.rows
+  local cp        = self.cp
+  
+  if ( cp.xstart == cp.xstop ) then
+    local jx = cp.xstart
+    -- Notes
+    if ( datafields[jx] == 'text' ) then    
+      local chan    = idxfields[ jx ]
+      local nStart  = noteStart[ chan*rows + cp.ystart - 1 ]
+      local nEnd    = noteStart[ chan*rows + cp.ystop - 1 ]
+      
+      if ( nStart and nEnd ) then
+        local startpitch, startvel = table.unpack( notes[ nStart ] )
+        local endpitch, endvel     = table.unpack( notes[ nEnd ] )
+        local nR = cp.ystop - cp.ystart
+
+        for jy = cp.ystart, cp.ystop-1 do
+          self:deleteNoteSimple(chan, jy - 1)
+        end
+        self:deleteNow()
+        self.hash = 0
+        self:update()
+
+        idx = 0
+        notelen = 1
+        for jy = cp.ystart, cp.ystop-1 do
+          local loc   = chan * rows + jy
+          local pitch = math.floor( (endpitch-startpitch) * (idx / nR) + startpitch ) 
+          local vel   = math.floor( (endvel-startvel) * (idx / nR) + startvel )
+          self:addNote( jy - 1, jy, chan, pitch, vel)         
+          idx = idx + 1
+        end
+      end
+    end
+    
+    if ( datafields[jx] == 'fx1' or datafields[jx] == 'fx2' ) then
+      local chan        = idxfields[ jx ]
+      local startidx    = cp.ystart - 1
+      local endidx      = cp.ystop - 1
+         
+      local time, startenv, startshape, starttension = tracker:getEnvPt(chan, self:toSeconds(startidx))
+      local time, endenv,   endshape,   endtension   = tracker:getEnvPt(chan, self:toSeconds(endidx))      
+      
+      local dydx = (endenv-startenv)/(endidx-startidx)
+      self.hash = 0
+      local idx = 0
+      for jy = startidx,endidx do
+        self:addEnvPt( chan, self:toSeconds(jy), dydx * idx + startenv, endshape )
+        idx = idx + 1
+      end      
+    end
+  end
+end
+
+
 -- A list of the channels is maintained so that we can verify that the paste
 -- list is compatible.
 function tracker:addChannelToClipboard(clipboard, channel)
@@ -2660,6 +2748,12 @@ local function updateLoop()
     tracker:setLoopStart()  
   elseif inputs('setloopend') then
     tracker:setLoopEnd()   
+  elseif inputs('interpolate') then
+    reaper.Undo_OnStateChange2(0, "Tracker: Interpolate")
+    reaper.MarkProjectDirty(0)  
+    tracker:interpolate()
+    tracker:deleteNow()
+    reaper.MIDI_Sort(tracker.take)
   elseif ( lastChar == 0 ) then
     -- No input
   elseif ( lastChar == -1 ) then      

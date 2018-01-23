@@ -40,6 +40,11 @@ will result in the second note not displaying in the tracker. This is not a bug,
 workaround to fix note OFF issues with the resulting MIDI item.
 
 ## Special keys
+These are just the default key bindings when you download the script. They are optimized 
+for a QWERTY layout. If you wish to change the shortcuts, edit the keys table. If you wish 
+to edit the note keyboard, edit the keys.pitches table. If you wish to know what keystroke 
+particular key has, set printKeys to 1 and start typing. Note that control modifies keystroke 
+values.
 
 | Key                   | Action                                                                |
 |:----------------------|:----------------------------------------------------------------------|
@@ -50,10 +55,11 @@ workaround to fix note OFF issues with the resulting MIDI item.
 | \-                    | Place note OFF                                                        |
 | ENTER                 | Start play at cursor position                                         |
 | Space                 | Start/Stop                                                            |
-| CTRL \+ B             | Start selection block                                                 |
-| CTRL \+ E             | End selection block                                                   |
 | CTRL \+ Z             | Undo                                                                  |
 | CTRL \+ SHIFT + Z     | Redo                                                                  |
+| CTRL \+ B             | Start selection block                                                 |
+| CTRL \+ E             | End selection block                                                   |
+| CTRL \+ I 		| Interpolate block							|
 | CTRL \+ X             | Cut \(To do\)                                                         |
 | CTRL \+ V             | Paste \(To do\)                                                       |
 | CTRL \+ C             | Copy \(To do\)                                                        |
@@ -67,9 +73,16 @@ workaround to fix note OFF issues with the resulting MIDI item.
 | F2			| Increase output channel 						|
 | F3 			| Decrease advance amount						|
 | F4			| Increase advance amount						|
+| CTRL \+ L 		| Set loop to pattern bounds						|
+| CTRL \+ Q 		| Set loop start before current row					|
+| CTRL \+ W 		| Set loop end after current row					|
 
 ## Feature requests
-Feature requests are always welcome, preferably with an idea of how to achieve it with the Reaper API ( https://www.reaper.fm/sdk/reascript/reascripthelp.html#l ). If you've implemented a feature yourself and want it added to the trunk, submit a pull requests. If possible, try and make sure that the pull request is up to date with the latest version. I will do my best to review and incorporate these.
+Feature requests are always welcome, preferably with an idea of how to achieve it 
+with the [Reaper API](https://www.reaper.fm/sdk/reascript/reascripthelp.html#l). 
+If you've implemented a feature yourself and want it added to the trunk, submit a 
+pull requests. If possible, try and make sure that the pull request is up to date 
+with the latest version. I will do my best to review and incorporate these.
 
 ## How does it work?
 Hackey trackey maps already existing MIDI data to a tracked format and allows 
@@ -130,7 +143,6 @@ so far, but if you have a good idea, please contact me.
 
 ### Planned features
 - Cut/Copy pasting blocks within the tracker.
-- Interpolation.
 
 ### Features to be investigated whether they are feasible/reasonable
 - Columns for MIDI controls.
