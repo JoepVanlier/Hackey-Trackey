@@ -56,7 +56,7 @@ tracker.printKeys = 0
 tracker.fov = {}
 
 -- Set this if you want a bigger or smaller maximum number of rows
-tracker.fov.height = 32
+tracker.fov.height = 16
 -- Set this if you want a wider tracker screen
 tracker.fov.abswidth = 450
 
@@ -111,6 +111,8 @@ tracker.colors.linecolor3   = {.4, .1, 1, 1}
 tracker.colors.linecolor4   = {.2, .0, 1, .5}
 tracker.colors.loopcolor    = {.2, .3, .8, .5}
 tracker.colors.copypaste    = {5.0, .7, 0.1, .2}
+tracker.colors.scrollbar1   = {.2, .1, .6, 1.0}
+tracker.colors.scrollbar2   = {.1, .0, .3, 1.0}
 tracker.hash = 0
 
 tracker.envShapes = {}
@@ -612,9 +614,20 @@ function tracker:printGrid()
   end
   
   -- Scrollbar
-  --local scrollbar = tracker.scrollbar
-  --tracker.scrollbar.lastclick = nil
-  --gfx.rect(plotData.xstart + tw, yloc[1]-yshift, scrollbar.size, yloc[#yloc] - yloc[1])
+  local scrollbar = tracker.scrollbar
+  local scrollheight = th - itempady
+  tracker.scrollbar.lastclick = nil
+  gfx.set(table.unpack(colors.scrollbar1))
+  gfx.rect(plotData.xstart + tw, yloc[1]-yshift, scrollbar.size, scrollheight)
+  gfx.set(table.unpack(colors.scrollbar2))
+  gfx.rect(plotData.xstart + tw+1, yloc[1]-yshift+1, scrollbar.size-2, scrollheight-2)
+  
+  -- Indicator
+  local ytop = fov.scrolly / rows
+  local yend = ( fov.scrolly + fov.height ) / rows
+  print(ytop)
+  gfx.set(table.unpack(colors.scrollbar1))
+  gfx.rect(plotData.xstart + tw+2, yloc[1]-yshift + ytop*scrollheight+2, scrollbar.size-4, (yend-ytop)*scrollheight-3)
   
   -- Field descriptor
   gfx.x = plotData.xstart
