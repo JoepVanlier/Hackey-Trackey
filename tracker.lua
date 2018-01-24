@@ -625,7 +625,6 @@ function tracker:printGrid()
   -- Indicator
   local ytop = fov.scrolly / rows
   local yend = ( fov.scrolly + fov.height ) / rows
-  print(ytop)
   gfx.set(table.unpack(colors.scrollbar1))
   gfx.rect(plotData.xstart + tw+2, yloc[1]-yshift + ytop*scrollheight+2, scrollbar.size-4, (yend-ytop)*scrollheight-3)
   
