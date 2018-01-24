@@ -1,4 +1,4 @@
-Please briefly check the Wiki whether the issue has already been raised before.
+Please briefly check whether the issue has already been raised before.
 If not, please feel free to do so. Be as descriptive as possible.
 
 If you are reporting a bug, please try to stick to the following format.
