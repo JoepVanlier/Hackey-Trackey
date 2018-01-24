@@ -2059,11 +2059,14 @@ function tracker:backspaceEnvPt(fxid, t1)
   local abstime = t1 + self.position + self.length - self.enveps
   for ptidx=0,npoints do
     local retval, envtime = reaper.GetEnvelopePointEx(envidx, autoidx, ptidx)
-    if ( envtime > ( abstime + self:toSeconds(1) ) ) then
+    -- TO DO: Investigate the t1==0. It's a temporary hack which seems to solve a backspace issue
+    -- that happens only for the first row of a pattern. Need to look closer into what happens there.
+    if ( envtime > ( abstime + self:toSeconds(1) ) or ( t1 == 0 ) ) then
       envtime = envtime - self:toSeconds(1)
       reaper.SetEnvelopePointEx(envidx, autoidx, ptidx, envtime, nil, nil, nil, nil, true)
     end
   end
+  
   reaper.Envelope_SortPointsEx(envidx, autoidx)
 end
 
