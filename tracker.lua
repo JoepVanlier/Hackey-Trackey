@@ -72,7 +72,10 @@ tracker.grid.dy        = 20
 tracker.grid.barpad    = 10
 tracker.grid.itempadx  = 5
 tracker.grid.itempady  = 3
-tracker.grid.scrollbar = 5
+
+tracker.scrollbar = {}
+tracker.scrollbar.size = 7
+tracker.scrollbar.lastclick = nil
 
 tracker.hex = 1
 tracker.preserveOff = 1
@@ -577,6 +580,7 @@ function tracker:printGrid()
   local itempadx      = plotData.itempadx
   local itempady      = plotData.itempady
   local scrolly       = fov.scrolly
+  local yshift        = plotData.yshift
   
   -- Render in relative FOV coordinates
   local data      = self.data
@@ -595,17 +599,22 @@ function tracker:printGrid()
       c2 = colors.linecolors
     end
     gfx.set(table.unpack(c1))
-    gfx.rect(xloc[1] - itempadx, yloc[y] - plotData.yshift, tw, yheight[1] + itempady)
+    gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, yheight[1] + itempady)
     gfx.set(table.unpack(c2))
-    gfx.rect(xloc[1] - itempadx, yloc[y] - plotData.yshift, tw, 1)
-    gfx.rect(xloc[1] - itempadx, yloc[y] - plotData.yshift, 1, yheight[y])
-    gfx.rect(xloc[1] - itempadx + tw + 0, yloc[y] - plotData.yshift, 1, yheight[y] + itempady)    
+    gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, 1)
+    gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, 1, yheight[y])
+    gfx.rect(xloc[1] - itempadx + tw + 0, yloc[y] - yshift, 1, yheight[y] + itempady)
     for x=1,#xloc do
       gfx.x = xloc[x]
       gfx.set(table.unpack(colors.textcolor))
       gfx.printf("%s", data[dlink[x]][rows*xlink[x]+absy-1])
     end
   end
+  
+  -- Scrollbar
+  --local scrollbar = tracker.scrollbar
+  --tracker.scrollbar.lastclick = nil
+  --gfx.rect(plotData.xstart + tw, yloc[1]-yshift, scrollbar.size, yloc[#yloc] - yloc[1])
   
   -- Field descriptor
   gfx.x = plotData.xstart
@@ -1941,7 +1950,12 @@ function tracker:deleteEnvPt(fxid, t1, t2)
   local envidx  = fx.envelopeidx[fxid]
   local autoidx = fx.autoidx[fxid]
   local tstart  = t1 + self.position
-  local tend    = t2 + self.position or tstart + self:toSeconds(1)
+  local tend
+  if ( t2 ) then
+    tend  = t2 + self.position
+  else
+    tend  = tstart + self:toSeconds(1)
+  end
   
   reaper.DeleteEnvelopePointRangeEx(envidx, autoidx, tstart - tracker.enveps, tend - tracker.enveps)
 end
