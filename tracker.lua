@@ -51,12 +51,28 @@ tracker.eps = 1e-3
 tracker.enveps = 1e-4
 
 tracker.printKeys = 0
+
+-- Field of view
 tracker.fov = {}
+
+-- Set this if you want a bigger or smaller maximum number of rows
+tracker.fov.height = 32
+-- Set this if you want a wider tracker screen
+tracker.fov.abswidth = 450
+
 tracker.fov.scrollx = 0
 tracker.fov.scrolly = 0
-tracker.fov.width = 16
-tracker.fov.height = 16
-tracker.fov.abswidth = 450
+
+-- Plotting
+tracker.grid = {}
+tracker.grid.originx   = 35
+tracker.grid.originy   = 35
+tracker.grid.dx        = 8
+tracker.grid.dy        = 20
+tracker.grid.barpad    = 10
+tracker.grid.itempadx  = 5
+tracker.grid.itempady  = 3
+tracker.grid.scrollbar = 5
 
 tracker.hex = 1
 tracker.preserveOff = 1
@@ -375,13 +391,14 @@ end
 ------------------------------
 function tracker:updatePlotLink()
   local plotData = {}
-  local originx = 35
-  local originy = 35
-  local dx = 8
-  local dy = 20
-  plotData.barpad = 10
-  plotData.itempadx = 5
-  plotData.itempady = 3
+  local grid = tracker.grid
+  local originx = grid.originx
+  local originy = grid.originy
+  local dx = grid.dx
+  local dy = grid.dy
+  plotData.barpad = grid.barpad
+  plotData.itempadx = grid.itempadx
+  plotData.itempady = grid.itempady
   -- How far are the row indicators from the notes?
   plotData.indicatorShiftX = 3 * dx + 2 * plotData.itempadx
   plotData.indicatorShiftY = dy + plotData.itempady
@@ -2705,6 +2722,8 @@ local function updateLoop()
     return
   end
 
+  tracker:resizeWindow()
+
   -- Maintain the loop until the window is closed or escape is pressed
   lastChar = gfx.getchar()
   
@@ -2907,6 +2926,37 @@ local function updateLoop()
   end
 end
 
+-- To do: Automatic width estimation
+function tracker:computeDims(inRows)
+  local rows = inRows
+  
+  if ( rows > tracker.fov.height ) then
+    rows = tracker.fov.height
+  end  
+  
+  local grid = tracker.grid
+  width = self.fov.abswidth
+  height = grid.originy + (rows+1) * grid.dy + 2*grid.itempady
+  
+  local changed
+  if ( not self.lastY or ( self.lastY ~= height) ) then
+    changed = 1
+    self.lastY = height
+  else
+    changed = 0
+  end
+  
+  return width, height, changed
+end
+
+function tracker:resizeWindow()
+  local width, height, changed = self:computeDims(self.rows)
+  if ( changed == 1 ) then
+    gfx.quit()
+    gfx.init("", width, height, 0, 200, 200)
+  end
+end
+
 local function Main()
   local tracker = tracker  
   local reaper = reaper
@@ -2914,13 +2964,15 @@ local function Main()
     tracker.tick = 0
     tracker:generatePitches()
     tracker:initColors()
-    gfx.init("Hackey Trackey v0.81", 450, 385, 0, 200, 200)
   
     local item = reaper.GetSelectedMediaItem(0, 0)
     local take = reaper.GetActiveTake(item)
     if ( reaper.TakeIsMIDI( take ) == true ) then
       tracker:setItem( item )
       tracker:setTake( take )
+      
+      local width, height = tracker:computeDims(48)
+      gfx.init("Hackey Trackey v0.85", width, height, 0, 200, 200)
       
       if ( tracker.outChannel ) then
         tracker:setOutChannel( tracker.outChannel )
