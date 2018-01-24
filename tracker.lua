@@ -23,11 +23,11 @@
 --    information, please refer to the readme file.
 --
 --    If you use and/or enjoy this plugin, let me/others know.
---    I would also appreciate music for my videogame.
 --
 --    Happy trackin'! :)
 
 tracker = {}
+tracker.name = "Hackey Trackey v0.86"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -45,23 +45,23 @@ tracker.trackFX = 1
 tracker.transpose = 3
 tracker.advance = 1
 tracker.showloop = 1
-
--- Slack used in notes and automation to check whether a point is the point specified
-tracker.eps = 1e-3
-tracker.enveps = 1e-4
-
 tracker.printKeys = 0
 
 -- Field of view
 tracker.fov = {}
 
 -- Set this if you want a bigger or smaller maximum number of rows
-tracker.fov.height = 16
--- Set this if you want a wider tracker screen
+tracker.fov.height = 32
+
+-- Set this if you want a wider or narrower tracker screen
 tracker.fov.abswidth = 450
 
 tracker.fov.scrollx = 0
 tracker.fov.scrolly = 0
+
+-- Slack used in notes and automation to check whether a point is the point specified
+tracker.eps = 1e-3
+tracker.enveps = 1e-4
 
 -- Plotting
 tracker.grid = {}
@@ -74,8 +74,7 @@ tracker.grid.itempadx  = 5
 tracker.grid.itempady  = 3
 
 tracker.scrollbar = {}
-tracker.scrollbar.size = 7
-tracker.scrollbar.lastclick = nil
+tracker.scrollbar.size = 10
 
 tracker.hex = 1
 tracker.preserveOff = 1
@@ -99,6 +98,7 @@ tracker.cp.all = 0
 tracker.selectionBehavior = 0
 tracker.automationBug = 1 -- This fixes a bug in v5.70
 
+-- If you come up with a cool alternative color scheme, let me know
 tracker.channels = 16 -- Max channel (0 is not shown)
 tracker.displaychannels = 15
 tracker.colors = {}
@@ -123,6 +123,9 @@ tracker.envShapes[2] = 'Exp'
 tracker.hint = '';
 
 -- Can customize the shortcut keys here, if they aren't working for you
+-- If you come up with good alternate layouts (maybe based on impulse, screamtracker
+-- or other language keyboards), please share them with me and I'll provide some form
+-- of chooser here.
 keys = {}
 --                    CTRL  ALT SHIFT Keycode
 keys.left         = { 0,    0,  0,    1818584692 } -- <-
@@ -295,7 +298,6 @@ end
 -- Link GUI grid to data
 ------------------------------
 function tracker:linkData()
-
   local fx        = self.fx
   
   -- Here is where the linkage between the display and the actual data fields in "tracker" is made
@@ -469,6 +471,8 @@ function tracker:updatePlotLink()
   plotData.ystart = originy
   
   self.plotData = plotData
+  
+  self.scrollbar:setPos( plotData.xstart + plotData.totalwidth, yloc[1]-plotData.yshift, plotData.totalheight - plotData.itempady )
 end
 
 ------------------------------
@@ -550,6 +554,60 @@ function tracker:outString()
 end
 
 ------------------------------
+-- Scrollbar
+------------------------------
+scrollbar = {}
+function scrollbar.create( w )
+  self = {}
+  self.w = w
+  self.setPos = function ( self, x, y, h )
+    self.x = x
+    self.y = y
+    self.h = h
+    
+    self.ytop = ytop
+    self.yend = yend
+  end
+  self.setExtent = function( self, ytop, yend )
+    self.ytop = ytop
+    self.yend = yend
+  end
+  
+  self.mouseUpdate = function(self, mx, my, left)
+    local loc
+    if ( left == 1 ) then
+      if ( ( mx > self.x ) and ( mx < self.x + self.w ) ) then
+        if ( ( my > self.y ) and ( my < self.y + self.h ) ) then
+          loc = ( my - self.y ) / self.h
+        end
+      end
+      return loc
+    end
+  end
+  
+  self.draw = function(self, colors)
+    local x = self.x
+    local y = self.y
+    local w = self.w
+    local h = self.h
+    local ytop = self.ytop
+    local yend = self.yend
+    
+    gfx.set(table.unpack(colors.scrollbar1))
+    gfx.rect(x, y, w, h)
+    gfx.set(table.unpack(colors.scrollbar2))
+    gfx.rect(x+1, y+1, w-2, h-2)
+    gfx.set(table.unpack(colors.scrollbar1))
+    gfx.rect(x+2, y + ytop*h+2, w-4, (yend-ytop)*h-3)
+  end
+  
+  return self
+end
+
+
+
+
+------------------------------
 -- Draw the GUI
 ------------------------------
 function tracker:printGrid()
@@ -613,22 +671,9 @@ function tracker:printGrid()
     end
   end
   
-  -- Scrollbar
-  local scrollbar = tracker.scrollbar
-  local scrollheight = th - itempady
-  tracker.scrollbar.lastclick = nil
-  gfx.set(table.unpack(colors.scrollbar1))
-  gfx.rect(plotData.xstart + tw, yloc[1]-yshift, scrollbar.size, scrollheight)
-  gfx.set(table.unpack(colors.scrollbar2))
-  gfx.rect(plotData.xstart + tw+1, yloc[1]-yshift+1, scrollbar.size-2, scrollheight-2)
-  
-  -- Indicator
-  local ytop = fov.scrolly / rows
-  local yend = ( fov.scrolly + fov.height ) / rows
-  gfx.set(table.unpack(colors.scrollbar1))
-  gfx.rect(plotData.xstart + tw+2, yloc[1]-yshift + ytop*scrollheight+2, scrollbar.size-4, (yend-ytop)*scrollheight-3)
-  
-  -- Field descriptor
+  ------------------------------
+  -- Field descriptions
+  ------------------------------
   gfx.x = plotData.xstart
   gfx.y = yloc[#yloc] + 1 * yheight[1] + itempady
   gfx.set(table.unpack(colors.headercolor))
@@ -639,27 +684,7 @@ function tracker:printGrid()
   gfx.y = yloc[#yloc] + 2 * yheight[1] + itempady
   gfx.set(table.unpack(colors.headercolor))
   gfx.printf(str)
-
-  --[[--
-  -- Octave
-  gfx.x = plotData.xstart + tw + itempadx * 2
-  gfx.y = yloc[1] + 1 * yheight[1] + itempady
-  gfx.set(table.unpack(colors.headercolor))
-  gfx.printf("Octave: %d", self.transpose)
-  
-  -- Advance
-  gfx.x = plotData.xstart + tw + itempadx * 2
-  gfx.y = yloc[1] + 3 * yheight[1] + itempady
-  gfx.set(table.unpack(colors.headercolor))
-  gfx.printf("Advance: %d", self.advance)  
-  
-  -- Rows / Qn
-  gfx.x = plotData.xstart + tw + itempadx * 2
-  gfx.y = yloc[1] + 5 * yheight[1] + itempady
-  gfx.set(table.unpack(colors.headercolor))
-  gfx.printf("Resolution: %d", self.rowPerQn)    
-  --]]--
-  
+ 
   -- Draw the headers so we don't get lost :)
   gfx.set(table.unpack(colors.headercolor))
   gfx.y = yloc[1] - plotData.indicatorShiftY
@@ -667,6 +692,14 @@ function tracker:printGrid()
   for x=1,#xloc do
     gfx.x = xloc[x]
     gfx.printf("%s", headers[x])
+  end
+    
+  ------------------------------
+  -- Scrollbar
+  ------------------------------
+  tracker.scrollbar:setExtent( fov.scrolly / rows, ( fov.scrolly + fov.height ) / rows )
+  if ( tracker.fov.height < self.rows ) then
+    tracker.scrollbar:draw(colors)
   end
   
   ------------------------------
@@ -2684,6 +2717,15 @@ local function inputs( name )
   return false
 end
 
+local function mouseStatus()
+  local leftbutton  = gfx.mouse_cap & 1
+  local rightbutton = gfx.mouse_cap & 2
+  if ( rightbutton > 0 ) then
+    rightbutton = 1
+  end
+  return leftbutton, rightbutton
+end
+
 function tracker:setOutChannel( ch )
   if not pcall( self.testGetTake ) then
     return false
@@ -2764,6 +2806,23 @@ local function updateLoop()
     end
   end  
 
+  -- Mouse
+  local left, right = mouseStatus()
+  if ( tracker.fov.height < tracker.rows ) then
+    local loc = tracker.scrollbar:mouseUpdate(gfx.mouse_x, gfx.mouse_y, left)
+    if ( loc ) then
+      tracker.ypos = math.floor(loc*(tracker.rows+1))
+      print(math.floor(loc*tracker.rows))
+      tracker:forceCursorInRange()
+    end
+  end
+  
+  if ( gfx.mouse_wheel ~= 0 ) then
+    tracker.ypos = tracker.ypos - math.floor( gfx.mouse_wheel / 120 )
+    tracker:resetShiftSelect()
+    gfx.mouse_wheel = 0
+  end
+  
   local modified = 0
   if inputs('left') then
     tracker.xpos = tracker.xpos - 1
@@ -2978,8 +3037,10 @@ end
 function tracker:resizeWindow()
   local width, height, changed = self:computeDims(self.rows)
   if ( changed == 1 ) then
+    local v, wx, wy, ww, wh
+    local d, wx, wh = gfx.dock(-1, 1, 1, nil, nil)
     gfx.quit()
-    gfx.init("", width, height, 0, 200, 200)
+    gfx.init(tracker.name, width, height, 0, wx, wh)
   end
 end
 
@@ -2988,6 +3049,7 @@ local function Main()
   local reaper = reaper
   if ( reaper.CountSelectedMediaItems(0) > 0 ) then
     tracker.tick = 0
+    tracker.scrollbar = scrollbar.create(tracker.scrollbar.size)
     tracker:generatePitches()
     tracker:initColors()
   
@@ -2997,8 +3059,8 @@ local function Main()
       tracker:setItem( item )
       tracker:setTake( take )
       
-      local width, height = tracker:computeDims(48)
-      gfx.init("Hackey Trackey v0.85", width, height, 0, 200, 200)
+      local width, height               = tracker:computeDims(48)
+      gfx.init(tracker.name, width, height, 0, 200, 200)
       
       if ( tracker.outChannel ) then
         tracker:setOutChannel( tracker.outChannel )
