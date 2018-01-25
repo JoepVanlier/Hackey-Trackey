@@ -1,3 +1,18 @@
+--[[
+ * ReaScript Name: Hackey-Trackey
+ * Author: Joep Vanlier
+ * License: MIT
+ * REAPER: 5.x
+ * Extensions: None
+ * Version: 0.86
+--]]
+
+--[[
+ * Changelog:
+ * v0.86 (2018-01-25)
+   + Added ReaPack header
+--]]
+
 -- Copyright (c) Joep Vanlier 2018
 --
 --    Permission is hereby granted, free of charge, to any person obtaining
