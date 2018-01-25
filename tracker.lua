@@ -9,6 +9,9 @@
 
 --[[
  * Changelog:
+ * v0.87 (2018-01-25)
+   + Added mend block
+   + Fixed bug in legato system when notes grew in channels larger than one
  * v0.86 (2018-01-25)
    + Added ReaPack header
 --]]
@@ -42,7 +45,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v0.86"
+tracker.name = "Hackey Trackey v0.87"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -136,6 +139,8 @@ tracker.envShapes[1] = 'S&H'
 tracker.envShapes[2] = 'Exp'
 
 tracker.hint = '';
+
+tracker.debug = 0
 
 -- Can customize the shortcut keys here, if they aren't working for you
 -- If you come up with good alternate layouts (maybe based on impulse, screamtracker
@@ -1150,11 +1155,16 @@ function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, note
   if ( row > -1 ) then
     local noteToResize = noteGrid[rows*chan+row - 1]
           
+    -- Was there a note before this?
     if ( noteToResize and ( noteToResize > -1 ) ) then
       local k = row+1
       while( k < rows ) do
         idx = rows*chan+k
         if ( noteGrid[idx] and ( not ( noteGrid[idx] == noteToDelete ) ) ) then
+          if ( self.debug == 1 ) then
+            local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteGrid[idx]] )
+            print( 'I am breaking my elongation on note !' .. self.pitchTable[pitch] )
+          end
           break;
         end
         k = k + 1
@@ -1168,10 +1178,12 @@ function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, note
         resize = resize - offset
         -- We might want to add some extra for legato. Note that coming from an OFF symbol,
         -- we need to take into account that these have forced legato offs.
-        if ( legatoWasOff ) then
-          magic = self:legatoResize(0, -1, self.legato[k])        
-        else
-          magic = self:legatoResize(0, self.legato[row], self.legato[k])
+        if ( chan == 1 ) then
+          if ( legatoWasOff ) then
+            magic = self:legatoResize(0, -1, self.legato[k])        
+          else
+            magic = self:legatoResize(0, self.legato[row], self.legato[k])
+          end
         end
       end
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToResize] )
@@ -2432,9 +2444,9 @@ function serializeTable(val, name, depth)
 end
 
 ------------------
--- Delete block
+-- Clear the data in a block
 ------------------
-function tracker:deleteBlock()
+function tracker:clearBlock()
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
   local data      = self.data
   local notes     = self.notes
@@ -2442,7 +2454,7 @@ function tracker:deleteBlock()
   local noteStart = data.noteStart
   local rows      = self.rows
   local singlerow = self:rowToPpq(1)
-  local cp = self.cp
+  local cp        = self.cp
 
   -- Cut out the block. Note that this creates 'stops' at the start of the block  
   for jx = cp.xstart, cp.xstop do
@@ -2465,6 +2477,37 @@ function tracker:deleteBlock()
   end
   
   self:deleteNow()
+end
+
+------------------
+-- Mend block (check if notes at top can be extended)
+------------------
+function tracker:mendBlock()
+  local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+  local data      = self.data
+  local noteGrid  = data.note
+  local noteStart = data.noteStart  
+  local notes     = self.notes
+  local txtList   = self.txtList
+  local rows      = self.rows
+  local singlerow = self:rowToPpq(1)
+  local cp        = self.cp
+  
+  for jx = cp.xstart, cp.xstop do
+    local chan = idxfields[ jx ]
+    if ( datafields[jx] == 'text' ) then 
+      self:checkNoteGrow(notes, noteGrid, rows, chan, cp.ystart-1, singlerow, nil, nil, 1)
+    end
+  end
+end
+
+------------------
+-- Delete block
+------------------
+function tracker:deleteBlock()
+  self:clearBlock()
+  self:forceUpdate()
+  self:mendBlock()
 end
 
 ------------------
@@ -3077,7 +3120,7 @@ local function Main()
       tracker:setItem( item )
       tracker:setTake( take )
       
-      local width, height               = tracker:computeDims(48)
+      local width, height = tracker:computeDims(48)
       gfx.init(tracker.name, width, height, 0, 200, 200)
       
       if ( tracker.outChannel ) then
