@@ -9,6 +9,9 @@
 
 --[[
  * Changelog:
+ * v0.91 (2018-01-27)
+   + Fix legato issue when pasting clipboard data
+   + Implemented cut (CTRL+X)
  * v0.90 (2018-01-27)
    + Implemented paste behaviour
  * v0.89 (2018-01-25)
@@ -2014,6 +2017,9 @@ function tracker:addLegato( row, skipMarker )
       local ppq = self:rowToPpq(row)
       self:SAFE_InsertTextSysexEvt(ppq, 1, 'LEG')
     end
+    
+    -- This is a temporary flag to indicate legato; but which has no reference yet
+    self.legato[row] = 5000
   end
 end
 
@@ -3046,16 +3052,18 @@ function tracker:resetBlock()
 end
 
 function tracker:cutBlock()
-  self:resetBlock()
+  self:copyToClipboard()
+  self:clearBlock()
+  self:mendBlock()
 end
 
 function tracker:pasteBlock()
   self:pasteClipboard()
+  self:resetBlock()
 end
 
 function tracker:copyBlock()
   self:copyToClipboard()
-  self:resetBlock()
 end
 
 local function togglePlayPause()
@@ -3295,13 +3303,19 @@ local function updateLoop()
   elseif inputs('endBlock') then
     tracker:endBlock()
   elseif inputs('cutBlock') then
-    modified = 1  
+    modified = 1
+    reaper.Undo_OnStateChange2(0, "Tracker: Cut block")
+    reaper.MarkProjectDirty(0)
     tracker:cutBlock()
+    reaper.MIDI_Sort(tracker.take)
   elseif inputs('pasteBlock') then
     modified = 1
+    reaper.Undo_OnStateChange2(0, "Tracker: Paste block")
+    reaper.MarkProjectDirty(0)
     tracker:pasteBlock()
+    reaper.MIDI_Sort(tracker.take)
   elseif inputs('copyBlock') then
-    tracker:copyBlock()  
+    tracker:copyBlock()
   elseif inputs('shiftup') then
     modified = 1
     tracker:shiftup()
