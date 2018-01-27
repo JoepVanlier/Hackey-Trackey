@@ -4,11 +4,13 @@
  * License: MIT
  * REAPER: 5.x
  * Extensions: None
- * Version: 0.86
+ * Version: 0.94
 --]]
 
 --[[
  * Changelog:
+ * v0.94 (2018-01-27)
+   + Added help (F1)
  * v0.93 (2018-01-27)
    + Added ability to go to next/previous MIDI item on track (CTRL + -> and CTRL + <-)
  * v0.92 (2018-01-27)
@@ -60,7 +62,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v0.93"
+tracker.name = "Hackey Trackey v0.94"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -78,7 +80,7 @@ tracker.trackFX = 1
 tracker.transpose = 3
 tracker.advance = 1
 tracker.showloop = 1
-tracker.printKeys = 1
+tracker.printKeys = 0
 
 -- Field of view
 tracker.fov = {}
@@ -122,6 +124,9 @@ tracker.rowPerQn = 4
 tracker.newRowPerQn = 4
 tracker.maxRowPerQn = 16
 
+tracker.helpActive = 0
+tracker.helpwidth = 370
+
 tracker.cp = {}
 tracker.cp.lastShiftCoord = nil
 tracker.cp.xstart = -1
@@ -137,6 +142,8 @@ tracker.automationBug = 1 -- This fixes a bug in v5.70
 tracker.channels = 16 -- Max channel (0 is not shown)
 tracker.displaychannels = 15
 tracker.colors = {}
+tracker.colors.helpcolor    = {.8, .8, .9, 1}
+tracker.colors.helpcolor2   = {.7, .7, .9, 1}
 tracker.colors.selectcolor  = {.7, 0, .5, 1}
 tracker.colors.textcolor    = {.7, .8, .8, 1}
 tracker.colors.headercolor  = {.5, .5, .8, 1}
@@ -193,10 +200,11 @@ keys.octaveup       = { 1,    0,  0,    30064 }         -- CTRL + /\
 keys.octavedown     = { 1,    0,  0,    1685026670 }    -- CTRL + \/
 keys.envshapeup     = { 1,    0,  1,    30064 }         -- CTRL + SHIFT + /\
 keys.envshapedown   = { 1,    0,  1,    1685026670 }    -- CTRL + SHIFT + /\
-keys.outchandown    = { 0,    0,  0,    26161 }         -- F1
-keys.outchanup      = { 0,    0,  0,    26162 }         -- F2
-keys.advancedown    = { 0,    0,  0,    26163 }         -- F3
-keys.advanceup      = { 0,    0,  0,    26164 }         -- F4
+keys.help           = { 0,    0,  0,    26161 }         -- F1
+keys.outchandown    = { 0,    0,  0,    26162 }         -- F2
+keys.outchanup      = { 0,    0,  0,    26163 }         -- F3
+keys.advancedown    = { 0,    0,  0,    26164 }         -- F4
+keys.advanceup      = { 0,    0,  0,    26165 }         -- F5
 keys.setloop        = { 1,    0,  0,    12 }            -- CTRL + L
 keys.setloopstart   = { 1,    0,  0,    17 }            -- CTRL + Q
 keys.setloopend     = { 1,    0,  0,    23 }            -- CTRL + W
@@ -211,6 +219,35 @@ keys.resolutionDown = { 1,    1,  0,    1685026670 }    -- CTRL + Alt + Down
 keys.commit         = { 1,    1,  0,    13 }            -- CTRL + Alt + Enter
 keys.nextMIDI       = { 1,    0,  0,    1919379572.0 }  -- CTRL + ->
 keys.prevMIDI       = { 1,    0,  0,    1818584692.0 }  -- CTRL + <-
+
+help = {
+  { 'Arrow Keys', 'Move' },
+  { '-', 'Note OFF' },
+  { 'Del', 'Delete' }, 
+  { 'Space', 'Toggle play' },
+  { 'Return', 'Play from current' },
+  { 'CTRL + L', 'Set loop to pattern' },
+  { 'CTRL + Q', 'Set loop start' },
+  { 'CTRL + W', 'Set loop end' },
+  { 'Shift + Up/Down', 'Change octave' },
+  { 'CTRL + Shift + Up/Down', 'Change envelope' },
+  { 'CTRL + B', 'Begin block selection' },
+  { 'CTRL + E', 'End block selection' },
+  { 'SHIFT + arrow keys', 'Block selection' },
+  { 'CTRL + C', 'Copy' },
+  { 'CTRL + X', 'Cut' },
+  { 'CTRL + V', 'Paste' },
+  { 'CTRL + I', 'Interpolate' },
+  { 'Shift + Del', 'Delete block' },
+  { 'CTRL + Z', 'Undo' },
+  { 'CTRL + SHIFT + Z', 'Redo' }, 
+  { 'F1', 'Help' },
+  { 'F2/F3', 'Out channel down/up' },
+  { 'F4/F5', 'Advance down/up' },
+  { 'CTRL + ALT + Up/Down', 'Adjust resolution' },
+  { 'CTRL + ALT + Enter', 'Commit resolution' }, 
+  { 'CTRL + Left/Right', 'Switch MIDI item' }
+}
 
 --- Base pitches
 --- Can customize the 'keyboard' here, if they aren't working for you
@@ -472,7 +509,7 @@ function tracker:updatePlotLink()
   local q
   for j = fov.scrollx+1,#colsizes do
     xpred = x + colsizes[j] * dx + padsizes[j] * dx
-    if ( xpred > fov.abswidth ) then
+    if ( xpred > fov.abswidth-dx ) then
       break;
     end
     xloc[#xloc + 1] = x
@@ -815,6 +852,26 @@ function tracker:printGrid()
     gfx.set(table.unpack(colors.linecolor4))
     gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * self:getCursorLocation() - itempady - 1, tw, 1)
   end
+  
+  ----------------------------------
+  -- Help
+  ----------------------------------
+  
+  if ( tracker.helpActive == 1 ) then
+    local help = help
+    local helpwidth = self.helpwidth
+    local ys = plotData.ystart - plotData.indicatorShiftY
+    for i,v in pairs( help ) do
+      gfx.set(table.unpack(colors.helpcolor))
+      gfx.x = plotData.xstart + tw + 0.5*helpwidth + 4*itempadx
+      gfx.y = ys
+      gfx.printf(v[2])
+      gfx.set(table.unpack(colors.helpcolor2))
+      gfx.x = plotData.xstart + tw + helpwidth - 8.2 * string.len(v[1]) - 0.5 * helpwidth + 2*itempadx
+      gfx.printf(v[1])      
+      ys = ys + yheight[1]
+    end
+  end  
 end
 
 -- Returns fieldtype, channel and row
@@ -3464,6 +3521,9 @@ local function updateLoop()
     if ( tracker.newRowPerQn < 1 ) then
       tracker.newRowPerQn = tracker.maxRowPerQn
     end
+  elseif inputs('help') then
+    tracker.helpActive = 1-tracker.helpActive
+    tracker:resizeWindow()
   elseif inputs('nextMIDI') then
     tracker:seekMIDI(1)
   elseif inputs('prevMIDI') then  
@@ -3528,14 +3588,22 @@ function tracker:computeDims(inRows)
     rows = tracker.fov.height
   end  
   
-  local grid = tracker.grid
   width = self.fov.abswidth
-  height = grid.originy + (rows+1) * grid.dy + 2*grid.itempady
+  if ( tracker.helpActive == 1 ) then
+    width = width + self.helpwidth
+    if ( rows < 16 ) then
+      rows = 16
+    end
+  end
+  
+  local grid = tracker.grid
+  height = grid.originy + (rows+1) * grid.dy + 2*grid.itempady  
   
   local changed
-  if ( not self.lastY or ( self.lastY ~= height) ) then
+  if ( not self.lastY or ( self.lastY ~= height) or not self.lastX or ( self.lastX ~= width ) ) then
     changed = 1
     self.lastY = height
+    self.lastX = width
   else
     changed = 0
   end

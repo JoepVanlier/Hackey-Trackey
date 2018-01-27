@@ -62,6 +62,7 @@ values.
 | CTRL \+ SHIFT + Z     | Redo                                                                  |
 | CTRL \+ B             | Start selection block                                                 |
 | CTRL \+ E             | End selection block                                                   |
+| SHIFT \+ Del          | Delete block                                                          |
 | CTRL \+ I 		| Interpolate block							|
 | CTRL \+ X             | Cut \(To do\)                                                         |
 | CTRL \+ V             | Paste \(To do\)                                                       |
@@ -72,13 +73,19 @@ values.
 | SHIFT \+ CTRL \+ \\/  | Switch envelope mode \(FX automation\)                                |
 | Shift \+ Numpad \+    | Shift selection up \(e.g. C\-1 \-> C\#1\)                             |
 | Shift \+ Numpad \-    | Shift selection down                                                  |
-| F1 			| Decrease output channel						|
-| F2			| Increase output channel 						|
-| F3 			| Decrease advance amount						|
-| F4			| Increase advance amount						|
+| F1 			| Help 									|
+| F2 			| Decrease output channel						|
+| F3			| Increase output channel 						|
+| F4 			| Decrease advance amount						|
+| F5			| Increase advance amount						|
 | CTRL \+ L 		| Set loop to pattern bounds						|
 | CTRL \+ Q 		| Set loop start before current row					|
 | CTRL \+ W 		| Set loop end after current row					|
+| CTRL + ALT + Up 	| Increase row resolution 						|
+| CTRL + ALT + Down 	| Decrease row resolution 						|
+| CTRL + ALT + Enter 	| Commit row resolution (WARNING: Destructive)	 			|
+| CTRL \+ -> 		| Next MIDI item on track 						|
+| CTRL \+ <-		| Previous MIDI item on track 						|
 
 ## Feature requests
 Feature requests are always welcome, preferably with an idea of how to achieve it 
