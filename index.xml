@@ -1,2 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Hackey-Trackey"/>
+<index version="1" name="Tracker tools" commit="155d2b9825d427309136e100162a7564f6c96938">
+  <category name="Tracker">
+    <reapack name="tracker.lua" type="script" desc="Hackey-Trackey">
+      <version name="0.94" author="Joep Vanlier" time="2018-01-27T23:15:58Z">
+        <changelog><![CDATA[+ Added help (F1)]]></changelog>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/155d2b9825d427309136e100162a7564f6c96938/Tracker/tracker.lua</source>
+      </version>
+    </reapack>
+  </category>
+</index>
