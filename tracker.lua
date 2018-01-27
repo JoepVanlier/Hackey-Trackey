@@ -9,6 +9,8 @@
 
 --[[
  * Changelog:
+ * v0.90 (2018-01-27)
+   + Implemented paste behaviour
  * v0.89 (2018-01-25)
    + Fixed issue in legato system
  * v0.88 (2018-01-25)
@@ -761,7 +763,7 @@ function tracker:printGrid()
       gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * lEnd - 2*itempady - 1, tw, 2)
     end
   end
-    
+  
   ------------------------------
   -- Play location indicator
   ------------------------------    
@@ -929,6 +931,18 @@ function tracker:shiftdown()
     end
   end
   reaper.MIDI_Sort(self.take)
+end
+
+function tracker:addNotePpq(startppqpos, endppqpos, chan, pitch, velocity)
+  local endrow = self:ppqToRow(endppqpos)
+
+  if ( chan == 1 ) then
+    if ( self.legato[endrow] > -1 ) then
+      endppqpos = endppqpos + tracker.magicOverlap
+    end
+  end
+
+  reaper.MIDI_InsertNote( self.take, false, false, startppqpos, endppqpos, chan, pitch, velocity, true )
 end
 
 function tracker:addNote(startrow, endrow, chan, pitch, velocity)
@@ -1158,7 +1172,7 @@ end
 function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, noteToDelete, shift, legatoWasOff)
   local modify = 0
   local offset = shift or 0
-  if ( row > -1 ) then
+  if ( row > 0 ) then
     local noteToResize = noteGrid[rows*chan+row - 1]
     
     -- Was there a note before this?
@@ -1213,6 +1227,9 @@ function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, note
 end
 
 function tracker:legatoResize(endppqpos, oldLegato, newLegato)
+  if ( not newLegato ) then
+    newLegato = -1
+  end
   if ( ( newLegato > -1 ) and ( oldLegato < 0 ) ) then
     endppqpos = endppqpos + tracker.magicOverlap
   elseif ( ( newLegato < 0 ) and ( oldLegato > -1 ) ) then
@@ -1222,9 +1239,35 @@ function tracker:legatoResize(endppqpos, oldLegato, newLegato)
 end
 
 ---------------------
--- Shrink a note
+-- Resize a note
 ---------------------
-function tracker:shrinkNote(chan, row, size)
+function tracker:resizeNote(chan, row, sizeChange)
+  local notes     = self.notes
+  local singlerow = self:rowToPpq(1)
+  local noteGrid  = self.data.note
+  local rows      = self.rows
+  local note      = noteGrid[ rows * chan + row ]
+  
+  local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
+  local endrow = math.floor( self:ppqToRow( endppqpos ) )
+  
+  -- Was this a legato note?
+  if ( chan == 1 ) then
+    local legato = self.legato
+      
+    -- Check if it's legato at the old end position!
+    local oldLegato = legato[endrow]
+    local newLegato = legato[endrow+sizeChange]
+    endppqpos = self:legatoResize(endppqpos, oldLegato, newLegato)      
+  end
+
+  reaper.MIDI_SetNote(self.take, note, nil, nil, startppqpos, endppqpos + singlerow * sizeChange, nil, nil, nil, true)
+end
+
+---------------------
+-- Shrink a note by 1 except when at end (used in backspace)
+---------------------
+function tracker:shrinkNote(chan, row)
   local notes     = self.notes
   local singlerow = self:rowToPpq(1)
   local noteGrid  = self.data.note
@@ -1250,9 +1293,9 @@ function tracker:shrinkNote(chan, row, size)
 end
 
 ---------------------
--- Grow a note
+-- Grow a note by 1 except when at end (used in insert)
 ---------------------
-function tracker:growNote(chan, row, size)
+function tracker:growNote(chan, row)
   local notes     = self.notes
   local singlerow = self:rowToPpq(1)
   local noteGrid  = self.data.note
@@ -1376,17 +1419,20 @@ end
 function tracker:deleteNoteSimple(channel, row)
   local rows      = self.rows
   local notes     = self.notes
+  local noteGrid  = self.data.note
   local noteStart = self.data.noteStart
   local shift     = shiftIn or 0
   local singlerow = self:rowToPpq(1)
   
   noteToDelete = noteStart[rows*channel+row]
+  offToDelete = noteGrid[rows*channel+row]  
   if ( noteToDelete ) then
     if ( noteToDelete > -1 ) then
       self:SAFE_DeleteNote(self.take, noteToDelete)
     end
-    if ( noteToDelete < -1 ) then
-      local offidx = self:gridValueToOFFidx( noteToDelete )
+  elseif ( offToDelete ) then
+    if ( offToDelete < -1 ) then
+      local offidx = self:gridValueToOFFidx( offToDelete )
       self:SAFE_DeleteText(self.take, offidx)
     end
   end
@@ -1670,6 +1716,14 @@ function tracker:toSeconds(row)
   return row / self.rowPerSec
 end
 
+function tracker:ppqToSeconds(ppq)
+  return ppq / self.ppqPerSec
+end
+
+function tracker:secondsToPpq(seconds)
+  return seconds * self.ppqPerSec
+end
+
 function tracker:rowToPpq(row)
   return row * self.ppqPerRow
 end
@@ -1706,6 +1760,7 @@ function tracker:getRowInfo()
     self.rowPerPpq = self.rowPerQn / ppqPerQn
     self.ppqPerRow = 1 / self.rowPerPpq
     self.rowPerSec = ppqPerSec * self.rowPerQn / ppqPerQn
+    self.ppqPerSec = ppqPerSec
     local rows = math.floor( self.rowPerQn * self.qnCount )
     
     -- Do not allow zero rows in the tracker!
@@ -2472,7 +2527,7 @@ end
 ------------------
 -- Clear the data in a block
 ------------------
-function tracker:clearBlock()
+function tracker:clearBlock(incp)
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
   local data      = self.data
   local notes     = self.notes
@@ -2480,7 +2535,11 @@ function tracker:clearBlock()
   local noteStart = data.noteStart
   local rows      = self.rows
   local singlerow = self:rowToPpq(1)
-  local cp        = self.cp
+  local cp        = incp or self.cp
+
+  if ( self.debug == 1 ) then
+    print( "Clearing block [" .. cp.xstart .. ", " .. cp.xstop .. "] [" .. cp.ystart .. ", " .. cp.ystop .. "]" );
+  end
 
   -- Cut out the block. Note that this creates 'stops' at the start of the block
   local legatoDone = 0 
@@ -2494,7 +2553,7 @@ function tracker:clearBlock()
           tracker:deleteLegato( jy-1, 1 )
           legatoDone = 1
         end
-        self:deleteNoteSimple(chan, jy-1)
+        self:deleteNoteSimple( chan, jy - 1 )
       end
     elseif ( datafields[jx] == 'legato' ) then
       for jy = cp.ystart, cp.ystop do
@@ -2513,17 +2572,19 @@ function tracker:clearBlock()
   
   -- Make sure that there are no spurious note offs in the deleted region afterwards
   -- These are removed so that mendBlock can grow into this region
+  --[[--
   for jx = cp.xstart, cp.xstop do
     local chan = idxfields[ jx ]
     if ( datafields[jx] == 'text' ) then
       for jy = cp.ystart, cp.ystop do
         if ( self.debug == 1 ) then
-          self:printNote(chan, jy-1)
+          self:printNote(chan, jy - 1)
         end
         noteGrid[chan * rows + jy - 1] = nil
       end
     end
   end
+  --]]--
 end
 
 ------------------
@@ -2542,9 +2603,11 @@ function tracker:mendBlock()
   
   for jx = cp.xstart, cp.xstop do
     local chan = idxfields[ jx ]
-    if ( datafields[jx] == 'text' ) then
-      local elong = noteGrid[chan*rows + cp.ystart-1]
-      self:checkNoteGrow(notes, noteGrid, rows, chan, cp.ystart-1, singlerow, elong, nil, 1)
+    if ( cp.ystart > 1 ) then
+      if ( datafields[jx] == 'text' ) then
+        local elong = noteGrid[chan*rows + cp.ystart-2]
+        self:checkNoteGrow(notes, noteGrid, rows, chan, cp.ystart-1, singlerow, elong, nil, 1)
+      end
     end
   end
 end
@@ -2556,15 +2619,14 @@ function tracker:addChannelToClipboard(clipboard, channel)
     clipboard.channels = {}
   end
   clipboard.channels[#clipboard.channels + 1] = {}
-  clipboard.channels[#clipboard.channels + 1].fieldtype = channel
+  clipboard.channels[#clipboard.channels].fieldtype = channel
 end
 
 function tracker:addDataToClipboard(clipboard, data)
-  local channels = clipboard.channels[#clipboard.channels]
-  if ( not channels.data ) then
-    channels[#channels].data = {}
+  local channel = clipboard.channels[#clipboard.channels]
+  if ( not channel.data ) then
+    channel.data = {}
   end
-  local channel = channels[#channels]
   channel.data[#channel.data + 1] = deepcopy(data)
 end
 
@@ -2583,61 +2645,225 @@ function deepcopy(orig)
     return copy
 end
 
--- TO DO clipboard functionality
-function tracker:myClippy()
+function tracker:getAdvance( chtype )
+  if ( chtype == 'text' ) then
+    return 3
+  elseif ( chtype == 'vel1' ) then
+    return 2
+  elseif ( chtype == 'vel2' ) then
+    return 1    
+  elseif ( chtype == 'legato' ) then
+    return 1
+  elseif ( chtype == 'fx1' ) then
+    return 2
+  elseif ( chtype == 'fx2' ) then
+    return 1
+  else
+    return 1
+  end
+end
+
+tracker.colgroups = {}
+tracker.colgroups['text'] = { 'text', 'vel1', 'vel2' }
+tracker.colgroups['vel1'] = { 'text', 'vel1', 'vel2' }
+tracker.colgroups['vel2'] = { 'text', 'vel1', 'vel2' }
+tracker.colgroups['fx1'] = { 'fx1', 'fx2' }
+tracker.colgroups['fx2'] = { 'fx1', 'fx2' }
+tracker.colgroups['legato'] = { 'legato' }
+tracker.colref = {}
+tracker.colref['text'] = 0
+tracker.colref['vel1'] = -1
+tracker.colref['vel2'] = -2
+tracker.colref['fx1'] = 0
+tracker.colref['fx2'] = -1
+tracker.colref['legato'] = 0
+
+function tracker:pasteClipboard()
+  local clipboard = self.clipboard
+  local channels  = clipboard.channels
+  local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+  local refppq    = self:rowToPpq( self.ypos - 1 ) - clipboard.refppq
+  
+  if ( not clipboard ) then
+    return
+  end
+  
+  -- Check whether we have compatible fields
+  local jx = self.xpos
+  for i = 1,#channels do
+    local chan = idxfields[jx]
+    local chtype = datafields[jx]
+    
+    local found = false
+    for j,v in pairs( tracker.colgroups[chtype] ) do
+      found = found or ( channels[i].fieldtype == v )
+    end
+    
+    if ( found == false ) then
+      return
+    end
+    
+    jx = jx + self:getAdvance(chtype)
+  end
+  
+  -- Determine the shift we need to apply to the current position to get to the start
+  -- of the clipboard
+  local cpShift = self.colref[ datafields[self.xpos] ]
+  local region = self.clipboard.region 
+  region.xstop = self.xpos + (region.xstop - region.xstart) + cpShift
+  region.ystop = self.ypos + (region.ystop - region.ystart)
+  region.xstart = self.xpos + cpShift
+  region.ystart = self.ypos
+  self:clearBlock(region)
+   
+  -- Grab references here, since clearblock calls update and regenerates them
+  local data      = self.data
+  local noteGrid  = data.note
+  local notes     = self.notes
+  local rows      = self.rows
+  
+  -- We should be able to paste the contents now
+  local jx = self.xpos
+  for i = 1,#channels do
+    local chan = idxfields[jx]
+    local chtype = datafields[jx]
+    local firstNote = 1
+    if ( channels[i].data ) then
+      for j = 1,#(channels[i].data) do
+        local data = channels[i].data[j]
+          if ( data[1] == 'NOTE' ) then
+            -- 'NOTE' (1), pitch (2), velocity (3), startppq (4), endppq (5)
+            local note = noteGrid[chan*rows+self.ypos-1]
+            if ( ( firstNote == 1 ) and ( self.ypos > 0 ) and ( note and ( note > -1 ) ) ) then
+              -- If the location where the paste happens started with a note, then shorten it!
+              local pitch, vel, startppqpos, endppqpos = table.unpack( notes[ note ] )
+              local resize = self:ppqToRow(data[4]+refppq-endppqpos)
+              if ( resize ~= 0 ) then
+                self:resizeNote(chan, self:ppqToRow(startppqpos), resize )
+              end
+              firstNote = 0
+            end
+            self:addNotePpq(data[4] + refppq, data[5] + refppq, chan, data[2], data[3])
+            firstNote = 0
+          elseif ( data[1] == 'OFF' ) then
+            -- 'OFF' symbol
+            local note = noteGrid[chan*rows+self.ypos-1]
+            if ( ( firstNote == 1 ) and ( self.ypos > 0 ) and ( note and ( note > -1 ) ) ) then
+              -- If the location where the paste happens started with a note, then shorten it!
+              local pitch, vel, startppqpos, endppqpos = table.unpack( notes[ note ] )
+              self:resizeNote(chan, self:ppqToRow(startppqpos), self:ppqToRow(data[2]+refppq-endppqpos) )
+              firstNote = 0
+            else
+              -- Otherwise, make it an explicit off
+              self:addNoteOFF(data[2] + refppq, chan)
+              firstNote = 0
+            end
+          elseif ( data[1] == 'LEG' ) then
+            -- 'LEG', ppqposition
+            self:addLegato( self:ppqToRow(data[2] + refppq) )
+          elseif ( data[1] == 'FX' ) then
+            -- 'FX', ppqposition          
+            self:addEnvPt( chan, self:ppqToSeconds(data[2] + refppq), data[3], data[4] )    
+        else
+          print( "FATAL ERROR, unknown field in clipboard" )
+        end
+      end
+    else
+      -- No data? Make sure that whatever note might have been here gets continued
+      --for jx = cp.xstart, cp.xstop do
+      --  local chan = idxfields[ jx ]
+      --  if ( datafields[jx] == 'text' ) then
+      --    local elong = noteGrid[chan*rows + cp.ystart-1]
+      --    self:checkNoteGrow(notes, noteGrid, rows, chan, cp.ystart-1, singlerow, elong, nil, 1)
+      --  end
+      --end
+    end
+    jx = jx + self:getAdvance(chtype)
+  end
+end
+
+-- Copy things to clipboard
+-- Note that if a block starts with an implicit OFF symbol (coming from a previous note outside the block)
+-- then this is converted to an explicit OFF. Note that notes that overhang the end are cropped to the block.
+function tracker:copyToClipboard()
+
   local newclipboard = {}
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
   local data      = self.data
   local noteGrid  = data.note
-  local noteStart = data.noteStart  
-  local legato    = data.legato
+  local noteStart = data.noteStart
+  local legato    = self.legato
   local notes     = self.notes
   local txtList   = self.txtList
   local rows      = self.rows
+  local cp        = self.cp
   
-  local chan = idxfields[x]
-  local selected = noteStart[ chan*self.rows + y - 1 ]
-  local note = notes[selected]
-   
+  newclipboard.refppq = self:rowToPpq( cp.ystart - 1 )
+  local maxppq    = self:rowToPpq(cp.ystop)
+    
   -- All we should be copying is note starts and note stops
   local jx = cp.xstart
-  while ( jx < cp.xstop ) do
+  while ( jx <= cp.xstop ) do
     self:addChannelToClipboard( newclipboard, datafields[jx] )
+    local chan = idxfields[jx]
+    local chtype = datafields[jx]  
+    local firstNote = 1
     for jy = cp.ystart, cp.ystop do
-      if ( ( datafields[jx] == 'text' ) or ( datafields[jx] == 'vel1' ) or ( datafields[jx] == 'vel2' ) ) then
-        local chan = idxfields[jx]
+      if ( ( chtype == 'text' ) or ( chtype == 'vel1' ) or ( chtype == 'vel2' ) ) then
         local loc = chan * rows + jy-1
         if ( noteStart[ loc ] ) then
           -- A note
-          local pitch, vel, startppqpos, endppqpos = table.unpack( noteStart[loc] )
-          print("Adding note to clipboard: "..self.pitchTable[pitch])
+          local pitch, vel, startppqpos, endppqpos = table.unpack( notes[ noteStart[loc] ] )
           
-          -- If the note has a preceding note and the start of this was a start of a note
-          if ( chan == 1 and self.legato[loc] > -1 ) then
-            tracker:deleteLegato( loc, 1 )
+          -- Store the legato state of the note that we are copying
+          if ( chan == 1 ) then
+            local lpos = self:ppqToRow(endppqpos)
+            if ( legato[lpos] > -1 ) then
+              if ( noteStart[rows+lpos] ) then
+                -- Undo the legato
+                endppqpos = endppqpos - self.magicOverlap
+              end
+            end
           end
-          self:addDataToClipboard( newclipboard, notes[ noteStart[loc] ] )
-        elseif ( noteGrid[ loc ] < -1 ) then
-          -- An OFF symbol
-          print("Adding off symbol to clipboard")
-          local offidx = self:gridValueToOFFidx( noteGrid[loc] )
-          self:addDataToClipboard( newclipboard, txtList[ offidx ] )
+          if ( endppqpos > maxppq ) then
+            endppqpos = maxppq
+          end
+          self:addDataToClipboard( newclipboard, { 'NOTE', pitch, vel, startppqpos, endppqpos } )
+          firstNote = 0
+        elseif ( noteGrid[ loc ] ) then
+          -- Grab OFF locations
+          if ( noteGrid[ loc ] < -1 ) then
+            -- An explicit OFF symbol. Store it!
+            local offidx = self:gridValueToOFFidx( noteGrid[loc] )
+            self:addDataToClipboard( newclipboard, { 'OFF', txtList[ offidx ][1] } )
+            firstNote = 0
+          elseif( noteGrid[ loc ] == -1 ) then
+            if ( firstNote == 1 ) then
+              -- An implicit OFF symbol => Grab note before this
+              local pitch, vel, startppqpos, endppqpos = table.unpack( notes[ noteGrid[loc-1] ] )
+              self:addDataToClipboard( newclipboard, { 'OFF', endppqpos } )
+              firstNote = 0
+            end
+          end
         end
-      elseif ( datafields[jx] == 'legato' ) then
-        print("Adding legato data to clipboard")
-      elseif ( datafields[jx] == 'fx1' or datafields[jx] == 'fx2' ) then
-        print("Adding FX channel to clipboard")
+      elseif ( chtype == 'legato' ) then
+          local lpos = jy-1
+          if ( legato[lpos] > -1 ) then
+            self:addDataToClipboard( newclipboard, { 'LEG', txtList[ legato[lpos] ][1] } )
+          end
+      elseif ( chtype == 'fx1' or chtype == 'fx2' ) then
+        local atime, env, shape, tension = tracker:getEnvPt(chan, self:toSeconds(jy-1))
+        if ( atime ) then
+          self:addDataToClipboard( newclipboard, { 'FX', self:secondsToPpq( atime ), env, shape, tension } )
+        end
       end
     end
-    if ( datafields[jx] == 'text' ) then
-      jx = jx + 2
-    elseif ( datafields[jx] == 'vel1' ) then
-      jx = jx + 1
-    end
-    jx = jx + 1
+    
+    jx = jx + self:getAdvance(chtype)
   end
   
-  clipboard = newclipboard
+  self.clipboard = newclipboard
+  self.clipboard.region = deepcopy( cp )
 end
 
 function tracker:printNote(chan, row)
@@ -2822,10 +3048,13 @@ end
 function tracker:cutBlock()
   self:resetBlock()
 end
+
 function tracker:pasteBlock()
-  self:resetBlock()
+  self:pasteClipboard()
 end
+
 function tracker:copyBlock()
+  self:copyToClipboard()
   self:resetBlock()
 end
 
@@ -2963,7 +3192,6 @@ local function updateLoop()
     local loc = tracker.scrollbar:mouseUpdate(gfx.mouse_x, gfx.mouse_y, left)
     if ( loc ) then
       tracker.ypos = math.floor(loc*(tracker.rows+1))
-      print(math.floor(loc*tracker.rows))
       tracker:forceCursorInRange()
     end
   end
