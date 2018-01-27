@@ -9,6 +9,8 @@
 
 --[[
  * Changelog:
+ * v0.92 (2018-01-27)
+   + Added option to change rows/measure (CTRL+ALT+up/down, CTRL+ALT+Enter to commit)
  * v0.91 (2018-01-27)
    + Fix legato issue when pasting clipboard data
    + Implemented cut (CTRL+X)
@@ -56,7 +58,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v0.88"
+tracker.name = "Hackey Trackey v0.92"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -115,6 +117,8 @@ tracker.lastVel = 96
 tracker.lastEnv = 1
 tracker.envShape = 1
 tracker.rowPerQn = 4
+tracker.newRowPerQn = 4
+tracker.maxRowPerQn = 16
 
 tracker.cp = {}
 tracker.cp.lastShiftCoord = nil
@@ -142,6 +146,7 @@ tracker.colors.loopcolor    = {.2, .3, .8, .5}
 tracker.colors.copypaste    = {5.0, .7, 0.1, .2}
 tracker.colors.scrollbar1   = {.2, .1, .6, 1.0}
 tracker.colors.scrollbar2   = {.1, .0, .3, 1.0}
+tracker.colors.changed      = {1.0, 0.1, 0.1, 1.0}
 tracker.hash = 0
 
 tracker.envShapes = {}
@@ -159,46 +164,49 @@ tracker.debug = 0
 -- of chooser here.
 keys = {}
 --                    CTRL  ALT SHIFT Keycode
-keys.left         = { 0,    0,  0,    1818584692 } -- <-
-keys.right        = { 0,    0,  0,    1919379572 } -- ->
-keys.up           = { 0,    0,  0,    30064 }      -- /\
-keys.down         = { 0,    0,  0,    1685026670 } -- \/
-keys.off          = { 0,    0,  0,    45 }         -- -
-keys.delete       = { 0,    0,  0,    6579564 }    -- Del
-keys.home         = { 0,    0,  0,    1752132965 } -- Home
-keys.End          = { 0,    0,  0,    6647396 }    -- End
-keys.toggle       = { 0,    0,  0,    32 }         -- Space
-keys.playfrom     = { 0,    0,  0,    13 }         -- Enter
-keys.insert       = { 0,    0,  0,    6909555 }    -- Insert
-keys.remove       = { 0,    0,  0,    8 }          -- Backspace
-keys.pgup         = { 0,    0,  0,    1885828464 } -- Page up
-keys.pgdown       = { 0,    0,  0,    1885824110 } -- Page down
-keys.undo         = { 1,    0,  0,    26 }         -- CTRL + Z
-keys.redo         = { 1,    0,  1,    26 }         -- CTRL + SHIFT + Z
-keys.beginBlock   = { 1,    0,  0,    2 }          -- CTRL + B
-keys.endBlock     = { 1,    0,  0,    5 }          -- CTRL + E
-keys.cutBlock     = { 1,    0,  0,    24 }         -- CTRL + X
-keys.pasteBlock   = { 1,    0,  0,    22 }         -- CTRL + V
-keys.copyBlock    = { 1,    0,  0,    3 }          -- CTRL + C
-keys.shiftup      = { 0,    0,  1,    43 }         -- SHIFT + Num pad+
-keys.shiftdown    = { 0,    0,  1,    45 }         -- SHIFT + Num pad-
-keys.octaveup     = { 1,    0,  0,    30064 }      -- CTRL + /\
-keys.octavedown   = { 1,    0,  0,    1685026670 } -- CTRL + \/
-keys.envshapeup   = { 1,    0,  1,    30064 }      -- CTRL + SHIFT + /\
-keys.envshapedown = { 1,    0,  1,    1685026670 } -- CTRL + SHIFT + /\
-keys.outchandown  = { 0,    0,  0,    26161 }      -- F1
-keys.outchanup    = { 0,    0,  0,    26162 }      -- F2
-keys.advancedown  = { 0,    0,  0,    26163 }      -- F3
-keys.advanceup    = { 0,    0,  0,    26164 }      -- F4
-keys.setloop      = { 1,    0,  0,    12 }         -- CTRL + L
-keys.setloopstart = { 1,    0,  0,    17 }         -- CTRL + Q
-keys.setloopend   = { 1,    0,  0,    23 }         -- CTRL + W
-keys.interpolate  = { 1,    0,  0,    9 }          -- CTRL + I
-keys.shiftleft    = { 0,    0,  1,    1818584692 } -- Shift + <-
-keys.shiftright   = { 0,    0,  1,    1919379572 } -- Shift + ->
-keys.shiftup      = { 0,    0,  1,    30064 }      -- Shift + /\
-keys.shiftdown    = { 0,    0,  1,    1685026670 } -- Shift + \/
-keys.deleteBlock  = { 0,    0,  1,    6579564 }    -- Shift + Del
+keys.left           = { 0,    0,  0,    1818584692 } -- <-
+keys.right          = { 0,    0,  0,    1919379572 } -- ->
+keys.up             = { 0,    0,  0,    30064 }      -- /\
+keys.down           = { 0,    0,  0,    1685026670 } -- \/
+keys.off            = { 0,    0,  0,    45 }         -- -
+keys.delete         = { 0,    0,  0,    6579564 }    -- Del
+keys.home           = { 0,    0,  0,    1752132965 } -- Home
+keys.End            = { 0,    0,  0,    6647396 }    -- End
+keys.toggle         = { 0,    0,  0,    32 }         -- Space
+keys.playfrom       = { 0,    0,  0,    13 }         -- Enter
+keys.insert         = { 0,    0,  0,    6909555 }    -- Insert
+keys.remove         = { 0,    0,  0,    8 }          -- Backspace
+keys.pgup           = { 0,    0,  0,    1885828464 } -- Page up
+keys.pgdown         = { 0,    0,  0,    1885824110 } -- Page down
+keys.undo           = { 1,    0,  0,    26 }         -- CTRL + Z
+keys.redo           = { 1,    0,  1,    26 }         -- CTRL + SHIFT + Z
+keys.beginBlock     = { 1,    0,  0,    2 }          -- CTRL + B
+keys.endBlock       = { 1,    0,  0,    5 }          -- CTRL + E
+keys.cutBlock       = { 1,    0,  0,    24 }         -- CTRL + X
+keys.pasteBlock     = { 1,    0,  0,    22 }         -- CTRL + V
+keys.copyBlock      = { 1,    0,  0,    3 }          -- CTRL + C
+keys.shiftup        = { 0,    0,  1,    43 }         -- SHIFT + Num pad+
+keys.shiftdown      = { 0,    0,  1,    45 }         -- SHIFT + Num pad-
+keys.octaveup       = { 1,    0,  0,    30064 }      -- CTRL + /\
+keys.octavedown     = { 1,    0,  0,    1685026670 } -- CTRL + \/
+keys.envshapeup     = { 1,    0,  1,    30064 }      -- CTRL + SHIFT + /\
+keys.envshapedown   = { 1,    0,  1,    1685026670 } -- CTRL + SHIFT + /\
+keys.outchandown    = { 0,    0,  0,    26161 }      -- F1
+keys.outchanup      = { 0,    0,  0,    26162 }      -- F2
+keys.advancedown    = { 0,    0,  0,    26163 }      -- F3
+keys.advanceup      = { 0,    0,  0,    26164 }      -- F4
+keys.setloop        = { 1,    0,  0,    12 }         -- CTRL + L
+keys.setloopstart   = { 1,    0,  0,    17 }         -- CTRL + Q
+keys.setloopend     = { 1,    0,  0,    23 }         -- CTRL + W
+keys.interpolate    = { 1,    0,  0,    9 }          -- CTRL + I
+keys.shiftleft      = { 0,    0,  1,    1818584692 } -- Shift + <-
+keys.shiftright     = { 0,    0,  1,    1919379572 } -- Shift + ->
+keys.shiftup        = { 0,    0,  1,    30064 }      -- Shift + /\
+keys.shiftdown      = { 0,    0,  1,    1685026670 } -- Shift + \/
+keys.deleteBlock    = { 0,    0,  1,    6579564 }    -- Shift + Del
+keys.resolutionUp   = { 1,    1,  0,    30064 }      -- CTRL + Alt + Up
+keys.resolutionDown = { 1,    1,  0,    1685026670 } -- CTRL + Alt + Down
+keys.commit         = { 1,    1,  0,    13 }         -- CTRL + Alt + Enter
 
 --- Base pitches
 --- Can customize the 'keyboard' here, if they aren't working for you
@@ -709,12 +717,22 @@ function tracker:printGrid()
   gfx.y = yloc[#yloc] + 1 * yheight[1] + itempady
   gfx.set(table.unpack(colors.headercolor))
   gfx.printf("%s", description[relx])
-  
-  str = string.format("Oct [%d] Adv [%d] Env [%s] Out [%s]", self.transpose, self.advance, tracker.envShapes[tracker.envShape], self:outString() )
+   
+  local str = string.format("Oct [%d] Adv [%d] Env [%s] Out [%s]", self.transpose, self.advance, tracker.envShapes[tracker.envShape], self:outString() )
   gfx.x = plotData.xstart + tw - 8.2 * string.len(str)
   gfx.y = yloc[#yloc] + 2 * yheight[1] + itempady
   gfx.set(table.unpack(colors.headercolor))
   gfx.printf(str)
+ 
+  local str2 = string.format("Res [%d] ", tracker.newRowPerQn )
+  if ( tracker.newRowPerQn ~= tracker.rowPerQn ) then
+    gfx.set(table.unpack(colors.changed))
+  else
+    gfx.set(table.unpack(colors.headercolor))
+  end
+  gfx.x = plotData.xstart + tw - 8.2 * string.len(str) - 8.2 * string.len(str2)
+  gfx.y = yloc[#yloc] + 2 * yheight[1] + itempady
+  gfx.printf(str2)
  
   -- Draw the headers so we don't get lost :)
   gfx.set(table.unpack(colors.headercolor))
@@ -1743,11 +1761,44 @@ function tracker:toQn(seconds)
   return self.rowPerQn * seconds / self.rowPerSec
 end
 
+function tracker:getResolution( reso )
+  -- Determine Row per Qn for this MIDI item
+  local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+  for i=0,textsyxevtcntOut do
+    local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
+    
+    if ( string.sub(msg,1,3) == 'ROW' ) then
+      local rpq = tonumber( string.sub(msg,4,5) )
+      if ( rpq ) then
+        return rpq
+      end
+    end
+  end
+  
+  return self.rowPerQn
+end
+
+function tracker:setResolution( reso )
+  local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+  for i=0,textsyxevtcntOut do
+    local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
+    
+    if ( string.sub(msg,1,3) == 'ROW' ) then
+      reaper.MIDI_DeleteTextSysexEvt(self.take, i)
+    end
+  end
+  
+  reaper.MIDI_InsertTextSysexEvt(self.take, false, false, 0, 1, string.format( 'ROW%2d', reso ) )
+end
+
 ------------------------------
 -- Determine timing info
 -- returns true if something changed
 ------------------------------
 function tracker:getRowInfo()
+
+    self.rowPerQn = self:getResolution()
+
     -- How many rows do we need?
     local ppqPerQn = reaper.MIDI_GetPPQPosFromProjQN(self.take, 1) - reaper.MIDI_GetPPQPosFromProjQN(self.take, 0)
     local ppqPerSec = 1.0 / ( reaper.MIDI_GetProjTimeFromPPQPos(self.take, 1) - reaper.MIDI_GetProjTimeFromPPQPos(self.take, 0) )
@@ -2443,6 +2494,7 @@ function tracker:setTake( take )
       self.track = reaper.GetMediaItem_Track(self.item)
       -- Store note hash (second arg = notes only)
       self.hash = reaper.MIDI_GetHash( self.take, false, "?" )
+      self.newRowPerQn = self:getResolution()
       self:update()
       return true
     end
@@ -3355,6 +3407,19 @@ local function updateLoop()
     if ( tracker.advance < 0 ) then
       tracker.advance = 0
     end
+  elseif inputs('resolutionUp') then
+    tracker.newRowPerQn = tracker.newRowPerQn + 1
+    if ( tracker.newRowPerQn > tracker.maxRowPerQn ) then
+      tracker.newRowPerQn = 1
+    end
+  elseif inputs('resolutionDown') then  
+    tracker.newRowPerQn = tracker.newRowPerQn - 1
+    if ( tracker.newRowPerQn < 1 ) then
+      tracker.newRowPerQn = tracker.maxRowPerQn
+    end
+  elseif inputs('commit') then
+    tracker:setResolution( tracker.newRowPerQn )
+    self.hash = math.random()
   elseif inputs('setloop') then
     local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
     local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")      
@@ -3444,7 +3509,7 @@ local function Main()
     tracker.tick = 0
     tracker.scrollbar = scrollbar.create(tracker.scrollbar.size)
     tracker:generatePitches()
-    tracker:initColors()
+    tracker:initColors()   
   
     local item = reaper.GetSelectedMediaItem(0, 0)
     local take = reaper.GetActiveTake(item)
