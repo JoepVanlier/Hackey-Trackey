@@ -9,6 +9,8 @@
 
 --[[
  * Changelog:
+ * v0.93 (2018-01-27)
+   + Added ability to go to next/previous MIDI item on track (CTRL + -> and CTRL + <-)
  * v0.92 (2018-01-27)
    + Added option to change rows/measure (CTRL+ALT+up/down, CTRL+ALT+Enter to commit)
  * v0.91 (2018-01-27)
@@ -76,7 +78,7 @@ tracker.trackFX = 1
 tracker.transpose = 3
 tracker.advance = 1
 tracker.showloop = 1
-tracker.printKeys = 0
+tracker.printKeys = 1
 
 -- Field of view
 tracker.fov = {}
@@ -164,49 +166,51 @@ tracker.debug = 0
 -- of chooser here.
 keys = {}
 --                    CTRL  ALT SHIFT Keycode
-keys.left           = { 0,    0,  0,    1818584692 } -- <-
-keys.right          = { 0,    0,  0,    1919379572 } -- ->
-keys.up             = { 0,    0,  0,    30064 }      -- /\
-keys.down           = { 0,    0,  0,    1685026670 } -- \/
-keys.off            = { 0,    0,  0,    45 }         -- -
-keys.delete         = { 0,    0,  0,    6579564 }    -- Del
-keys.home           = { 0,    0,  0,    1752132965 } -- Home
-keys.End            = { 0,    0,  0,    6647396 }    -- End
-keys.toggle         = { 0,    0,  0,    32 }         -- Space
-keys.playfrom       = { 0,    0,  0,    13 }         -- Enter
-keys.insert         = { 0,    0,  0,    6909555 }    -- Insert
-keys.remove         = { 0,    0,  0,    8 }          -- Backspace
-keys.pgup           = { 0,    0,  0,    1885828464 } -- Page up
-keys.pgdown         = { 0,    0,  0,    1885824110 } -- Page down
-keys.undo           = { 1,    0,  0,    26 }         -- CTRL + Z
-keys.redo           = { 1,    0,  1,    26 }         -- CTRL + SHIFT + Z
-keys.beginBlock     = { 1,    0,  0,    2 }          -- CTRL + B
-keys.endBlock       = { 1,    0,  0,    5 }          -- CTRL + E
-keys.cutBlock       = { 1,    0,  0,    24 }         -- CTRL + X
-keys.pasteBlock     = { 1,    0,  0,    22 }         -- CTRL + V
-keys.copyBlock      = { 1,    0,  0,    3 }          -- CTRL + C
-keys.shiftup        = { 0,    0,  1,    43 }         -- SHIFT + Num pad+
-keys.shiftdown      = { 0,    0,  1,    45 }         -- SHIFT + Num pad-
-keys.octaveup       = { 1,    0,  0,    30064 }      -- CTRL + /\
-keys.octavedown     = { 1,    0,  0,    1685026670 } -- CTRL + \/
-keys.envshapeup     = { 1,    0,  1,    30064 }      -- CTRL + SHIFT + /\
-keys.envshapedown   = { 1,    0,  1,    1685026670 } -- CTRL + SHIFT + /\
-keys.outchandown    = { 0,    0,  0,    26161 }      -- F1
-keys.outchanup      = { 0,    0,  0,    26162 }      -- F2
-keys.advancedown    = { 0,    0,  0,    26163 }      -- F3
-keys.advanceup      = { 0,    0,  0,    26164 }      -- F4
-keys.setloop        = { 1,    0,  0,    12 }         -- CTRL + L
-keys.setloopstart   = { 1,    0,  0,    17 }         -- CTRL + Q
-keys.setloopend     = { 1,    0,  0,    23 }         -- CTRL + W
-keys.interpolate    = { 1,    0,  0,    9 }          -- CTRL + I
-keys.shiftleft      = { 0,    0,  1,    1818584692 } -- Shift + <-
-keys.shiftright     = { 0,    0,  1,    1919379572 } -- Shift + ->
-keys.shiftup        = { 0,    0,  1,    30064 }      -- Shift + /\
-keys.shiftdown      = { 0,    0,  1,    1685026670 } -- Shift + \/
-keys.deleteBlock    = { 0,    0,  1,    6579564 }    -- Shift + Del
-keys.resolutionUp   = { 1,    1,  0,    30064 }      -- CTRL + Alt + Up
-keys.resolutionDown = { 1,    1,  0,    1685026670 } -- CTRL + Alt + Down
-keys.commit         = { 1,    1,  0,    13 }         -- CTRL + Alt + Enter
+keys.left           = { 0,    0,  0,    1818584692 }    -- <-
+keys.right          = { 0,    0,  0,    1919379572 }    -- ->
+keys.up             = { 0,    0,  0,    30064 }         -- /\
+keys.down           = { 0,    0,  0,    1685026670 }    -- \/
+keys.off            = { 0,    0,  0,    45 }            -- -
+keys.delete         = { 0,    0,  0,    6579564 }       -- Del
+keys.home           = { 0,    0,  0,    1752132965 }    -- Home
+keys.End            = { 0,    0,  0,    6647396 }       -- End
+keys.toggle         = { 0,    0,  0,    32 }            -- Space
+keys.playfrom       = { 0,    0,  0,    13 }            -- Enter
+keys.insert         = { 0,    0,  0,    6909555 }       -- Insert
+keys.remove         = { 0,    0,  0,    8 }             -- Backspace
+keys.pgup           = { 0,    0,  0,    1885828464 }    -- Page up
+keys.pgdown         = { 0,    0,  0,    1885824110 }    -- Page down
+keys.undo           = { 1,    0,  0,    26 }            -- CTRL + Z
+keys.redo           = { 1,    0,  1,    26 }            -- CTRL + SHIFT + Z
+keys.beginBlock     = { 1,    0,  0,    2 }             -- CTRL + B
+keys.endBlock       = { 1,    0,  0,    5 }             -- CTRL + E
+keys.cutBlock       = { 1,    0,  0,    24 }            -- CTRL + X
+keys.pasteBlock     = { 1,    0,  0,    22 }            -- CTRL + V
+keys.copyBlock      = { 1,    0,  0,    3 }             -- CTRL + C
+keys.shiftup        = { 0,    0,  1,    43 }            -- SHIFT + Num pad+
+keys.shiftdown      = { 0,    0,  1,    45 }            -- SHIFT + Num pad-
+keys.octaveup       = { 1,    0,  0,    30064 }         -- CTRL + /\
+keys.octavedown     = { 1,    0,  0,    1685026670 }    -- CTRL + \/
+keys.envshapeup     = { 1,    0,  1,    30064 }         -- CTRL + SHIFT + /\
+keys.envshapedown   = { 1,    0,  1,    1685026670 }    -- CTRL + SHIFT + /\
+keys.outchandown    = { 0,    0,  0,    26161 }         -- F1
+keys.outchanup      = { 0,    0,  0,    26162 }         -- F2
+keys.advancedown    = { 0,    0,  0,    26163 }         -- F3
+keys.advanceup      = { 0,    0,  0,    26164 }         -- F4
+keys.setloop        = { 1,    0,  0,    12 }            -- CTRL + L
+keys.setloopstart   = { 1,    0,  0,    17 }            -- CTRL + Q
+keys.setloopend     = { 1,    0,  0,    23 }            -- CTRL + W
+keys.interpolate    = { 1,    0,  0,    9 }             -- CTRL + I
+keys.shiftleft      = { 0,    0,  1,    1818584692 }    -- Shift + <-
+keys.shiftright     = { 0,    0,  1,    1919379572 }    -- Shift + ->
+keys.shiftup        = { 0,    0,  1,    30064 }         -- Shift + /\
+keys.shiftdown      = { 0,    0,  1,    1685026670 }    -- Shift + \/
+keys.deleteBlock    = { 0,    0,  1,    6579564 }       -- Shift + Del
+keys.resolutionUp   = { 1,    1,  0,    30064 }         -- CTRL + Alt + Up
+keys.resolutionDown = { 1,    1,  0,    1685026670 }    -- CTRL + Alt + Down
+keys.commit         = { 1,    1,  0,    13 }            -- CTRL + Alt + Enter
+keys.nextMIDI       = { 1,    0,  0,    1919379572.0 }  -- CTRL + ->
+keys.prevMIDI       = { 1,    0,  0,    1818584692.0 }  -- CTRL + <-
 
 --- Base pitches
 --- Can customize the 'keyboard' here, if they aren't working for you
@@ -3215,6 +3219,49 @@ function tracker:setLoopEnd()
     reaper.GetSet_LoopTimeRange2(0, true, true, lPos, lEnd, true)    
 end
 
+function tracker:tryTake(i)
+  local item = reaper.GetTrackMediaItem(self.track, i)
+  if ( item ) then
+    local take = reaper.GetActiveTake(item)
+    if ( reaper.TakeIsMIDI( take ) == true ) then
+      tracker:setItem( item )
+      tracker:setTake( take )
+      return true
+    end
+    return false
+  end
+end
+
+function tracker:seekMIDI( dir )
+  self.track = reaper.GetMediaItem_Track(self.item)
+  local nItems = reaper.GetTrackNumMediaItems(self.track)
+    
+  -- Find me first
+  local cur
+  for i=0,nItems do
+    local mediaItem = reaper.GetTrackMediaItem(self.track, i)
+    if ( mediaItem == self.item ) then
+      cur = i
+    end
+  end
+  
+  if ( dir > 0 ) then
+    for i=cur+1,nItems do
+      if ( self:tryTake(i) ) then
+        return
+      end
+    end
+  elseif ( dir < 0 ) then
+    for i=cur-1,0,-1 do
+      if ( self:tryTake(i) ) then
+        return
+      end   
+    end  
+  else
+    print( "Fatal error: Invalid direction given" )
+  end
+end
+
 ------------------------------
 -- Main update loop
 -----------------------------
@@ -3417,6 +3464,10 @@ local function updateLoop()
     if ( tracker.newRowPerQn < 1 ) then
       tracker.newRowPerQn = tracker.maxRowPerQn
     end
+  elseif inputs('nextMIDI') then
+    tracker:seekMIDI(1)
+  elseif inputs('prevMIDI') then  
+    tracker:seekMIDI(-1)  
   elseif inputs('commit') then
     tracker:setResolution( tracker.newRowPerQn )
     self.hash = math.random()
