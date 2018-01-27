@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="155d2b9825d427309136e100162a7564f6c96938">
+<index version="1" name="Tracker tools" commit="ebf2dd20b3e7ce981b3449244a080945e87eb96d">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey">
       <version name="0.94" author="Joep Vanlier" time="2018-01-27T23:15:58Z">
@@ -55,5 +55,6 @@ Reaper API
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Cutting/Copying to MIDI editor clipboard.\sa180\par}
 }
 ]]></description>
+    <link rel="website">https://github.com/joepvanlier/Hackey-Trackey/</link>
   </metadata>
 </index>
