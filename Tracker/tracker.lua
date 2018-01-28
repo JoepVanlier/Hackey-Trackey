@@ -7,11 +7,15 @@
  * License: MIT
  * REAPER: 5.x
  * Extensions: None
- * Version: 0.94
+ * Version: 0.96
 --]]
 
 --[[
  * Changelog:
+ * v0.96 (2018-01-28)
+   + Added shortcut to duplicate pattern
+ * v0.95 (2018-01-28)
+   + Minor fix insert
  * v0.94 (2018-01-27)
    + Added help (F1)
  * v0.93 (2018-01-27)
@@ -65,7 +69,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v0.94"
+tracker.name = "Hackey Trackey v0.96"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -83,7 +87,7 @@ tracker.trackFX = 1
 tracker.transpose = 3
 tracker.advance = 1
 tracker.showloop = 1
-tracker.printKeys = 0
+tracker.printKeys = 1
 
 -- Field of view
 tracker.fov = {}
@@ -222,6 +226,7 @@ keys.resolutionDown = { 1,    1,  0,    1685026670 }    -- CTRL + Alt + Down
 keys.commit         = { 1,    1,  0,    13 }            -- CTRL + Alt + Enter
 keys.nextMIDI       = { 1,    0,  0,    1919379572.0 }  -- CTRL + ->
 keys.prevMIDI       = { 1,    0,  0,    1818584692.0 }  -- CTRL + <-
+keys.duplicate      = { 1,    0,  0,    4 }             -- CTRL + D
 
 help = {
   { 'Arrow Keys', 'Move' },
@@ -230,8 +235,7 @@ help = {
   { 'Space', 'Toggle play' },
   { 'Return', 'Play from current' },
   { 'CTRL + L', 'Set loop to pattern' },
-  { 'CTRL + Q', 'Set loop start' },
-  { 'CTRL + W', 'Set loop end' },
+  { 'CTRL + Q/W', 'Set loop start/end' },
   { 'Shift + Up/Down', 'Change octave' },
   { 'CTRL + Shift + Up/Down', 'Change envelope' },
   { 'CTRL + B', 'Begin block selection' },
@@ -249,7 +253,8 @@ help = {
   { 'F4/F5', 'Advance down/up' },
   { 'CTRL + ALT + Up/Down', 'Adjust resolution' },
   { 'CTRL + ALT + Enter', 'Commit resolution' }, 
-  { 'CTRL + Left/Right', 'Switch MIDI item' }
+  { 'CTRL + Left/Right', 'Switch MIDI item' },
+  { 'CTRL + D', 'Duplicate pattern' }
 }
 
 --- Base pitches
@@ -3530,7 +3535,16 @@ local function updateLoop()
   elseif inputs('nextMIDI') then
     tracker:seekMIDI(1)
   elseif inputs('prevMIDI') then  
-    tracker:seekMIDI(-1)  
+    tracker:seekMIDI(-1)
+  elseif inputs('duplicate') then
+    reaper.SelectAllMediaItems(0, false)
+    reaper.SetMediaItemSelected(tracker.item, true)
+    reaper.Main_OnCommand(40698, 0) -- Copy selected items
+    local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+    local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")    
+    reaper.SetEditCurPos2(0, mpos+mlen, false, false)
+    reaper.Main_OnCommand(40058, 0) -- Paste
+    tracker:seekMIDI(1)
   elseif inputs('commit') then
     tracker:setResolution( tracker.newRowPerQn )
     self.hash = math.random()
