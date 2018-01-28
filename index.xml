@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="98625e7e134974946cbc2eca8af0cd16aaa0a2db">
+<index version="1" name="Tracker tools" commit="aab4910da7eef6e2be16ab5ad37731b43ba1ff1e">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey">
       <version name="0.94" author="Joep Vanlier" time="2018-01-27T23:15:58Z">
@@ -17,6 +17,12 @@
       <version name="0.98" author="Joep Vanlier" time="2018-01-28T12:45:05Z">
         <changelog><![CDATA[+ Store what settings we last worked with in the MIDI item]]></changelog>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/98625e7e134974946cbc2eca8af0cd16aaa0a2db/Tracker/tracker.lua</source>
+      </version>
+      <version name="0.99" author="Joep Vanlier" time="2018-01-28T13:46:55Z">
+        <changelog><![CDATA[+ Show name of track the instance is on
++ Show the name of the MIDI take
++ Edit take name with CTRL+N]]></changelog>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/aab4910da7eef6e2be16ab5ad37731b43ba1ff1e/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
