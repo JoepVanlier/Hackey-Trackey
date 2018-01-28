@@ -7,11 +7,13 @@
  * License: MIT
  * REAPER: 5.x
  * Extensions: None
- * Version: 0.96
+ * Version: 0.97
 --]]
 
 --[[
  * Changelog:
+ * v0.97 (2018-01-28)
+   + Forgot to turn off printKeys before committing
  * v0.96 (2018-01-28)
    + Added shortcut to duplicate pattern
  * v0.95 (2018-01-28)
@@ -69,7 +71,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v0.96"
+tracker.name = "Hackey Trackey v0.97"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -87,7 +89,7 @@ tracker.trackFX = 1
 tracker.transpose = 3
 tracker.advance = 1
 tracker.showloop = 1
-tracker.printKeys = 1
+tracker.printKeys = 0
 
 -- Field of view
 tracker.fov = {}
@@ -2525,7 +2527,7 @@ function tracker:update()
             ok = ok + 1
           else
             --reaper.ShowMessageBox(string msg, string title, integer type)
-            if ( self.debug ) then
+            if ( self.debug == 1 ) then
               print("Warning: A note that should have been assigned was shifted")
             end
             targetChannel = targetChannel + 1
