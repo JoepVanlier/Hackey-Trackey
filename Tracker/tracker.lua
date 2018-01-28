@@ -1727,7 +1727,7 @@ function tracker:insert()
       end
     else
       -- We are at a note start... maybe there is a previous note who wants to be elongated?
-      if ( row > 1 ) then
+      if ( row > 0 ) then
         local note = noteGrid[rows*chan+row-1]
         if ( note and ( note > -1 ) ) then
           self:growNote( chan, row-1 )
