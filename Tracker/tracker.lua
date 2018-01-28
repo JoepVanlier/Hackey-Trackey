@@ -7,11 +7,13 @@
  * License: MIT
  * REAPER: 5.x
  * Extensions: None
- * Version: 0.97
+ * Version: 0.98
 --]]
 
 --[[
  * Changelog:
+ * v0.98 (2018-01-28)
+   + Store what settings we last worked with in the MIDI item
  * v0.97 (2018-01-28)
    + Forgot to turn off printKeys before committing
  * v0.96 (2018-01-28)
@@ -71,7 +73,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v0.97"
+tracker.name = "Hackey Trackey v0.98"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -99,6 +101,9 @@ tracker.fov.height = 32
 
 -- Set this if you want a wider or narrower tracker screen
 tracker.fov.abswidth = 450
+
+-- Remember settings associated with a specific pattern? (octave, envelope and advance)
+tracker.rememberSettings = 1
 
 tracker.fov.scrollx = 0
 tracker.fov.scrolly = 0
@@ -1849,6 +1854,41 @@ function tracker:getResolution( reso )
   return self.rowPerQn
 end
 
+function tracker:getSettings( )
+  local oct, adv, env
+  if ( self.rememberSettings == 1 ) then
+    local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+    for i=0,textsyxevtcntOut do
+      local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
+      
+      if ( string.sub(msg,1,3) == 'OPT' ) then
+        oct = tonumber( string.sub(msg,4,5) )
+        adv = tonumber( string.sub(msg,6,7) )
+        env = tonumber( string.sub(msg,8,9) )      
+      end
+    end
+    
+    self.transpose  = oct or self.transpose
+    self.advance    = adv or self.advance
+    self.envShape   = env or self.envShape
+  end
+end
+
+function tracker:storeSettings( )
+  if ( self.rememberSettings == 1 ) then
+    local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+    for i=0,textsyxevtcntOut do
+      local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
+      
+      if ( string.sub(msg,1,3) == 'OPT' ) then
+        reaper.MIDI_DeleteTextSysexEvt(self.take, i)
+      end
+    end
+    
+    reaper.MIDI_InsertTextSysexEvt(self.take, false, false, 0, 1, string.format( 'OPT%2d%2d%2d', self.transpose, self.advance, self.envShape ) )
+  end
+end
+
 function tracker:setResolution( reso )
   local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   for i=0,textsyxevtcntOut do
@@ -2437,6 +2477,7 @@ function tracker:update()
     end
   
     self:getRowInfo()
+    self:getSettings()
     self:getTakeEnvelopes()
     self:linkData()
     self:updatePlotLink()
@@ -3490,18 +3531,22 @@ local function updateLoop()
     tracker:shiftdown()
   elseif inputs('octaveup') then
     tracker.transpose = tracker.transpose + 1
+    tracker:storeSettings()
   elseif inputs('octavedown') then
     tracker.transpose = tracker.transpose - 1  
+    tracker:storeSettings()    
   elseif inputs('envshapeup') then
     tracker.envShape = tracker.envShape + 1
     if ( tracker.envShape > #tracker.envShapes ) then
       tracker.envShape = 0
     end
+    tracker:storeSettings()
   elseif inputs('envshapedown') then
     tracker.envShape = tracker.envShape - 1
     if ( tracker.envShape < 0 ) then
       tracker.envShape = #tracker.envShapes
-    end 
+    end
+    tracker:storeSettings()
   elseif inputs('outchanup') then
     tracker.outChannel = tracker.outChannel + 1
     if ( tracker.outChannel > 16 ) then
@@ -3516,11 +3561,13 @@ local function updateLoop()
     tracker:setOutChannel( tracker.outChannel )
   elseif inputs('advanceup') then
     tracker.advance = tracker.advance + 1
+    tracker:storeSettings()
   elseif inputs('advancedown') then
     tracker.advance = tracker.advance - 1
     if ( tracker.advance < 0 ) then
       tracker.advance = 0
     end
+    tracker:storeSettings()
   elseif inputs('resolutionUp') then
     tracker.newRowPerQn = tracker.newRowPerQn + 1
     if ( tracker.newRowPerQn > tracker.maxRowPerQn ) then
