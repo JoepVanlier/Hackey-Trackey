@@ -7,11 +7,15 @@
  * License: MIT
  * REAPER: 5.x
  * Extensions: None
- * Version: 0.98
+ * Version: 0.99
 --]]
 
 --[[
  * Changelog:
+ * v0.99 (2018-01-28)
+   + Show name of track the instance is on
+   + Show the name of the MIDI take
+   + Edit take name with CTRL+N
  * v0.98 (2018-01-28)
    + Store what settings we last worked with in the MIDI item
  * v0.97 (2018-01-28)
@@ -73,7 +77,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v0.98"
+tracker.name = "Hackey Trackey v0.99"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -140,6 +144,7 @@ tracker.maxRowPerQn = 16
 
 tracker.helpActive = 0
 tracker.helpwidth = 370
+tracker.renaming = 0
 
 tracker.cp = {}
 tracker.cp.lastShiftCoord = nil
@@ -176,6 +181,8 @@ tracker.envShapes = {}
 tracker.envShapes[0] = 'Lin'
 tracker.envShapes[1] = 'S&H'
 tracker.envShapes[2] = 'Exp'
+
+tracker.maxPatternNameSize = 13
 
 tracker.hint = '';
 
@@ -234,6 +241,8 @@ keys.commit         = { 1,    1,  0,    13 }            -- CTRL + Alt + Enter
 keys.nextMIDI       = { 1,    0,  0,    1919379572.0 }  -- CTRL + ->
 keys.prevMIDI       = { 1,    0,  0,    1818584692.0 }  -- CTRL + <-
 keys.duplicate      = { 1,    0,  0,    4 }             -- CTRL + D
+keys.rename         = { 1,    0,  0,    14 }            -- CTRL + N
+keys.escape         = { 0,    0,  0,    27 }            -- Escape
 
 help = {
   { 'Arrow Keys', 'Move' },
@@ -245,8 +254,7 @@ help = {
   { 'CTRL + Q/W', 'Set loop start/end' },
   { 'Shift + Up/Down', 'Change octave' },
   { 'CTRL + Shift + Up/Down', 'Change envelope' },
-  { 'CTRL + B', 'Begin block selection' },
-  { 'CTRL + E', 'End block selection' },
+  { 'CTRL + B/E', 'Begin/End block selection' },
   { 'SHIFT + arrow keys', 'Block selection' },
   { 'CTRL + C', 'Copy' },
   { 'CTRL + X', 'Cut' },
@@ -261,7 +269,8 @@ help = {
   { 'CTRL + ALT + Up/Down', 'Adjust resolution' },
   { 'CTRL + ALT + Enter', 'Commit resolution' }, 
   { 'CTRL + Left/Right', 'Switch MIDI item' },
-  { 'CTRL + D', 'Duplicate pattern' }
+  { 'CTRL + D', 'Duplicate pattern' },
+  { 'CTRL + N', 'Rename pattern' },  
 }
 
 --- Base pitches
@@ -773,7 +782,25 @@ function tracker:printGrid()
   gfx.y = yloc[#yloc] + 1 * yheight[1] + itempady
   gfx.set(table.unpack(colors.headercolor))
   gfx.printf("%s", description[relx])
+  
+  local patternName
+  gfx.y = yloc[#yloc] + 1 * yheight[1] + itempady
+  if ( tracker.renaming == 0 ) then
+    patternName = self.patternName
+    gfx.x = plotData.xstart + tw - 8.2 * string.len(patternName)
+    gfx.printf(patternName)
+  else
+    gfx.set(table.unpack(colors.changed))
+    if ( self.midiName:len() > 0 ) then
+      patternName = self.midiName
+    else
+      patternName = '_'
+    end
+    gfx.x = plotData.xstart + tw - 8.2 * string.len(patternName)
+    gfx.printf(patternName)
+  end
    
+   gfx.set(table.unpack(colors.headercolor))
   local str = string.format("Oct [%d] Adv [%d] Env [%s] Out [%s]", self.transpose, self.advance, tracker.envShapes[tracker.envShape], self:outString() )
   gfx.x = plotData.xstart + tw - 8.2 * string.len(str)
   gfx.y = yloc[#yloc] + 2 * yheight[1] + itempady
@@ -2464,6 +2491,8 @@ function tracker:updateEnvelopes()
   end
 end
 
+local stringbuffer = "                                                                               "
+
 --------------------------------------------------------------
 -- Update function
 -- heavy-ish, avoid calling too often (only on MIDI changes)
@@ -2483,6 +2512,8 @@ function tracker:update()
     self:updatePlotLink()
     self:initializeGrid()
     self:updateEnvelopes()
+    
+    self:updateNames()
     
     -- Remove duplicates potentially caused by legato system
     self:clearDeleteLists()
@@ -3418,211 +3449,236 @@ local function updateLoop()
   end
   
   local modified = 0
-  if inputs('left') then
-    tracker.xpos = tracker.xpos - 1
-    tracker:resetShiftSelect()
-  elseif inputs('right') then
-    tracker.xpos = tracker.xpos + 1
-    tracker:resetShiftSelect()
-  elseif inputs('up') then
-    tracker.ypos = tracker.ypos - 1
-    tracker:resetShiftSelect()
-  elseif inputs('down') then
-    tracker.ypos = tracker.ypos + 1
-    tracker:resetShiftSelect()
-  elseif inputs('shiftleft') then
-    tracker:dragBlock()
-    tracker.xpos = tracker.xpos - 1
-    tracker:forceCursorInRange()
-    tracker:dragBlock()
-  elseif inputs('shiftright') then
-    tracker:dragBlock()
-    tracker.xpos = tracker.xpos + 1
-    tracker:forceCursorInRange()
-    tracker:dragBlock()
-  elseif inputs('shiftup') then
-    tracker:dragBlock()
-    tracker.ypos = tracker.ypos - 1
-    tracker:forceCursorInRange()
-    tracker:dragBlock()
-  elseif inputs('shiftdown') then
-    tracker:dragBlock()
-    tracker.ypos = tracker.ypos + 1
-    tracker:forceCursorInRange()
-    tracker:dragBlock()
-  elseif inputs('off') then
-    modified = 1
-    reaper.Undo_OnStateChange2(0, "Tracker: Place OFF")
-    reaper.MarkProjectDirty(0)    
-    tracker:placeOff()
-    tracker:deleteNow()
-    reaper.MIDI_Sort(tracker.take)
-  elseif inputs('delete') then
-    modified = 1
-    reaper.Undo_OnStateChange2(0, "Tracker: Delete (Del)")
-    tracker:delete()
-    tracker:deleteNow()
-    reaper.MIDI_Sort(tracker.take)
-  elseif inputs('home') then
-    tracker.ypos = 0
-  elseif inputs('End') then
-    tracker.ypos = tracker.rows
-  elseif inputs('toggle') then
-    togglePlayPause()
-  elseif inputs('playfrom') then
-    local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
-    local loc = reaper.AddProjectMarker(0, 0, mpos + tracker:toSeconds(tracker.ypos-1), 0, "", -1)
-    reaper.GoToMarker(0, loc, 0)
-    reaper.DeleteProjectMarker(0, loc, 0)
-    togglePlayPause()
-  elseif inputs('insert') then
-    modified = 1
-    reaper.Undo_OnStateChange2(0, "Tracker: Insert")
-    reaper.MarkProjectDirty(0)
-    tracker:insert()
-    tracker:deleteNow()
-    reaper.MIDI_Sort(tracker.take)
-  elseif inputs('remove') then
-    modified = 1
-    reaper.Undo_OnStateChange2(0, "Tracker: Backspace")
-    reaper.MarkProjectDirty(0)  
-    tracker:backspace()
-    tracker:deleteNow()
-    reaper.MIDI_Sort(tracker.take)
-  elseif inputs('pgup') then
-    tracker.ypos = tracker.ypos - tracker.page
-  elseif inputs('pgdown') then
-    tracker.ypos = tracker.ypos + tracker.page  
-  elseif inputs('undo') then
-    modified = 1
-    reaper.Undo_DoUndo2(0) 
-  elseif inputs('redo') then
-    modified = 1  
-    reaper.Undo_DoRedo2(0)
-  elseif inputs('deleteBlock') then
-    modified = 1
-    reaper.Undo_OnStateChange2(0, "Tracker: Delete block")
-    reaper.MarkProjectDirty(0)
-    tracker:deleteBlock()
-    reaper.MIDI_Sort(tracker.take)
-  elseif inputs('beginBlock') then
-    tracker:beginBlock()
-  elseif inputs('endBlock') then
-    tracker:endBlock()
-  elseif inputs('cutBlock') then
-    modified = 1
-    reaper.Undo_OnStateChange2(0, "Tracker: Cut block")
-    reaper.MarkProjectDirty(0)
-    tracker:cutBlock()
-    reaper.MIDI_Sort(tracker.take)
-  elseif inputs('pasteBlock') then
-    modified = 1
-    reaper.Undo_OnStateChange2(0, "Tracker: Paste block")
-    reaper.MarkProjectDirty(0)
-    tracker:pasteBlock()
-    reaper.MIDI_Sort(tracker.take)
-  elseif inputs('copyBlock') then
-    tracker:copyBlock()
-  elseif inputs('shiftup') then
-    modified = 1
-    tracker:shiftup()
-  elseif inputs('shiftdown') then
-    modified = 1
-    tracker:shiftdown()
-  elseif inputs('octaveup') then
-    tracker.transpose = tracker.transpose + 1
-    tracker:storeSettings()
-  elseif inputs('octavedown') then
-    tracker.transpose = tracker.transpose - 1  
-    tracker:storeSettings()    
-  elseif inputs('envshapeup') then
-    tracker.envShape = tracker.envShape + 1
-    if ( tracker.envShape > #tracker.envShapes ) then
-      tracker.envShape = 0
+  if ( tracker.renaming == 0 ) then
+    if inputs('left') then
+      tracker.xpos = tracker.xpos - 1
+      tracker:resetShiftSelect()
+    elseif inputs('right') then
+      tracker.xpos = tracker.xpos + 1
+      tracker:resetShiftSelect()
+    elseif inputs('up') then
+      tracker.ypos = tracker.ypos - 1
+      tracker:resetShiftSelect()
+    elseif inputs('down') then
+      tracker.ypos = tracker.ypos + 1
+      tracker:resetShiftSelect()
+    elseif inputs('shiftleft') then
+      tracker:dragBlock()
+      tracker.xpos = tracker.xpos - 1
+      tracker:forceCursorInRange()
+      tracker:dragBlock()
+    elseif inputs('shiftright') then
+      tracker:dragBlock()
+      tracker.xpos = tracker.xpos + 1
+      tracker:forceCursorInRange()
+      tracker:dragBlock()
+    elseif inputs('shiftup') then
+      tracker:dragBlock()
+      tracker.ypos = tracker.ypos - 1
+      tracker:forceCursorInRange()
+      tracker:dragBlock()
+    elseif inputs('shiftdown') then
+      tracker:dragBlock()
+      tracker.ypos = tracker.ypos + 1
+      tracker:forceCursorInRange()
+      tracker:dragBlock()
+    elseif inputs('off') then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Place OFF")
+      reaper.MarkProjectDirty(0)    
+      tracker:placeOff()
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+    elseif inputs('delete') then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Delete (Del)")
+      tracker:delete()
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+    elseif inputs('home') then
+      tracker.ypos = 0
+    elseif inputs('End') then
+      tracker.ypos = tracker.rows
+    elseif inputs('toggle') then
+      togglePlayPause()
+    elseif inputs('playfrom') then
+      local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+      local loc = reaper.AddProjectMarker(0, 0, mpos + tracker:toSeconds(tracker.ypos-1), 0, "", -1)
+      reaper.GoToMarker(0, loc, 0)
+      reaper.DeleteProjectMarker(0, loc, 0)
+      togglePlayPause()
+    elseif inputs('insert') then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Insert")
+      reaper.MarkProjectDirty(0)
+      tracker:insert()
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+    elseif inputs('remove') then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Backspace")
+      reaper.MarkProjectDirty(0)  
+      tracker:backspace()
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+    elseif inputs('pgup') then
+      tracker.ypos = tracker.ypos - tracker.page
+    elseif inputs('pgdown') then
+      tracker.ypos = tracker.ypos + tracker.page  
+    elseif inputs('undo') then
+      modified = 1
+      reaper.Undo_DoUndo2(0) 
+    elseif inputs('redo') then
+      modified = 1  
+      reaper.Undo_DoRedo2(0)
+    elseif inputs('deleteBlock') then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Delete block")
+      reaper.MarkProjectDirty(0)
+      tracker:deleteBlock()
+      reaper.MIDI_Sort(tracker.take)
+    elseif inputs('beginBlock') then
+      tracker:beginBlock()
+    elseif inputs('endBlock') then
+      tracker:endBlock()
+    elseif inputs('cutBlock') then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Cut block")
+      reaper.MarkProjectDirty(0)
+      tracker:cutBlock()
+      reaper.MIDI_Sort(tracker.take)
+    elseif inputs('pasteBlock') then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Paste block")
+      reaper.MarkProjectDirty(0)
+      tracker:pasteBlock()
+      reaper.MIDI_Sort(tracker.take)
+    elseif inputs('copyBlock') then
+      tracker:copyBlock()
+    elseif inputs('shiftup') then
+      modified = 1
+      tracker:shiftup()
+    elseif inputs('shiftdown') then
+      modified = 1
+      tracker:shiftdown()
+    elseif inputs('octaveup') then
+      tracker.transpose = tracker.transpose + 1
+      tracker:storeSettings()
+    elseif inputs('octavedown') then
+      tracker.transpose = tracker.transpose - 1  
+      tracker:storeSettings()    
+    elseif inputs('envshapeup') then
+      tracker.envShape = tracker.envShape + 1
+      if ( tracker.envShape > #tracker.envShapes ) then
+        tracker.envShape = 0
+      end
+      tracker:storeSettings()
+    elseif inputs('envshapedown') then
+      tracker.envShape = tracker.envShape - 1
+      if ( tracker.envShape < 0 ) then
+        tracker.envShape = #tracker.envShapes
+      end
+      tracker:storeSettings()
+    elseif inputs('outchanup') then
+      tracker.outChannel = tracker.outChannel + 1
+      if ( tracker.outChannel > 16 ) then
+        tracker.outChannel = 0
+      end
+      tracker:setOutChannel( tracker.outChannel )
+    elseif inputs('outchandown') then
+      tracker.outChannel = tracker.outChannel - 1
+      if ( tracker.outChannel < 0) then
+        tracker.outChannel = 16
+      end
+      tracker:setOutChannel( tracker.outChannel )
+    elseif inputs('advanceup') then
+      tracker.advance = tracker.advance + 1
+      tracker:storeSettings()
+    elseif inputs('advancedown') then
+      tracker.advance = tracker.advance - 1
+      if ( tracker.advance < 0 ) then
+        tracker.advance = 0
+      end
+      tracker:storeSettings()
+    elseif inputs('resolutionUp') then
+      tracker.newRowPerQn = tracker.newRowPerQn + 1
+      if ( tracker.newRowPerQn > tracker.maxRowPerQn ) then
+        tracker.newRowPerQn = 1
+      end
+    elseif inputs('resolutionDown') then  
+      tracker.newRowPerQn = tracker.newRowPerQn - 1
+      if ( tracker.newRowPerQn < 1 ) then
+        tracker.newRowPerQn = tracker.maxRowPerQn
+      end
+    elseif inputs('help') then
+      tracker.helpActive = 1-tracker.helpActive
+      tracker:resizeWindow()
+    elseif inputs('nextMIDI') then
+      tracker:seekMIDI(1)
+    elseif inputs('prevMIDI') then  
+      tracker:seekMIDI(-1)
+    elseif inputs('duplicate') then
+      reaper.SelectAllMediaItems(0, false)
+      reaper.SetMediaItemSelected(tracker.item, true)
+      reaper.Main_OnCommand(40698, 0) -- Copy selected items
+      local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+      local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")    
+      reaper.SetEditCurPos2(0, mpos+mlen, false, false)
+      reaper.Main_OnCommand(40058, 0) -- Paste
+      tracker:seekMIDI(1)
+    elseif inputs('commit') then
+      tracker:setResolution( tracker.newRowPerQn )
+      self.hash = math.random()
+    elseif inputs('setloop') then
+      local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+      local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")      
+      reaper.GetSet_LoopTimeRange2(0, true, true, mpos, mpos+mlen, true)
+    elseif inputs('setloopstart') then
+      tracker:setLoopStart()  
+    elseif inputs('setloopend') then
+      tracker:setLoopEnd()   
+    elseif inputs('interpolate') then
+      reaper.Undo_OnStateChange2(0, "Tracker: Interpolate")
+      reaper.MarkProjectDirty(0)  
+      tracker:interpolate()
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+    elseif inputs('rename') then
+      tracker.oldMidiName = tracker.midiName
+      tracker.midiName = ''
+      tracker.renaming = 1
+      tracker:updateMidiName()
+    elseif ( lastChar == 0 ) then
+      -- No input
+    elseif ( lastChar == -1 ) then      
+      -- Closed window
+    elseif ( gfx.mouse_cap == 0 ) then
+      -- Notes here
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Add note / Edit volume")
+      reaper.MarkProjectDirty(0)  
+      tracker:createNote(lastChar)
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
     end
-    tracker:storeSettings()
-  elseif inputs('envshapedown') then
-    tracker.envShape = tracker.envShape - 1
-    if ( tracker.envShape < 0 ) then
-      tracker.envShape = #tracker.envShapes
+  else
+    -- Renaming pattern
+    if inputs( 'playfrom' ) then
+      tracker.renaming = 0
+    elseif inputs( 'escape' ) then
+      tracker.midiName = tracker.oldMidiName
+      tracker:updateMidiName()
+      tracker.renaming = 0
+    elseif inputs( 'remove' ) then
+      tracker.midiName = tracker.midiName:sub(1, tracker.midiName:len()-1)
+      tracker:updateMidiName()
+    else    
+      if ( pcall( function () string.char(lastChar) end ) ) then
+        local str = string.char( lastChar )
+        tracker.midiName = string.format( '%s%s', tracker.midiName, str )
+        tracker:updateMidiName()
+      end
     end
-    tracker:storeSettings()
-  elseif inputs('outchanup') then
-    tracker.outChannel = tracker.outChannel + 1
-    if ( tracker.outChannel > 16 ) then
-      tracker.outChannel = 0
-    end
-    tracker:setOutChannel( tracker.outChannel )
-  elseif inputs('outchandown') then
-    tracker.outChannel = tracker.outChannel - 1
-    if ( tracker.outChannel < 0) then
-      tracker.outChannel = 16
-    end
-    tracker:setOutChannel( tracker.outChannel )
-  elseif inputs('advanceup') then
-    tracker.advance = tracker.advance + 1
-    tracker:storeSettings()
-  elseif inputs('advancedown') then
-    tracker.advance = tracker.advance - 1
-    if ( tracker.advance < 0 ) then
-      tracker.advance = 0
-    end
-    tracker:storeSettings()
-  elseif inputs('resolutionUp') then
-    tracker.newRowPerQn = tracker.newRowPerQn + 1
-    if ( tracker.newRowPerQn > tracker.maxRowPerQn ) then
-      tracker.newRowPerQn = 1
-    end
-  elseif inputs('resolutionDown') then  
-    tracker.newRowPerQn = tracker.newRowPerQn - 1
-    if ( tracker.newRowPerQn < 1 ) then
-      tracker.newRowPerQn = tracker.maxRowPerQn
-    end
-  elseif inputs('help') then
-    tracker.helpActive = 1-tracker.helpActive
-    tracker:resizeWindow()
-  elseif inputs('nextMIDI') then
-    tracker:seekMIDI(1)
-  elseif inputs('prevMIDI') then  
-    tracker:seekMIDI(-1)
-  elseif inputs('duplicate') then
-    reaper.SelectAllMediaItems(0, false)
-    reaper.SetMediaItemSelected(tracker.item, true)
-    reaper.Main_OnCommand(40698, 0) -- Copy selected items
-    local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
-    local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")    
-    reaper.SetEditCurPos2(0, mpos+mlen, false, false)
-    reaper.Main_OnCommand(40058, 0) -- Paste
-    tracker:seekMIDI(1)
-  elseif inputs('commit') then
-    tracker:setResolution( tracker.newRowPerQn )
-    self.hash = math.random()
-  elseif inputs('setloop') then
-    local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
-    local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")      
-    reaper.GetSet_LoopTimeRange2(0, true, true, mpos, mpos+mlen, true)
-  elseif inputs('setloopstart') then
-    tracker:setLoopStart()  
-  elseif inputs('setloopend') then
-    tracker:setLoopEnd()   
-  elseif inputs('interpolate') then
-    reaper.Undo_OnStateChange2(0, "Tracker: Interpolate")
-    reaper.MarkProjectDirty(0)  
-    tracker:interpolate()
-    tracker:deleteNow()
-    reaper.MIDI_Sort(tracker.take)
-  elseif ( lastChar == 0 ) then
-    -- No input
-  elseif ( lastChar == -1 ) then      
-    -- Closed window
-  elseif ( gfx.mouse_cap == 0 ) then
-    -- Notes here
-    modified = 1
-    reaper.Undo_OnStateChange2(0, "Tracker: Add note / Edit volume")
-    reaper.MarkProjectDirty(0)  
-    tracker:createNote(lastChar)
-    tracker:deleteNow()
-    reaper.MIDI_Sort(tracker.take)
   end
   
   tracker:forceCursorInRange()
@@ -3639,7 +3695,8 @@ local function updateLoop()
     tracker.hash = math.random()
   end
   
-  if lastChar ~= 27 and lastChar ~= -1 then
+  --lastChar ~= 27 and 
+  if lastChar ~= -1 then
     reaper.defer(updateLoop)
   else
     gfx.quit()
@@ -3683,7 +3740,33 @@ function tracker:resizeWindow()
     local v, wx, wy, ww, wh
     local d, wx, wh = gfx.dock(-1, 1, 1, nil, nil)
     gfx.quit()
-    gfx.init(tracker.name, width, height, 0, wx, wh)
+    
+    gfx.init( self.windowTitle, width, height, 0, wx, wh)
+  end
+end
+
+function tracker:updateMidiName()
+  reaper.GetSetMediaItemTakeInfo_String(self.take, "P_NAME", self.midiName, true)
+  self:updateNames()
+end
+
+function tracker:updateNames()
+  local maxsize = self.maxPatternNameSize
+  if ( self.track ) then
+    local retval, trackName = reaper.GetTrackName(self.track, stringbuffer)  
+    self.trackName = trackName
+  end
+  if ( self.take ) then    
+    self.midiName = reaper.GetTakeName(self.take)
+  else
+    self.midiName = ''
+  end
+  
+  self.windowTitle = string.format('%s [%s], ', self.name, self.trackName)
+  if ( self.midiName:len() > maxsize ) then
+    self.patternName = string.format('%s/%s>', self.trackName, self.midiName:sub(1,maxsize))
+  else
+    self.patternName = string.format('%s/%s', self.trackName, self.midiName:sub(1,maxsize))  
   end
 end
 
@@ -3703,7 +3786,8 @@ local function Main()
       tracker:setTake( take )
       
       local width, height = tracker:computeDims(48)
-      gfx.init(tracker.name, width, height, 0, 200, 200)
+      tracker:updateNames()
+      gfx.init(self.windowTitle, width, height, 0, 200, 200)
       
       if ( tracker.outChannel ) then
         tracker:setOutChannel( tracker.outChannel )
