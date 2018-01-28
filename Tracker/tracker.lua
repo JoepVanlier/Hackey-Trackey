@@ -7,11 +7,14 @@
  * License: MIT
  * REAPER: 5.x
  * Extensions: None
- * Version: 1.0
+ * Version: 1.01
 --]]
 
 --[[
  * Changelog:
+ * v1.01 (2018-01-28)
+   + Added . as an alternative to Delete
+   + Fixed issue with roundoff error when determining number of rows
  * v1.0 (2018-01-28)
    + Fixed bug with shift item up/down not being available
  * v0.99 (2018-01-28)
@@ -79,7 +82,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.0"
+tracker.name = "Hackey Trackey v1.01"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -202,6 +205,7 @@ keys.up             = { 0,    0,  0,    30064 }         -- /\
 keys.down           = { 0,    0,  0,    1685026670 }    -- \/
 keys.off            = { 0,    0,  0,    45 }            -- -
 keys.delete         = { 0,    0,  0,    6579564 }       -- Del
+keys.delete2        = { 0,    0,  0,    46 }            -- .
 keys.home           = { 0,    0,  0,    1752132965 }    -- Home
 keys.End            = { 0,    0,  0,    6647396 }       -- End
 keys.toggle         = { 0,    0,  0,    32 }            -- Space
@@ -249,7 +253,7 @@ keys.escape         = { 0,    0,  0,    27 }            -- Escape
 help = {
   { 'Arrow Keys', 'Move' },
   { '-', 'Note OFF' },
-  { 'Del', 'Delete' }, 
+  { 'Del/.', 'Delete' }, 
   { 'Space', 'Toggle play' },
   { 'Return', 'Play from current' },
   { 'CTRL + L', 'Set loop to pattern' },
@@ -1955,7 +1959,7 @@ function tracker:getRowInfo()
     self.ppqPerRow = 1 / self.rowPerPpq
     self.rowPerSec = ppqPerSec * self.rowPerQn / ppqPerQn
     self.ppqPerSec = ppqPerSec
-    local rows = math.floor( self.rowPerQn * self.qnCount )
+    local rows = math.floor( self.rowPerQn * self.qnCount + 0.5 )
     
     -- Do not allow zero rows in the tracker!
     if ( rows < self.eps ) then
@@ -3491,12 +3495,19 @@ local function updateLoop()
       tracker:placeOff()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('delete') then
+    elseif ( inputs('delete') ) then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Delete (Del)")
       tracker:delete()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
+    elseif ( inputs('delete2') ) then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Delete (Del)")
+      tracker:delete()
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+      tracker.ypos = tracker.ypos + tracker.advance
     elseif inputs('home') then
       tracker.ypos = 0
     elseif inputs('End') then
