@@ -7,11 +7,13 @@
  * License: MIT
  * REAPER: 5.x
  * Extensions: None
- * Version: 0.99
+ * Version: 1.0
 --]]
 
 --[[
  * Changelog:
+ * v1.0 (2018-01-28)
+   + Fixed bug with shift item up/down not being available
  * v0.99 (2018-01-28)
    + Show name of track the instance is on
    + Show the name of the MIDI take
@@ -77,7 +79,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v0.99"
+tracker.name = "Hackey Trackey v1.0"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -215,8 +217,8 @@ keys.endBlock       = { 1,    0,  0,    5 }             -- CTRL + E
 keys.cutBlock       = { 1,    0,  0,    24 }            -- CTRL + X
 keys.pasteBlock     = { 1,    0,  0,    22 }            -- CTRL + V
 keys.copyBlock      = { 1,    0,  0,    3 }             -- CTRL + C
-keys.shiftup        = { 0,    0,  1,    43 }            -- SHIFT + Num pad+
-keys.shiftdown      = { 0,    0,  1,    45 }            -- SHIFT + Num pad-
+keys.shiftItemUp    = { 0,    0,  1,    43 }            -- SHIFT + Num pad+
+keys.shiftItemDown  = { 0,    0,  1,    45 }            -- SHIFT + Num pad-
 keys.octaveup       = { 1,    0,  0,    30064 }         -- CTRL + /\
 keys.octavedown     = { 1,    0,  0,    1685026670 }    -- CTRL + \/
 keys.envshapeup     = { 1,    0,  1,    30064 }         -- CTRL + SHIFT + /\
@@ -252,9 +254,9 @@ help = {
   { 'Return', 'Play from current' },
   { 'CTRL + L', 'Set loop to pattern' },
   { 'CTRL + Q/W', 'Set loop start/end' },
-  { 'Shift + Up/Down', 'Change octave' },
+  { 'Shift + +/-', 'Transpose selection' },
   { 'CTRL + Shift + Up/Down', 'Change envelope' },
-  { 'CTRL + B/E', 'Begin/End block selection' },
+  { 'CTRL + B/E', 'Begin/End selection' },
   { 'SHIFT + arrow keys', 'Block selection' },
   { 'CTRL + C', 'Copy' },
   { 'CTRL + X', 'Cut' },
@@ -3555,10 +3557,10 @@ local function updateLoop()
       reaper.MIDI_Sort(tracker.take)
     elseif inputs('copyBlock') then
       tracker:copyBlock()
-    elseif inputs('shiftup') then
+    elseif inputs('shiftItemUp') then
       modified = 1
       tracker:shiftup()
-    elseif inputs('shiftdown') then
+    elseif inputs('shiftItemDown') then
       modified = 1
       tracker:shiftdown()
     elseif inputs('octaveup') then
