@@ -1,12 +1,12 @@
 --[[
- @description Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.
- @author: Joep Vanlier
- @links
+@description Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.
+@author: Joep Vanlier
+@links
   https://github.com/joepvanlier/Hackey-Trackey
- @license MIT
- @version 1.03
- @screenshot https://i.imgur.com/c68YjMd.png
- @about 
+@license MIT
+@version 1.03
+@screenshot https://i.imgur.com/c68YjMd.png
+@about 
   ### Hackey-Trackey
   #### What is it?
   A lightweight tracker plugin for REAPER 5.x and up. Hackey-Trackey is a small 
