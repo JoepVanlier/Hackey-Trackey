@@ -7,11 +7,13 @@
  * License: MIT
  * REAPER: 5.x
  * Extensions: None
- * Version: 1.01
+ * Version: 1.02
 --]]
 
 --[[
  * Changelog:
+ * v1.02 (2018-01-30)
+   + Fix such that duplicate patterns don't share the same automation pool ID
  * v1.01 (2018-01-28)
    + Added . as an alternative to Delete
    + Fixed issue with roundoff error when determining number of rows
@@ -82,7 +84,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.01"
+tracker.name = "Hackey Trackey v1.02"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -120,6 +122,14 @@ tracker.fov.scrolly = 0
 -- Slack used in notes and automation to check whether a point is the point specified
 tracker.eps = 1e-3
 tracker.enveps = 1e-4
+
+-- If duplicationBehaviour is set to 1, then MIDI items are duplicated via reaper commands.
+-- This means duplicated copies share the same automation pool for the automation takes. 
+-- This means that if you change one pattern based on this pool, the other changes as well.
+-- If duplicationBehavior is set to any other value, then the MIDI item is explicitly copied 
+-- and the automation objects are created separately; making sure they have a new pool ID.
+-- This prevents that the pattern automation has to be the same from that point.
+tracker.duplicationBehaviour = 2
 
 -- Plotting
 tracker.grid = {}
@@ -2274,17 +2284,17 @@ end
 -------------------
 -- Find automation item associated with my take
 -------------------
+tracker.automationeps = 1e-4
 function tracker:findMyAutomation(envelope)
+  local eps = tracker.automationeps
   for i=0,reaper.CountAutomationItems(envelope) do
     local pos = reaper.GetSetAutomationItemInfo(envelope, i, "D_POSITION", 1, false)
-    local len = reaper.GetSetAutomationItemInfo(envelope, i, "D_LENGTH", 1, false)    
-    if ( self.position == pos ) then
-      if ( self.length ~= length ) then
-        local len = reaper.GetSetAutomationItemInfo(envelope, i, "D_LENGTH", self.length, true)    
+    local len = reaper.GetSetAutomationItemInfo(envelope, i, "D_LENGTH", 1, false)
+    if ( ( self.position > ( pos - eps ) ) and ( self.position < ( pos + eps ) ) ) then
+      if ( ( self.length > ( len - eps ) ) and ( self.length < ( len + eps ) ) ) then
+        --local len = reaper.GetSetAutomationItemInfo(envelope, i, "D_LENGTH", self.length, true)
+        return i
       end
-    
-      -- Found it!
-      return i
     end
   end
   return nil
@@ -3368,13 +3378,109 @@ function tracker:tryTake(i)
   local item = reaper.GetTrackMediaItem(self.track, i)
   if ( item ) then
     local take = reaper.GetActiveTake(item)
-    if ( reaper.TakeIsMIDI( take ) == true ) then
-      tracker:setItem( item )
-      tracker:setTake( take )
-      return true
+    if ( take ) then
+      if ( reaper.TakeIsMIDI( take ) == true ) then
+        tracker:setItem( item )
+        tracker:setTake( take )
+        return true
+      end
+      return false
+    else
+      return false
     end
-    return false
   end
+end
+
+function tracker:clearEnvelopeRange(t1, t2)
+  local fx = self.fx
+  for i,v in pairs(fx.envelopeidx) do
+    reaper.DeleteEnvelopePointRangeEx(v, -1, t1, t2)
+  end
+end
+
+function tracker:duplicate()
+  local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+  local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")  
+
+  if ( tracker.duplicationBehaviour == 1 ) then
+    -- Duplicate using reaper commands (quick 'n dirty, but can be annoying because automation 
+    -- gets put in the same pool)
+    reaper.SelectAllMediaItems(0, false)
+    reaper.SetMediaItemSelected(tracker.item, true)
+    reaper.Main_OnCommand(40698, 0) -- Copy selected items
+    reaper.SetEditCurPos2(0, mpos+mlen, false, false)
+    reaper.Main_OnCommand(40058, 0) -- Paste
+  else
+    -- Duplicate explicitly (this makes sure that we get a new automation pool for every pattern)
+    local newItem = reaper.CreateNewMIDIItemInProj(self.track, mpos+mlen, mlen, false)
+    local newTake = reaper.GetActiveTake(newItem)
+    
+    -- For some reason the new midi item doesn't simply accept being created with the length given
+    reaper.SetMediaItemInfo_Value(newItem, "D_LENGTH", mlen)
+
+    -- Grab the notes and store them in channels
+    local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+    local i
+    if ( retval > 0 ) then
+      for i=0,notecntOut do      
+        local retval, selected, muted, startppqpos, endppqpos, chan, pitch, vel = reaper.MIDI_GetNote(self.take, i)
+        reaper.MIDI_InsertNote(newTake, selected, muted, startppqpos, endppqpos, chan, pitch, vel, true)        
+      end
+      for i=0,ccevtcntOut do
+        local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+        reaper.MIDI_InsertCC(newTake, selected, muted, ppqpos, chanmsg, chan, msg2, msg3)
+      end
+      for i=0,textsyxevtcntOut do
+        local retval, selected, muted, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, true, true, 1, 0, "    ")
+        reaper.MIDI_InsertTextSysexEvt(newTake, selected, muted, ppqpos, typeidx, msg)
+      end
+    end
+    reaper.MIDI_Sort(newTake)
+    
+    -- Clear whatever automation we are going to overlap with
+    self:clearEnvelopeRange(mpos+mlen, mpos+2*mlen)
+    
+    --[[--
+    Sadly, it's not possible (yet) to delete automation items it seems.
+    local eps = tracker.automationeps
+    for i=0,reaper.CountAutomationItems(envelope) do
+      local pos = reaper.GetSetAutomationItemInfo(envelope, i, "D_POSITION", 1, false)
+      local len = reaper.GetSetAutomationItemInfo(envelope, i, "D_LENGTH", 1, false)
+      local startOverlap = pos > mpos and pos < ( mpos + mlen )
+      local endOverlap = ( pos + len ) > mpos and ( pos + len ) < ( mpos + mlen )
+      if ( startOverlap or endOverlap ) then
+      end
+    end
+    --]]--
+        
+    local cnt = reaper.CountTrackEnvelopes(self.track)
+    local autoidx = nil
+    for i = 0,cnt-1 do
+      local envidx = reaper.GetTrackEnvelope(self.track, i)
+      autoidx = self:findMyAutomation( envidx )
+      if ( autoidx ) then
+        local newautoidx = reaper.InsertAutomationItem(envidx, -1, self.position+self.length, self.length)
+  
+        local npoints
+        if ( self.automationBug == 1 ) then
+          npoints = 2 * self.rows
+        else
+          npoints = reaper.CountEnvelopePointsEx(envidx, autoidx)
+        end
+        
+        for ptidx=0,npoints do
+          local retval, envtime, value, shape, tension, selected = reaper.GetEnvelopePointEx(envidx, autoidx, ptidx)
+          if ( retval ) then
+            envtime = envtime + mlen
+            reaper.InsertEnvelopePointEx(envidx, newautoidx, envtime, value, shape, tension, selected, false)
+          end
+        end
+        reaper.Envelope_SortPointsEx(envidx, autoidx)
+      end
+    end    
+  end
+  
+  tracker:seekMIDI(1)    
 end
 
 function tracker:seekMIDI( dir )
@@ -3631,14 +3737,9 @@ local function updateLoop()
     elseif inputs('prevMIDI') then  
       tracker:seekMIDI(-1)
     elseif inputs('duplicate') then
-      reaper.SelectAllMediaItems(0, false)
-      reaper.SetMediaItemSelected(tracker.item, true)
-      reaper.Main_OnCommand(40698, 0) -- Copy selected items
-      local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
-      local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")    
-      reaper.SetEditCurPos2(0, mpos+mlen, false, false)
-      reaper.Main_OnCommand(40058, 0) -- Paste
-      tracker:seekMIDI(1)
+      reaper.Undo_OnStateChange2(0, "Tracker: Duplicate pattern")
+      reaper.MarkProjectDirty(0) 
+      tracker:duplicate()
     elseif inputs('commit') then
       tracker:setResolution( tracker.newRowPerQn )
       self.hash = math.random()
