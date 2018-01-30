@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="2d7a0c33fd160f70946c9ff3cd88383e2922c424">
+<index version="1" name="Tracker tools" commit="c607e4f2dececceae17e85376d9ed0dba4cee87f">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey">
       <version name="0.94" author="Joep Vanlier" time="2018-01-27T23:15:58Z">
@@ -32,6 +32,14 @@
         <changelog><![CDATA[+ Added . as an alternative to Delete
 + Fixed issue with roundoff error when determining number of rows]]></changelog>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/2d7a0c33fd160f70946c9ff3cd88383e2922c424/Tracker/tracker.lua</source>
+      </version>
+      <version name="1.02" author="Joep Vanlier" time="2018-01-30T22:26:44Z">
+        <changelog><![CDATA[+ Fix such that duplicate patterns don't share the same automation pool ID]]></changelog>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/092cdb6606d44686e55bc1f7747c434a80c628c0/Tracker/tracker.lua</source>
+      </version>
+      <version name="1.03" author="Joep Vanlier" time="2018-01-30T22:33:16Z">
+        <changelog><![CDATA[+ Make selection follow the MIDI item selected in the tracker upon switching]]></changelog>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/c607e4f2dececceae17e85376d9ed0dba4cee87f/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
