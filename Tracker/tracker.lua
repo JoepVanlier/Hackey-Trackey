@@ -1,5 +1,13 @@
 --[[
  * ReaScript Name: Hackey-Trackey
+ * Description: A tracker interface similar to Jeskola Buzz for MIDI and FX editing. Select MIDI object and activate script.
+ * Author: Joep Vanlier
+ * Repository: GitHub > joepvanlier > Hackey-Trackey
+ * Repository URI: https://github.com/joepvanlier/Hackey-Trackey
+ * License: MIT
+ * REAPER: 5.x
+ * Extensions: None
+ * Version: 1.03
  * About: 
   ### Hackey-Trackey
   #### What is it?
@@ -20,14 +28,6 @@
   help on the keys. For more information, please look [here](https://github.com/joepvanlier/Hackey-Trackey).
   
   Happy trackin' :)
- * Description: A tracker interface similar to Jeskola Buzz for MIDI and FX editing. Select MIDI object and activate script.
- * Author: Joep Vanlier
- * Repository: GitHub > joepvanlier > Hackey-Trackey
- * Repository URI: https://github.com/joepvanlier/Hackey-Trackey
- * License: MIT
- * REAPER: 5.x
- * Extensions: None
- * Version: 1.03
 --]]
 
 --[[
