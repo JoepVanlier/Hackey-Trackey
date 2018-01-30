@@ -7,11 +7,13 @@
  * License: MIT
  * REAPER: 5.x
  * Extensions: None
- * Version: 1.02
+ * Version: 1.03
 --]]
 
 --[[
  * Changelog:
+ * v1.03 (2018-01-30)
+   + Make selection follow the MIDI item selected in the tracker upon switching
  * v1.02 (2018-01-30)
    + Fix such that duplicate patterns don't share the same automation pool ID
  * v1.01 (2018-01-28)
@@ -84,7 +86,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.02"
+tracker.name = "Hackey Trackey v1.03"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -103,6 +105,11 @@ tracker.transpose = 3
 tracker.advance = 1
 tracker.showloop = 1
 tracker.printKeys = 0
+
+-- Set this to 1 if you want the selected MIDI item in the sequencer view to change 
+-- when you change the selected pattern with CTRL + -> or CTRL + <-. This makes it 
+-- easier to see which pattern you are editing. 
+tracker.selectionFollows = 1
 
 -- Field of view
 tracker.fov = {}
@@ -3398,6 +3405,11 @@ function tracker:clearEnvelopeRange(t1, t2)
   end
 end
 
+function tracker:selectCurrent()
+  reaper.SelectAllMediaItems(0, false)
+  reaper.SetMediaItemSelected(tracker.item, true)
+end  
+    
 function tracker:duplicate()
   local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
   local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")  
@@ -3499,18 +3511,24 @@ function tracker:seekMIDI( dir )
   if ( dir > 0 ) then
     for i=cur+1,nItems do
       if ( self:tryTake(i) ) then
+        if ( self.selectionFollows == 1 ) then
+          self:selectCurrent()
+        end
         return
       end
     end
   elseif ( dir < 0 ) then
     for i=cur-1,0,-1 do
       if ( self:tryTake(i) ) then
+        if ( self.selectionFollows == 1 ) then
+          self:selectCurrent()
+        end
         return
       end   
     end  
   else
     print( "Fatal error: Invalid direction given" )
-  end
+  end  
 end
 
 ------------------------------
