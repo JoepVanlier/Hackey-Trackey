@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.03
+@version 1.04
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -25,11 +25,18 @@
   shortcut keys, which I'd recommend if you're going to be using it. Hit F1 for 
   help on the keys. For more information, please look [here](https://github.com/joepvanlier/Hackey-Trackey).
   
+  If you use this plugin and enjoy it let me/others know. If you run into any bugs
+  and figure out a way to reproduce them, please open an issue on the plugin's
+  github page [here](https://github.com/JoepVanlier/Hackey-Trackey/issues). I would
+  greatly appreciate it!
+  
   Happy trackin' :)
 --]]
 
 --[[
  * Changelog:
+ * v1.04 (2018-01-31)
+   + Improve help a little bit
  * v1.03 (2018-01-30)
    + Make selection follow the MIDI item selected in the tracker upon switching
  * v1.02 (2018-01-30)
@@ -99,12 +106,13 @@
 --    script. This will bring up the MIDI item as a tracked sequence. For more 
 --    information, please refer to the readme file.
 --
---    If you use and/or enjoy this plugin, let me/others know.
+--    If you use and/or enjoy this plugin or have a suggestion or bug report,
+--    let me/others know.
 --
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.03"
+tracker.name = "Hackey Trackey v1.04"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -288,27 +296,27 @@ keys.escape         = { 0,    0,  0,    27 }            -- Escape
 help = {
   { 'Arrow Keys', 'Move' },
   { '-', 'Note OFF' },
+  { 'Insert', 'Insert blank' },   
   { 'Del/.', 'Delete' }, 
   { 'Space', 'Toggle play' },
   { 'Return', 'Play from current' },
   { 'CTRL + L', 'Set loop to pattern' },
   { 'CTRL + Q/W', 'Set loop start/end' },
   { 'Shift + +/-', 'Transpose selection' },
-  { 'CTRL + Shift + Up/Down', 'Change envelope' },
   { 'CTRL + B/E', 'Begin/End selection' },
   { 'SHIFT + arrow keys', 'Block selection' },
-  { 'CTRL + C', 'Copy' },
-  { 'CTRL + X', 'Cut' },
-  { 'CTRL + V', 'Paste' },
+  { 'CTRL + C/X/V', 'Copy / Cut / Paste' },
   { 'CTRL + I', 'Interpolate' },
   { 'Shift + Del', 'Delete block' },
   { 'CTRL + Z', 'Undo' },
   { 'CTRL + SHIFT + Z', 'Redo' }, 
   { 'F1', 'Help' },
-  { 'F2/F3', 'Out channel down/up' },
-  { 'F4/F5', 'Advance down/up' },
-  { 'CTRL + ALT + Up/Down', 'Adjust resolution' },
-  { 'CTRL + ALT + Enter', 'Commit resolution' }, 
+  { 'CTRL + ALT + Up/Down', 'Adjust [res]olution' },
+  { 'CTRL + ALT + Enter', 'Commit [res]olution' },  
+  { 'CTRL + Up/Down', 'In/Decrease [oct]ave' },     
+  { 'CTRL + Shift + Up/Down', 'Change [env]elope' },    
+  { 'F4/F5', 'De/Increase [adv]ance' },
+  { 'F2/F3', 'MIDI [out] down/up' },  
   { 'CTRL + Left/Right', 'Switch MIDI item' },
   { 'CTRL + D', 'Duplicate pattern' },
   { 'CTRL + N', 'Rename pattern' },  
