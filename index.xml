@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="c0a11a68096a9369d3295f397848d18b7446b9d9">
+<index version="1" name="Tracker tools" commit="ac3bf6bc0d3ad6f0a7b126830ea37a976384bfe0">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -18,6 +18,10 @@
 here
 }}}
 .\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 If you use this plugin and enjoy it let me/others know. If you run into any bugs and figure out a way to reproduce them, please open an issue on the plugin's github page {\field{\*\fldinst{HYPERLINK "https://github.com/JoepVanlier/Hackey-Trackey/issues"}}{\fldrslt{\ul
+here
+}}}
+. I would greatly appreciate it!\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Happy trackin' :)\par}
 }
 ]]></description>
@@ -62,6 +66,10 @@ here
       <version name="1.03" author="Joep Vanlier" time="2018-01-30T22:33:16Z">
         <changelog><![CDATA[+ Make selection follow the MIDI item selected in the tracker upon switching]]></changelog>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/c607e4f2dececceae17e85376d9ed0dba4cee87f/Tracker/tracker.lua</source>
+      </version>
+      <version name="1.04" author=": Joep Vanlier" time="2018-01-31T21:57:10Z">
+        <changelog><![CDATA[+ Improve help a little bit]]></changelog>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/ac3bf6bc0d3ad6f0a7b126830ea37a976384bfe0/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
