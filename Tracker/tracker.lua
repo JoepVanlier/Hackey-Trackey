@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.04
+@version 1.05
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,8 @@
 
 --[[
  * Changelog:
+ * v1.05 (2018-02-03)
+   + Bugfix: Set out channel after channel duplication
  * v1.04 (2018-01-31)
    + Improve help a little bit
  * v1.03 (2018-01-30)
@@ -112,7 +114,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.04"
+tracker.name = "Hackey Trackey v1.05"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -3518,7 +3520,8 @@ function tracker:duplicate()
     end    
   end
   
-  tracker:seekMIDI(1)    
+  tracker:seekMIDI(1)
+  tracker:setOutChannel( tracker.outChannel )
 end
 
 function tracker:seekMIDI( dir )
