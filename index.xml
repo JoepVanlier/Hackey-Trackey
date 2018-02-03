@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="5ce36c1d2cdeadc0ccddd97c1e914bff4d7da1ed">
+<index version="1" name="Tracker tools" commit="76aace8001ebacd4bad293bbde6417c8ab531251">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -74,6 +74,10 @@ here
       <version name="1.05" author=": Joep Vanlier" time="2018-02-03T12:53:09Z">
         <changelog><![CDATA[+ Bugfix: Set out channel after channel duplication]]></changelog>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/5ce36c1d2cdeadc0ccddd97c1e914bff4d7da1ed/Tracker/tracker.lua</source>
+      </version>
+      <version name="1.06" author=": Joep Vanlier" time="2018-02-03T15:33:52Z">
+        <changelog><![CDATA[+ Bugfix: Made sure that if there is more than one OPT field (can happen after glue), the others get removed]]></changelog>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/76aace8001ebacd4bad293bbde6417c8ab531251/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
