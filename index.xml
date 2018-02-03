@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="ac3bf6bc0d3ad6f0a7b126830ea37a976384bfe0">
+<index version="1" name="Tracker tools" commit="5ce36c1d2cdeadc0ccddd97c1e914bff4d7da1ed">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -70,6 +70,10 @@ here
       <version name="1.04" author=": Joep Vanlier" time="2018-01-31T21:57:10Z">
         <changelog><![CDATA[+ Improve help a little bit]]></changelog>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/ac3bf6bc0d3ad6f0a7b126830ea37a976384bfe0/Tracker/tracker.lua</source>
+      </version>
+      <version name="1.05" author=": Joep Vanlier" time="2018-02-03T12:53:09Z">
+        <changelog><![CDATA[+ Bugfix: Set out channel after channel duplication]]></changelog>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/5ce36c1d2cdeadc0ccddd97c1e914bff4d7da1ed/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
