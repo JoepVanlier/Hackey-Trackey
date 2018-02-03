@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.05
+@version 1.06
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,8 @@
 
 --[[
  * Changelog:
+ * v1.06 (2018-02-03)
+   + Bugfix: Made sure that if there is more than one OPT field (can happen after glue), the others get removed
  * v1.05 (2018-02-03)
    + Bugfix: Set out channel after channel duplication
  * v1.04 (2018-01-31)
@@ -114,7 +116,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.05"
+tracker.name = "Hackey Trackey v1.06"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -1292,10 +1294,16 @@ function tracker:SAFE_InsertTextSysexEvt(ppq, txtType, str)
 end
 
 function tracker:SAFE_DeleteNote( take, note )
+  if ( not tracker.deleteNotes ) then
+    tracker.deleteNotes = {}
+  end
   tracker.deleteNotes[note] = note
 end
 
 function tracker:SAFE_DeleteText( take, txt )
+  if ( not tracker.deleteText ) then
+    tracker.deleteText = {}
+  end
   tracker.deleteText[txt] = txt
 end
 
@@ -1329,12 +1337,16 @@ function tracker:deleteNow( )
   local deleteText  = self.deleteText
   local i
 
-  for i,v in orderedpairs(deleteNotes) do
-    reaper.MIDI_DeleteNote(self.take, v)
+  if ( deleteNotes ) then
+    for i,v in orderedpairs(deleteNotes) do
+      reaper.MIDI_DeleteNote(self.take, v)
+    end
   end
-  for i,v in orderedpairs(deleteText) do
-    reaper.MIDI_DeleteTextSysexEvt(self.take, v)
-  end    
+  if ( deleteText ) then
+    for i,v in orderedpairs(deleteText) do
+      reaper.MIDI_DeleteTextSysexEvt(self.take, v)
+    end    
+  end
 end
 
 ---------------------
@@ -1934,15 +1946,21 @@ end
 
 function tracker:getSettings( )
   local oct, adv, env
+  local foundOpt = 0
   if ( self.rememberSettings == 1 ) then
     local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
     for i=0,textsyxevtcntOut do
       local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
       
       if ( string.sub(msg,1,3) == 'OPT' ) then
-        oct = tonumber( string.sub(msg,4,5) )
-        adv = tonumber( string.sub(msg,6,7) )
-        env = tonumber( string.sub(msg,8,9) )      
+        if ( foundOpt == 0 ) then
+          oct = tonumber( string.sub(msg,4,5) )
+          adv = tonumber( string.sub(msg,6,7) )
+          env = tonumber( string.sub(msg,8,9) )
+          foundOpt = 1
+        else
+          self:SAFE_DeleteText(self.take, i)
+        end
       end
     end
     
@@ -1950,6 +1968,7 @@ function tracker:getSettings( )
     self.advance    = adv or self.advance
     self.envShape   = env or self.envShape
   end
+  self:deleteNow()
 end
 
 function tracker:storeSettings( )
