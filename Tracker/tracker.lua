@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.06
+@version 1.07
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,8 @@
 
 --[[
  * Changelog:
+ * v1.07 (2018-02-11)
+   + Added column to program CC events
  * v1.06 (2018-02-03)
    + Bugfix: Made sure that if there is more than one OPT field (can happen after glue), the others get removed
  * v1.05 (2018-02-03)
@@ -116,7 +118,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.06"
+tracker.name = "Hackey Trackey v1.07"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -205,6 +207,10 @@ tracker.cp.ystart = -1
 tracker.cp.xstop = -1
 tracker.cp.ystop = -1
 tracker.cp.all = 0
+
+tracker.showMod = 1
+tracker.lastmodval = 0
+tracker.lastmodtype = 1
 
 tracker.selectionBehavior = 0
 tracker.automationBug = 1 -- This fixes a bug in v5.70
@@ -465,6 +471,40 @@ function tracker:linkData()
   local headers   = {}
   local grouplink = {}    -- Stores what other columns are linked to this one (some act as groups)
   local hints     = {}
+  
+  if ( self.showMod == 1 ) then
+    datafield[#datafield+1] = 'mod1'
+    idx[#idx+1]             = 0
+    colsizes[#colsizes+1]   = 1
+    padsizes[#padsizes+1]   = 0
+    grouplink[#grouplink+1] = {1, 2, 3}
+    headers[#headers+1]     = ' CC'
+    hints[#hints+1]         = "CC type"
+
+    datafield[#datafield+1] = 'mod2'
+    idx[#idx+1]             = 0
+    colsizes[#colsizes+1]   = 1
+    padsizes[#padsizes+1]   = 0
+    grouplink[#grouplink+1] = {-1, 1, 2}
+    headers[#headers+1]     = ''
+    hints[#hints+1]         = "CC type"
+    
+    datafield[#datafield+1] = 'mod3'
+    idx[#idx+1]             = 0
+    colsizes[#colsizes+1]   = 1
+    padsizes[#padsizes+1]   = 0
+    grouplink[#grouplink+1] = {-2, -1, 1}
+    headers[#headers+1]     = ''
+    hints[#hints+1]         = "CC value"
+    
+    datafield[#datafield+1] = 'mod4'
+    idx[#idx+1]             = 0
+    colsizes[#colsizes+1]   = 1
+    padsizes[#padsizes+1]   = 2
+    grouplink[#grouplink+1] = {-3, -2, -1}
+    headers[#headers+1]     = ''
+    hints[#hints+1]         = "CC value"  
+  end
   
   if ( fx.names ) then
     for j = 1,#fx.names do
@@ -1264,6 +1304,30 @@ function tracker:createNote( inChar )
     self:addEnvPt(chan, self:toSeconds(self.ypos-1), newEnv, self.envShape)    
     self.ypos = self.ypos + self.advance
     self.lastEnv = newEnv
+  elseif ( ( ftype == 'mod1' ) and validHex( char ) ) then
+    local modtype, val = self:getCC( self.ypos - 1 )
+    local newtype = self:editCCField( modtype, 1, char )
+    self:addCCPt( self.ypos-1, newtype, val )
+    self.lastmodtype = newtype
+    self.ypos = self.ypos + self.advance
+  elseif ( ( ftype == 'mod2' ) and validHex( char ) ) then
+    local modtype, val = self:getCC( self.ypos - 1 )
+    local newtype = self:editCCField( modtype, 2, char )
+    self:addCCPt( self.ypos-1, newtype, val )
+    self.lastmodtype = newtype
+    self.ypos = self.ypos + self.advance
+  elseif ( ( ftype == 'mod3' ) and validHex( char ) ) then
+    local modtype, val = self:getCC( self.ypos - 1 )
+    local newval = self:editCCField( val, 1, char )
+    self:addCCPt( self.ypos-1, modtype, newval )
+    self.lastmodval = newval
+    self.ypos = self.ypos + self.advance
+  elseif ( ( ftype == 'mod4' ) and validHex( char ) ) then
+    local modtype, val = self:getCC( self.ypos - 1 )
+    local newval = self:editCCField( val, 2, char )
+    self:addCCPt( self.ypos-1, modtype, newval )
+    self.lastmodval = newval
+    self.ypos = self.ypos + self.advance
   elseif ( ftype == 'legato' ) then
     if ( char == '1' ) then
       self:addLegato( row )
@@ -1572,6 +1636,8 @@ function tracker:backspace()
     end
   elseif( ftype == 'fx1' or ftype == 'fx2' ) then
     self:backspaceEnvPt(chan, self:toSeconds(self.ypos-1))
+  elseif( ftype == 'mod1' or ftype == 'mod2' or ftype == 'mod3' or ftype == 'mod4' ) then
+    self:backspaceCCPt(self.ypos-1)
   else
     print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
     return
@@ -1724,6 +1790,8 @@ function tracker:delete()
     self:deleteLegato(row)
   elseif ( ftype == 'fx1' or ftype == 'fx2' ) then
     self:deleteEnvPt(chan, self:toSeconds(row) )
+  elseif ( ftype == 'mod1' or ftype == 'mod2' or ftype == 'mod3' or ftype == 'mod4' ) then
+    self:deleteCC_range(row)
   else
     print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
     return
@@ -1856,8 +1924,10 @@ function tracker:insert()
       self:setLegato( i, lastleg )
       lastleg = tmp
     end
-  elseif( ftype == 'fx1' or ftype == 'fx2' ) then
+  elseif ( ftype == 'fx1' or ftype == 'fx2' ) then
     self:insertEnvPt(chan, self:toSeconds(self.ypos-1))
+  elseif ( ftype == 'mod1' or ftype == 'mod2' or ftype == 'mod3' or ftype == 'mod4' ) then
+    self:insertCCPt(self.ypos-1)
   else
     print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
     return
@@ -2066,6 +2136,21 @@ function tracker:isFree(channel, y1, y2, treatOffAsFree)
   return true
 end
 
+-- Assign a CC event
+function tracker:assignCC(ppq, modtype, modval)
+  local data = self.data
+  local row = math.floor( self.rowPerPpq * ppq + self.eps )
+
+  if ( ppq and modval and modtype and ( modtype > 0 ) ) then
+    local hexType = string.format('%02X', math.floor(modtype) )
+    local hexVal = string.format('%02X', math.floor(modval) )    
+    data.mod1[row] = hexType:sub(1,1)
+    data.mod2[row] = hexType:sub(2,2)
+    data.mod3[row] = hexVal:sub(1,1)
+    data.mod4[row] = hexVal:sub(2,2)
+  end
+end
+
 -- Assign a note that is already in the MIDI data
 function tracker:assignFromMIDI(channel, idx)
   local pitchTable = self.pitchTable
@@ -2168,6 +2253,17 @@ function tracker:editEnvField( vel, id, val )
   return newvel
 end
 
+function tracker:editCCField( vel, id, val )
+  -- Convert to Hex first
+  local newvel = string.format('%02X', math.floor(vel) )
+  -- Replace the digit in question
+  newvel = newvel:sub( 1, id-1 ) .. val ..  newvel:sub( id+1 )
+  newvel = math.floor( tonumber( "0x"..newvel ) / hexdec )
+  newvel = clamp(0, 255, newvel)
+  newvel = newvel
+  return newvel
+end
+
 ------------------------------
 -- Internal data initialisation
 -----------------------------
@@ -2183,6 +2279,10 @@ function tracker:initializeGrid()
   self.legato = {}
   data.fx1 = {}
   data.fx2 = {}
+  data.mod1 = {}
+  data.mod2 = {}
+  data.mod3 = {}
+  data.mod4 = {}      
   local channels = self.channels
   local rows = self.rows
   for x=0,channels-1 do
@@ -2201,6 +2301,13 @@ function tracker:initializeGrid()
         data.fx2[rows*x+y]   = '.'
       end
     end
+  end
+  
+  for y=0,rows-1 do
+    data.mod1[y] = "."
+    data.mod2[y] = "."
+    data.mod3[y] = "."
+    data.mod4[y] = "."            
   end
   
   for y=0,rows do
@@ -2476,6 +2583,78 @@ function tracker:getEnvPt(fxid, time)
   end
 end
 
+-----------------------
+-- Insert MIDI CC event
+-----------------------
+function tracker:insertCCPt( row )
+  local rowsize = self:rowToPpq(1)
+  local ppqStart = self:rowToPpq(row)
+  local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+  for i=ccevtcntOut,0,-1 do
+    local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+    if ( ppqpos >= ppqStart ) then
+      reaper.MIDI_SetCC(self.take, i, nil, nil, ppqpos + rowsize, nil, nil, nil, nil, true)
+    end
+  end
+  self:deleteCC_range( self.rows )
+end
+
+-----------------------
+-- Backspace MIDI CC event
+-----------------------
+function tracker:backspaceCCPt( row )
+  local rowsize = self:rowToPpq(1)
+  local ppqStart = self:rowToPpq(row)
+  self:deleteCC_range( row )
+  local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+  for i=ccevtcntOut,0,-1 do
+    local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+    if ( ppqpos >= ppqStart ) then
+      reaper.MIDI_SetCC(self.take, i, nil, nil, ppqpos - rowsize, nil, nil, nil, nil, true)
+    end
+  end
+end
+
+
+-------------------
+-- Remove MIDI CC range
+-------------------
+function tracker:deleteCC_range(rowstart, rowend)
+  local ppqStart = self:rowToPpq(rowstart)
+  local ppqEnd = self:rowToPpq( rowend or rowstart + 1 ) - self.eps
+  
+  local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+  for i=ccevtcntOut,0,-1 do
+    local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+    if ( ppqpos >= ppqStart and ppqpos < ppqEnd ) then
+      reaper.MIDI_DeleteCC(self.take, i)
+    end
+  end
+end
+
+function tracker:getCC( row )
+  local ppqStart = self:rowToPpq(row)
+  local ppqEnd = self:rowToPpq( row + 1 ) - self.eps
+  local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+  for i=0,ccevtcntOut do
+    local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+    if ( ppqpos >= ppqStart and ppqpos < ppqEnd ) then
+      return msg2, msg3, 1
+    end
+  end
+  
+  return self.lastmodtype, self.lastmodval
+end
+
+-------------------
+-- Add MIDI CC point
+-------------------
+function tracker:addCCPt(row, modtype, value)
+  self:deleteCC_range(row)
+  local ppqStart = self:rowToPpq(row)
+  reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 176, 0, modtype, value)
+end
+
 -------------------
 -- Add envelope point
 -------------------
@@ -2613,6 +2792,14 @@ function tracker:update()
             offs[i] = {ppqpos}
             self:readLegato(ppqpos, i)
           end
+        end
+      end
+    
+      -- Fetch the cc events
+      if ( self.showMod == 1 ) then
+        for i=0,ccevtcntOut do
+          local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+          self:assignCC( ppqpos, msg2, msg3 )
         end
       end
     
@@ -2832,6 +3019,8 @@ function tracker:clearBlock(incp)
       end
     elseif ( ( datafields[jx] == 'fx1' ) or ( datafields[jx] == 'fx2' ) ) then
       self:deleteEnvPt(chan, self:toSeconds(cp.ystart-1), self:toSeconds(cp.ystop-1)+tracker.eps )
+    elseif ( ( datafields[jx] == 'mod1' ) or ( datafields[jx] == 'mod2' ) or ( datafields[jx] == 'mod3' ) or ( datafields[jx] == 'mod4' ) ) then
+      self:deleteCC_range( cp.ystart-1, cp.ystop )
     end
   end
   
@@ -2929,12 +3118,24 @@ function tracker:getAdvance( chtype )
     return 2
   elseif ( chtype == 'fx2' ) then
     return 1
+  elseif ( chtype == 'mod1' ) then
+    return 4
+  elseif ( chtype == 'mod2' ) then
+    return 3
+  elseif ( chtype == 'mod3' ) then
+    return 2
+  elseif ( chtype == 'mod4' ) then
+    return 1  
   else
     return 1
   end
 end
 
 tracker.colgroups = {}
+tracker.colgroups['mod1'] = { 'mod1', 'mod2', 'mod3', 'mod4' }
+tracker.colgroups['mod2'] = { 'mod1', 'mod2', 'mod3', 'mod4' }
+tracker.colgroups['mod3'] = { 'mod1', 'mod2', 'mod3', 'mod4' }
+tracker.colgroups['mod4'] = { 'mod1', 'mod2', 'mod3', 'mod4' }
 tracker.colgroups['text'] = { 'text', 'vel1', 'vel2' }
 tracker.colgroups['vel1'] = { 'text', 'vel1', 'vel2' }
 tracker.colgroups['vel2'] = { 'text', 'vel1', 'vel2' }
@@ -2942,6 +3143,10 @@ tracker.colgroups['fx1'] = { 'fx1', 'fx2' }
 tracker.colgroups['fx2'] = { 'fx1', 'fx2' }
 tracker.colgroups['legato'] = { 'legato' }
 tracker.colref = {}
+tracker.colref['mod1'] = 0
+tracker.colref['mod2'] = -1
+tracker.colref['mod3'] = -2
+tracker.colref['mod4'] = -3
 tracker.colref['text'] = 0
 tracker.colref['vel1'] = -1
 tracker.colref['vel2'] = -2
@@ -2953,6 +3158,7 @@ function tracker:pasteClipboard()
   local clipboard = self.clipboard
   local channels  = clipboard.channels
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+  local refrow    = self.ypos - 1
   local refppq    = self:rowToPpq( self.ypos - 1 ) - clipboard.refppq
   
   if ( not clipboard ) then
@@ -3034,7 +3240,10 @@ function tracker:pasteClipboard()
             self:addLegato( self:ppqToRow(data[2] + refppq) )
           elseif ( data[1] == 'FX' ) then
             -- 'FX', ppqposition          
-            self:addEnvPt( chan, self:ppqToSeconds(data[2] + refppq), data[3], data[4] )    
+            self:addEnvPt( chan, self:ppqToSeconds(data[2] + refppq), data[3], data[4] )
+          elseif ( data[1] == 'CC' ) then
+            -- 'MOD'
+            self:addCCPt( data[2]+refrow, data[3], data[4] )
         else
           print( "FATAL ERROR, unknown field in clipboard" )
         end
@@ -3126,6 +3335,11 @@ function tracker:copyToClipboard()
         local atime, env, shape, tension = tracker:getEnvPt(chan, self:toSeconds(jy-1))
         if ( atime ) then
           self:addDataToClipboard( newclipboard, { 'FX', self:secondsToPpq( atime ), env, shape, tension } )
+        end
+      elseif ( chtype == 'mod1' or chtype == 'mod2' or chtype == 'mod3' or chtype == 'mod4' ) then
+        local modtype, val, gotvalue = tracker:getCC( jy-1 )
+        if ( gotvalue ) then
+          self:addDataToClipboard( newclipboard, { 'CC', jy-1-cp.ystart+1, modtype, val } )
         end
       end
     end
@@ -3233,6 +3447,20 @@ function tracker:interpolate()
         self:addEnvPt( chan, self:toSeconds(jy), dydx * idx + startenv, endshape )
         idx = idx + 1
       end      
+    end
+    if ( datafields[jx] == 'mod1' or datafields[jx] == 'mod2' or datafields[jx] == 'mod3' or datafields[jx] == 'mod4' ) then
+      local startidx    = cp.ystart - 1
+      local endidx      = cp.ystop - 1
+      local starttype, startval = tracker:getCC( startidx )
+      local endtype,   endval   = tracker:getCC( endidx )      
+            
+      local dydx = (endval-startval)/(endidx-startidx)
+      self.hash = 0
+      local idx = 0
+      for jy = startidx,endidx do
+        self:addCCPt( jy, starttype, math.floor( dydx * idx + startval ) )
+        idx = idx + 1
+      end
     end
   end
 end
