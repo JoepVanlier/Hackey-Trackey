@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.07
+@version 1.08
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,8 @@
 
 --[[
  * Changelog:
+ * v1.08 (2018-02-11)
+   + Added ability to play notes while entering them (hit CTRL + R to arm!)
  * v1.07 (2018-02-11)
    + Added column to program CC events
  * v1.06 (2018-02-03)
@@ -118,13 +120,18 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.07"
+tracker.name = "Hackey Trackey v1.08"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
 --   one being mapped to MIDI channel 2. Any other value forces the output on 
 --   a specific channel.
 tracker.outChannel = 1
+
+-- MIDI device to play notes over
+-- For me it was 6080 for Virtual MIDI keyboard and 6112 for ALL, but this may
+-- be system dependent, I don't know.
+tracker.playNoteCh = 6112
 
 -- How much overlap is used for legato?
 tracker.magicOverlap = 10
@@ -240,6 +247,7 @@ tracker.envShapes[0] = 'Lin'
 tracker.envShapes[1] = 'S&H'
 tracker.envShapes[2] = 'Exp'
 
+tracker.armed = 0
 tracker.maxPatternNameSize = 13
 
 tracker.hint = '';
@@ -302,6 +310,7 @@ keys.prevMIDI       = { 1,    0,  0,    1818584692.0 }  -- CTRL + <-
 keys.duplicate      = { 1,    0,  0,    4 }             -- CTRL + D
 keys.rename         = { 1,    0,  0,    14 }            -- CTRL + N
 keys.escape         = { 0,    0,  0,    27 }            -- Escape
+keys.toggleRec      = { 1,    0,  0,    18 }            -- CTRL + R
 
 help = {
   { 'Arrow Keys', 'Move' },
@@ -329,7 +338,8 @@ help = {
   { 'F2/F3', 'MIDI [out] down/up' },  
   { 'CTRL + Left/Right', 'Switch MIDI item' },
   { 'CTRL + D', 'Duplicate pattern' },
-  { 'CTRL + N', 'Rename pattern' },  
+  { 'CTRL + N', 'Rename pattern' },
+  { 'CTRL + R', 'Toggle note play' },
 }
 
 --- Base pitches
@@ -893,12 +903,21 @@ function tracker:printGrid()
     gfx.printf(patternName)
   end
    
-   gfx.set(table.unpack(colors.headercolor))
+  gfx.set(table.unpack(colors.headercolor))
   local str = string.format("Oct [%d] Adv [%d] Env [%s] Out [%s]", self.transpose, self.advance, tracker.envShapes[tracker.envShape], self:outString() )
   gfx.x = plotData.xstart + tw - 8.2 * string.len(str)
   gfx.y = yloc[#yloc] + 2 * yheight[1] + itempady
   gfx.set(table.unpack(colors.headercolor))
   gfx.printf(str)
+
+  gfx.x = plotData.xstart
+  if ( self.armed == 1) then
+    gfx.set(table.unpack(colors.changed))
+    gfx.printf("[Rec]")
+    gfx.set(table.unpack(colors.headercolor))    
+  else
+    gfx.printf("[Rec]")
+  end
  
   local str2 = string.format("Res [%d] ", tracker.newRowPerQn )
   if ( tracker.newRowPerQn ~= tracker.rowPerQn ) then
@@ -995,7 +1014,7 @@ function tracker:printGrid()
   if ( tracker.helpActive == 1 ) then
     local help = help
     local helpwidth = self.helpwidth
-    local ys = plotData.ystart - plotData.indicatorShiftY
+    local ys = plotData.ystart - 1.3*plotData.indicatorShiftY
     for i,v in pairs( help ) do
       gfx.set(table.unpack(colors.helpcolor))
       gfx.x = plotData.xstart + tw + 0.5*helpwidth + 4*itempadx
@@ -1089,6 +1108,7 @@ function tracker:placeOff()
     end
   end
   self.ypos = self.ypos + self.advance
+  tracker:stopNote()
 end
 
 ---------------------
@@ -1212,6 +1232,8 @@ function tracker:createNote( inChar )
       -- Is there already a note starting here? Simply change the note.
       if ( noteToEdit ) then
         reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, pitch, nil, true)
+        local p2, v2 = table.unpack( notes[noteToEdit] )
+        self:playNote(chan, pitch, v2)
       else
         -- No note yet? See how long the new note can get. Note that we have to ignore any note
         -- we might be interrupting (placed in the middle of)
@@ -1225,6 +1247,7 @@ function tracker:createNote( inChar )
 
         -- Create the new note!
         self:addNote(row, k, chan, pitch, self.lastVel)
+        self:playNote(chan, pitch, self.lastVel)
       
         local extraDeletion
         if ( noteGrid[rows*chan+k] ) then
@@ -1270,6 +1293,7 @@ function tracker:createNote( inChar )
           local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToEdit] )
           pitch = pitch - math.floor(pitch/12)*12 + (octave+1) * 12        
           reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, pitch, nil, true)
+          self:playNote(chan, pitch, vel)
         end
         self.ypos = self.ypos + self.advance
       end
@@ -1436,10 +1460,10 @@ function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, note
             if ( noteGrid[idx] > -1 ) then
               local pitch = table.unpack( notes[noteGrid[idx]] )
               local pitch2 = table.unpack( notes[noteToResize] )
-              print( 'I (' .. self.pitchTable[pitch2] .. ') am breaking my elongation on note !' .. self.pitchTable[pitch] )
+              --print( 'I (' .. self.pitchTable[pitch2] .. ') am breaking my elongation on note !' .. self.pitchTable[pitch] )
             else
               local pitch2 = table.unpack( notes[noteToResize] )
-              print( 'I (' .. self.pitchTable[pitch2] .. ') am breaking my elongation on an OFF symbol' )
+              --print( 'I (' .. self.pitchTable[pitch2] .. ') am breaking my elongation on an OFF symbol' )
             end
           end
           break;
@@ -3633,6 +3657,59 @@ function tracker:setOutChannel( ch )
   end
 end
 
+function tracker:arm()
+  reaper.ClearAllRecArmed()
+  self.oldarm     = reaper.GetMediaTrackInfo_Value(self.track, "I_RECARM")  
+  self.oldinput   = reaper.GetMediaTrackInfo_Value(self.track, "I_RECINPUT") 
+  self.oldmonitor = reaper.GetMediaTrackInfo_Value(self.track, "I_RECMON")
+  reaper.SetMediaTrackInfo_Value(self.track, "I_RECARM", 1)
+  reaper.SetMediaTrackInfo_Value(self.track, "I_RECMON", 1)  
+  reaper.SetMediaTrackInfo_Value(self.track, "I_RECINPUT", 6112)
+  self.armed = 1
+end
+
+function tracker:checkArmed()
+  if ( self.armed == 1 ) then
+    local recinput = reaper.GetMediaTrackInfo_Value(self.track, "I_RECINPUT")
+    local recarm = reaper.GetMediaTrackInfo_Value(self.track, "I_RECARM")
+    local recmonitor = reaper.GetMediaTrackInfo_Value(self.track, "I_RECMON")
+    local ready = ( recinput == tracker.playNoteCh ) and ( recarm == 1 ) and ( recmonitor == 1 )
+    if ( not ready ) then
+      self.armed = 0
+    end
+  end
+end
+
+function tracker:disarm()
+  reaper.SetMediaTrackInfo_Value(self.track, "I_RECARM",   self.oldarm)
+  reaper.SetMediaTrackInfo_Value(self.track, "I_RECINPUT", self.oldinput)
+  reaper.SetMediaTrackInfo_Value(self.track, "I_RECMON",   self.oldmonitor)
+  self.armed = 0
+  self.hash = 0
+  self:update()
+end
+
+function tracker:playNote(chan, pitch, vel)
+  self:checkArmed()
+  if ( self.armed == 1 ) then
+    local ch = 1
+    self:stopNote()
+    reaper.StuffMIDIMessage(0, 0x90 + ch - 1, pitch, vel)
+    self.lastNote = {ch, pitch, vel}
+  end
+end
+
+function tracker:stopNote()
+  self:checkArmed()
+  if ( self.armed == 1 ) then
+    if ( self.lastNote ) then
+      local lastNote = self.lastNote
+      reaper.StuffMIDIMessage(0, 0x80 + lastNote[1] - 1, lastNote[2], lastNote[3])
+      self.lastNote = nil
+    end
+  end
+end
+
 function tracker:setLoopStart()
     local mPos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
     local lPos, lEnd = reaper.GetSet_LoopTimeRange2(0, false, 1, 0, 0, false)
@@ -3642,7 +3719,6 @@ function tracker:setLoopStart()
       lEnd = lPos + tracker:toSeconds(1)
     end
     reaper.GetSet_LoopTimeRange2(0, true, true, lPos, lEnd, true)
-
 end
 
 function tracker:setLoopEnd()
@@ -3823,6 +3899,7 @@ local function updateLoop()
   end
 
   tracker:resizeWindow()
+  tracker:checkArmed()
 
   -- Maintain the loop until the window is closed or escape is pressed
   lastChar = gfx.getchar()
@@ -4056,6 +4133,13 @@ local function updateLoop()
       tracker.midiName = ''
       tracker.renaming = 1
       tracker:updateMidiName()
+    elseif inputs('toggleRec') then
+      if ( tracker.armed == 1 ) then
+        tracker:stopNote()
+        tracker:disarm()
+      else
+        tracker:arm()
+      end
     elseif ( lastChar == 0 ) then
       -- No input
     elseif ( lastChar == -1 ) then      
@@ -4107,6 +4191,7 @@ local function updateLoop()
   if lastChar ~= -1 then
     reaper.defer(updateLoop)
   else
+    tracker:stopNote()
     gfx.quit()
   end
 end
