@@ -81,11 +81,14 @@ values.
 | CTRL \+ L 		| Set loop to pattern bounds						|
 | CTRL \+ Q 		| Set loop start before current row					|
 | CTRL \+ W 		| Set loop end after current row					|
-| CTRL + ALT + Up 	| Increase row resolution 						|
-| CTRL + ALT + Down 	| Decrease row resolution 						|
-| CTRL + ALT + Enter 	| Commit row resolution (WARNING: Destructive)	 			|
+| CTRL \+ ALT + Up 	| Increase row resolution 						|
+| CTRL \+ ALT + Down 	| Decrease row resolution 						|
+| CTRL \+ ALT + Enter 	| Commit row resolution (WARNING: Destructive)	 			|
 | CTRL \+ -> 		| Next MIDI item on track 						|
 | CTRL \+ <-		| Previous MIDI item on track 						|
+| CTRL \+ D		| Duplicate MIDI item							|
+| CTRL \+ N		| Rename MIDI Item    							|
+| CTRL \+ R		| Arm (plays notes)							|
 
 ## Feature requests
 Feature requests are always welcome, preferably with an idea of how to achieve it 
@@ -151,9 +154,5 @@ be repeated on channel 1. Doing so would cause problems when playing the MIDI. H
 would be merged into one single MIDI note. I have not found a good workaround for this 
 so far, but if you have a good idea, please contact me.
 
-### Planned features
-- Cut/Copy pasting blocks within the tracker.
-
 ### Features to be investigated whether they are feasible/reasonable
-- Columns for MIDI controls.
 - Cutting/Copying to MIDI editor clipboard.
