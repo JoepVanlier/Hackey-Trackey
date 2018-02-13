@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.08
+@version 1.09
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,8 @@
 
 --[[
  * Changelog:
+ * v1.09 (2018-02-13)
+   + Added note delay
  * v1.08 (2018-02-11)
    + Added ability to play notes while entering them (hit CTRL + R to arm!)
  * v1.07 (2018-02-11)
@@ -120,7 +122,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.08"
+tracker.name = "Hackey Trackey v1.09"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -224,6 +226,7 @@ tracker.automationBug = 1 -- This fixes a bug in v5.70
 
 -- If you come up with a cool alternative color scheme, let me know
 tracker.channels = 16 -- Max channel (0 is not shown)
+tracker.showDelays = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 tracker.displaychannels = 15
 tracker.colors = {}
 tracker.colors.helpcolor    = {.8, .8, .9, 1}
@@ -311,6 +314,8 @@ keys.duplicate      = { 1,    0,  0,    4 }             -- CTRL + D
 keys.rename         = { 1,    0,  0,    14 }            -- CTRL + N
 keys.escape         = { 0,    0,  0,    27 }            -- Escape
 keys.toggleRec      = { 1,    0,  0,    18 }            -- CTRL + R
+keys.showMore       = { 1,    0,  0,    11 }            -- CTRL + +
+keys.showLess       = { 1,    0,  0,    13 }            -- CTRL + -
 
 help = {
   { 'Arrow Keys', 'Move' },
@@ -327,8 +332,7 @@ help = {
   { 'CTRL + C/X/V', 'Copy / Cut / Paste' },
   { 'CTRL + I', 'Interpolate' },
   { 'Shift + Del', 'Delete block' },
-  { 'CTRL + Z', 'Undo' },
-  { 'CTRL + SHIFT + Z', 'Redo' }, 
+  { 'CTRL + (SHIFT) + Z', 'Undo / Redo' }, 
   { 'F1', 'Help' },
   { 'CTRL + ALT + Up/Down', 'Adjust [res]olution' },
   { 'CTRL + ALT + Enter', 'Commit [res]olution' },  
@@ -340,6 +344,7 @@ help = {
   { 'CTRL + D', 'Duplicate pattern' },
   { 'CTRL + N', 'Rename pattern' },
   { 'CTRL + R', 'Toggle note play' },
+  { 'CTRL + +/-', 'Advanced options (note delay)' },
 }
 
 --- Base pitches
@@ -471,7 +476,8 @@ end
 -- Link GUI grid to data
 ------------------------------
 function tracker:linkData()
-  local fx        = self.fx
+  local fx          = self.fx
+  local showDelays  = self.showDelays
   
   -- Here is where the linkage between the display and the actual data fields in "tracker" is made
   local colsizes  = {}
@@ -545,6 +551,8 @@ function tracker:linkData()
   hints[#hints+1]         = 'Legato toggle'
   
   for j = 1,self.displaychannels do
+    local hasDelay = (self.showDelays[j] == 1)
+    
     -- Link up the note fields
     datafield[#datafield+1] = 'text'
     idx[#idx+1]             = j
@@ -582,8 +590,39 @@ function tracker:linkData()
       grouplink[#grouplink+1] = {-1}    
     end
     headers[#headers + 1]   = ''     
-    hints[#hints+1]         = string.format('Velocity channel %2d', j) 
+    hints[#hints+1]         = string.format('Velocity channel %2d', j)
+    
+    -- Link up the delay fields (if active)
+    if ( hasDelay == true ) then
+      padsizes[#padsizes]     = 1
+    
+      datafield[#datafield+1] = 'delay1'
+      idx[#idx+1]             = j
+      colsizes[#colsizes + 1] = 1
+      padsizes[#padsizes + 1] = 0
+      if ( self.selectionBehavior == 1 ) then
+        grouplink[#grouplink+1] = {1}
+      else
+        grouplink[#grouplink+1] = {1}
+      end
+      headers[#headers + 1]   = ''    
+      hints[#hints+1]         = string.format('Note delay channel %2d', j) 
+  
+      -- Link up the delay fields
+      datafield[#datafield+1] = 'delay2'
+      idx[#idx+1]             = j
+      colsizes[#colsizes + 1] = 1
+      padsizes[#padsizes + 1] = 2
+      if ( self.selectionBehavior == 1 ) then
+        grouplink[#grouplink+1] = {-1}
+      else       
+        grouplink[#grouplink+1] = {-1}    
+      end
+      headers[#headers + 1]   = ''     
+      hints[#hints+1]         = string.format('Note delay channel %2d', j)
+    end
   end
+  
   local link = {}
   link.datafields = datafield
   link.headers    = headers
@@ -1052,7 +1091,7 @@ function tracker:placeOff()
   local idx = chan*rows+row
   local note = noteGrid[idx]
   local start = noteStart[idx]
-  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) ) then  
+  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) ) then  
     -- If there is no note here add a marker for the note off event
     if ( not note ) then
       ppq = self:rowToPpq(row)
@@ -1132,6 +1171,10 @@ function tracker:shiftAt( x, y, shift )
       -- Velocity
       local pitch, vel, startppqpos, endppqpos = table.unpack( note )
       reaper.MIDI_SetNote(self.take, selected,   nil, nil, nil, nil, nil, nil, vel+shift, true)     
+    elseif ( datafields[x] == 'delay1' ) or ( datafields[x] == 'delay2' ) then
+      -- Note delay
+      local delay = self:getNoteDelay( selected )
+      self:setNoteDelay( selected, delay + 1 )
     end
   end
 end
@@ -1193,6 +1236,62 @@ function tracker:addNote(startrow, endrow, chan, pitch, velocity)
   end
 
   reaper.MIDI_InsertNote( self.take, false, false, startppqpos, endppqpos, chan, pitch, velocity, true )
+end
+
+function tracker:getNoteDelay( note )
+  local notes = self.notes
+  local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
+  return self:ppqToDelay( startppqpos )
+end
+
+function tracker:setNoteDelay( note, newDelay )
+  local notes = self.notes
+  local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
+  local newppq = self:delayToPpq( startppqpos, newDelay )
+  
+  reaper.MIDI_SetNote(self.take, note, nil, nil, newppq, nil, nil, nil, nil, true)
+end
+
+function tracker:ppqToDelay( ppq )
+  local rows = self.rows
+  local eps = self.eps
+  local singlerow = self:rowToPpq(1)
+  local ppq = ppq - self:rowToPpq( self:ppqToRow(ppq) )  --singlerow * math.floor( ( ppq + eps ) / singlerow ) -- modulo
+  return math.floor( 256 * ( ppq / singlerow ) )
+end
+
+function tracker:delayToPpq( ppq, delay )
+  local singlerow = self:rowToPpq(1)
+  local ppq = self:rowToPpq( self:ppqToRow(ppq) )
+  return ppq + singlerow * ( delay / 256.0 )
+end
+
+----------------------
+-- Show more data
+----------------------
+function tracker:showMore()
+  local singlerow = math.floor(self:rowToPpq(1))
+  print(singlerow)
+  if ( ( singlerow / 256 ) ~= math.floor( singlerow/256 ) ) then
+    if ( not self.showedWarning ) then
+      reaper.ShowMessageBox("WARNING: This functionality only works reliably when MIDI pulses per row is set to a multiple of 256!\nPreferences > Media/MIDI > Ticks per quarter note for new MIDI items.", "WARNING", 0)
+      self.showedWarning = 1
+    end
+  end
+
+  local ftype, chan, row = self:getLocation()
+  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) ) then
+    self.showDelays[chan] = 1
+    self.hash = 0
+  end
+end
+
+function tracker:showLess()
+  local ftype, chan, row = self:getLocation()
+  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) ) then
+    self.showDelays[chan] = 0
+    self.hash = 0
+  end
 end
 
 ---------------------
@@ -1328,6 +1427,20 @@ function tracker:createNote( inChar )
     self:addEnvPt(chan, self:toSeconds(self.ypos-1), newEnv, self.envShape)    
     self.ypos = self.ypos + self.advance
     self.lastEnv = newEnv
+  elseif ( ( ftype == 'delay1' ) and validHex( char ) ) then
+    if ( noteToEdit ) then
+      local delay = self:getNoteDelay( noteToEdit )
+      local newDelay = self:editCCField( delay, 1, char )
+      self:setNoteDelay( noteToEdit, newDelay )
+      self.ypos = self.ypos + self.advance
+    end
+  elseif ( ( ftype == 'delay2' ) and validHex( char ) ) then
+    if ( noteToEdit ) then
+      local delay = self:getNoteDelay( noteToEdit )
+      local newDelay = self:editCCField( delay, 2, char )
+      self:setNoteDelay( noteToEdit, newDelay )
+      self.ypos = self.ypos + self.advance
+    end
   elseif ( ( ftype == 'mod1' ) and validHex( char ) ) then
     local modtype, val = self:getCC( self.ypos - 1 )
     local newtype = self:editCCField( modtype, 1, char )
@@ -1610,7 +1723,7 @@ function tracker:backspace()
   local ftype, chan, row = self:getLocation()
   
    -- What are we manipulating here?
-  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) ) then
+  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) ) then
     local noteGrid = data.note
     local noteStart = data.noteStart          
     local lastnote
@@ -1788,7 +1901,7 @@ function tracker:delete()
   local ftype, chan, row = self:getLocation()
   
   -- What are we manipulating here?
-  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) ) then
+  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) ) then
     local noteGrid = data.note
     local noteStart = data.noteStart
   
@@ -1893,7 +2006,7 @@ function tracker:insert()
   local ftype, chan, row = self:getLocation()  
   
   -- What are we manipulating here?
-  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) ) then
+  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) ) then
     local noteGrid = data.note
     local noteStart= data.noteStart    
     local notes    = self.notes
@@ -2212,6 +2325,12 @@ function tracker:assignFromMIDI(channel, idx)
     data.vel1[rows*channel+ystart]      = self:velToField(vel, 1)
     data.vel2[rows*channel+ystart]      = self:velToField(vel, 2)    
 
+    if ( self.showDelays[ channel ] == 1 ) then
+      local delay = self:ppqToDelay( startppqpos )
+      data.delay1[rows*channel+ystart]  = self:velToField(delay, 1)
+      data.delay2[rows*channel+ystart]  = self:velToField(delay, 2)    
+    end
+
     data.noteStart[rows*channel+ystart] = idx
     for y = ystart,yend,1 do
       data.note[rows*channel+y] = idx
@@ -2298,7 +2417,9 @@ function tracker:initializeGrid()
   data.note = {}
   data.text = {}
   data.vel1 = {}
-  data.vel2 = {}    
+  data.vel2 = {}
+  data.delay1 = {}
+  data.delay2 = {}    
   data.legato = {}
   self.legato = {}
   data.fx1 = {}
@@ -2314,7 +2435,11 @@ function tracker:initializeGrid()
       data.note[rows*x+y]   = nil
       data.text[rows*x+y]   = '...'
       data.vel1[rows*x+y]   = '.'
-      data.vel2[rows*x+y]   = '.'      
+      data.vel2[rows*x+y]   = '.'
+      if ( self.showDelays[x] == 1 ) then
+        data.delay1[rows*x+y] = '.'
+        data.delay2[rows*x+y] = '.'        
+      end
     end
   end
   
@@ -3129,13 +3254,14 @@ function deepcopy(orig)
     return copy
 end
 
-function tracker:getAdvance( chtype )
+function tracker:getAdvance( chtype, ch )
+  local hasDelay = 0
   if ( chtype == 'text' ) then
     return 3
   elseif ( chtype == 'vel1' ) then
     return 2
   elseif ( chtype == 'vel2' ) then
-    return 1    
+    return 1
   elseif ( chtype == 'legato' ) then
     return 1
   elseif ( chtype == 'fx1' ) then
@@ -4128,6 +4254,10 @@ local function updateLoop()
       tracker:interpolate()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
+    elseif inputs('showMore') then
+      tracker:showMore()
+    elseif inputs('showLess') then
+      tracker:showLess()
     elseif inputs('rename') then
       tracker.oldMidiName = tracker.midiName
       tracker.midiName = ''
