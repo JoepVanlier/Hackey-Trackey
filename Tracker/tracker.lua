@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.09
+@version 1.10
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,8 @@
 
 --[[
  * Changelog:
+ * v1.10 (2018-02-14)
+   + Added tab and shift tab functionality for navigation
  * v1.09 (2018-02-13)
    + Added note delay
  * v1.08 (2018-02-11)
@@ -122,7 +124,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.09"
+tracker.name = "Hackey Trackey v1.10"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -316,6 +318,8 @@ keys.escape         = { 0,    0,  0,    27 }            -- Escape
 keys.toggleRec      = { 1,    0,  0,    18 }            -- CTRL + R
 keys.showMore       = { 1,    0,  0,    11 }            -- CTRL + +
 keys.showLess       = { 1,    0,  0,    13 }            -- CTRL + -
+keys.tab            = { 0,    0,  0,    9 }             -- Tab
+keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
 
 help = {
   { 'Arrow Keys', 'Move' },
@@ -487,8 +491,10 @@ function tracker:linkData()
   local headers   = {}
   local grouplink = {}    -- Stores what other columns are linked to this one (some act as groups)
   local hints     = {}
+  local master    = {}
   
   if ( self.showMod == 1 ) then
+    master[#master+1]       = 1
     datafield[#datafield+1] = 'mod1'
     idx[#idx+1]             = 0
     colsizes[#colsizes+1]   = 1
@@ -497,6 +503,7 @@ function tracker:linkData()
     headers[#headers+1]     = ' CC'
     hints[#hints+1]         = "CC type"
 
+    master[#master+1]       = 0
     datafield[#datafield+1] = 'mod2'
     idx[#idx+1]             = 0
     colsizes[#colsizes+1]   = 1
@@ -505,6 +512,7 @@ function tracker:linkData()
     headers[#headers+1]     = ''
     hints[#hints+1]         = "CC type"
     
+    master[#master+1]       = 0
     datafield[#datafield+1] = 'mod3'
     idx[#idx+1]             = 0
     colsizes[#colsizes+1]   = 1
@@ -513,6 +521,7 @@ function tracker:linkData()
     headers[#headers+1]     = ''
     hints[#hints+1]         = "CC value"
     
+    master[#master+1]       = 0    
     datafield[#datafield+1] = 'mod4'
     idx[#idx+1]             = 0
     colsizes[#colsizes+1]   = 1
@@ -524,6 +533,7 @@ function tracker:linkData()
   
   if ( fx.names ) then
     for j = 1,#fx.names do
+      master[#master+1]       = 1
       datafield[#datafield+1] = 'fx1'
       idx[#idx+1]             = j
       colsizes[#colsizes+1]   = 1
@@ -532,6 +542,7 @@ function tracker:linkData()
       headers[#headers+1]     = 'FX'
       hints[#hints+1]         = namerep(fx.names[j])
       
+      master[#master+1]       = 0
       datafield[#datafield+1] = 'fx2'
       idx[#idx+1]             = j
       colsizes[#colsizes+1]   = 1
@@ -542,6 +553,7 @@ function tracker:linkData()
     end
   end
   
+  master[#master+1]       = 1
   datafield[#datafield+1] = 'legato'
   idx[#idx+1]             = 0
   colsizes[#colsizes+1]   = 1
@@ -554,6 +566,7 @@ function tracker:linkData()
     local hasDelay = (self.showDelays[j] == 1)
     
     -- Link up the note fields
+    master[#master+1]       = 1
     datafield[#datafield+1] = 'text'
     idx[#idx+1]             = j
     colsizes[#colsizes + 1] = 3
@@ -563,10 +576,15 @@ function tracker:linkData()
     else
       grouplink[#grouplink+1] = {0}    
     end
-    headers[#headers + 1]   = string.format(' Ch%2d', j)
+    if ( hasDelay ) then
+      headers[#headers + 1]   = string.format('  Ch.%2d', j)
+    else
+      headers[#headers + 1]   = string.format(' Ch%2d', j)
+    end
     hints[#hints+1]         = string.format('Note channel %2d', j)
     
     -- Link up the velocity fields
+    master[#master+1]       = 0
     datafield[#datafield+1] = 'vel1'
     idx[#idx+1]             = j
     colsizes[#colsizes + 1] = 1
@@ -580,6 +598,7 @@ function tracker:linkData()
     hints[#hints+1]         = string.format('Velocity channel %2d', j) 
     
     -- Link up the velocity fields
+    master[#master+1]       = 0
     datafield[#datafield+1] = 'vel2'
     idx[#idx+1]             = j
     colsizes[#colsizes + 1] = 1
@@ -595,7 +614,8 @@ function tracker:linkData()
     -- Link up the delay fields (if active)
     if ( hasDelay == true ) then
       padsizes[#padsizes]     = 1
-    
+      
+      master[#master+1]       = 0    
       datafield[#datafield+1] = 'delay1'
       idx[#idx+1]             = j
       colsizes[#colsizes + 1] = 1
@@ -609,6 +629,7 @@ function tracker:linkData()
       hints[#hints+1]         = string.format('Note delay channel %2d', j) 
   
       -- Link up the delay fields
+      master[#master+1]       = 0      
       datafield[#datafield+1] = 'delay2'
       idx[#idx+1]             = j
       colsizes[#colsizes + 1] = 1
@@ -631,12 +652,13 @@ function tracker:linkData()
   link.idxfields  = idx
   link.grouplink  = grouplink
   link.hints      = hints
+  link.master     = master
   self.link       = link
 end
 
 function tracker:grabLinkage()
   local link = self.link
-  return link.datafields, link.padsizes, link.colsizes, link.idxfields, link.headers, link.grouplink, link.hints
+  return link.datafields, link.padsizes, link.colsizes, link.idxfields, link.headers, link.grouplink, link.hints, link.master
 end
 
 ------------------------------
@@ -3254,14 +3276,30 @@ function deepcopy(orig)
     return copy
 end
 
-function tracker:getAdvance( chtype, ch )
+function tracker:tab()
+  local master = self.link.master
+  self.xpos = self.xpos + 1
+  while ( ( self.xpos < self.max_xpos ) and ( master[self.xpos] == 0 ) ) do
+    self.xpos = self.xpos + 1
+  end
+end
+
+function tracker : shifttab()
+  local master = self.link.master
+  self.xpos = self.xpos - 1
+  while ( ( self.xpos > 0 ) and ( master[self.xpos] == 0 ) ) do
+    self.xpos = self.xpos - 1
+  end
+end
+
+function tracker:getAdvance( chtype, ch, extraShift )
   local hasDelay = 0
   if ( chtype == 'text' ) then
-    return 3
+    return 3 + extrashift
   elseif ( chtype == 'vel1' ) then
-    return 2
+    return 2 + extrashift
   elseif ( chtype == 'vel2' ) then
-    return 1
+    return 1 + extrashift
   elseif ( chtype == 'legato' ) then
     return 1
   elseif ( chtype == 'fx1' ) then
@@ -3275,7 +3313,11 @@ function tracker:getAdvance( chtype, ch )
   elseif ( chtype == 'mod3' ) then
     return 2
   elseif ( chtype == 'mod4' ) then
-    return 1  
+    return 1
+  elseif ( chtype == 'delay1' ) then
+    return 2
+  elseif ( chtype == 'delay2' ) then
+    return 1
   else
     return 1
   end
@@ -4258,6 +4300,10 @@ local function updateLoop()
       tracker:showMore()
     elseif inputs('showLess') then
       tracker:showLess()
+    elseif inputs('tab') then
+      tracker:tab()
+    elseif inputs('shifttab') then
+      tracker:shifttab()
     elseif inputs('rename') then
       tracker.oldMidiName = tracker.midiName
       tracker.midiName = ''
