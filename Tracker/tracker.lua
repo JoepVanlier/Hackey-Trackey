@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.10
+@version 1.11
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,8 @@
 
 --[[
  * Changelog:
+ * v1.11 (2018-02-14)
+   + Allow for pan and width to be set to left
  * v1.10 (2018-02-14)
    + Added tab and shift tab functionality for navigation
  * v1.09 (2018-02-13)
@@ -124,7 +126,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.10"
+tracker.name = "Hackey Trackey v1.11"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -251,6 +253,12 @@ tracker.envShapes = {}
 tracker.envShapes[0] = 'Lin'
 tracker.envShapes[1] = 'S&H'
 tracker.envShapes[2] = 'Exp'
+
+tracker.signed = {}
+tracker.signed["Pan (Pre-FX)"] = 1
+tracker.signed["Width (Pre-FX)"] = 1
+tracker.signed["Pan"] = 1
+tracker.signed["Width"] = 1
 
 tracker.armed = 0
 tracker.maxPatternNameSize = 13
@@ -1436,14 +1444,14 @@ function tracker:createNote( inChar )
       self.ypos = self.ypos + self.advance
     end
   elseif ( ( ftype == 'fx1' ) and validHex( char ) ) then
-    local atime, env, shape, tension = tracker:getEnvPt(chan, self:toSeconds(self.ypos))
+    local atime, env, shape, tension = tracker:getEnvPt(chan, self:toSeconds(self.ypos-1))
     env = env or self.lastEnv
     local newEnv = tracker:editEnvField( env, 1, char )
     self:addEnvPt(chan, self:toSeconds(self.ypos-1), newEnv, self.envShape)
     self.ypos = self.ypos + self.advance
     self.lastEnv = newEnv
   elseif ( ( ftype == 'fx2' ) and validHex( char ) ) then
-    local atime, env, shape, tension = tracker:getEnvPt(chan, self:toSeconds(self.ypos))
+    local atime, env, shape, tension = tracker:getEnvPt(chan, self:toSeconds(self.ypos-1))
     env = env or self.lastEnv  
     local newEnv = tracker:editEnvField( env, 2, char )
     self:addEnvPt(chan, self:toSeconds(self.ypos-1), newEnv, self.envShape)    
@@ -2739,21 +2747,6 @@ function tracker:getEnvIdx(fxid, time)
   return nil, loc
 end
 
--------------------
--- Get envelope data from time
--------------------
-function tracker:getEnvPt(fxid, time)
-  local fx = self.fx
-  local envidx = fx.envelopeidx[fxid]
-  local autoidx = fx.autoidx[fxid]
-  
-  ptidx = self:getEnvIdx(fxid, time)
-  if ( ptidx ) then
-    local retval, atime, value, shape, tension = reaper.GetEnvelopePointEx(envidx, autoidx, ptidx)
-    return atime, value, shape, tension
-  end
-end
-
 -----------------------
 -- Insert MIDI CC event
 -----------------------
@@ -2833,6 +2826,7 @@ function tracker:addEnvPt(fxid, time, value, shape)
   local fx = self.fx
   local envidx = fx.envelopeidx[fxid]
   local autoidx = fx.autoidx[fxid]
+  local signed = fx.signed[fxid]
 
   if ( not envidx or not autoidx ) then
     print("FATAL: FX channel does not exist?")
@@ -2842,7 +2836,16 @@ function tracker:addEnvPt(fxid, time, value, shape)
   local val = value or 5
   local envShape = shape or 0
   local envTension = nil
-    
+  
+  -- The 0.5 shift is to get 80 at the true center (analogously to buzz)
+  -- even though 256 values do not have an actual center. This results in
+  -- having to deal with val == 1 separately as well.
+  if ( signed == 1 ) then
+    if ( val < 1 ) then
+      val = (val - 0.5/255)*2.0 - 1.0
+    end
+  end
+  
   ptidx, loc = self:getEnvIdx(fxid, time)
   if ( ptidx ) then
     reaper.SetEnvelopePointEx(envidx, autoidx, ptidx, loc, val, envShape, envTension, false, true)
@@ -2854,6 +2857,32 @@ function tracker:addEnvPt(fxid, time, value, shape)
 end
 ---------------------------------
 
+-------------------
+-- Get envelope data from time
+-------------------
+function tracker:getEnvPt(fxid, time)
+  local fx = self.fx
+  local envidx = fx.envelopeidx[fxid]
+  local autoidx = fx.autoidx[fxid]
+  local signed = fx.signed[fxid]
+  
+  ptidx = self:getEnvIdx(fxid, time)
+  if ( ptidx ) then
+    local retval, atime, value, shape, tension = reaper.GetEnvelopePointEx(envidx, autoidx, ptidx)
+    
+    -- The 0.5 shift is to get 80 at the true center (analogously to buzz)
+    -- even though 256 values do not have an actual center. This results in
+    -- having to deal with val == 1 separately as well.
+    if ( signed == 1 ) then
+      if ( value < 1 ) then
+        value = value*0.5 + 0.5 + 0.5/255
+      end
+    end
+    
+    return atime, value, shape, tension, ptidx
+  end
+end
+
 ---------------------------------
 -- Construct or fetch automation envelopes associated with this pattern
 ---------------------------------
@@ -2863,11 +2892,12 @@ function tracker:getTakeEnvelopes()
   if ( self.trackFX == 1 ) then
     local autoidxs = {}
     local envelopeidxs = {}
+    local signed = {}
     local names = {}
   
     local cnt = reaper.CountTrackEnvelopes(self.track)
     local autoidx = nil
-    for i = 0,cnt-1 do
+    for i = 0,cnt-1 do;
       local envelope = reaper.GetTrackEnvelope(self.track, i)
       local retval, name = reaper.GetEnvelopeName(envelope, '')
       
@@ -2878,6 +2908,16 @@ function tracker:getTakeEnvelopes()
         -- Consolidate all automation curves into this one and clean up
       end     
       
+      -- Check the scaling of the envelope
+      --number reaper.ScaleFromEnvelopeMode(integer scaling_mode, number val)
+      local retval, str = reaper.GetEnvelopeName(envelope, ' ')
+      --print(str)
+      if ( tracker.signed[str] ) then
+        signed[#signed + 1] = 1
+      else
+        signed[#signed + 1] = 0
+      end
+      
       envelopeidxs[#envelopeidxs + 1] = envelope
       autoidxs[#autoidxs + 1] = autoidx
       names[#names + 1] = name
@@ -2886,6 +2926,7 @@ function tracker:getTakeEnvelopes()
     self.fx.envelopeidx = envelopeidxs
     self.fx.autoidx     = autoidxs
     self.fx.names       = names
+    self.fx.signed      = signed
   end 
 end
 
@@ -2900,8 +2941,9 @@ function tracker:updateEnvelopes()
   if ( self.fx.names ) then
     for ch=1,#self.fx.names do
       for i=0,rows-1 do
-        local atime, value, shape, tension = self:getEnvPt(ch, self:toSeconds(i))
-        if ( value ) then
+        local atime, value, shape, tension = self:getEnvPt(ch, self:toSeconds(i))       
+        
+        if ( value ) then        
           local hexEnv = string.format('%02X', math.floor(value*255) )
           data.fx1[rows*ch+i] = hexEnv:sub(1,1)
           data.fx2[rows*ch+i] = hexEnv:sub(2,2)
