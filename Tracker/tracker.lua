@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.11
+@version 1.12
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,8 @@
 
 --[[
  * Changelog:
+ * v1.12 (2018-02-15)
+   + Fixed rounding errors
  * v1.11 (2018-02-14)
    + Allow for pan and width to be set to left
  * v1.10 (2018-02-14)
@@ -126,7 +128,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.11"
+tracker.name = "Hackey Trackey v1.12"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -1301,7 +1303,6 @@ end
 ----------------------
 function tracker:showMore()
   local singlerow = math.floor(self:rowToPpq(1))
-  print(singlerow)
   if ( ( singlerow / 256 ) ~= math.floor( singlerow/256 ) ) then
     if ( not self.showedWarning ) then
       reaper.ShowMessageBox("WARNING: This functionality only works reliably when MIDI pulses per row is set to a multiple of 256!\nPreferences > Media/MIDI > Ticks per quarter note for new MIDI items.", "WARNING", 0)
@@ -2402,38 +2403,47 @@ end
 -- (255/127)
 hexdec = 1 --255/127
 function tracker:velToField( vel, id )
-  return string.sub( string.format('%02X', math.floor(vel*hexdec) ), id, id )
+  return string.sub( string.format('%02X', math.floor(vel) ), id, id )
 end
 
 function tracker:editVelField( vel, id, val )
   -- Convert to Hex first
-  local newvel = string.format('%02X', math.floor(vel*hexdec) )
+  local newvel = string.format('%02X', math.floor(vel) )
   -- Replace the digit in question
   newvel = newvel:sub( 1, id-1 ) .. val ..  newvel:sub( id+1 )
-  newvel = math.floor( tonumber( "0x"..newvel ) / hexdec )
+  newvel = math.floor( tonumber( "0x"..newvel ) )
   newvel = clamp(1, 127, newvel)
   return newvel
 end
 
+-- Tracker => Reaper
+function tracker:byteToFloat( byteval )
+  return byteval / 255
+end
+
+-- Reaper => Tracker
+function tracker:floatToByte( floatval )
+  local out = clamp( 0, 255, math.floor( floatval * 256.0 ) )
+  return out
+end
+
 function tracker:editEnvField( vel, id, val )
   -- Convert to Hex first
-  local newvel = string.format('%02X', math.floor(vel*255) )
+  local newvel = string.format('%02X', self:floatToByte( vel ) )
   -- Replace the digit in question
   newvel = newvel:sub( 1, id-1 ) .. val ..  newvel:sub( id+1 )
-  newvel = math.floor( tonumber( "0x"..newvel ) / hexdec )
-  newvel = clamp(0, 255, newvel)
-  newvel = newvel / 255
+  newvel = tonumber( "0x"..newvel )
+  newvel = self:byteToFloat( newvel )
   return newvel
 end
 
 function tracker:editCCField( vel, id, val )
   -- Convert to Hex first
+  print(vel)
   local newvel = string.format('%02X', math.floor(vel) )
   -- Replace the digit in question
   newvel = newvel:sub( 1, id-1 ) .. val ..  newvel:sub( id+1 )
-  newvel = math.floor( tonumber( "0x"..newvel ) / hexdec )
-  newvel = clamp(0, 255, newvel)
-  newvel = newvel
+  newvel = tonumber( "0x"..newvel )
   return newvel
 end
 
@@ -2944,7 +2954,8 @@ function tracker:updateEnvelopes()
         local atime, value, shape, tension = self:getEnvPt(ch, self:toSeconds(i))       
         
         if ( value ) then        
-          local hexEnv = string.format('%02X', math.floor(value*255) )
+--          local hexEnv = string.format('%02X', math.floor(value*255) )
+          local hexEnv = string.format('%02X', self:floatToByte(value) )          
           data.fx1[rows*ch+i] = hexEnv:sub(1,1)
           data.fx2[rows*ch+i] = hexEnv:sub(2,2)
         end
