@@ -233,6 +233,8 @@ tracker.automationBug = 1 -- This fixes a bug in v5.70
 -- If you come up with a cool alternative color scheme, let me know
 tracker.channels = 16 -- Max channel (0 is not shown)
 tracker.showDelays = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+tracker.modMode = 1
+
 tracker.displaychannels = 15
 tracker.colors = {}
 tracker.colors.helpcolor    = {.8, .8, .9, 1}
@@ -274,7 +276,7 @@ tracker.debug = 0
 -- or other language keyboards), please share them with me and I'll provide some form
 -- of chooser here.
 keys = {}
---                    CTRL  ALT SHIFT Keycode
+--                    CTRL    ALT SHIFT Keycode
 keys.left           = { 0,    0,  0,    1818584692 }    -- <-
 keys.right          = { 0,    0,  0,    1919379572 }    -- ->
 keys.up             = { 0,    0,  0,    30064 }         -- /\
@@ -2439,12 +2441,30 @@ end
 
 function tracker:editCCField( vel, id, val )
   -- Convert to Hex first
-  print(vel)
   local newvel = string.format('%02X', math.floor(vel) )
   -- Replace the digit in question
   newvel = newvel:sub( 1, id-1 ) .. val ..  newvel:sub( id+1 )
   newvel = tonumber( "0x"..newvel )
   return newvel
+end
+
+------------------------------
+-- Initialize mod channels
+-----------------------------
+function tracker:initializeModChannels(idx)
+  local data = self.data
+  local rows = self.rows
+  data.modch = {}
+  data.modtxt1 = {}
+  data.modtxt2 = {}  
+  for x=1,#mchan do
+    for y=0,rows-1 do
+      local cidx = (x-1)*rows+y
+      data.modch[cidx]  = idx[x]
+      data.modtxt1[cidx] = '.'
+      data.modtxt2[cidx] = '.'      
+    end
+  end
 end
 
 ------------------------------
@@ -2467,7 +2487,7 @@ function tracker:initializeGrid()
   data.mod1 = {}
   data.mod2 = {}
   data.mod3 = {}
-  data.mod4 = {}      
+  data.mod4 = {}
   local channels = self.channels
   local rows = self.rows
   for x=0,channels-1 do
@@ -2793,7 +2813,7 @@ end
 -------------------
 -- Remove MIDI CC range
 -------------------
-function tracker:deleteCC_range(rowstart, rowend)
+function tracker:deleteCC_range(rowstart, rowend, modtype)
   local ppqStart = self:rowToPpq(rowstart)
   local ppqEnd = self:rowToPpq( rowend or rowstart + 1 ) - self.eps
   
@@ -2801,7 +2821,14 @@ function tracker:deleteCC_range(rowstart, rowend)
   for i=ccevtcntOut,0,-1 do
     local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
     if ( ppqpos >= ppqStart and ppqpos < ppqEnd ) then
-      reaper.MIDI_DeleteCC(self.take, i)
+      local deleteIt = true
+      if ( modtype and ( modtype ~= msg2 ) ) then
+        deleteIt = false
+      end
+    
+      if ( deleteIt == true ) then
+        reaper.MIDI_DeleteCC(self.take, i)
+      end
     end
   end
 end
@@ -2825,6 +2852,15 @@ end
 -------------------
 function tracker:addCCPt(row, modtype, value)
   self:deleteCC_range(row)
+  local ppqStart = self:rowToPpq(row)
+  reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 176, 0, modtype, value)
+end
+
+-------------------
+-- Add MIDI CC point to specific type
+-------------------
+function tracker:addCCPt_channel(row, modtype, value)
+  self:deleteCC_range(row, row + 1, modtype)
   local ppqStart = self:rowToPpq(row)
   reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 176, 0, modtype, value)
 end
