@@ -127,6 +127,12 @@
 --
 --    Happy trackin'! :)
 
+-- TODO: Add CC channel separation option
+--   getCC( row, modtype )
+--   addCCPt_channel(row, modtype, value)
+--   (use modtype flag when dealing with channel based stuff)
+--   tracker:initializeModChannels(modtypes)
+
 tracker = {}
 tracker.name = "Hackey Trackey v1.12"
 
@@ -2451,16 +2457,16 @@ end
 ------------------------------
 -- Initialize mod channels
 -----------------------------
-function tracker:initializeModChannels(idx)
+function tracker:initializeModChannels(modtypes)
   local data = self.data
   local rows = self.rows
   data.modch = {}
   data.modtxt1 = {}
   data.modtxt2 = {}  
-  for x=1,#mchan do
+  for x=1,#modtypes do
     for y=0,rows-1 do
       local cidx = (x-1)*rows+y
-      data.modch[cidx]  = idx[x]
+      data.modch[cidx]   = modtypes[x]
       data.modtxt1[cidx] = '.'
       data.modtxt2[cidx] = '.'      
     end
@@ -2833,14 +2839,24 @@ function tracker:deleteCC_range(rowstart, rowend, modtype)
   end
 end
 
-function tracker:getCC( row )
+-------------------
+-- Grab MIDI CC point
+-------------------
+function tracker:getCC( row, modtype )
   local ppqStart = self:rowToPpq(row)
   local ppqEnd = self:rowToPpq( row + 1 ) - self.eps
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   for i=0,ccevtcntOut do
     local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
     if ( ppqpos >= ppqStart and ppqpos < ppqEnd ) then
-      return msg2, msg3, 1
+      local fetchIt = true
+      if ( fetchIt and ( fetchIt ~= msg2 ) ) then
+        fetchIt = false
+      end
+      
+      if ( fetchIt ) then
+        return msg2, msg3, 1
+      end
     end
   end
   
@@ -2990,7 +3006,6 @@ function tracker:updateEnvelopes()
         local atime, value, shape, tension = self:getEnvPt(ch, self:toSeconds(i))       
         
         if ( value ) then        
---          local hexEnv = string.format('%02X', math.floor(value*255) )
           local hexEnv = string.format('%02X', self:floatToByte(value) )          
           data.fx1[rows*ch+i] = hexEnv:sub(1,1)
           data.fx2[rows*ch+i] = hexEnv:sub(2,2)
@@ -3529,15 +3544,6 @@ function tracker:pasteClipboard()
           print( "FATAL ERROR, unknown field in clipboard" )
         end
       end
-    else
-      -- No data? Make sure that whatever note might have been here gets continued
-      --for jx = cp.xstart, cp.xstop do
-      --  local chan = idxfields[ jx ]
-      --  if ( datafields[jx] == 'text' ) then
-      --    local elong = noteGrid[chan*rows + cp.ystart-1]
-      --    self:checkNoteGrow(notes, noteGrid, rows, chan, cp.ystart-1, singlerow, elong, nil, 1)
-      --  end
-      --end
     end
     jx = jx + self:getAdvance(chtype)
   end
