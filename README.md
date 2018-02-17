@@ -30,8 +30,33 @@ MIDI channel. Note that column one goes to MIDI channel 2 and so forth.
 ### Can I automate parameters?
 Yes! Parameters for which envelopes are active (see automation panel in image 
 below), will automatically show up in the tracker. The tracker will store the 
-tracked points in an automation take.
+tracked points in an automation take. Ctrl + Shift + Up/Down changes how the 
+values in the column will be interpolated.
 ![Using FX](https://i.imgur.com/pZ0TV7k.png)
+
+### Can I send MIDI CC commands?
+Yes! There are two ways to work with CC commands. The first is a single column 
+mode (which is good if you typically only use a single command or use commands) 
+sparingly. Or multicolumn mode.
+
+#### Single column mode:
+This is the default. The first two columns denote the CC command, the last two 
+the value that's being sent.
+
+#### Multi-column mode:
+This is activated when expanding the mod column (expand by going to the CC column
+and pressing CTRL \+ \+). Now, every CC command type gets its own channel. You can 
+remove a column with CTRL \+ Shift \+ \-, which will delete all the CC data in that 
+column as well as remove the column. You can add a new column with CTRL \+ Shift \+ \+
+after which you have to enter a numeric value and hit RETURN. Custom names can be 
+added in the CC column.
+Hint: If you want this to be the default mode, then edit the script and change 
+tracker.modMode to 1.
+
+### The CC commands don't interpolate?
+Yes. They do not and this is considered out of scope for the tracker. If you wish 
+to interpolate CC commands, I suggest you use ReaControlMIDI to map the CC commands 
+to an FX envelope. These you can then use in the same way as the parameters.
 
 ### All my notes sound very staccato? What's going on?
 By default, tracked notes do not overlap. However, for some purposes, overlap may be
@@ -42,12 +67,38 @@ to channel 1 in the tracker. Note that performing a legato from and to the same 
 will result in the second note not displaying in the tracker. This is not a bug, but a 
 workaround to fix note OFF issues with the resulting MIDI item.
 
+### I do not hear the notes I play? Can I change it such that I do?
+If you want to hear notes you play, remember to arm the tracker by hitting CTRL + R.
+Note however, that this alters the recording status of your project.
+
+### Can I rename patterns?
+Yes, simply hit CTRL + N and type a new name followed by ENTER.
+
+### How does navigation work?
+You can move left to right on a single track with CTRL + Left/Right.
+
+### I need a higher resolution?
+You can edit the row resolution by entering CTRL + ALT + Up / Down. You will then notice 
+that the resolution bit in the description bar becomes red. This means it is not committed.
+If you then hit commit (Ctrl + Alt + ENTER), the resolution will change.
+
+### Can I use note delays?
+Yes, but there is a catch. For note delays to work reliably, your MIDI settings have to be 
+set in such a way that each row is a multiple of 256 MIDI pulses long. Otherwise, roundoff 
+errors will occur which cause values to shift as you enter them.
+
+You can set these in Options => Preferences => Media/MIDI => Ticks per quarter note for 
+new MIDI items. The default here is 960, but 1024, 2048 or 4096 is recommended for 
+Hackey Trackey. Once configured correctly, you can open the note delay column for any note 
+by simply hitting CTRL + \+ for that column.
+
 ## Special keys
 These are just the default key bindings when you download the script. They are optimized 
 for a QWERTY layout. If you wish to change the shortcuts, edit the keys table. If you wish 
 to edit the note keyboard, edit the keys.pitches table. If you wish to know what keystroke 
 particular key has, set printKeys to 1 and start typing. Note that control modifies keystroke 
 values.
+
 
 | Key                   | Action                                                                |
 |:----------------------|:----------------------------------------------------------------------|
@@ -89,6 +140,8 @@ values.
 | CTRL \+ D		| Duplicate MIDI item							|
 | CTRL \+ N		| Rename MIDI Item    							|
 | CTRL \+ R		| Arm (plays notes)							|
+| CTRL \+ \+/\- 	| Enable/disable advanced options for this column 			|
+| CTRL \+ Shift \+ \+/\-| Add CC column (only possible when in advanced mode for CC programming |
 
 ## Feature requests
 Feature requests are always welcome, preferably with an idea of how to achieve it 
