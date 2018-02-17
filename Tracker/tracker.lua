@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.15
+@version 1.16
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,9 @@
 
 --[[
  * Changelog:
+ * v1.16 (2018-02-17)
+   + Added shift operator for automation FX
+   + Fixed bug in FX copy/paste system
  * v1.15 (2018-02-17)
    + Added shift operator for CC channels
  * v1.14 (2018-02-16)
@@ -137,7 +140,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.15"
+tracker.name = "Hackey Trackey v1.16"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -1343,9 +1346,14 @@ function tracker:shiftAt( x, y, shift )
       local newval = clamp( 0, 127, val + shift )
       self:addCCPt_channel( y - 1, modtype, newval )
     end
-  end
+  elseif ( ( datafields[x] == 'fx1' ) or ( datafields[x] == 'fx2' ) ) then  
+    local atime, env, shape, tension = tracker:getEnvPt(chan, self:toSeconds(y-1))
+    if ( env and shape ) then
+      local newEnv = clamp( 0, 1, env + shift/255 )
+      self:addEnvPt(chan, self:toSeconds(y-1), newEnv, shape)
+    end
+  end  
 end
-
 
 function tracker:shiftup()
   local cp = self.cp
@@ -3741,11 +3749,11 @@ end
 function tracker:getAdvance( chtype, ch, extraShift )
   local hasDelay = 0
   if ( chtype == 'text' ) then
-    return 3 + extrashift
+    return 3 + (extrashift or 0)
   elseif ( chtype == 'vel1' ) then
-    return 2 + extrashift
+    return 2 + (extrashift or 0)
   elseif ( chtype == 'vel2' ) then
-    return 1 + extrashift
+    return 1 + (extrashift or 0)
   elseif ( chtype == 'legato' ) then
     return 1
   elseif ( chtype == 'fx1' ) then
@@ -3802,6 +3810,11 @@ tracker.colref['legato'] = 0
 
 function tracker:pasteClipboard()
   local clipboard = self.clipboard
+  
+  if ( not clipboard ) then
+    return
+  end
+  
   local channels  = clipboard.channels
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
   local refrow    = self.ypos - 1
@@ -3885,7 +3898,7 @@ function tracker:pasteClipboard()
             -- 'LEG', ppqposition
             self:addLegato( self:ppqToRow(data[2] + refppq) )
           elseif ( data[1] == 'FX' ) then
-            -- 'FX', ppqposition          
+            -- 'FX', ppqposition   
             self:addEnvPt( chan, self:ppqToSeconds(data[2] + refppq), data[3], data[4] )
           elseif ( data[1] == 'CC' ) then
             -- 'MOD'
@@ -3975,6 +3988,8 @@ function tracker:copyToClipboard()
       elseif ( chtype == 'fx1' or chtype == 'fx2' ) then
         local atime, env, shape, tension = tracker:getEnvPt(chan, self:toSeconds(jy-1))
         if ( atime ) then
+          local mPos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+          atime = atime - mPos
           self:addDataToClipboard( newclipboard, { 'FX', self:secondsToPpq( atime ), env, shape, tension } )
         end
       elseif ( chtype == 'mod1' or chtype == 'mod2' or chtype == 'mod3' or chtype == 'mod4' ) then
