@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.14
+@version 1.15
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,8 @@
 
 --[[
  * Changelog:
+ * v1.15 (2018-02-17)
+   + Added shift operator for CC channels
  * v1.14 (2018-02-16)
    + Store which CC tracks are open
    + Named CC tracks where available
@@ -135,7 +137,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.14"
+tracker.name = "Hackey Trackey v1.15"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -1321,14 +1323,29 @@ function tracker:shiftAt( x, y, shift )
     elseif ( datafields[x] == 'vel1' ) or ( datafields[x] == 'vel2' ) then
       -- Velocity
       local pitch, vel, startppqpos, endppqpos = table.unpack( note )
-      reaper.MIDI_SetNote(self.take, selected,   nil, nil, nil, nil, nil, nil, vel+shift, true)     
+      reaper.MIDI_SetNote(self.take, selected, nil, nil, nil, nil, nil, nil, clamp(0, 127,vel+shift), true)     
     elseif ( datafields[x] == 'delay1' ) or ( datafields[x] == 'delay2' ) then
       -- Note delay
       local delay = self:getNoteDelay( selected )
-      self:setNoteDelay( selected, delay + 1 )
+      self:setNoteDelay( selected, delay + shift )
+    end
+  end
+  if ( ( datafields[x] == 'mod1' ) or ( datafields[x] == 'mod2' ) or ( datafields[x] == 'mod3' ) or ( datafields[x] == 'mod4' ) ) then
+    local modtype, val, found = self:getCC( y - 1 )
+    if ( found == 1 ) then
+      local newval = clamp( 0, 127, val + shift )
+      self:addCCPt_channel( y - 1, modtype, newval )
+    end
+  elseif ( ( datafields[x] == 'modtxt1' ) or ( datafields[x] == 'modtxt2' ) ) then
+    local modtypes = self.data.modtypes
+    local modtype, val, found = self:getCC( y - 1, modtypes[chan] )
+    if ( found == 1 ) then
+      local newval = clamp( 0, 127, val + shift )
+      self:addCCPt_channel( y - 1, modtype, newval )
     end
   end
 end
+
 
 function tracker:shiftup()
   local cp = self.cp
@@ -1399,7 +1416,6 @@ function tracker:setNoteDelay( note, newDelay )
   local notes = self.notes
   local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
   local newppq = self:delayToPpq( startppqpos, newDelay )
-  
   reaper.MIDI_SetNote(self.take, note, nil, nil, newppq, nil, nil, nil, nil, true)
 end
 
