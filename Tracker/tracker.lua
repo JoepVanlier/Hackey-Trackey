@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.12
+@version 1.13
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,10 @@
 
 --[[
  * Changelog:
+ * v1.13 (2018-02-16)
+   + Added multi CC extension (CTRL+ over MOD section switches to column view) 
+   + Bugfix CCs
+   + Bugfix interpolation on empty FX
  * v1.12 (2018-02-15)
    + Fixed rounding errors
  * v1.11 (2018-02-14)
@@ -127,14 +131,8 @@
 --
 --    Happy trackin'! :)
 
--- TODO: Add CC channel separation option
---   getCC( row, modtype )
---   addCCPt_channel(row, modtype, value)
---   (use modtype flag when dealing with channel based stuff)
---   tracker:initializeModChannels(modtypes)
-
 tracker = {}
-tracker.name = "Hackey Trackey v1.12"
+tracker.name = "Hackey Trackey v1.13"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -239,7 +237,7 @@ tracker.automationBug = 1 -- This fixes a bug in v5.70
 -- If you come up with a cool alternative color scheme, let me know
 tracker.channels = 16 -- Max channel (0 is not shown)
 tracker.showDelays = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-tracker.modMode = 1
+tracker.modMode = 0
 
 tracker.displaychannels = 15
 tracker.colors = {}
@@ -499,6 +497,7 @@ end
 ------------------------------
 function tracker:linkData()
   local fx          = self.fx
+  local data        = self.data
   local showDelays  = self.showDelays
   
   -- Here is where the linkage between the display and the actual data fields in "tracker" is made
@@ -512,41 +511,66 @@ function tracker:linkData()
   local master    = {}
   
   if ( self.showMod == 1 ) then
-    master[#master+1]       = 1
-    datafield[#datafield+1] = 'mod1'
-    idx[#idx+1]             = 0
-    colsizes[#colsizes+1]   = 1
-    padsizes[#padsizes+1]   = 0
-    grouplink[#grouplink+1] = {1, 2, 3}
-    headers[#headers+1]     = ' CC'
-    hints[#hints+1]         = "CC type"
-
-    master[#master+1]       = 0
-    datafield[#datafield+1] = 'mod2'
-    idx[#idx+1]             = 0
-    colsizes[#colsizes+1]   = 1
-    padsizes[#padsizes+1]   = 0
-    grouplink[#grouplink+1] = {-1, 1, 2}
-    headers[#headers+1]     = ''
-    hints[#hints+1]         = "CC type"
-    
-    master[#master+1]       = 0
-    datafield[#datafield+1] = 'mod3'
-    idx[#idx+1]             = 0
-    colsizes[#colsizes+1]   = 1
-    padsizes[#padsizes+1]   = 0
-    grouplink[#grouplink+1] = {-2, -1, 1}
-    headers[#headers+1]     = ''
-    hints[#hints+1]         = "CC value"
-    
-    master[#master+1]       = 0    
-    datafield[#datafield+1] = 'mod4'
-    idx[#idx+1]             = 0
-    colsizes[#colsizes+1]   = 1
-    padsizes[#padsizes+1]   = 2
-    grouplink[#grouplink+1] = {-3, -2, -1}
-    headers[#headers+1]     = ''
-    hints[#hints+1]         = "CC value"  
+    if ( self.modMode == 0 ) then
+      -- Single CC display
+      master[#master+1]       = 1
+      datafield[#datafield+1] = 'mod1'
+      idx[#idx+1]             = 0
+      colsizes[#colsizes+1]   = 1
+      padsizes[#padsizes+1]   = 0
+      grouplink[#grouplink+1] = {1, 2, 3}
+      headers[#headers+1]     = ' CC'
+      hints[#hints+1]         = "CC type"
+  
+      master[#master+1]       = 0
+      datafield[#datafield+1] = 'mod2'
+      idx[#idx+1]             = 0
+      colsizes[#colsizes+1]   = 1
+      padsizes[#padsizes+1]   = 0
+      grouplink[#grouplink+1] = {-1, 1, 2}
+      headers[#headers+1]     = ''
+      hints[#hints+1]         = "CC type"
+      
+      master[#master+1]       = 0
+      datafield[#datafield+1] = 'mod3'
+      idx[#idx+1]             = 0
+      colsizes[#colsizes+1]   = 1
+      padsizes[#padsizes+1]   = 0
+      grouplink[#grouplink+1] = {-2, -1, 1}
+      headers[#headers+1]     = ''
+      hints[#hints+1]         = "CC value"
+      
+      master[#master+1]       = 0    
+      datafield[#datafield+1] = 'mod4'
+      idx[#idx+1]             = 0
+      colsizes[#colsizes+1]   = 1
+      padsizes[#padsizes+1]   = 2
+      grouplink[#grouplink+1] = {-3, -2, -1}
+      headers[#headers+1]     = ''
+      hints[#hints+1]         = "CC value"  
+    else
+      -- Display with CC commands separated per column
+      local modtypes = data.modtypes
+      for j = 1,#modtypes do
+        master[#master+1]       = 1
+        datafield[#datafield+1] = 'modtxt1'
+        idx[#idx+1]             = j
+        colsizes[#colsizes+1]   = 1
+        padsizes[#padsizes+1]   = 0
+        grouplink[#grouplink+1] = {1}
+        headers[#headers+1]     = string.format('CC')
+        hints[#hints+1]         = string.format('CC command %2d', modtypes[j])
+      
+        master[#master+1]       = 0
+        datafield[#datafield+1] = 'modtxt2'
+        idx[#idx+1]             = j
+        colsizes[#colsizes+1]   = 1
+        padsizes[#padsizes+1]   = 1
+        grouplink[#grouplink+1] = {-1}
+        headers[#headers+1]     = ''
+        hints[#hints+1]         = string.format('CC command %2d', modtypes[j])      
+      end
+    end
   end
   
   if ( fx.names ) then
@@ -1310,18 +1334,24 @@ end
 -- Show more data
 ----------------------
 function tracker:showMore()
-  local singlerow = math.floor(self:rowToPpq(1))
-  if ( ( singlerow / 256 ) ~= math.floor( singlerow/256 ) ) then
-    if ( not self.showedWarning ) then
-      reaper.ShowMessageBox("WARNING: This functionality only works reliably when MIDI pulses per row is set to a multiple of 256!\nPreferences > Media/MIDI > Ticks per quarter note for new MIDI items.", "WARNING", 0)
-      self.showedWarning = 1
-    end
-  end
-
   local ftype, chan, row = self:getLocation()
   if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) ) then
+    local singlerow = math.floor(self:rowToPpq(1))
+    if ( ( singlerow / 256 ) ~= math.floor( singlerow/256 ) ) then
+      if ( not self.showedWarning ) then
+        reaper.ShowMessageBox("WARNING: This functionality only works reliably when MIDI pulses per row is set to a multiple of 256!\nPreferences > Media/MIDI > Ticks per quarter note for new MIDI items.", "WARNING", 0)
+        self.showedWarning = 1
+      end
+    end
+  
     self.showDelays[chan] = 1
     self.hash = 0
+  end
+  
+  if ( ( ftype == 'mod1' ) or ( ftype == 'mod2' ) or ( ftype == 'mod3' ) or ( ftype == 'mod4' ) ) then
+    tracker.modMode = 1
+    self.hash = 0
+    self:storeSettings()
   end
 end
 
@@ -1330,6 +1360,11 @@ function tracker:showLess()
   if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) ) then
     self.showDelays[chan] = 0
     self.hash = 0
+  end
+  if ( ( ftype == 'modtxt1' ) or ( ftype == 'modtxt2' ) ) then
+    tracker.modMode = 0
+    self.hash = 0
+    self:storeSettings()    
   end
 end
 
@@ -1504,6 +1539,20 @@ function tracker:createNote( inChar )
     self:addCCPt( self.ypos-1, modtype, newval )
     self.lastmodval = newval
     self.ypos = self.ypos + self.advance
+  elseif ( ( ftype == 'modtxt1' ) and validHex( char ) ) then
+    local modtypes = data.modtypes
+    local modtype, val = self:getCC( self.ypos - 1, modtypes[chan] )
+    local newval = self:editCCField( val, 1, char )
+    self:addCCPt_channel( self.ypos-1, modtype, newval )
+    self.lastmodval = newval
+    self.ypos = self.ypos + self.advance
+  elseif ( ( ftype == 'modtxt2' ) and validHex( char ) ) then
+    local modtypes = data.modtypes  
+    local modtype, val = self:getCC( self.ypos - 1, modtypes[chan] )
+    local newval = self:editCCField( val, 2, char )
+    self:addCCPt_channel( self.ypos-1, modtype, newval )
+    self.lastmodval = newval
+    self.ypos = self.ypos + self.advance    
   elseif ( ftype == 'legato' ) then
     if ( char == '1' ) then
       self:addLegato( row )
@@ -1814,6 +1863,8 @@ function tracker:backspace()
     self:backspaceEnvPt(chan, self:toSeconds(self.ypos-1))
   elseif( ftype == 'mod1' or ftype == 'mod2' or ftype == 'mod3' or ftype == 'mod4' ) then
     self:backspaceCCPt(self.ypos-1)
+  elseif( ftype == 'modtxt1' or ftype == 'modtxt2' ) then
+    self:backspaceCCPt(self.ypos-1, data.modtypes[chan])    
   else
     print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
     return
@@ -1968,6 +2019,8 @@ function tracker:delete()
     self:deleteEnvPt(chan, self:toSeconds(row) )
   elseif ( ftype == 'mod1' or ftype == 'mod2' or ftype == 'mod3' or ftype == 'mod4' ) then
     self:deleteCC_range(row)
+  elseif ( ftype == 'modtxt1' or ftype == 'modtxt2' ) then  
+    self:deleteCC_range(row, row+1, data.modtypes[chan])
   else
     print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
     return
@@ -2104,6 +2157,8 @@ function tracker:insert()
     self:insertEnvPt(chan, self:toSeconds(self.ypos-1))
   elseif ( ftype == 'mod1' or ftype == 'mod2' or ftype == 'mod3' or ftype == 'mod4' ) then
     self:insertCCPt(self.ypos-1)
+  elseif ( ftype == 'modtxt1' or ftype == 'modtxt2' ) then
+    self:insertCCPt(self.ypos-1, data.modtypes[chan])    
   else
     print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
     return
@@ -2203,6 +2258,7 @@ function tracker:getSettings( )
           oct = tonumber( string.sub(msg,4,5) )
           adv = tonumber( string.sub(msg,6,7) )
           env = tonumber( string.sub(msg,8,9) )
+          modMode = tonumber( string.sub(msg,10,10) )
           foundOpt = 1
         else
           self:SAFE_DeleteText(self.take, i)
@@ -2213,6 +2269,7 @@ function tracker:getSettings( )
     self.transpose  = oct or self.transpose
     self.advance    = adv or self.advance
     self.envShape   = env or self.envShape
+    self.modMode    = modMode or self.modMode
   end
   self:deleteNow()
 end
@@ -2228,7 +2285,7 @@ function tracker:storeSettings( )
       end
     end
     
-    reaper.MIDI_InsertTextSysexEvt(self.take, false, false, 0, 1, string.format( 'OPT%2d%2d%2d', self.transpose, self.advance, self.envShape ) )
+    reaper.MIDI_InsertTextSysexEvt(self.take, false, false, 0, 1, string.format( 'OPT%2d%2d%2d%d', self.transpose, self.advance, self.envShape, self.modMode ) )
   end
 end
 
@@ -2324,6 +2381,20 @@ function tracker:assignCC(ppq, modtype, modval)
     data.mod2[row] = hexType:sub(2,2)
     data.mod3[row] = hexVal:sub(1,1)
     data.mod4[row] = hexVal:sub(2,2)
+  end
+end
+
+-- Assign a CC event
+function tracker:assignCC2(ppq, modtype, modval)
+  local data = self.data
+  local rows = self.rows
+  local row = math.floor( self.rowPerPpq * ppq + self.eps )
+
+  if ( ppq and modval and modtype and ( modtype > 0 ) ) then
+    local col = self:CCToColumn(modtype)
+    local hexVal = string.format('%02X', math.floor(modval) )    
+    data.modtxt1[col*rows+row] = hexVal:sub(1,1)
+    data.modtxt2[col*rows+row] = hexVal:sub(2,2)
   end
 end
 
@@ -2454,6 +2525,16 @@ function tracker:editCCField( vel, id, val )
   return newvel
 end
 
+function tracker:columnToCC(col)
+  local data = self.data
+  return data.modtypes[col]
+end
+
+function tracker:CCToColumn(CC)
+  local data = self.data
+  return data.modmap[CC]
+end
+
 ------------------------------
 -- Initialize mod channels
 -----------------------------
@@ -2462,10 +2543,14 @@ function tracker:initializeModChannels(modtypes)
   local rows = self.rows
   data.modch = {}
   data.modtxt1 = {}
-  data.modtxt2 = {}  
+  data.modtxt2 = {}
+  data.modtypes = modtypes
+  -- CC to column
+  data.modmap = {}
   for x=1,#modtypes do
+    data.modmap[modtypes[x]] = x
     for y=0,rows-1 do
-      local cidx = (x-1)*rows+y
+      local cidx = x*rows+y
       data.modch[cidx]   = modtypes[x]
       data.modtxt1[cidx] = '.'
       data.modtxt2[cidx] = '.'      
@@ -2786,14 +2871,21 @@ end
 -----------------------
 -- Insert MIDI CC event
 -----------------------
-function tracker:insertCCPt( row )
+function tracker:insertCCPt( row, modtype )
   local rowsize = self:rowToPpq(1)
   local ppqStart = self:rowToPpq(row)
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   for i=ccevtcntOut,0,-1 do
     local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
     if ( ppqpos >= ppqStart ) then
-      reaper.MIDI_SetCC(self.take, i, nil, nil, ppqpos + rowsize, nil, nil, nil, nil, true)
+      local moveIt = true
+      if ( modtype and ( modtype ~= msg2 ) ) then
+        moveIt = false
+      end
+      
+      if ( moveIt ) then
+        reaper.MIDI_SetCC(self.take, i, nil, nil, ppqpos + rowsize, nil, nil, nil, nil, true)  
+      end
     end
   end
   self:deleteCC_range( self.rows )
@@ -2802,15 +2894,22 @@ end
 -----------------------
 -- Backspace MIDI CC event
 -----------------------
-function tracker:backspaceCCPt( row )
+function tracker:backspaceCCPt( row, modtype )
   local rowsize = self:rowToPpq(1)
   local ppqStart = self:rowToPpq(row)
-  self:deleteCC_range( row )
+  self:deleteCC_range( row, row + 1, modtype )
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   for i=ccevtcntOut,0,-1 do
-    local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+    local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)   
+    
     if ( ppqpos >= ppqStart ) then
-      reaper.MIDI_SetCC(self.take, i, nil, nil, ppqpos - rowsize, nil, nil, nil, nil, true)
+      local moveIt = true
+      if ( modtype and ( modtype ~= msg2 ) ) then
+        moveIt = false
+      end
+      if ( moveIt == true ) then
+        reaper.MIDI_SetCC(self.take, i, nil, nil, ppqpos - rowsize, nil, nil, nil, nil, true)
+      end
     end
   end
 end
@@ -2850,17 +2949,17 @@ function tracker:getCC( row, modtype )
     local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
     if ( ppqpos >= ppqStart and ppqpos < ppqEnd ) then
       local fetchIt = true
-      if ( fetchIt and ( fetchIt ~= msg2 ) ) then
+      if ( modtype and ( modtype ~= msg2 ) ) then
         fetchIt = false
       end
       
-      if ( fetchIt ) then
+      if ( fetchIt == true ) then
         return msg2, msg3, 1
       end
     end
   end
   
-  return self.lastmodtype, self.lastmodval
+  return modtype or self.lastmodtype, self.lastmodval
 end
 
 -------------------
@@ -3032,8 +3131,6 @@ function tracker:update()
     self:getRowInfo()
     self:getSettings()
     self:getTakeEnvelopes()
-    self:linkData()
-    self:updatePlotLink()
     self:initializeGrid()
     self:updateEnvelopes()
     
@@ -3048,12 +3145,16 @@ function tracker:update()
     -- Grab the notes and store them in channels
     local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
     local i
-    if ( retval > 0 ) then
+    
+    if ( retval > 0 ) then   
       -- Find the OFF markers and place them first. They could have only come from the tracker sytem
       -- so don't worry too much.
       local offs = {}
       self.txtList = offs
       for i=0,textsyxevtcntOut do
+        ---------------------------------------------
+        -- OFF markers
+        ---------------------------------------------
         local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
         if ( typeidx == 1 ) then
           if ( string.sub(msg,1,3) == 'OFF' ) then
@@ -3069,16 +3170,45 @@ function tracker:update()
           end
         end
       end
-    
-      -- Fetch the cc events
+       
+      ---------------------------------------------
+      -- CC EVENTS
+      ---------------------------------------------
       if ( self.showMod == 1 ) then
-        for i=0,ccevtcntOut do
-          local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
-          self:assignCC( ppqpos, msg2, msg3 )
+        if ( self.modMode == 1 ) then
+          local all = {}
+          for i=0,ccevtcntOut do
+            local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+            all[msg2] = 1
+          end
+          local modtypes = {}
+          for i,v in pairs(all) do
+            if( i > 0 ) then
+              modtypes[#modtypes+1] = i
+            end
+          end
+          if ( #modtypes > 0 ) then
+            tracker:initializeModChannels(modtypes)
+            for i=0,ccevtcntOut do
+              local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+              self:assignCC2( ppqpos, msg2, msg3 )
+            end
+          else
+            self.modMode = 0
+            self:storeSettings()
+          end
+        end
+        if ( self.modMode == 0 ) then
+          for i=0,ccevtcntOut do
+            local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+            self:assignCC( ppqpos, msg2, msg3 )
+          end
         end
       end
     
-      -- Fetch the notes
+      ---------------------------------------------
+      -- NOTES
+      ---------------------------------------------
       local channels = {}
       channels[0] = {}
       local notes = {}
@@ -3152,6 +3282,9 @@ function tracker:update()
       end
     end
   end
+  
+  self:linkData()
+  self:updatePlotLink()
 end
 
 ------------------------------
@@ -3296,6 +3429,8 @@ function tracker:clearBlock(incp)
       self:deleteEnvPt(chan, self:toSeconds(cp.ystart-1), self:toSeconds(cp.ystop-1)+tracker.eps )
     elseif ( ( datafields[jx] == 'mod1' ) or ( datafields[jx] == 'mod2' ) or ( datafields[jx] == 'mod3' ) or ( datafields[jx] == 'mod4' ) ) then
       self:deleteCC_range( cp.ystart-1, cp.ystop )
+    elseif ( ( datafields[jx] == 'modtxt1' ) or ( datafields[jx] == 'modtxt2' ) ) then
+      self:deleteCC_range( cp.ystart-1, cp.ystop, data.modtypes[chan] )
     end
   end
   
@@ -3417,7 +3552,11 @@ function tracker:getAdvance( chtype, ch, extraShift )
   elseif ( chtype == 'mod3' ) then
     return 2
   elseif ( chtype == 'mod4' ) then
-    return 1
+    return 1    
+  elseif ( chtype == 'modtxt1' ) then
+    return 2
+  elseif ( chtype == 'modtxt2' ) then
+    return 1    
   elseif ( chtype == 'delay1' ) then
     return 2
   elseif ( chtype == 'delay2' ) then
@@ -3432,6 +3571,8 @@ tracker.colgroups['mod1'] = { 'mod1', 'mod2', 'mod3', 'mod4' }
 tracker.colgroups['mod2'] = { 'mod1', 'mod2', 'mod3', 'mod4' }
 tracker.colgroups['mod3'] = { 'mod1', 'mod2', 'mod3', 'mod4' }
 tracker.colgroups['mod4'] = { 'mod1', 'mod2', 'mod3', 'mod4' }
+tracker.colgroups['modtxt1'] = { 'modtxt1', 'modtxt2' }
+tracker.colgroups['modtxt2'] = { 'modtxt1', 'modtxt2' }
 tracker.colgroups['text'] = { 'text', 'vel1', 'vel2' }
 tracker.colgroups['vel1'] = { 'text', 'vel1', 'vel2' }
 tracker.colgroups['vel2'] = { 'text', 'vel1', 'vel2' }
@@ -3443,6 +3584,8 @@ tracker.colref['mod1'] = 0
 tracker.colref['mod2'] = -1
 tracker.colref['mod3'] = -2
 tracker.colref['mod4'] = -3
+tracker.colref['modtxt1'] = 0
+tracker.colref['modtxt2'] = -1
 tracker.colref['text'] = 0
 tracker.colref['vel1'] = -1
 tracker.colref['vel2'] = -2
@@ -3540,6 +3683,10 @@ function tracker:pasteClipboard()
           elseif ( data[1] == 'CC' ) then
             -- 'MOD'
             self:addCCPt( data[2]+refrow, data[3], data[4] )
+          elseif ( data[1] == 'CCC' ) then
+            -- 'MOD'
+            local targetMod = self.data.modtypes[chan]
+            self:addCCPt_channel( data[2]+refrow, targetMod, data[3] )            
         else
           print( "FATAL ERROR, unknown field in clipboard" )
         end
@@ -3628,6 +3775,12 @@ function tracker:copyToClipboard()
         if ( gotvalue ) then
           self:addDataToClipboard( newclipboard, { 'CC', jy-1-cp.ystart+1, modtype, val } )
         end
+      elseif ( chtype == 'modtxt1' or chtype == 'modtxt2' ) then
+        local mtype = data.modtypes[chan]
+        local modtype, val, gotvalue = tracker:getCC( jy-1, mtype )
+        if ( gotvalue ) then
+          self:addDataToClipboard( newclipboard, { 'CCC', jy-1-cp.ystart+1, val } )
+        end        
       end
     end
     
@@ -3725,28 +3878,45 @@ function tracker:interpolate()
       local endidx      = cp.ystop - 1
          
       local time, startenv, startshape, starttension = tracker:getEnvPt(chan, self:toSeconds(startidx))
-      local time, endenv,   endshape,   endtension   = tracker:getEnvPt(chan, self:toSeconds(endidx))      
-      
-      local dydx = (endenv-startenv)/(endidx-startidx)
-      self.hash = 0
-      local idx = 0
-      for jy = startidx,endidx do
-        self:addEnvPt( chan, self:toSeconds(jy), dydx * idx + startenv, endshape )
-        idx = idx + 1
-      end      
-    end
-    if ( datafields[jx] == 'mod1' or datafields[jx] == 'mod2' or datafields[jx] == 'mod3' or datafields[jx] == 'mod4' ) then
+      local time, endenv,   endshape,   endtension   = tracker:getEnvPt(chan, self:toSeconds(endidx))            
+      if ( startenv and endenv and startidx and endidx ) then
+        local dydx = (endenv-startenv)/(endidx-startidx)
+        self.hash = 0
+        local idx = 0
+        for jy = startidx,endidx do
+          self:addEnvPt( chan, self:toSeconds(jy), dydx * idx + startenv, endshape )
+          idx = idx + 1
+        end
+      end
+    elseif ( datafields[jx] == 'mod1' or datafields[jx] == 'mod2' or datafields[jx] == 'mod3' or datafields[jx] == 'mod4' ) then
       local startidx    = cp.ystart - 1
       local endidx      = cp.ystop - 1
       local starttype, startval = tracker:getCC( startidx )
       local endtype,   endval   = tracker:getCC( endidx )      
-            
-      local dydx = (endval-startval)/(endidx-startidx)
-      self.hash = 0
-      local idx = 0
-      for jy = startidx,endidx do
-        self:addCCPt( jy, starttype, math.floor( dydx * idx + startval ) )
-        idx = idx + 1
+      if ( startval and endval and startidx and endidx ) then
+        local dydx = (endval-startval)/(endidx-startidx)
+        self.hash = 0
+        local idx = 0
+        for jy = startidx,endidx do
+          self:addCCPt( jy, starttype, math.floor( dydx * idx + startval ) )
+          idx = idx + 1
+        end
+      end
+    elseif ( datafields[jx] == 'modtxt1' or datafields[jx] == 'modtxt2' ) then
+      local chan        = idxfields[ jx ]
+      local modtype     = self.data.modtypes[chan]
+      local startidx    = cp.ystart - 1
+      local endidx      = cp.ystop - 1
+      local starttype, startval = tracker:getCC( startidx, modtype )
+      local endtype,   endval   = tracker:getCC( endidx,   modtype )     
+      if ( startval and endval and startidx and endidx ) then
+        local dydx = (endval-startval)/(endidx-startidx)
+        self.hash = 0
+        local idx = 0
+        for jy = startidx,endidx do
+          self:addCCPt_channel( jy, starttype, math.floor( dydx * idx + startval ) )
+          idx = idx + 1
+        end
       end
     end
   end
