@@ -189,6 +189,15 @@ tracker.enveps = 1e-4
 -- This prevents that the pattern automation has to be the same from that point.
 tracker.duplicationBehaviour = 2
 
+-- Do we want delays to be shown?
+tracker.showDelays = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+
+-- Do not edit
+tracker.modMode = 0
+
+tracker.channels = 16 -- Max channel (0 is not shown)
+tracker.displaychannels = 15
+
 -- Plotting
 tracker.grid = {}
 tracker.grid.originx   = 35
@@ -235,11 +244,6 @@ tracker.selectionBehavior = 0
 tracker.automationBug = 1 -- This fixes a bug in v5.70
 
 -- If you come up with a cool alternative color scheme, let me know
-tracker.channels = 16 -- Max channel (0 is not shown)
-tracker.showDelays = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-tracker.modMode = 0
-
-tracker.displaychannels = 15
 tracker.colors = {}
 tracker.colors.helpcolor    = {.8, .8, .9, 1}
 tracker.colors.helpcolor2   = {.7, .7, .9, 1}
