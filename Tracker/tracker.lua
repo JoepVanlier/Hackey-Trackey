@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.13
+@version 1.14
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,9 @@
 
 --[[
  * Changelog:
+ * v1.14 (2018-02-16)
+   + Store which CC tracks are open
+   + Named CC tracks where available
  * v1.13 (2018-02-16)
    + Added multi CC extension (CTRL+ over MOD section switches to column view) 
    + Bugfix CCs
@@ -132,7 +135,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.13"
+tracker.name = "Hackey Trackey v1.14"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -192,7 +195,10 @@ tracker.duplicationBehaviour = 2
 -- Do we want delays to be shown?
 tracker.showDelays = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 
--- Do not edit
+-- Start by default in mono or multi-col CC mode
+-- Mono-col (0) mode shows one column for the CC's that is always displayed
+-- Multi-col (1) shows only specifically enabled CC's (Add new ones with CTRL + SHIFT + +)
+-- Remove ones with CTRL + SHIFT + - (note that this deltes the CC data too)
 tracker.modMode = 0
 
 tracker.channels = 16 -- Max channel (0 is not shown)
@@ -338,16 +344,17 @@ keys.escape         = { 0,    0,  0,    27 }            -- Escape
 keys.toggleRec      = { 1,    0,  0,    18 }            -- CTRL + R
 keys.showMore       = { 1,    0,  0,    11 }            -- CTRL + +
 keys.showLess       = { 1,    0,  0,    13 }            -- CTRL + -
+keys.addCol         = { 1,    0,  1,    11 }            -- CTRL + Shift + +
+keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -
 keys.tab            = { 0,    0,  0,    9 }             -- Tab
 keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
 
 help = {
   { 'Arrow Keys', 'Move' },
   { '-', 'Note OFF' },
-  { 'Insert', 'Insert blank' },   
+  { 'Insert/Backspace', 'Insert/Remove line' },   
   { 'Del/.', 'Delete' }, 
-  { 'Space', 'Toggle play' },
-  { 'Return', 'Play from current' },
+  { 'Space / Return', 'Play/Play from here' },
   { 'CTRL + L', 'Set loop to pattern' },
   { 'CTRL + Q/W', 'Set loop start/end' },
   { 'Shift + +/-', 'Transpose selection' },
@@ -357,7 +364,6 @@ help = {
   { 'CTRL + I', 'Interpolate' },
   { 'Shift + Del', 'Delete block' },
   { 'CTRL + (SHIFT) + Z', 'Undo / Redo' }, 
-  { 'F1', 'Help' },
   { 'CTRL + ALT + Up/Down', 'Adjust [res]olution' },
   { 'CTRL + ALT + Enter', 'Commit [res]olution' },  
   { 'CTRL + Up/Down', 'In/Decrease [oct]ave' },     
@@ -369,6 +375,7 @@ help = {
   { 'CTRL + N', 'Rename pattern' },
   { 'CTRL + R', 'Toggle note play' },
   { 'CTRL + +/-', 'Advanced options (note delay)' },
+  { 'CTRL + Shift + +/-', 'Add CC (adv mode)' }
 }
 
 --- Base pitches
@@ -408,6 +415,62 @@ keys.octaves['6'] = 6
 keys.octaves['7'] = 7
 keys.octaves['8'] = 8
 keys.octaves['9'] = 9
+
+CC = {}
+CC[0] = "Bank Select"
+CC[1] = "Mod Wheel"
+CC[2] = "Breath Ctrl"
+CC[4] = "Foot Controller"
+CC[5] = "Portamento Time"
+CC[6] = "Data Entry MSB"
+CC[7] = "Main Volume"
+CC[8] = "Balance"
+CC[10] = "Pan"
+CC[12] = "FX Ctrl 1"
+CC[13] = "FX Ctrl 2"
+CC[16] = "Gen Purpose Ctrl 1"
+CC[17] = "Gen Purpose Ctrl 2"
+CC[18] = "Gen Purpose Ctrl 3"
+CC[19] = "Gen Purpose Ctrl 4"
+CC[64] = "Sustain"
+CC[65] = "Portamento"
+CC[66] = "Sostenuto"
+CC[67] = "Soft Pedal"
+CC[68] = "Legato Foot"
+CC[69] = "Hold 2"
+CC[70]= "Sound Variation"
+CC[71] = "Timbre/Harmonics"
+CC[72] = "Release Time"
+CC[73] = "Attack Time"
+CC[74] = "Brightness"
+CC[75] = "Sound Ctrl 6"
+CC[76] = "Sound Ctrl 7"
+CC[77] = "Sound Ctrl 8"
+CC[78] = "Sound Ctrl 9"
+CC[79] = "Sound Ctrl 10"
+CC[80] = "Gen Ctrl 5"
+CC[81] = "Gen Ctrl 6"
+CC[82] = "Gen Ctrl 7"
+CC[83] = "Gen Ctrl 8"
+CC[84] = "Portamento Ctrl"
+CC[91] = "FX1 Depth (Ext)"
+CC[92] = "FX2 Depth (Tremolo)"
+CC[93] = "FX3 Depth (Chorus)"
+CC[94] = "FX4 Depth (Detune)"
+CC[95] = "FX5 Depth (Phaser)"
+CC[96] = "Data increment"
+CC[97] = "Data decrement"
+CC[98] = "Non reg par num LSB"
+CC[99] = "Non reg par num LSB"
+CC[100] = "Reg par num LSB"
+CC[101] = "Reg par num MSB"
+CC[121] = "Reset all ctrl"
+CC[122] = "Local ctrl"
+CC[123] = "All notes off"
+CC[124] = "Omni off"
+CC[125] = "Omni on"
+CC[126] = "Mono on (Poly off)"
+CC[127] = "Poly on (Mono off)"
 
 local function print(...)
   if ( not ... ) then
@@ -555,24 +618,34 @@ function tracker:linkData()
     else
       -- Display with CC commands separated per column
       local modtypes = data.modtypes
-      for j = 1,#modtypes do
-        master[#master+1]       = 1
-        datafield[#datafield+1] = 'modtxt1'
-        idx[#idx+1]             = j
-        colsizes[#colsizes+1]   = 1
-        padsizes[#padsizes+1]   = 0
-        grouplink[#grouplink+1] = {1}
-        headers[#headers+1]     = string.format('CC')
-        hints[#hints+1]         = string.format('CC command %2d', modtypes[j])
-      
-        master[#master+1]       = 0
-        datafield[#datafield+1] = 'modtxt2'
-        idx[#idx+1]             = j
-        colsizes[#colsizes+1]   = 1
-        padsizes[#padsizes+1]   = 1
-        grouplink[#grouplink+1] = {-1}
-        headers[#headers+1]     = ''
-        hints[#hints+1]         = string.format('CC command %2d', modtypes[j])      
+        if ( modtypes ) then
+        for j = 1,#modtypes do
+          master[#master+1]       = 1
+          datafield[#datafield+1] = 'modtxt1'
+          idx[#idx+1]             = j
+          colsizes[#colsizes+1]   = 1
+          padsizes[#padsizes+1]   = 0
+          grouplink[#grouplink+1] = {1}
+          headers[#headers+1]     = string.format('CC')
+          if ( CC[modtypes[j]] ) then
+            hints[#hints+1]         = string.format('%s (%d)', CC[modtypes[j]], modtypes[j])
+          else
+            hints[#hints+1]         = string.format('CC command %2d', modtypes[j])
+          end
+        
+          master[#master+1]       = 0
+          datafield[#datafield+1] = 'modtxt2'
+          idx[#idx+1]             = j
+          colsizes[#colsizes+1]   = 1
+          padsizes[#padsizes+1]   = 1
+          grouplink[#grouplink+1] = {-1}
+          headers[#headers+1]     = ''
+          if ( CC[modtypes[j]] ) then
+            hints[#hints+1]         = string.format('%s (%d)', CC[modtypes[j]], modtypes[j])
+          else
+            hints[#hints+1]         = string.format('CC command %2d', modtypes[j])
+          end
+        end
       end
     end
   end
@@ -991,21 +1064,31 @@ function tracker:printGrid()
   gfx.x = plotData.xstart
   gfx.y = yloc[#yloc] + 1 * yheight[1] + itempady
   gfx.set(table.unpack(colors.headercolor))
-  gfx.printf("%s", description[relx])
+  if ( tracker.renaming ~= 2 ) then
+    gfx.printf("%s", description[relx])
+  else
+      gfx.set(table.unpack(colors.changed))
+      if ( self.newCol:len() > 0 ) then
+        gfx.printf("%s", self.newCol)
+      else
+        gfx.printf("_")
+      end
+  end
   
   local patternName
+  gfx.set(table.unpack(colors.headercolor))
   gfx.y = yloc[#yloc] + 1 * yheight[1] + itempady
-  if ( tracker.renaming == 0 ) then
-    patternName = self.patternName
-    gfx.x = plotData.xstart + tw - 8.2 * string.len(patternName)
-    gfx.printf(patternName)
-  else
+  if ( tracker.renaming == 1 ) then
     gfx.set(table.unpack(colors.changed))
     if ( self.midiName:len() > 0 ) then
       patternName = self.midiName
     else
       patternName = '_'
     end
+    gfx.x = plotData.xstart + tw - 8.2 * string.len(patternName)
+    gfx.printf(patternName)
+  else
+    patternName = self.patternName
     gfx.x = plotData.xstart + tw - 8.2 * string.len(patternName)
     gfx.printf(patternName)
   end
@@ -2250,7 +2333,7 @@ function tracker:getResolution( reso )
 end
 
 function tracker:getSettings( )
-  local oct, adv, env
+  local oct, adv, env, modMode
   local foundOpt = 0
   if ( self.rememberSettings == 1 ) then
     local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
@@ -2291,6 +2374,53 @@ function tracker:storeSettings( )
     
     reaper.MIDI_InsertTextSysexEvt(self.take, false, false, 0, 1, string.format( 'OPT%2d%2d%2d%d', self.transpose, self.advance, self.envShape, self.modMode ) )
   end
+end
+
+function tracker:storeOpenCC( )
+  if ( self.rememberSettings == 1 ) then
+    local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+    for i=0,textsyxevtcntOut do
+      local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
+      
+      if ( string.sub(msg,1,3) == 'CCC' ) then
+        reaper.MIDI_DeleteTextSysexEvt(self.take, i)
+      end
+    end
+    
+    if ( #(self.data.modtypes) > 0 ) then
+      local str = 'CCC'
+      for i,v in pairs(self.data.modtypes) do
+        str = str .. string.format( '%3d ', v )
+      end
+    
+      reaper.MIDI_InsertTextSysexEvt(self.take, false, false, 0, 1, str )
+    end
+  end
+end
+
+function tracker:getOpenCC()
+  local foundOpt = 0
+  local all = {}
+  if ( self.rememberSettings == 1 ) then
+    local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+    for i=0,textsyxevtcntOut do
+      local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
+      
+      if ( string.sub(msg,1,3) == 'CCC' ) then
+        if ( foundOpt == 0 ) then
+          -- Parse the channels that were open
+          local vals = string.sub(msg,4)
+          if ( vals:len() > 0 ) then
+            for i in string.gmatch(vals, "%d+") do
+               all[ tonumber( i ) ] = 1
+            end
+          end
+        end
+      end
+    end     
+  end
+  
+  return all
 end
 
 function tracker:setResolution( reso )
@@ -3120,6 +3250,55 @@ end
 
 local stringbuffer = "                                                                               "
 
+function tracker:addCol()
+  if ( self.showMod == 1 ) then
+    if ( self.modMode == 1 ) then
+      tracker.renaming = 2
+      tracker.newCol = ''
+    end
+  end
+end
+
+function tracker:createCCCol()
+  local data = self.data
+  
+  if ( not data.modtypes ) then
+    data.modtypes = {}
+  end
+  
+  local modtypes = data.modtypes
+  if ( pcall( function () tonumber( tracker.newCol ) end ) ) then
+    local newCol = tonumber( tracker.newCol )
+    if ( newCol and ( newCol > -1 ) ) then
+      modtypes[#modtypes+1] = newCol
+      self:storeOpenCC()
+    end
+  else
+    print("Passed invalid number")
+  end
+end
+
+function tracker:remCol()
+  if ( self.showMod == 1 ) then
+    if ( self.modMode == 1 ) then  
+      local data = self.data
+      local modtypes = data.modtypes  
+      local ftype, chan, row = self:getLocation()
+      local modtype, val = self:getCC( self.ypos - 1, modtypes[chan] )    
+    
+      for i,v in pairs( modtypes ) do
+        if ( v == modtype ) then
+          self:deleteCC_range(0, self.rows, modtype)
+          modtypes[i] = nil
+        end
+      end
+  
+      self:storeOpenCC()
+      self.hash = 0
+    end
+  end
+end
+
 --------------------------------------------------------------
 -- Update function
 -- heavy-ish, avoid calling too often (only on MIDI changes)
@@ -3180,15 +3359,23 @@ function tracker:update()
       ---------------------------------------------
       if ( self.showMod == 1 ) then
         if ( self.modMode == 1 ) then
-          local all = {}
+          local all = self:getOpenCC()
           for i=0,ccevtcntOut do
             local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
             all[msg2] = 1
           end
+          all[0] = nil
+          local indices = {}
+          for i in pairs(all) do
+            if ( all[i] == 1 ) then
+              table.insert(indices, i)
+            end
+          end
+          table.sort(indices)
           local modtypes = {}
-          for i,v in pairs(all) do
+          for i,v in pairs(indices) do
             if( i > 0 ) then
-              modtypes[#modtypes+1] = i
+              modtypes[#modtypes+1] = v
             end
           end
           if ( #modtypes > 0 ) then
@@ -3197,8 +3384,8 @@ function tracker:update()
               local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
               self:assignCC2( ppqpos, msg2, msg3 )
             end
+            self:storeOpenCC()
           else
-            self.modMode = 0
             self:storeSettings()
           end
         end
@@ -4573,6 +4760,10 @@ local function updateLoop()
       tracker:tab()
     elseif inputs('shifttab') then
       tracker:shifttab()
+    elseif inputs('addCol') then
+      tracker:addCol()
+    elseif inputs('remCol') then
+      tracker:remCol()            
     elseif inputs('rename') then
       tracker.oldMidiName = tracker.midiName
       tracker.midiName = ''
@@ -4598,7 +4789,7 @@ local function updateLoop()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
     end
-  else
+  elseif( tracker.renaming == 1 ) then
     -- Renaming pattern
     if inputs( 'playfrom' ) then
       tracker.renaming = 0
@@ -4614,6 +4805,21 @@ local function updateLoop()
         local str = string.char( lastChar )
         tracker.midiName = string.format( '%s%s', tracker.midiName, str )
         tracker:updateMidiName()
+      end
+    end
+  elseif ( tracker.renaming == 2 ) then
+    -- Adding column
+    if inputs( 'playfrom' ) then
+      tracker.renaming = 0
+      tracker:createCCCol()
+    elseif( inputs( 'escape' ) ) then
+      tracker.renaming = 0
+    elseif( inputs( 'remove' ) ) then
+      tracker.newCol = tracker.newCol:sub(1, tracker.newCol:len()-1)
+    elseif ( lastChar > 0 ) then
+      if ( pcall( function () string.char( lastChar ) tonumber(lastChar) end ) ) then
+        local str = string.char( lastChar )
+        tracker.newCol = string.format( '%s%s', tracker.newCol, str )
       end
     end
   end
