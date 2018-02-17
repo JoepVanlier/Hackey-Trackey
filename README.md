@@ -92,6 +92,9 @@ new MIDI items. The default here is 960, but 1024, 2048 or 4096 is recommended f
 Hackey Trackey. Once configured correctly, you can open the note delay column for any note 
 by simply hitting CTRL + \+ for that column.
 
+### Is this repository reapack compatible?
+Yes. Just add: https://raw.githubusercontent.com/joepvanlier/Hackey-Trackey/master/index.xml
+
 ## Special keys
 These are just the default key bindings when you download the script. They are optimized 
 for a QWERTY layout. If you wish to change the shortcuts, edit the keys table. If you wish 
