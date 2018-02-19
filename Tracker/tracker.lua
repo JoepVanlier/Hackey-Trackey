@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.16
+@version 1.17
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,8 @@
 
 --[[
  * Changelog:
+ * v1.17 (2018-02-19)
+   + Fixed bug copy paste and delete block system
  * v1.16 (2018-02-17)
    + Added shift operator for automation FX
    + Fixed bug in FX copy/paste system
@@ -140,7 +142,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.16"
+tracker.name = "Hackey Trackey v1.17"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
