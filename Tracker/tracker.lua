@@ -1707,7 +1707,7 @@ function tracker:SAFE_DeleteText( take, txt )
   tracker.deleteText[txt] = txt
 end
 
-function orderedpairs(inTable, order)
+function ordereduniquepairs(inTable, order)
   if ( not inTable ) then
     print( "Warning! Error in iterator: passed nil to spairs" )
     return function() return nil end
@@ -1718,9 +1718,14 @@ function orderedpairs(inTable, order)
   table.sort(keys, function(a,b) return a > b end)
 
   local i = 0
+  local last = -1337
   return function()
-    i = i + 1
+    i = i + 1  
+    while( inTable[keys[i]] == last ) do
+      i = i + 1
+    end
     if ( keys[i] ) then
+      last = inTable[keys[i]]
       return keys[i], inTable[keys[i]]
     end
   end
@@ -1738,15 +1743,18 @@ function tracker:deleteNow( )
   local i
 
   if ( deleteNotes ) then
-    for i,v in orderedpairs(deleteNotes) do
+    for i,v in ordereduniquepairs(deleteNotes) do
       reaper.MIDI_DeleteNote(self.take, v)
     end
   end
   if ( deleteText ) then
-    for i,v in orderedpairs(deleteText) do
+    for i,v in ordereduniquepairs(deleteText) do
       reaper.MIDI_DeleteTextSysexEvt(self.take, v)
     end    
   end
+  
+  self.deleteNotes = {}
+  self.deleteText = {}
 end
 
 ---------------------
@@ -2016,7 +2024,7 @@ function tracker:deleteNoteSimple(channel, row)
   local singlerow = self:rowToPpq(1)
   
   noteToDelete = noteStart[rows*channel+row]
-  offToDelete = noteGrid[rows*channel+row]  
+  offToDelete = noteGrid[rows*channel+row]
   if ( noteToDelete ) then
     if ( noteToDelete > -1 ) then
       self:SAFE_DeleteNote(self.take, noteToDelete)
