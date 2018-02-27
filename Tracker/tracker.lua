@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.18
+@version 1.19
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,8 @@
 
 --[[
  * Changelog:
+ * v1.19 (2018-02-27)
+   + Fix loss of docking status
  * v1.18 (2018-02-27)
    + Merged pull request from r4dian with buzz theme (thanks r4dian!)
  * v1.17 (2018-02-19)
@@ -144,7 +146,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.18"
+tracker.name = "Hackey Trackey v1.19"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -4976,7 +4978,7 @@ function tracker:resizeWindow()
     local d, wx, wh = gfx.dock(-1, 1, 1, nil, nil)
     gfx.quit()
     
-    gfx.init( self.windowTitle, width, height, 0, wx, wh)
+    gfx.init( self.windowTitle, width, height, d, wx, wh)
   end
 end
 
