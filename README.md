@@ -15,6 +15,14 @@ ReViSiT or linking Renoise to REAPER if this is what you seek.
 ## Small disclaimer
 Hackey Trackey is still actively being developed. Not all planned features are finished yet. Be sure to check back in the future if you want to be kept up to date with the latest features. That said, basic tracking functionality works (note entry, FX sequencing) and directly updates MIDI and automation data.
 
+## Installation
+### With Reapack
+Add it in your Reapack repository list: `https://raw.githubusercontent.com/joepvanlier/Hackey-Trackey/master/index.xml`.
+Eventually, the plan is to make the tracker part of the reapack scripts repository, so that this separate repo is no longer necessary.
+### Without
+- Press `?` or select `Actions > Action List`
+- click the ReaScript: `Load` button
+
 ## How do I use it?
 Select a MIDI object and start the script. Note that scripts can be bound to 
 shortcut keys, which I'd recommend if you're going to be using it.
