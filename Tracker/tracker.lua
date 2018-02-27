@@ -258,20 +258,64 @@ tracker.automationBug = 1 -- This fixes a bug in v5.70
 
 -- If you come up with a cool alternative color scheme, let me know
 tracker.colors = {}
+--[[
+-- default
 tracker.colors.helpcolor    = {.8, .8, .9, 1}
 tracker.colors.helpcolor2   = {.7, .7, .9, 1}
-tracker.colors.selectcolor  = {.7, 0, .5, 1}
+tracker.colors.selectcolor  = {1, 0, 1, 1}
 tracker.colors.textcolor    = {.7, .8, .8, 1}
 tracker.colors.headercolor  = {.5, .5, .8, 1}
 tracker.colors.linecolor    = {.1, .0, .4, .4}
 tracker.colors.linecolor2   = {.3, .0, .6, .4}
 tracker.colors.linecolor3   = {.4, .1, 1, 1}
 tracker.colors.linecolor4   = {.2, .0, 1, .5}
+tracker.colors.linecolor5   = {.3, .0, .6, .4}
 tracker.colors.loopcolor    = {.2, .3, .8, .5}
 tracker.colors.copypaste    = {5.0, .7, 0.1, .2}
 tracker.colors.scrollbar1   = {.2, .1, .6, 1.0}
 tracker.colors.scrollbar2   = {.1, .0, .3, 1.0}
-tracker.colors.changed      = {1.0, 0.1, 0.1, 1.0}
+tracker.colors.changed      = {1.0, 0.1, 0.1, 1.0} 
+tracker.colors.windowbackground = {0, 0, 0, 1} --]]
+
+-- Buzz
+tracker.colors.helpcolor        = {1/256*159, 1/256*147, 1/256*115, 1} -- the functions
+tracker.colors.helpcolor2       = {1/256*48, 1/256*48, 1/256*33, 1} -- the keys
+tracker.colors.selectcolor      = {1, 1, 1, 1} -- the cursor
+tracker.colors.textcolor        = {1/256*48, 1/256*48, 1/256*33, 1} -- main pattern data
+tracker.colors.headercolor      = {1/256*48, 1/256*48, 1/256*33, 1} -- column headers, statusbar etc
+tracker.colors.linecolor        = {1/256*218, 1/256*214, 1/256*201, 0} -- normal row
+tracker.colors.linecolor2       = {1/256*181, 1/256*189, 1/256*158, 0.4} -- beats (must not have 100% alpha as it's drawn over the cursor(!))
+tracker.colors.linecolor3       = {1/256*159, 1/256*147, 1/256*115, 1} -- scroll indicating trangle thingy
+tracker.colors.linecolor4       = {1, 1, 0, 1} -- Reaper edit cursor
+tracker.colors.linecolor5       = {1/256*159, 1/256*147, 1/256*115, 0.4} -- Bar start
+tracker.colors.loopcolor        = {1/256*48, 1/256*48, 1/256*33, 1} -- lines surrounding loop
+tracker.colors.copypaste        = {1/256*247, 1/256*247, 1/256*244, 0.66}  -- the selection (should be lighter(not alpha blanded) but is drawn over the data)
+tracker.colors.scrollbar1       = {1/256*48, 1/256*48, 1/256*33, 1} -- scrollbar handle & outline
+tracker.colors.scrollbar2       = {1/256*218, 1/256*214, 1/256*201, 1} -- scrollbar background
+tracker.colors.changed          = {1, 1, 0, 1} -- don't know ?
+tracker.colors.windowbackground = {1/256*218, 1/256*214, 1/256*201, 1} --]]
+--[[
+-- Reapulse Tracker (Impulse Tracker)
+tracker.colors.helpcolor        = {0, 0, 0, 1} -- the functions
+tracker.colors.helpcolor2       = {1/256*124, 1/256*88, 1/256*68, 1} -- the keys
+tracker.colors.selectcolor      = {1, 1, 1, 1} -- the cursor
+tracker.colors.textcolor        = {1, 1, 1, 1} --{1/256*60, 1/256*105, 1/256*59, 1} -- main pattern data (rows should all be darker & this should be green)
+tracker.colors.headercolor      = {0, 0, 0, 1} -- column headers, statusbar etc
+tracker.colors.linecolor        = {0,0,0, 0.6} -- normal row
+tracker.colors.linecolor2       = {1/256*52, 1/256*48, 1/256*44, 0.6} -- beats (must not have 100% alpha as it's drawn over the cursor(!))
+tracker.colors.linecolor3       = {1/256*180, 1/256*148, 1/256*120, 1} -- scroll indicating trangle thingy
+tracker.colors.linecolor4       = {1/256*204, 1/256*204, 1/256*68, 1} -- Reaper edit cursor
+tracker.colors.linecolor5       = {1/256*88, 1/256*64, 1/256*60, 0.6} -- Bar start
+tracker.colors.loopcolor        = {1/256*204, 1/256*204, 1/256*68, 1} -- lines surrounding loop
+tracker.colors.copypaste        = {1/256*24, 1/256*116, 1/256*44, 0.66}  -- the selection (should be lighter(not alpha blanded) but is drawn over the data)
+tracker.colors.scrollbar1       = {1/256*124, 1/256*88, 1/256*68, 1} -- scrollbar handle & outline
+tracker.colors.scrollbar2       = {1/256*180, 1/256*148, 1/256*120, 1} -- scrollbar background
+tracker.colors.changed          = {1, 1, 0, 1} -- don't know ?
+tracker.colors.windowbackground = {1/256*180, 1/256*148, 1/256*120, 1} --]]
+
+-- clear colour is in a different format cos why not
+gfx.clear =tracker.colors.windowbackground[1]*256+(tracker.colors.windowbackground[2]*256*256)+(tracker.colors.windowbackground[3]*256*256*256)
+
 tracker.hash = 0
 
 tracker.envShapes = {}
@@ -495,7 +539,8 @@ end
 function tracker:initColors()
   tracker.colors.linecolors  = alpha( tracker.colors.linecolor, 1.3 )
   tracker.colors.linecolor2s = alpha( tracker.colors.linecolor2, 1.3 )
-  tracker.colors.linecolor3s = alpha( tracker.colors.linecolor3, 0.5 )    
+  tracker.colors.linecolor3s = alpha( tracker.colors.linecolor3, 0.5 )
+  tracker.colors.linecolor5s = alpha( tracker.colors.linecolor5, 1.3 )    
 end
 
 -- Print contents of `tbl`, with indentation.
@@ -1045,7 +1090,10 @@ function tracker:printGrid()
     gfx.set(table.unpack(colors.headercolor))    
     gfx.printf("%3d", absy)
     local c1, c2
-    if ( (((absy-1)/4) - math.floor((absy-1)/4)) == 0 ) then
+    if ( (((absy-1)/16) - math.floor((absy-1)/16)) == 0 ) then -- TODO This should depend on current time signature
+      c1 = colors.linecolor5
+      c2 = colors.linecolor5s
+    elseif ( (((absy-1)/4) - math.floor((absy-1)/4)) == 0 ) then
       c1 = colors.linecolor2
       c2 = colors.linecolor2s
     else
