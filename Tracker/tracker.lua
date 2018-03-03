@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.21
+@version 1.22
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,9 @@
 
 --[[
  * Changelog:
+ * v1.22 (2018-03-04)
+   + Fixed bug mouse interaction
+   + Fixed bug titling the window
  * v1.21 (2018-03-03)
    + Added mouse interaction
  * v1.20 (2018-03-03)
@@ -150,7 +153,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.21"
+tracker.name = "Hackey Trackey v1.22"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -4752,38 +4755,37 @@ local function updateLoop()
       tracker.ypos = math.floor(loc*(tracker.rows+1))
       tracker:forceCursorInRange()
     end
+  end
+  
+  if ( left == 1  ) then
+    local Inew
+    local Jnew
+    local plotData  = tracker.plotData
+    local fov       = tracker.fov
+    local xloc      = plotData.xloc
+    local yloc      = plotData.yloc  
     
-    -- GO HERE
-    if ( left == 1  ) then
-      local Inew
-      local Jnew
-      local plotData  = tracker.plotData
-      local fov       = tracker.fov
-      local xloc      = plotData.xloc
-      local yloc      = plotData.yloc  
+    for i=1,#xloc-1 do
+      if ( ( gfx.mouse_x > xloc[i] ) and ( gfx.mouse_x < xloc[i+1] ) ) then
+        Inew = i
+      end
+    end
+    for i=1,#yloc-1 do
+      if ( ( gfx.mouse_y > yloc[i] ) and ( gfx.mouse_y < yloc[i+1] ) ) then
+        Jnew = i
+      end
+    end
     
-      for i=1,#xloc-1 do
-        if ( ( gfx.mouse_x > xloc[i] ) and ( gfx.mouse_x < xloc[i+1] ) ) then
-          Inew = i
-        end
-      end
-      for i=1,#yloc-1 do
-        if ( ( gfx.mouse_y > yloc[i] ) and ( gfx.mouse_y < yloc[i+1] ) ) then
-          Jnew = i
-        end
-      end
-      
-      if ( Inew and Jnew ) then        
-        -- Move the cursor pos on initial click
-        if ( tracker.lastleft == 0 ) then
-          tracker:resetShiftSelect()
-          tracker:dragBlock(Inew+fov.scrollx, Jnew+fov.scrolly)
-          tracker.xpos = Inew + fov.scrollx
-          tracker.ypos = Jnew + fov.scrolly
-        else
-          -- Change selection if it wasn't the initial click
-          tracker:dragBlock(Inew+fov.scrollx, Jnew+fov.scrolly)
-        end
+    if ( Inew and Jnew ) then        
+      -- Move the cursor pos on initial click
+      if ( tracker.lastleft == 0 ) then
+        tracker:resetShiftSelect()
+        tracker:dragBlock(Inew+fov.scrollx, Jnew+fov.scrolly)
+        tracker.xpos = Inew + fov.scrollx
+        tracker.ypos = Jnew + fov.scrolly
+      else
+        -- Change selection if it wasn't the initial click
+        tracker:dragBlock(Inew+fov.scrollx, Jnew+fov.scrolly)
       end
     end
   end
@@ -5171,7 +5173,7 @@ local function Main()
       
       local width, height = tracker:computeDims(48)
       tracker:updateNames()
-      gfx.init(self.windowTitle, width, height, 0, 200, 200)
+      gfx.init(tracker.windowTitle, width, height, 0, 200, 200)
       
       if ( tracker.outChannel ) then
         tracker:setOutChannel( tracker.outChannel )
