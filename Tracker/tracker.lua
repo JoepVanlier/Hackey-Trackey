@@ -228,6 +228,7 @@ tracker.grid.itempady  = 3
 tracker.scrollbar = {}
 tracker.scrollbar.size = 10
 
+tracker.zeroindexed = 0 -- TODO: When this is 1, make the 1st row display as 0 etc. -- r4dian
 tracker.hex = 1
 tracker.preserveOff = 1
 tracker.xpos = 1
@@ -260,63 +261,64 @@ tracker.lastmodtype = 1
 tracker.selectionBehavior = 0
 tracker.automationBug = 1 -- This fixes a bug in v5.70
 
+tracker.colorscheme = "buzz" -- "default", "buzz" or "it"
 -- If you come up with a cool alternative color scheme, let me know
 tracker.colors = {}
---[[
+if tracker.colorscheme == "defaut" then
 -- default
-tracker.colors.helpcolor    = {.8, .8, .9, 1}
-tracker.colors.helpcolor2   = {.7, .7, .9, 1}
-tracker.colors.selectcolor  = {1, 0, 1, 1}
-tracker.colors.textcolor    = {.7, .8, .8, 1}
-tracker.colors.headercolor  = {.5, .5, .8, 1}
-tracker.colors.linecolor    = {.1, .0, .4, .4}
-tracker.colors.linecolor2   = {.3, .0, .6, .4}
-tracker.colors.linecolor3   = {.4, .1, 1, 1}
-tracker.colors.linecolor4   = {.2, .0, 1, .5}
-tracker.colors.linecolor5   = {.3, .0, .6, .4}
-tracker.colors.loopcolor    = {.2, .3, .8, .5}
-tracker.colors.copypaste    = {5.0, .7, 0.1, .2}
-tracker.colors.scrollbar1   = {.2, .1, .6, 1.0}
-tracker.colors.scrollbar2   = {.1, .0, .3, 1.0}
-tracker.colors.changed      = {1.0, 0.1, 0.1, 1.0} 
-tracker.colors.windowbackground = {0, 0, 0, 1} --]]
-
--- Buzz
-tracker.colors.helpcolor        = {1/256*159, 1/256*147, 1/256*115, 1} -- the functions
-tracker.colors.helpcolor2       = {1/256*48, 1/256*48, 1/256*33, 1} -- the keys
-tracker.colors.selectcolor      = {1, 1, 1, 1} -- the cursor
-tracker.colors.textcolor        = {1/256*48, 1/256*48, 1/256*33, 1} -- main pattern data
-tracker.colors.headercolor      = {1/256*48, 1/256*48, 1/256*33, 1} -- column headers, statusbar etc
-tracker.colors.linecolor        = {1/256*218, 1/256*214, 1/256*201, 0} -- normal row
-tracker.colors.linecolor2       = {1/256*181, 1/256*189, 1/256*158, 0.4} -- beats (must not have 100% alpha as it's drawn over the cursor(!))
-tracker.colors.linecolor3       = {1/256*159, 1/256*147, 1/256*115, 1} -- scroll indicating trangle thingy
-tracker.colors.linecolor4       = {1, 1, 0, 1} -- Reaper edit cursor
-tracker.colors.linecolor5       = {1/256*159, 1/256*147, 1/256*115, 0.4} -- Bar start
-tracker.colors.loopcolor        = {1/256*48, 1/256*48, 1/256*33, 1} -- lines surrounding loop
-tracker.colors.copypaste        = {1/256*247, 1/256*247, 1/256*244, 0.66}  -- the selection (should be lighter(not alpha blanded) but is drawn over the data)
-tracker.colors.scrollbar1       = {1/256*48, 1/256*48, 1/256*33, 1} -- scrollbar handle & outline
-tracker.colors.scrollbar2       = {1/256*218, 1/256*214, 1/256*201, 1} -- scrollbar background
-tracker.colors.changed          = {1, 1, 0, 1} -- don't know ?
-tracker.colors.windowbackground = {1/256*218, 1/256*214, 1/256*201, 1} --]]
---[[
--- Reapulse Tracker (Impulse Tracker)
-tracker.colors.helpcolor        = {0, 0, 0, 1} -- the functions
-tracker.colors.helpcolor2       = {1/256*124, 1/256*88, 1/256*68, 1} -- the keys
-tracker.colors.selectcolor      = {1, 1, 1, 1} -- the cursor
-tracker.colors.textcolor        = {1, 1, 1, 1} --{1/256*60, 1/256*105, 1/256*59, 1} -- main pattern data (rows should all be darker & this should be green)
-tracker.colors.headercolor      = {0, 0, 0, 1} -- column headers, statusbar etc
-tracker.colors.linecolor        = {0,0,0, 0.6} -- normal row
-tracker.colors.linecolor2       = {1/256*52, 1/256*48, 1/256*44, 0.6} -- beats (must not have 100% alpha as it's drawn over the cursor(!))
-tracker.colors.linecolor3       = {1/256*180, 1/256*148, 1/256*120, 1} -- scroll indicating trangle thingy
-tracker.colors.linecolor4       = {1/256*204, 1/256*204, 1/256*68, 1} -- Reaper edit cursor
-tracker.colors.linecolor5       = {1/256*88, 1/256*64, 1/256*60, 0.6} -- Bar start
-tracker.colors.loopcolor        = {1/256*204, 1/256*204, 1/256*68, 1} -- lines surrounding loop
-tracker.colors.copypaste        = {1/256*24, 1/256*116, 1/256*44, 0.66}  -- the selection (should be lighter(not alpha blanded) but is drawn over the data)
-tracker.colors.scrollbar1       = {1/256*124, 1/256*88, 1/256*68, 1} -- scrollbar handle & outline
-tracker.colors.scrollbar2       = {1/256*180, 1/256*148, 1/256*120, 1} -- scrollbar background
-tracker.colors.changed          = {1, 1, 0, 1} -- don't know ?
-tracker.colors.windowbackground = {1/256*180, 1/256*148, 1/256*120, 1} --]]
-
+  tracker.colors.helpcolor    = {.8, .8, .9, 1}
+  tracker.colors.helpcolor2   = {.7, .7, .9, 1}
+  tracker.colors.selectcolor  = {1, 0, 1, 1}
+  tracker.colors.textcolor    = {.7, .8, .8, 1}
+  tracker.colors.headercolor  = {.5, .5, .8, 1}
+  tracker.colors.linecolor    = {.1, .0, .4, .4}
+  tracker.colors.linecolor2   = {.3, .0, .6, .4}
+  tracker.colors.linecolor3   = {.4, .1, 1, 1}
+  tracker.colors.linecolor4   = {.2, .0, 1, .5}
+  tracker.colors.linecolor5   = {.3, .0, .6, .4}
+  tracker.colors.loopcolor    = {.2, .3, .8, .5}
+  tracker.colors.copypaste    = {5.0, .7, 0.1, .2}
+  tracker.colors.scrollbar1   = {.2, .1, .6, 1.0}
+  tracker.colors.scrollbar2   = {.1, .0, .3, 1.0}
+  tracker.colors.changed      = {1.0, 0.1, 0.1, 1.0} 
+  tracker.colors.windowbackground = {0, 0, 0, 1}
+elseif tracker.colorscheme == "buzz" then
+  -- Buzz
+  tracker.colors.helpcolor        = {1/256*159, 1/256*147, 1/256*115, 1} -- the functions
+  tracker.colors.helpcolor2       = {1/256*48, 1/256*48, 1/256*33, 1} -- the keys
+  tracker.colors.selectcolor      = {1, 1, 1, 1} -- the cursor
+  tracker.colors.textcolor        = {1/256*48, 1/256*48, 1/256*33, 1} -- main pattern data
+  tracker.colors.headercolor      = {1/256*48, 1/256*48, 1/256*33, 1} -- column headers, statusbar etc
+  tracker.colors.linecolor        = {1/256*218, 1/256*214, 1/256*201, 0} -- normal row
+  tracker.colors.linecolor2       = {1/256*181, 1/256*189, 1/256*158, 0.4} -- beats (must not have 100% alpha as it's drawn over the cursor(!))
+  tracker.colors.linecolor3       = {1/256*159, 1/256*147, 1/256*115, 1} -- scroll indicating trangle thingy
+  tracker.colors.linecolor4       = {1, 1, 0, 1} -- Reaper edit cursor
+  tracker.colors.linecolor5       = {1/256*159, 1/256*147, 1/256*115, 0.4} -- Bar start
+  tracker.colors.loopcolor        = {1/256*48, 1/256*48, 1/256*33, 1} -- lines surrounding loop
+  tracker.colors.copypaste        = {1/256*247, 1/256*247, 1/256*244, 0.66}  -- the selection (should be lighter(not alpha blanded) but is drawn over the data)
+  tracker.colors.scrollbar1       = {1/256*48, 1/256*48, 1/256*33, 1} -- scrollbar handle & outline
+  tracker.colors.scrollbar2       = {1/256*218, 1/256*214, 1/256*201, 1} -- scrollbar background
+  tracker.colors.changed          = {1, 1, 0, 1} -- Uncommited resolution changes
+  tracker.colors.windowbackground = {1/256*218, 1/256*214, 1/256*201, 1}
+elseif tracker.colorscheme == "it" then
+  -- Reapulse Tracker (Impulse Tracker)
+  tracker.colors.helpcolor        = {0, 0, 0, 1} -- the functions
+  tracker.colors.helpcolor2       = {1/256*124, 1/256*88, 1/256*68, 1} -- the keys
+  tracker.colors.selectcolor      = {1, 1, 1, 1} -- the cursor
+  tracker.colors.textcolor        = {1, 1, 1, 1} --{1/256*60, 1/256*105, 1/256*59, 1} -- main pattern data (rows should all be darker & this should be green)
+  tracker.colors.headercolor      = {0, 0, 0, 1} -- column headers, statusbar etc
+  tracker.colors.linecolor        = {0,0,0, 0.6} -- normal row
+  tracker.colors.linecolor2       = {1/256*52, 1/256*48, 1/256*44, 0.6} -- beats (must not have 100% alpha as it's drawn over the cursor(!))
+  tracker.colors.linecolor3       = {1/256*180, 1/256*148, 1/256*120, 1} -- scroll indicating trangle thingy
+  tracker.colors.linecolor4       = {1/256*204, 1/256*204, 1/256*68, 1} -- Reaper edit cursor
+  tracker.colors.linecolor5       = {1/256*88, 1/256*64, 1/256*60, 0.6} -- Bar start
+  tracker.colors.loopcolor        = {1/256*204, 1/256*204, 1/256*68, 1} -- lines surrounding loop
+  tracker.colors.copypaste        = {1/256*24, 1/256*116, 1/256*44, 0.66}  -- the selection (should be lighter(not alpha blanded) but is drawn over the data)
+  tracker.colors.scrollbar1       = {1/256*124, 1/256*88, 1/256*68, 1} -- scrollbar handle & outline
+  tracker.colors.scrollbar2       = {1/256*180, 1/256*148, 1/256*120, 1} -- scrollbar background
+  tracker.colors.changed          = {1, 1, 0, 1}
+  tracker.colors.windowbackground = {1/256*180, 1/256*148, 1/256*120, 1}
+end
 -- clear colour is in a different format cos why not
 gfx.clear =tracker.colors.windowbackground[1]*256+(tracker.colors.windowbackground[2]*256*256)+(tracker.colors.windowbackground[3]*256*256*256)
 
@@ -344,95 +346,188 @@ tracker.debug = 0
 -- If you come up with good alternate layouts (maybe based on impulse, screamtracker
 -- or other language keyboards), please share them with me and I'll provide some form
 -- of chooser here.
+keyset = "default" -- "default" or "buzz"
 keys = {}
---                    CTRL    ALT SHIFT Keycode
-keys.left           = { 0,    0,  0,    1818584692 }    -- <-
-keys.right          = { 0,    0,  0,    1919379572 }    -- ->
-keys.up             = { 0,    0,  0,    30064 }         -- /\
-keys.down           = { 0,    0,  0,    1685026670 }    -- \/
-keys.off            = { 0,    0,  0,    45 }            -- -
-keys.delete         = { 0,    0,  0,    6579564 }       -- Del
-keys.delete2        = { 0,    0,  0,    46 }            -- .
-keys.home           = { 0,    0,  0,    1752132965 }    -- Home
-keys.End            = { 0,    0,  0,    6647396 }       -- End
-keys.toggle         = { 0,    0,  0,    32 }            -- Space
-keys.playfrom       = { 0,    0,  0,    13 }            -- Enter
-keys.insert         = { 0,    0,  0,    6909555 }       -- Insert
-keys.remove         = { 0,    0,  0,    8 }             -- Backspace
-keys.pgup           = { 0,    0,  0,    1885828464 }    -- Page up
-keys.pgdown         = { 0,    0,  0,    1885824110 }    -- Page down
-keys.undo           = { 1,    0,  0,    26 }            -- CTRL + Z
-keys.redo           = { 1,    0,  1,    26 }            -- CTRL + SHIFT + Z
-keys.beginBlock     = { 1,    0,  0,    2 }             -- CTRL + B
-keys.endBlock       = { 1,    0,  0,    5 }             -- CTRL + E
-keys.cutBlock       = { 1,    0,  0,    24 }            -- CTRL + X
-keys.pasteBlock     = { 1,    0,  0,    22 }            -- CTRL + V
-keys.copyBlock      = { 1,    0,  0,    3 }             -- CTRL + C
-keys.shiftItemUp    = { 0,    0,  1,    43 }            -- SHIFT + Num pad+
-keys.shiftItemDown  = { 0,    0,  1,    45 }            -- SHIFT + Num pad-
-keys.octaveup       = { 1,    0,  0,    30064 }         -- CTRL + /\
-keys.octavedown     = { 1,    0,  0,    1685026670 }    -- CTRL + \/
-keys.envshapeup     = { 1,    0,  1,    30064 }         -- CTRL + SHIFT + /\
-keys.envshapedown   = { 1,    0,  1,    1685026670 }    -- CTRL + SHIFT + /\
-keys.help           = { 0,    0,  0,    26161 }         -- F1
-keys.outchandown    = { 0,    0,  0,    26162 }         -- F2
-keys.outchanup      = { 0,    0,  0,    26163 }         -- F3
-keys.advancedown    = { 0,    0,  0,    26164 }         -- F4
-keys.advanceup      = { 0,    0,  0,    26165 }         -- F5
-keys.setloop        = { 1,    0,  0,    12 }            -- CTRL + L
-keys.setloopstart   = { 1,    0,  0,    17 }            -- CTRL + Q
-keys.setloopend     = { 1,    0,  0,    23 }            -- CTRL + W
-keys.interpolate    = { 1,    0,  0,    9 }             -- CTRL + I
-keys.shiftleft      = { 0,    0,  1,    1818584692 }    -- Shift + <-
-keys.shiftright     = { 0,    0,  1,    1919379572 }    -- Shift + ->
-keys.shiftup        = { 0,    0,  1,    30064 }         -- Shift + /\
-keys.shiftdown      = { 0,    0,  1,    1685026670 }    -- Shift + \/
-keys.deleteBlock    = { 0,    0,  1,    6579564 }       -- Shift + Del
-keys.resolutionUp   = { 1,    1,  0,    30064 }         -- CTRL + Alt + Up
-keys.resolutionDown = { 1,    1,  0,    1685026670 }    -- CTRL + Alt + Down
-keys.commit         = { 1,    1,  0,    13 }            -- CTRL + Alt + Enter
-keys.nextMIDI       = { 1,    0,  0,    1919379572.0 }  -- CTRL + ->
-keys.prevMIDI       = { 1,    0,  0,    1818584692.0 }  -- CTRL + <-
-keys.duplicate      = { 1,    0,  0,    4 }             -- CTRL + D
-keys.rename         = { 1,    0,  0,    14 }            -- CTRL + N
-keys.escape         = { 0,    0,  0,    27 }            -- Escape
-keys.toggleRec      = { 1,    0,  0,    18 }            -- CTRL + R
-keys.showMore       = { 1,    0,  0,    11 }            -- CTRL + +
-keys.showLess       = { 1,    0,  0,    13 }            -- CTRL + -
-keys.addCol         = { 1,    0,  1,    11 }            -- CTRL + Shift + +
-keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -
-keys.tab            = { 0,    0,  0,    9 }             -- Tab
-keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
+if keyset == "default" then
+  --                    CTRL    ALT SHIFT Keycode
+  keys.left           = { 0,    0,  0,    1818584692 }    -- <-
+  keys.right          = { 0,    0,  0,    1919379572 }    -- ->
+  keys.up             = { 0,    0,  0,    30064 }         -- /\
+  keys.down           = { 0,    0,  0,    1685026670 }    -- \/
+  keys.off            = { 0,    0,  0,    45 }            -- -
+  keys.delete         = { 0,    0,  0,    6579564 }       -- Del
+  keys.delete2        = { 0,    0,  0,    46 }            -- .
+  keys.home           = { 0,    0,  0,    1752132965 }    -- Home
+  keys.End            = { 0,    0,  0,    6647396 }       -- End
+  keys.toggle         = { 0,    0,  0,    32 }            -- Space
+  keys.playfrom       = { 0,    0,  0,    13 }            -- Enter
+  keys.insert         = { 0,    0,  0,    6909555 }       -- Insert
+  keys.remove         = { 0,    0,  0,    8 }             -- Backspace
+  keys.pgup           = { 0,    0,  0,    1885828464 }    -- Page up
+  keys.pgdown         = { 0,    0,  0,    1885824110 }    -- Page down
+  keys.undo           = { 1,    0,  0,    26 }            -- CTRL + Z
+  keys.redo           = { 1,    0,  1,    26 }            -- CTRL + SHIFT + Z
+  keys.beginBlock     = { 1,    0,  0,    2 }             -- CTRL + B
+  keys.endBlock       = { 1,    0,  0,    5 }             -- CTRL + E
+  keys.cutBlock       = { 1,    0,  0,    24 }            -- CTRL + X
+  keys.pasteBlock     = { 1,    0,  0,    22 }            -- CTRL + V
+  keys.copyBlock      = { 1,    0,  0,    3 }             -- CTRL + C
+  keys.shiftItemUp    = { 0,    0,  1,    43 }            -- SHIFT + Num pad+
+  keys.shiftItemDown  = { 0,    0,  1,    45 }            -- SHIFT + Num pad-
+  keys.octaveup       = { 1,    0,  0,    30064 }         -- CTRL + /\
+  keys.octavedown     = { 1,    0,  0,    1685026670 }    -- CTRL + \/
+  keys.envshapeup     = { 1,    0,  1,    30064 }         -- CTRL + SHIFT + /\
+  keys.envshapedown   = { 1,    0,  1,    1685026670 }    -- CTRL + SHIFT + /\
+  keys.help           = { 0,    0,  0,    26161 }         -- F1
+  keys.outchandown    = { 0,    0,  0,    26162 }         -- F2
+  keys.outchanup      = { 0,    0,  0,    26163 }         -- F3
+  keys.advancedown    = { 0,    0,  0,    26164 }         -- F4
+  keys.advanceup      = { 0,    0,  0,    26165 }         -- F5
+  keys.setloop        = { 1,    0,  0,    12 }            -- CTRL + L
+  keys.setloopstart   = { 1,    0,  0,    17 }            -- CTRL + Q
+  keys.setloopend     = { 1,    0,  0,    23 }            -- CTRL + W
+  keys.interpolate    = { 1,    0,  0,    9 }             -- CTRL + I
+  keys.shiftleft      = { 0,    0,  1,    1818584692 }    -- Shift + <-
+  keys.shiftright     = { 0,    0,  1,    1919379572 }    -- Shift + ->
+  keys.shiftup        = { 0,    0,  1,    30064 }         -- Shift + /\
+  keys.shiftdown      = { 0,    0,  1,    1685026670 }    -- Shift + \/
+  keys.deleteBlock    = { 0,    0,  1,    6579564 }       -- Shift + Del
+  keys.resolutionUp   = { 1,    1,  0,    30064 }         -- CTRL + Alt + Up
+  keys.resolutionDown = { 1,    1,  0,    1685026670 }    -- CTRL + Alt + Down
+  keys.commit         = { 1,    1,  0,    13 }            -- CTRL + Alt + Enter
+  keys.nextMIDI       = { 1,    0,  0,    1919379572.0 }  -- CTRL + ->
+  keys.prevMIDI       = { 1,    0,  0,    1818584692.0 }  -- CTRL + <-
+  keys.duplicate      = { 1,    0,  0,    4 }             -- CTRL + D
+  keys.rename         = { 1,    0,  0,    14 }            -- CTRL + N
+  keys.escape         = { 0,    0,  0,    27 }            -- Escape
+  keys.toggleRec      = { 1,    0,  0,    18 }            -- CTRL + R
+  keys.showMore       = { 1,    0,  0,    11 }            -- CTRL + +
+  keys.showLess       = { 1,    0,  0,    13 }            -- CTRL + -
+  keys.addCol         = { 1,    0,  1,    11 }            -- CTRL + Shift + +
+  keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -
+  keys.tab            = { 0,    0,  0,    9 }             -- Tab
+  keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
+elseif keyset == "buzz" then
+    --                    CTRL    ALT SHIFT Keycode
+    keys.left           = { 0,    0,  0,    1818584692 }    -- <-
+    keys.right          = { 0,    0,  0,    1919379572 }    -- ->
+    keys.up             = { 0,    0,  0,    30064 }         -- /\
+    keys.down           = { 0,    0,  0,    1685026670 }    -- \/
+    keys.off            = { 0,    0,  0,    96 }            -- ` (should be 1 but whatever)
+    keys.delete         = { 0,    0,  0,    6579564 }       -- Del
+    keys.delete2        = { 0,    0,  0,    46 }            -- .
+    keys.home           = { 0,    0,  0,    1752132965 }    -- Home
+    keys.End            = { 0,    0,  0,    6647396 }       -- End
+    keys.toggle         = { 0,    0,  0,    26165 }         -- f5 = play/pause
+    keys.playfrom       = { 0,    0,  0,    26166 }         -- f6 = play here 
+    -- TODO: would be nice to be able to set F8 = stop (and f12 = MIDI Panic!) - r4dian
+    keys.insert         = { 0,    0,  0,    6909555 }       -- Insert
+    keys.remove         = { 0,    0,  0,    8 }             -- Backspace
+    keys.pgup           = { 0,    0,  0,    1885828464 }    -- Page up
+    keys.pgdown         = { 0,    0,  0,    1885824110 }    -- Page down
+    keys.undo           = { 1,    0,  0,    26 }            -- CTRL + Z
+    keys.redo           = { 1,    0,  1,    26 }            -- CTRL + SHIFT + Z
+    keys.beginBlock     = { 1,    0,  0,    2 }             -- CTRL + B
+    keys.endBlock       = { 1,    0,  0,    5 }             -- CTRL + E
+    keys.cutBlock       = { 1,    0,  0,    24 }            -- CTRL + X
+    keys.pasteBlock     = { 1,    0,  0,    22 }            -- CTRL + V
+    keys.copyBlock      = { 1,    0,  0,    3 }             -- CTRL + C
+    keys.shiftItemUp    = { 0,    0,  1,    43 }            -- SHIFT + Num pad+
+    keys.shiftItemDown  = { 0,    0,  1,    45 }            -- SHIFT + Num pad-
+    keys.octaveup       = { 0,    0,  0,    42 }            -- *
+    keys.octavedown     = { 0,    0,  0,    47 }            -- /
+    keys.envshapeup     = { 1,    0,  1,    30064 }         -- CTRL + SHIFT + /\
+    keys.envshapedown   = { 1,    0,  1,    1685026670 }    -- CTRL + SHIFT + /\
+    keys.help           = { 0,    0,  0,    26161 }         -- F1
+    keys.outchanup      = { 1,    0,  0,    30064 }         -- CTRL + UP   (Buzz = next instrument)
+    keys.outchandown    = { 1,    0,  0,    1685026670 }    -- CTRL + DOWN (Buzz = prev instrument)
+    keys.advancedown    = { 1,    0,  0,    26161 }         -- CTRL + F1 (in Buzz CTRL + -1 = sets step to 1, but that didn't work here)
+    keys.advanceup      = { 1,    0,  0,    26162 }         -- CTRL + F2 (in Buzz CTRL + 2 = sets step to 2, but that didn't work here)
+    keys.setloop        = { 1,    0,  0,    12 }            -- CTRL + L (no equiv, would be done in F4 seq view)
+    keys.setloopstart   = { 1,    0,  0,    17 }            -- CTRL + Q (ditto)
+    keys.setloopend     = { 1,    0,  0,    23 }            -- CTRL + W (ditto)
+    keys.interpolate    = { 1,    0,  0,    9 }             -- CTRL + I
+    keys.shiftleft      = { 0,    0,  1,    1818584692 }    -- Shift + <-
+    keys.shiftright     = { 0,    0,  1,    1919379572 }    -- Shift + ->
+    keys.shiftup        = { 0,    0,  1,    30064 }         -- Shift + /\
+    keys.shiftdown      = { 0,    0,  1,    1685026670 }    -- Shift + \/
+    keys.deleteBlock    = { 0,    0,  1,    6579564 }       -- Shift + Del
+    keys.resolutionUp   = { 1,    1,  0,    30064 }         -- CTRL + Alt + Up    (no equiv, would be set in pattern properties)
+    keys.resolutionDown = { 1,    1,  0,    1685026670 }    -- CTRL + Alt + Down  (ditto)
+    keys.commit         = { 1,    1,  0,    13 }            -- CTRL + Alt + Enter (ditto)
+    keys.nextMIDI       = { 0,    0,  0,    43 }            -- +
+    keys.prevMIDI       = { 0,    0,  0,    45 }            -- -
+    keys.duplicate      = { 1,    0,  1,    13 }            -- CTRL + Shift + Return = create copy
+    keys.rename         = { 1,    0,  0,    8 }             -- CTRL + Backspace = pattern properties (where name is set)
+    keys.escape         = { 0,    0,  0,    27 }            -- Escape
+    keys.toggleRec      = { 0,    0,  0,    26167 }         -- f7 = record ...I wanted ALT + N = Play _N_otes, but it didn't work ¯\_(ツ)_/¯
+    keys.showMore       = { 1,    0,  0,    11 }            -- CTRL + +
+    keys.showLess       = { 1,    0,  0,    13 }            -- CTRL + -
+    keys.addCol         = { 1,    0,  1,    11 }            -- CTRL + Shift + +
+    keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -
+    keys.tab            = { 0,    0,  0,    9 }             -- Tab
+    keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
+end
 
-help = {
-  { 'Arrow Keys', 'Move' },
-  { '-', 'Note OFF' },
-  { 'Insert/Backspace', 'Insert/Remove line' },   
-  { 'Del/.', 'Delete' }, 
-  { 'Space / Return', 'Play/Play from here' },
-  { 'CTRL + L', 'Set loop to pattern' },
-  { 'CTRL + Q/W', 'Set loop start/end' },
-  { 'Shift + +/-', 'Transpose selection' },
-  { 'CTRL + B/E', 'Begin/End selection' },
-  { 'SHIFT + arrow keys', 'Block selection' },
-  { 'CTRL + C/X/V', 'Copy / Cut / Paste' },
-  { 'CTRL + I', 'Interpolate' },
-  { 'Shift + Del', 'Delete block' },
-  { 'CTRL + (SHIFT) + Z', 'Undo / Redo' }, 
-  { 'CTRL + ALT + Up/Down', 'Adjust [res]olution' },
-  { 'CTRL + ALT + Enter', 'Commit [res]olution' },  
-  { 'CTRL + Up/Down', 'In/Decrease [oct]ave' },     
-  { 'CTRL + Shift + Up/Down', 'Change [env]elope' },    
-  { 'F4/F5', 'De/Increase [adv]ance' },
-  { 'F2/F3', 'MIDI [out] down/up' },  
-  { 'CTRL + Left/Right', 'Switch MIDI item' },
-  { 'CTRL + D', 'Duplicate pattern' },
-  { 'CTRL + N', 'Rename pattern' },
-  { 'CTRL + R', 'Toggle note play' },
-  { 'CTRL + +/-', 'Advanced options (note delay)' },
-  { 'CTRL + Shift + +/-', 'Add CC (adv mode)' }
-}
-
+if keyset == "default" then
+  help = {
+    { 'Arrow Keys', 'Move' },
+    { '-', 'Note OFF' },
+    { 'Insert/Backspace', 'Insert/Remove line' },   
+    { 'Del/.', 'Delete' }, 
+    { 'Space / Return', 'Play/Play from here' },
+    { 'CTRL + L', 'Set loop to pattern' },
+    { 'CTRL + Q/W', 'Set loop start/end' },
+    { 'Shift + +/-', 'Transpose selection' },
+    { 'CTRL + B/E', 'Begin/End selection' },
+    { 'SHIFT + Arrow Keys', 'Block selection' },
+    { 'CTRL + C/X/V', 'Copy / Cut / Paste' },
+    { 'CTRL + I', 'Interpolate' },
+    { 'Shift + Del', 'Delete block' },
+    { 'CTRL + (SHIFT) + Z', 'Undo / Redo' }, 
+    { 'CTRL + ALT + Up/Down', 'Adjust [res]olution' },
+    { 'CTRL + ALT + Enter', 'Commit [res]olution' },  
+    { 'CTRL + Up/Down', 'In/Decrease [oct]ave' },     
+    { 'CTRL + Shift + Up/Down', 'Change [env]elope' },    
+    { 'F4/F5', 'De/Increase [adv]ance' },
+    { 'F2/F3', 'MIDI [out] down/up' },  
+    { 'CTRL + Left/Right', 'Switch MIDI item' },
+    { 'CTRL + D', 'Duplicate pattern' },
+    { 'CTRL + N', 'Rename pattern' },
+    { 'CTRL + R', 'Toggle note play' },
+    { 'CTRL + +/-', 'Advanced options (note delay)' },
+    { 'CTRL + Shift + +/-', 'Add CC (adv mode)' }
+  }
+elseif keyset == "buzz" then
+    help = {
+      { 'Arrow Keys', 'Move' },
+      { '`', 'Note OFF' },
+      { 'Insert/Backspace', 'Insert/Remove line' },   
+      { 'Del/.', 'Delete' }, 
+      { 'F5/F6', 'Play/Play from here' },
+      { 'CTRL + L', 'Set loop to pattern' },
+      { 'CTRL + Q/W', 'Set loop start/end' },
+      { 'Shift + +/-', 'Transpose selection' },
+      { 'CTRL + B/E', 'Begin/End selection' },
+      { 'SHIFT + Arrow Keys', 'Block selection' },
+      { 'CTRL + C/X/V', 'Copy / Cut / Paste' },
+      { 'CTRL + I', 'Interpolate' },
+      { 'Shift + Del', 'Delete block' },
+      { 'CTRL + (SHIFT) + Z', 'Undo / Redo' }, 
+      { 'CTRL + ALT + Up/Down', 'Adjust [res]olution' },
+      { 'CTRL + ALT + Return', 'Commit [res]olution' },  
+      { '*//', 'In/Decrease [oct]ave' },     
+      { 'CTRL + Shift + Up/Down', 'Change [env]elope' },    
+      { 'CTRL + F1/F2', 'De/Increase [adv]ance' },
+      { 'CTRL + Up/Down', 'MIDI [out] up/down' },  
+      { '-/+', 'Switch MIDI item' },
+      { 'CTRL + Shift + Return', 'Duplicate pattern' },
+      { 'CTRL + Backspace', 'Rename pattern' },
+      { 'F7', 'Toggle note play' },
+      { 'CTRL + +/-', 'Advanced options (note delay)' },
+      { 'CTRL + Shift + +/-', 'Add CC (adv mode)' }
+    }
+end
 --- Base pitches
 --- Can customize the 'keyboard' here, if they aren't working for you
 keys.pitches = {}
