@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="2e39562fe47a6da07858834a9aeb64c7e015d903">
+<index version="1" name="Tracker tools" commit="b01d1d5256a53cfb1944a64f8731366bb4eab82a">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -134,6 +134,10 @@ here
       <version name="1.19" author=": Joep Vanlier" time="2018-02-27T19:59:51Z">
         <changelog><![CDATA[+ Fix loss of docking status]]></changelog>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/2e39562fe47a6da07858834a9aeb64c7e015d903/Tracker/tracker.lua</source>
+      </version>
+      <version name="1.21" author=": Joep Vanlier" time="2018-03-03T18:15:18Z">
+        <changelog><![CDATA[+ Added mouse interaction]]></changelog>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/b01d1d5256a53cfb1944a64f8731366bb4eab82a/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
