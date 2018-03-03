@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.19
+@version 1.21
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,10 @@
 
 --[[
  * Changelog:
+ * v1.21 (2018-03-03)
+   + Added mouse interaction
+ * v1.20 (2018-03-03)
+   + Added buzz hotkeys
  * v1.19 (2018-02-27)
    + Fix loss of docking status
  * v1.18 (2018-02-27)
@@ -146,7 +150,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.19"
+tracker.name = "Hackey Trackey v1.21"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -4310,26 +4314,35 @@ function tracker:resetShiftSelect()
   end
 end
 
-function tracker:dragBlock()
+function tracker:dragBlock(cx, cy)
   local cp = self.cp
+  local xp, yp
+  if ( not cx ) then
+    xp = tracker.xpos
+    yp = tracker.ypos
+  else
+    xp = cx
+    yp = cy
+  end
+  
   if ( not cp.lastShiftCoord ) then
     cp.lastShiftCoord = {}
-    cp.lastShiftCoord.x = tracker.xpos
-    cp.lastShiftCoord.y = tracker.ypos
+    cp.lastShiftCoord.x = xp
+    cp.lastShiftCoord.y = yp
   end
   local xstart, xend, ystart, yend
-  if ( tracker.xpos > cp.lastShiftCoord.x ) then
+  if ( xp > cp.lastShiftCoord.x ) then
     xstart  = cp.lastShiftCoord.x
-    xend    = tracker.xpos
+    xend    = xp
   else
-    xstart  = tracker.xpos
+    xstart  = xp
     xend    = cp.lastShiftCoord.x
   end
-  if ( tracker.ypos > cp.lastShiftCoord.y ) then
+  if ( yp > cp.lastShiftCoord.y ) then
     ystart  = cp.lastShiftCoord.y
-    yend    = tracker.ypos
+    yend    = yp
   else
-    ystart  = tracker.ypos
+    ystart  = yp
     yend    = cp.lastShiftCoord.y
   end
   
@@ -4735,7 +4748,42 @@ local function updateLoop()
       tracker.ypos = math.floor(loc*(tracker.rows+1))
       tracker:forceCursorInRange()
     end
+    
+    -- GO HERE
+    if ( left == 1  ) then
+      local Inew
+      local Jnew
+      local plotData  = tracker.plotData
+      local fov       = tracker.fov
+      local xloc      = plotData.xloc
+      local yloc      = plotData.yloc  
+    
+      for i=1,#xloc-1 do
+        if ( ( gfx.mouse_x > xloc[i] ) and ( gfx.mouse_x < xloc[i+1] ) ) then
+          Inew = i
+        end
+      end
+      for i=1,#yloc-1 do
+        if ( ( gfx.mouse_y > yloc[i] ) and ( gfx.mouse_y < yloc[i+1] ) ) then
+          Jnew = i
+        end
+      end
+      
+      if ( Inew and Jnew ) then        
+        -- Move the cursor pos on initial click
+        if ( tracker.lastleft == 0 ) then
+          tracker:resetShiftSelect()
+          tracker:dragBlock(Inew+fov.scrollx, Jnew+fov.scrolly)
+          tracker.xpos = Inew + fov.scrollx
+          tracker.ypos = Jnew + fov.scrolly
+        else
+          -- Change selection if it wasn't the initial click
+          tracker:dragBlock(Inew+fov.scrollx, Jnew+fov.scrolly)
+        end
+      end
+    end
   end
+  tracker.lastleft = left
   
   if ( gfx.mouse_wheel ~= 0 ) then
     tracker.ypos = tracker.ypos - math.floor( gfx.mouse_wheel / 120 )
