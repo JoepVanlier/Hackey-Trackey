@@ -232,7 +232,7 @@ tracker.grid.itempady  = 3
 tracker.scrollbar = {}
 tracker.scrollbar.size = 10
 
-tracker.zeroindexed = 0 -- TODO: When this is 1, make the 1st row display as 0 etc. -- r4dian
+tracker.zeroindexed = 1
 tracker.hex = 1
 tracker.preserveOff = 1
 tracker.xpos = 1
@@ -1190,8 +1190,12 @@ function tracker:printGrid()
     gfx.y = yloc[y]
     gfx.x = xloc[1] - plotData.indicatorShiftX
     local absy = y + scrolly
-    gfx.set(table.unpack(colors.headercolor))    
-    gfx.printf("%3d", absy)
+    gfx.set(table.unpack(colors.headercolor))
+    if tracker.zeroindexed == 1 then
+      gfx.printf("%3d", absy-1)
+    else
+      gfx.printf("%3d", absy)
+    end
     local c1, c2
     if ( (((absy-1)/16) - math.floor((absy-1)/16)) == 0 ) then -- TODO This should depend on current time signature
       c1 = colors.linecolor5
