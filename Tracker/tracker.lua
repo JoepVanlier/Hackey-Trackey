@@ -1,10 +1,10 @@
---[[
+﻿--[[
 @description Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.
 @author: Joep Vanlier
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.24
+@version 1.25
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,8 @@
 
 --[[
  * Changelog:
+ * v1.25 (2018-03-17)
+   + Fixed issue with pasting block over pattern end giving nil problems
  * v1.24 (2018-03-17)
    + Allow pattern resize (click pattern length and type new value)
  * v1.23 (2018-03-12)
@@ -159,7 +161,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.24"
+tracker.name = "Hackey Trackey v1.25"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -1695,7 +1697,7 @@ function tracker:addNotePpq(startppqpos, endppqpos, chan, pitch, velocity)
   local endrow = self:ppqToRow(endppqpos)
 
   if ( chan == 1 ) then
-    if ( self.legato[endrow] > -1 ) then
+    if ( self.legato[endrow] and self.legato[endrow] > -1 ) then
       endppqpos = endppqpos + tracker.magicOverlap
     end
   end
@@ -3940,7 +3942,7 @@ function tracker:clearBlock(incp)
       for jy = cp.ystart, cp.ystop do
         -- If we are a legato note, make sure that the previous one gets shortened
         -- otherwise things won't fit.
-        if ( legatoDone == 0 and chan == 1 and self.legato[jy-1] > -1 ) then
+        if ( legatoDone == 0 and chan == 1 and self.legato[jy] and self.legato[jy-1] > -1 ) then
           tracker:deleteLegato( jy-1, 1 )
           legatoDone = 1
         end
