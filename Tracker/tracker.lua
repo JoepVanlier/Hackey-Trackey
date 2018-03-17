@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.23
+@version 1.24
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,8 @@
 
 --[[
  * Changelog:
+ * v1.24 (2018-03-17)
+   + Allow pattern resize (click pattern length and type new value)
  * v1.23 (2018-03-12)
    + Persistent settings
    + Added MIDI panic button (F12)
@@ -157,7 +159,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.23"
+tracker.name = "Hackey Trackey v1.24"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -1178,7 +1180,18 @@ function scrollbar.create( w )
 end
 
 
-
+function tracker:getSizeIndicatorLocation()
+  local plotData  = self.plotData
+  local xloc      = plotData.xloc
+  local yloc      = plotData.yloc
+  local yheight   = plotData.yheight
+  local xl = xloc[1] - plotData.indicatorShiftX
+  local yl = yloc[#yloc] + plotData.indicatorShiftY
+  local xm = xl + (xloc[2]-xloc[1])*3
+  local ym = yl+yheight[1]-6
+  
+  return xl, yl, xm, ym
+end
 
 ------------------------------
 -- Draw the GUI
@@ -1251,6 +1264,29 @@ function tracker:printGrid()
     end
   end
   
+  -- Pattern Length Indicator
+  local xl, yl, xm, ym = self:getSizeIndicatorLocation()
+  gfx.y = yl
+  gfx.x = xl
+  if ( self.renaming == 3 ) then
+    gfx.set(table.unpack(colors.changed))
+    gfx.printf("%3s", tracker.newLength)
+  else
+    gfx.set(table.unpack(colors.textcolor))
+    gfx.printf("%3d", self.max_ypos)
+  end 
+  
+  gfx.y = yl
+  gfx.x = xl
+  if ( self.renaming ~= 3 ) then
+    gfx.set(table.unpack(colors.linecolor3s))
+    gfx.printf("%3d", self.max_ypos)
+  end
+  
+  gfx.line(xl, yl-2, xm,  yl-2)
+  gfx.line(xl, ym,   xm,  ym)
+  gfx.line(xm, ym,   xm,  yl-2)
+
   ------------------------------
   -- Field descriptions
   ------------------------------
@@ -4821,6 +4857,52 @@ function tracker:seekMIDI( dir )
   end  
 end
 
+function tracker:resizePattern()
+  local newLen = tonumber(self.newLength)
+  if ( newLen and ( newLen > 0 ) ) then
+    local glueCmd = 40362
+    local newLenS = newLen / self.rowPerSec
+    
+    -- Select the correct items
+    reaper.SelectAllMediaItems(0, false)
+    -- Deselect everything
+    reaper.Main_OnCommand(40289, 0)
+    
+    -- Select my take and automation stuff
+    reaper.SetMediaItemSelected(tracker.item, true)
+    local cnt = reaper.CountTrackEnvelopes(self.track)
+    local autoidx = nil
+    for i = 0,cnt-1 do
+      local envidx = reaper.GetTrackEnvelope(self.track, i)
+      autoidx = self:findMyAutomation( envidx )
+      if ( autoidx ) then
+        reaper.GetSetAutomationItemInfo(envidx, autoidx, "D_UISEL", 1, true)
+      end
+    end
+    
+    -- Glue it (prevents unpredictable loops that were outside the pattern range)
+    reaper.Main_OnCommand(glueCmd, 0)
+    reaper.Main_OnCommand(42089, 0)
+    reaper.SetMediaItemInfo_Value(self.item, "D_LENGTH", newLenS )
+    
+    -- Resize it
+    local cnt = reaper.CountTrackEnvelopes(self.track)
+    local autoidx = nil
+    for i = 0,cnt-1 do
+      local envidx = reaper.GetTrackEnvelope(self.track, i)
+      autoidx = self:findMyAutomation( envidx )
+      if ( autoidx ) then
+        local len = reaper.GetSetAutomationItemInfo(envidx, autoidx, "D_LENGTH", newLenS, true)
+      end
+    end    
+    
+    -- Glue it again
+    reaper.Main_OnCommand(glueCmd, 0)
+    reaper.Main_OnCommand(42089, 0)    
+    self:forceUpdate()
+  end
+end
+
 ------------------------------
 -- Main update loop
 -----------------------------
@@ -4870,6 +4952,19 @@ local function updateLoop()
     local fov       = tracker.fov
     local xloc      = plotData.xloc
     local yloc      = plotData.yloc  
+    
+    -- Mouse on track size indicator?
+    local xl, yl, xm, ym = tracker:getSizeIndicatorLocation()
+    if ( gfx.mouse_y > yl ) then
+      if ( gfx.mouse_y < ym ) then
+        if ( gfx.mouse_x > xl ) then
+          if ( gfx.mouse_x < xm ) then
+            tracker.renaming = 3
+            tracker.newLength = tostring(tracker.max_ypos)
+          end
+        end
+      end
+    end
     
     -- Mouse in range of pattern data?
     for i=1,#xloc-1 do
@@ -5219,6 +5314,21 @@ local function updateLoop()
       if ( pcall( function () string.char( lastChar ) tonumber(lastChar) end ) ) then
         local str = string.char( lastChar )
         tracker.newCol = string.format( '%s%s', tracker.newCol, str )
+      end
+    end
+  elseif ( tracker.renaming == 3 ) then
+    -- Resizing pattern
+    if inputs( 'playfrom' ) then
+      tracker.renaming = 0
+      tracker:resizePattern()
+    elseif( inputs( 'escape' ) ) then
+      tracker.renaming = 0
+    elseif( inputs( 'remove' ) ) then
+      tracker.newLength = tracker.newLength:sub(1, tracker.newLength:len()-1)
+    elseif ( lastChar > 0 ) then
+      if ( pcall( function () string.char( lastChar ) tonumber(lastChar) end ) ) then
+        local str = string.char( lastChar )
+        tracker.newLength = string.format( '%s%s', tracker.newLength:sub(1,2), str )
       end
     end
   end
