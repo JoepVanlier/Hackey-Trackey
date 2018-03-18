@@ -1,10 +1,10 @@
-﻿--[[
+--[[
 @description Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.
 @author: Joep Vanlier
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.25
+@version 1.26
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,8 @@
 
 --[[
  * Changelog:
+ * v1.26 (2018-03-18)
+   + Fixed rare bug change in pattern length
  * v1.25 (2018-03-17)
    + Fixed issue with pasting block over pattern end giving nil problems
  * v1.24 (2018-03-17)
@@ -161,7 +163,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.25"
+tracker.name = "Hackey Trackey v1.26"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -4900,8 +4902,8 @@ function tracker:resizePattern()
     
     -- Glue it again
     reaper.Main_OnCommand(glueCmd, 0)
-    reaper.Main_OnCommand(42089, 0)    
-    self:forceUpdate()
+    reaper.Main_OnCommand(42089, 0)
+    tracker:checkChange()
   end
 end
 
