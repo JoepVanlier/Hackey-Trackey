@@ -35,6 +35,8 @@ channel (OUT) can be changed with the F1 (down) and F2 (up) keys. Setting
 the output channel to zero (displays as C) maps each column to a separate 
 MIDI channel. Note that column one goes to MIDI channel 2 and so forth.
 
+![Pattern info](https://i.imgur.com/bypeHXu.png)
+
 ### Can I automate parameters?
 Yes! Parameters for which envelopes are active (see automation panel in image 
 below), will automatically show up in the tracker. The tracker will store the 
@@ -65,6 +67,14 @@ tracker.modMode to 1.
 Yes. They do not and this is considered out of scope for the tracker. If you wish 
 to interpolate CC commands, I suggest you use ReaControlMIDI to map the CC commands 
 to an FX envelope. These you can then use in the same way as the parameters.
+
+### I don't hear the notes I play.
+Did you arm the track? Hit CTRL+R to arm hackey trackey for note playback.
+If this does not work, please open an issue as this may be a bug.
+
+### Can I change the pattern length from the tracker?
+Yes. Click the pattern length indicator in the bottom left of the tracker. You can 
+enter a new value here.
 
 ### All my notes sound very staccato? What's going on?
 By default, tracked notes do not overlap. However, for some purposes, overlap may be
