@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.26
+@version 1.27
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,8 @@
 
 --[[
  * Changelog:
+ * v1.27 (2018-03-22)
+   + Fixed bug in copy/paste system when copying full rows
  * v1.26 (2018-03-18)
    + Fixed rare bug change in pattern length
  * v1.25 (2018-03-17)
@@ -163,7 +165,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.26"
+tracker.name = "Hackey Trackey v1.27"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -3936,9 +3938,16 @@ function tracker:clearBlock(incp)
     print( "Clearing block [" .. cp.xstart .. ", " .. cp.xstop .. "] [" .. cp.ystart .. ", " .. cp.ystop .. "]" );
   end
 
+  local xstart = cp.xstart
+  local xstop = cp.xstop  
+  if ( cp.all == 1 ) then
+    xstart = 1
+    xstop = tracker.displaychannels
+  end
+
   -- Cut out the block. Note that this creates 'stops' at the start of the block
   local legatoDone = 0 
-  for jx = cp.xstart, cp.xstop do
+  for jx = xstart, xstop do
     local chan = idxfields[ jx ]
     if ( datafields[jx] == 'text' ) then 
       for jy = cp.ystart, cp.ystop do
@@ -4000,7 +4009,14 @@ function tracker:mendBlock()
   local singlerow = self:rowToPpq(1)
   local cp        = self.cp 
   
-  for jx = cp.xstart, cp.xstop do
+  local xstart = cp.xstart
+  local xstop = cp.xstop  
+  if ( cp.all == 1 ) then
+    xstart = 1
+    xstop = tracker.displaychannels
+  end
+  
+  for jx = xstart, xstop do
     local chan = idxfields[ jx ]
     if ( cp.ystart > 1 ) then
       if ( datafields[jx] == 'text' ) then
@@ -4155,7 +4171,7 @@ function tracker:pasteClipboard()
     
     jx = jx + self:getAdvance(chtype)
   end
-  
+
   -- Determine the shift we need to apply to the current position to get to the start
   -- of the clipboard
   local cpShift = self.colref[ datafields[self.xpos] ]
@@ -4248,10 +4264,17 @@ function tracker:copyToClipboard()
   
   newclipboard.refppq = self:rowToPpq( cp.ystart - 1 )
   local maxppq    = self:rowToPpq(cp.ystop)
-    
+
+  local xstart = cp.xstart
+  local xstop = cp.xstop  
+  if ( cp.all == 1 ) then
+    xstart = 1
+    xstop = tracker.displaychannels
+  end
+
   -- All we should be copying is note starts and note stops
-  local jx = cp.xstart
-  while ( jx <= cp.xstop ) do
+  local jx = xstart
+  while ( jx <= xstop ) do
     self:addChannelToClipboard( newclipboard, datafields[jx] )
     local chan = idxfields[jx]
     local chtype = datafields[jx]  
