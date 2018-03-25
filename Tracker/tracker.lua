@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.27
+@version 1.28
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,8 @@
 
 --[[
  * Changelog:
+ * v1.28 (2018-03-24)
+   + Started implementing scale helpers (WIP)
  * v1.27 (2018-03-22)
    + Fixed bug in copy/paste system when copying full rows
  * v1.26 (2018-03-18)
@@ -165,7 +167,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.27"
+tracker.name = "Hackey Trackey v1.28"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -265,8 +267,10 @@ tracker.maxRowPerQn = 16
 
 tracker.helpActive = 0
 tracker.optionsActive = 0
-tracker.helpwidth = 370
+tracker.scaleActive = 0
+tracker.helpwidth = 380
 tracker.optionswidth = 370
+tracker.scalewidth = 500
 tracker.renaming = 0
 
 tracker.cp = {}
@@ -453,7 +457,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + D', 'Duplicate pattern' },
       { 'CTRL + N', 'Rename pattern' },
       { 'CTRL + R', 'Toggle note play' },
-      { 'CTRL + +/-', 'Advanced options (note delay)' },
+      { 'CTRL + +/-', 'Advanced col options' },
       { 'CTRL + Shift + +/-', 'Add CC (adv mode)' }
     }    
     
@@ -546,7 +550,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Shift + Return', 'Duplicate pattern' },
       { 'CTRL + Backspace', 'Rename pattern' },
       { 'F7', 'Toggle note play' },
-      { 'CTRL + +/-', 'Advanced options (note delay)' },
+      { 'CTRL + +/-', 'Advanced col options' },
       { 'CTRL + Shift + +/-', 'Add CC (adv mode)' }
     }
   end
@@ -570,6 +574,8 @@ tracker.maxPatternNameSize = 13
 tracker.hint = '';
 
 tracker.debug = 0
+
+keys.Cbase = 24-12
 
 --- Base pitches
 --- Can customize the 'keyboard' here, if they aren't working for you
@@ -683,6 +689,12 @@ function tracker:initColors()
   tracker.colors.linecolor2s = alpha( tracker.colors.linecolor2, 1.3 )
   tracker.colors.linecolor3s = alpha( tracker.colors.linecolor3, 0.5 )
   tracker.colors.linecolor5s = alpha( tracker.colors.linecolor5, 1.3 )    
+end
+
+local function get_script_path()
+  local info = debug.getinfo(1,'S');
+  local script_path = info.source:match[[^@?(.*[\/])[^\/]-$]]
+  return script_path
 end
 
 -- Print contents of `tbl`, with indentation.
@@ -1437,18 +1449,102 @@ function tracker:printGrid()
   ----------------------------------
   
   if ( tracker.helpActive == 1 ) then
+    local scales = scales
     local help = help
     local helpwidth = self.helpwidth
     local ys = plotData.ystart - 1.3*plotData.indicatorShiftY
+    local xs = plotData.xstart + tw
+    if ( self.scaleActive == 1 ) then
+      xs = xs + self.scalewidth * 1
+    end
     for i,v in pairs( help ) do
       gfx.set(table.unpack(colors.helpcolor))
-      gfx.x = plotData.xstart + tw + 0.5*helpwidth + 4*itempadx
+      gfx.x = xs + 0.5*helpwidth + 4*itempadx
       gfx.y = ys
       gfx.printf(v[2])
       gfx.set(table.unpack(colors.helpcolor2))
-      gfx.x = plotData.xstart + tw + helpwidth - 8.2 * string.len(v[1]) - 0.5 * helpwidth + 2*itempadx
+      gfx.x = xs + helpwidth - 8.2 * string.len(v[1]) - 0.5 * helpwidth + 2*itempadx
       gfx.printf(v[1])      
       ys = ys + yheight[1]
+    end
+  end
+  
+  if ( tracker.scaleActive == 1 ) then
+    local xs, ys, scaleY, keyMapH, scaleW, chordW, noteW, chordAreaY = self:chordLocations()
+    local xwidth       = plotData.xwidth
+    local names        = scales.names
+    local progressions = scales.progressions
+    
+    gfx.set(table.unpack(colors.helpcolor2))
+    gfx.x = xs + self.scalewidth - 4 * noteW
+    gfx.y = ys
+    gfx.printf( "Harmony helper" )
+    
+    gfx.x = xs
+    gfx.y = ys
+    gfx.printf( "Current scale: " .. scales:getScale() .. " " .. scales:getScaleNote(1) .. " (" .. scales:scaleNotes() .. ")"  )
+
+    gfx.y = scaleY
+    local curx = xs
+    local root = scales:getRootValue()
+    for k = 1,12 do
+      local notetxt = scales:getNote(k)
+      gfx.x = curx + 0.5 * noteW - 0.1 * noteW * (#notetxt-1)
+      if ( k == root ) then
+        gfx.set(table.unpack(colors.textcolor))
+      else
+        gfx.set(table.unpack(colors.helpcolor))
+      end
+      gfx.printf( notetxt )
+          
+      curx = curx + noteW
+    end
+    gfx.set(table.unpack(colors.textcolor))
+    
+    local cury = ys + chordAreaY - keyMapH
+    local curx = xs + scaleW
+    
+    -- Currently marked for major, could choose to incorporate others
+    local markings = { 'I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii0' }
+    for k = 1,7 do
+      gfx.x = curx
+      gfx.y = cury
+      gfx.printf( markings[k] )
+          
+      curx = curx + chordW
+    end    
+    cury = cury + keyMapH
+    gfx.set(table.unpack(colors.helpcolor))
+    gfx.line(xs-5, cury-4, xs+self.scalewidth*0.95, cury-5)
+    gfx.set(table.unpack(colors.textcolor))
+    local selectedScale = scales:getScaleValue()
+    for i = 1,#names do
+      gfx.x = xs
+      gfx.y = cury
+      local scaleName = scales.names[i]
+      if ( i == selectedScale ) then
+        gfx.set(table.unpack(colors.textcolor))      
+      else
+        gfx.set(table.unpack(colors.helpcolor))
+      end
+      gfx.printf( scaleName )
+      gfx.set(table.unpack(colors.textcolor))
+      
+      local chordmap = progressions[scaleName]
+      for j = 1,#(chordmap[1].notes) do
+        local curx = xs + scaleW
+        for k = 1,7 do
+          gfx.x = curx
+          gfx.y = cury
+          gfx.printf( chordmap[k].names[j] )
+          
+          curx = curx + chordW
+        end
+        cury = cury + keyMapH
+      end
+      gfx.set(table.unpack(colors.helpcolor))
+      gfx.line(xs-5, cury-4, xs+self.scalewidth*0.95, cury-5)
+      gfx.set(table.unpack(colors.textcolor))
     end
   end
   
@@ -1505,6 +1601,10 @@ function tracker:printGrid()
   
 end
 
+-- Load the scales
+dofile(get_script_path() .. 'scales.lua')
+scales:initialize()
+
 function tracker:optionLocations()
   local plotData = self.plotData
   local tw       = plotData.totalwidth
@@ -1520,6 +1620,9 @@ function tracker:optionLocations()
   if ( self.helpActive == 1 ) then
     xs = xs + self.helpwidth * 1.1
   end
+  if ( self.scaleActive == 1 ) then
+    xs = xs + self.scalewidth * 1.1
+  end
   
   local keyMapX = xs + 8.2 * 2
   local keyMapY = ys + yheight * ( 5 + #keysets )
@@ -1529,6 +1632,33 @@ function tracker:optionLocations()
   local themeMapY = ys + yheight * 2
   
   return xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY
+end
+
+function tracker:chordLocations()
+  local plotData = self.plotData
+  local tw       = plotData.totalwidth
+  local th       = plotData.totalheight
+  local itempadx = plotData.itempadx
+  local itempady = plotData.itempady
+  local xloc     = plotData.xloc
+  local yloc     = plotData.yloc
+  local xwidth   = xloc[2]-xloc[1]
+  local yheight  = (yloc[2]-yloc[1])*.8 --plotData.yheight
+  
+  local xs = plotData.xstart + tw + 4*itempadx
+  local ys = plotData.ystart - 1.3*plotData.indicatorShiftY + .5 * yheight
+   
+  local scaleY    = ys + 1.5*yheight
+  local keyMapH   = yheight
+  local scaleLoc  = ys + 2*yheight
+  local scaleW    = xwidth*12
+  local chordW    = xwidth*7
+  local noteW     = xwidth*4
+  
+  local themeMapX = xs + xwidth
+  local themeMapY = ys + yheight * 2
+  
+  return xs, ys, scaleY, keyMapH, scaleW, chordW, noteW, ys + keyMapH * 4
 end
 
 -- Returns fieldtype, channel and row
@@ -5018,6 +5148,67 @@ local function updateLoop()
       end
     end
     
+    if ( tracker.scaleActive == 1 ) then
+      local xs, ys, scaleY, keyMapH, scaleW, chordW, noteW, chordAreaY = tracker:chordLocations()    
+      local scales = scales      
+      local progressions = scales.progressions
+
+      if ( gfx.mouse_y > scaleY ) then
+        if ( gfx.mouse_y < ( scaleY + keyMapH ) ) then
+          local note = math.floor( ( gfx.mouse_x - xs ) / noteW ) + 1
+          if ( note < 1 ) then
+            note = 1
+          elseif( note > 12 ) then
+            note = 12
+          end
+          scales:switchRoot(note)
+        end
+      end
+
+      if ( gfx.mouse_y > chordAreaY ) then      
+        -- Figure out which scale we are clicking
+        yCoord = ( gfx.mouse_y - chordAreaY ) / keyMapH
+
+        -- Find the scale we clicked
+        local done = 0
+        local i = 1
+        local row = 0
+        local chordrow = 1
+        local scaleRows
+        local scaleIdx
+        local scaleName
+        while (done==0) do
+          scaleIdx = i
+          scaleName = scales.names[i]
+          -- How many rows does this scale have?
+          local chordmap = #(progressions[scaleName][1].notes)
+          scaleRows = #(progressions[scaleName][1].notes)
+          chordrow = math.floor(yCoord - row - .5)
+          i = i + 1
+          if ( ( chordrow < scaleRows ) or ( i > #scales.names ) ) then    
+            done = 1
+          else
+            row = row + scaleRows
+          end
+        end
+        
+        -- Select different scale?
+        if ( gfx.mouse_x > xs ) then
+          if ( gfx.mouse_x < xs + scaleW ) then
+            scales:setScale( scaleIdx )
+          end
+          
+          -- Selected a chord?
+          if ( chordrow < scaleRows ) then
+            local tone = math.floor( ( gfx.mouse_x - xs - scaleW ) / chordW ) + 1
+            if ( ( tone > 0 ) and ( tone < 8 ) ) then
+              scales:pickChord( scaleName, tone, chordrow+1 )
+            end
+          end
+        end
+      end
+    end
+    
     -- Mouse in range of options?
     if ( tracker.optionsActive == 1 ) then
       local changedOptions = 0
@@ -5404,6 +5595,12 @@ function tracker:computeDims(inRows)
       rows = 16
     end
   end
+  if ( tracker.scaleActive == 1 ) then
+    width = width + self.scalewidth
+    if ( rows < 20 ) then
+      rows = 20
+    end
+  end
   
   local grid = tracker.grid
   height = grid.originy + (rows+1) * grid.dy + 2*grid.itempady  
@@ -5454,12 +5651,6 @@ function tracker:updateNames()
   else
     self.patternName = string.format('%s/%s', self.trackName, self.midiName:sub(1,maxsize))  
   end
-end
-
-local function get_script_path()
-  local info = debug.getinfo(1,'S');
-  local script_path = info.source:match[[^@?(.*[\/])[^\/]-$]]
-  return script_path
 end
 
 function tracker:loadConfig()
