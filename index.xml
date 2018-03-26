@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="f10fc2043f1e0d1407051f85e803b490a365b155">
+<index version="1" name="Tracker tools" commit="a47734555a71831f0c88ab6a23a939c9c9694192">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -169,6 +169,10 @@ here
       <version name="1.28" author=": Joep Vanlier" time="2018-03-25T23:06:23Z">
         <changelog><![CDATA[+ Started implementing scale helpers (WIP)]]></changelog>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/f10fc2043f1e0d1407051f85e803b490a365b155/Tracker/tracker.lua</source>
+      </version>
+      <version name="1.29" author=": Joep Vanlier" time="2018-03-26T23:20:18Z">
+        <changelog><![CDATA[+ Added option for harmony helper (F9 to open, arm tracker with CTRL+R to hear the chords you click). Option to insert chords pending.]]></changelog>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/a47734555a71831f0c88ab6a23a939c9c9694192/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
