@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.28
+@version 1.29
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,8 @@
 
 --[[
  * Changelog:
+ * v1.29 (2018-03-27)
+   + Added option for harmony helper (F9 to open, arm tracker with CTRL+R to hear the chords you click). Option to insert chords pending.
  * v1.28 (2018-03-24)
    + Started implementing scale helpers (WIP)
  * v1.27 (2018-03-22)
@@ -167,7 +169,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.28"
+tracker.name = "Hackey Trackey v1.29"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -405,6 +407,7 @@ function tracker:loadKeys( keySet )
     keys.advancedown    = { 0,    0,  0,    26164 }         -- F4
     keys.advanceup      = { 0,    0,  0,    26165 }         -- F5
     keys.stop2          = { 0,    0,  0,    26168 }         -- F8
+    keys.harmony        = { 0,    0,  0,    26169 }         -- F9
     keys.options        = { 0,    0,  0,    6697265 }       -- F11    
     keys.panic          = { 0,    0,  0,    6697266 }       -- F12
     keys.setloop        = { 1,    0,  0,    12 }            -- CTRL + L
@@ -475,6 +478,7 @@ function tracker:loadKeys( keySet )
     keys.toggle         = { 0,    0,  0,    26165 }         -- f5 = play/pause
     keys.playfrom       = { 0,    0,  0,    26166 }         -- f6 = play here 
     keys.stop2          = { 0,    0,  0,    26168 }         -- f8 = Stop
+    keys.harmony        = { 0,    0,  0,    26169 }         -- f9 = Harmony helper
     keys.options        = { 0,    0,  0,    6697265 }       -- f11 = Options
     keys.panic          = { 0,    0,  0,    6697266 }       -- f12 = MIDI Panic!
     keys.insert         = { 0,    0,  0,    6909555 }       -- Insert
@@ -4841,6 +4845,31 @@ function tracker:stopNote()
   end
 end
 
+-- chord has to contain a table of {chan, pitch, vel}
+function tracker:playChord(chord)
+  self:checkArmed()
+  if ( self.armed == 1 ) then
+    local ch = 1
+    self:stopChord()
+    for i,v in pairs( chord ) do
+      reaper.StuffMIDIMessage(0, 0x90 + v[1] - 1, v[2], v[3])
+    end
+    self.lastChord = chord
+  end
+end
+
+function tracker:stopChord()
+  self:checkArmed()
+  if ( self.armed == 1 ) then
+    if ( self.lastChord ) then
+      for i,v in pairs( self.lastChord ) do
+        reaper.StuffMIDIMessage(0, 0x80 + v[1] - 1, v[2], v[3])
+      end
+      self.lastChord = nil
+    end
+  end
+end
+
 function tracker:setLoopStart()
     local mPos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
     local lPos, lEnd = reaper.GetSet_LoopTimeRange2(0, false, 1, 0, 0, false)
@@ -5202,7 +5231,17 @@ local function updateLoop()
           if ( chordrow < scaleRows ) then
             local tone = math.floor( ( gfx.mouse_x - xs - scaleW ) / chordW ) + 1
             if ( ( tone > 0 ) and ( tone < 8 ) ) then
-              scales:pickChord( scaleName, tone, chordrow+1 )
+              local chord = scales:pickChord( scaleName, tone, chordrow+1 )
+              if ( chord ) then
+                local playChord = {}
+                for i,v in pairs(chord) do
+                  v = v + tracker.transpose * 12 + 11
+                  playChord[i] = { 1, v, 127 }
+                end
+                if ( (change == 1) or (not tracker.lastChord) ) then
+                  tracker:playChord( playChord )
+                end
+              end
             end
           end
         end
@@ -5250,7 +5289,11 @@ local function updateLoop()
         tracker:loadKeys(cfg.keyset)
       end
     end
-    
+  else
+    if ( tracker.lastChord ) then
+      tracker:stopChord()
+    end
+  
   end 
   tracker.lastleft = left
   
@@ -5439,6 +5482,9 @@ local function updateLoop()
     elseif inputs('options') then
       tracker.optionsActive = 1-tracker.optionsActive    
       tracker:resizeWindow()
+    elseif inputs('harmony') then
+      tracker.scaleActive = 1-tracker.scaleActive
+      tracker:resizeWindow()      
     elseif inputs('nextMIDI') then
       tracker:seekMIDI(1)
     elseif inputs('prevMIDI') then  
