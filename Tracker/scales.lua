@@ -454,10 +454,20 @@ function scales:switchRoot( root )
 end
 
 function scales:pickChord( scaleName, tone, row )
-  self.picked = {}
+  if ( not self.picked ) then
+    self.picked = {}
+  end
+  local oldName = self.picked.name
+  local notes = scales.progressions[scaleName][tone].notes[row]
   self.picked.name = scales.progressions[scaleName][tone].names[row]
-  self.picked.notes = scales.progressions[scaleName][tone].notes[row]
---  print( self.picked.name )
+  self.picked.notes = notes 
+  
+  local change = 0
+  if ( self.picked.name ~= oldName ) then
+    change = 1
+  end    
+
+  return notes, change
 end
 
 function scales.initialize( )
