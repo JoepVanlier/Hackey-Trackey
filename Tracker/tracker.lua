@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.29
+@version 1.30
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,8 +35,10 @@
 
 --[[
  * Changelog:
+ * v1.30 (2018-03-28)
+   + Added ability to insert chords from harmony helper (CTRL + click). Fixed bug involving note insertion over OFC symbols.
  * v1.29 (2018-03-27)
-   + Added option for harmony helper (F9 to open, arm tracker with CTRL+R to hear the chords you click). Option to insert chords pending.
+   + Added option to show harmony helper (F9 to open, arm tracker with CTRL+R to hear the chords you click). Option to insert chords pending.
  * v1.28 (2018-03-24)
    + Started implementing scale helpers (WIP)
  * v1.27 (2018-03-22)
@@ -169,7 +171,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.29"
+tracker.name = "Hackey Trackey v1.30"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -1975,10 +1977,8 @@ function tracker:createNote( inChar )
         self:addNote(row, k, chan, pitch, self.lastVel)
         self:playNote(chan, pitch, self.lastVel)
       
-        local extraDeletion
         if ( noteGrid[rows*chan+k] ) then
           if ( noteGrid[rows*chan+k] < -1 ) then    
-            extraDeletion = noteGrid[rows*chan+k]
             self:deleteNote(chan, k)
           end
         end
@@ -2003,12 +2003,13 @@ function tracker:createNote( inChar )
             
             -- Set the new note length
             reaper.MIDI_SetNote(self.take, noteToInterrupt, nil, nil, nil, endppqpos, nil, nil, nil, true)
-          end
-          
-          -- Were we overwriting an OFF marker?
-          if ( noteToInterrupt < -1 ) then
-            self:deleteNote(chan, row)
-          end
+          end          
+        end
+        
+        -- Were we overwriting an OFF marker?
+        local idx = rows*chan+row
+        if ( noteGrid[idx] and noteGrid[idx] < -1 ) then
+          self:deleteNote(chan, row)
         end
       end
       self.ypos = self.ypos + self.advance
@@ -2287,7 +2288,7 @@ function tracker:resizeNote(chan, row, sizeChange)
   
   local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
   local endrow = math.floor( self:ppqToRow( endppqpos ) )
-  
+
   -- Was this a legato note?
   if ( chan == 1 ) then
     local legato = self.legato
@@ -4858,6 +4859,83 @@ function tracker:playChord(chord)
   end
 end
 
+function tracker:insertChord(chord)
+  --reaper.StuffMIDIMessage(0, 0x90 + v[1] - 1, v[2], v[3])
+  
+  local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+   
+  -- Grab references here, since clearblock calls update and regenerates them
+  local data      = self.data
+  local notes     = self.notes
+  local noteGrid  = data.note  
+  local noteStart = data.noteStart    
+  
+  -- We should be able to paste the contents now
+  local jx        = self.xpos
+  local rows      = self.rows
+  local chtype, chan, origrow = self:getLocation()
+    
+  for i=1,#chord do
+    local row = origrow
+    
+    -- 'NOTE' (1), pitch (2), velocity (3), startppq (4), endppq (5)
+    local note = noteGrid[chan*rows+row-1]
+    local noteToEdit = noteStart[rows*chan+row]
+    
+    -- Note that used to be in these grid locations
+    local noteToInterrupt
+    if ( row > 0 ) then
+      noteToInterrupt = noteGrid[rows*chan+row-1]
+    else
+      noteToInterrupt = noteGrid[rows*chan+row]
+    end    
+    
+    -- If the location where the paste happens started with a note, then shorten it!
+    if ( ( self.ypos > 0 ) and ( note and ( note > -1 ) ) ) then
+      local pitch, vel, startppqpos, endppqpos = table.unpack( notes[ note ] )
+      local resize = row - self:ppqToRow(endppqpos)
+      if ( resize ~= 0 ) then
+        self:resizeNote(chan, self:ppqToRow(startppqpos), resize )
+      end
+    end
+       
+    -- Is there already a note starting here? Simply change the note.
+    if ( noteToEdit ) then
+        reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, chord[i][2], chord[i][3], true)
+        local p2, v2 = table.unpack( notes[noteToEdit] )
+    else
+        -- No note yet? See how long the new note can get. Note that we have to ignore any note
+        -- we might be interrupting (placed in the middle of)
+        local k = row+1
+        while( k < rows ) do
+          if ( noteGrid[rows*chan+k] and not ( noteGrid[rows*chan+k] == noteToInterrupt ) ) then
+            break;
+          end
+          k = k + 1
+        end
+        self:addNote(row, k, chan, chord[i][2], chord[i][3])
+        
+        local idx = rows*chan+k
+        if ( noteGrid[idx] ) then
+          if ( noteGrid[idx] < -1 ) then
+            self:deleteNote(chan, k)
+            
+            local offidx = self:gridValueToOFFidx( noteGrid[idx] )
+            self:SAFE_DeleteText(self.take, offidx)
+          end
+        end             
+    end
+    
+    -- Were we overwriting an OFF marker?
+    local curNote = noteGrid[rows*chan+row]
+    if ( curNote and ( curNote < -1 ) ) then
+      self:deleteNote(chan, row)
+    end
+    
+    chan = chan + 1
+  end
+end
+
 function tracker:stopChord()
   self:checkArmed()
   if ( self.armed == 1 ) then
@@ -5238,6 +5316,13 @@ local function updateLoop()
                   v = v + tracker.transpose * 12 + 11
                   playChord[i] = { 1, v, 127 }
                 end
+                local control = gfx.mouse_cap & 4
+                if ( control > 0 ) then control = 1 end
+                if ( control == 1 ) then
+                  tracker:insertChord( playChord )
+                  tracker:deleteNow()
+                end
+                
                 if ( (change == 1) or (not tracker.lastChord) ) then
                   tracker:playChord( playChord )
                 end
