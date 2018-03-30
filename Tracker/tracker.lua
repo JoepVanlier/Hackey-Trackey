@@ -35,6 +35,12 @@
 
 --[[
  * Changelog:
+ * v1.32 (2018-03-31)
+   + Added inversions (add ALT or SHIFT when clicking chords).
+   + Added harmonic minor scale (sort of).
+   + Fixed bugs regarding note insertion.
+ * v1.31 (2018-03-30)
+   + Show chord similarity index
  * v1.30 (2018-03-28)
    + Added ability to insert chords from harmony helper (CTRL + click). Fixed bug involving note insertion over OFC symbols.
  * v1.29 (2018-03-27)
@@ -271,7 +277,6 @@ tracker.maxRowPerQn = 16
 
 tracker.helpActive = 0
 tracker.optionsActive = 0
-tracker.scaleActive = 0
 tracker.helpwidth = 380
 tracker.optionswidth = 370
 tracker.scalewidth = 500
@@ -296,6 +301,7 @@ tracker.automationBug = 1 -- This fixes a bug in v5.70
 tracker.cfg = {}
 tracker.cfg.colorscheme = "buzz"
 tracker.cfg.keyset = "default"
+tracker.cfg.scaleActive = 0
 
 tracker.colorschemes = {"default", "buzz", "it"}
 function tracker:loadColors(colorScheme)
@@ -442,28 +448,34 @@ function tracker:loadKeys( keySet )
       { 'Insert/Backspace/-', 'Insert/Remove/Note OFF' },   
       { 'Del/.', 'Delete' }, 
       { 'Space/Return', 'Play/Play From' },
-      { 'CTRL + L', 'Set loop to pattern' },
-      { 'CTRL + Q/W', 'Set loop start/end' },
+      { 'CTRL + L', 'Loop pattern' },
+      { 'CTRL + Q/W', 'Loop start/end' },
       { 'Shift + +/-', 'Transpose selection' },
-      { 'CTRL + B/E', 'Begin/End selection' },
+      { 'CTRL + B/E', 'Selection begin/End' },
       { 'SHIFT + Arrow Keys', 'Block selection' },
       { 'CTRL + C/X/V', 'Copy / Cut / Paste' },
       { 'CTRL + I', 'Interpolate' },
       { 'Shift + Del', 'Delete block' },
       { 'CTRL + (SHIFT) + Z', 'Undo / Redo' }, 
-      { 'CTRL + ALT + Up/Down', 'Adjust [res]olution' },
-      { 'CTRL + ALT + Enter', 'Commit [res]olution' },  
-      { 'CTRL + Up/Down', 'In/Decrease [oct]ave' },     
-      { 'CTRL + Shift + Up/Down', 'Change [env]elope' },    
-      { 'F4/F5', 'De/Increase [adv]ance' },
+      { 'CTRL + ALT + Up/Down', '[Res]olution Up/Down' },
+      { 'CTRL + ALT + Enter', '[Res]olution Commit' },  
+      { 'CTRL + Up/Down', '[Oct]ave up/down' },
+      { 'CTRL + Shift + Up/Down', '[Env]elope change' },
+      { 'F4/F5', '[Adv]ance De/Increase' },
       { 'F2/F3', 'MIDI [out] down/up' },
       { 'F8/F11/F12', 'Stop / Options / Panic' },
       { 'CTRL + Left/Right', 'Switch MIDI item' },
       { 'CTRL + D', 'Duplicate pattern' },
       { 'CTRL + N', 'Rename pattern' },
-      { 'CTRL + R', 'Toggle note play' },
+      { 'CTRL + R', 'Play notes' },
       { 'CTRL + +/-', 'Advanced col options' },
-      { 'CTRL + Shift + +/-', 'Add CC (adv mode)' }
+      { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },
+      { '', '' },
+      { 'Harmony helper', '' },      
+      { 'F9', 'Toggle harmonizer' },
+      { 'CTRL + Click', 'Insert chord' },
+      { 'Alt', 'Invert first note' },
+      { 'Shift', 'Invert second note' },
     }    
     
   elseif keyset == "buzz" then
@@ -537,27 +549,33 @@ function tracker:loadKeys( keySet )
       { 'Del/.', 'Delete' }, 
       { 'F5/F6', 'Play/Play from here' },
       { 'F8/F11/F12', 'Stop / Options / Panic' },
-      { 'CTRL + L', 'Set loop to pattern' },
-      { 'CTRL + Q/W', 'Set loop start/end' },
+      { 'CTRL + L', 'Loop pattern' },
+      { 'CTRL + Q/W', 'Loop start/end' },
       { 'Shift + +/-', 'Transpose selection' },
-      { 'CTRL + B/E', 'Begin/End selection' },
+      { 'CTRL + B/E', 'Selection Begin/End' },
       { 'SHIFT + Arrow Keys', 'Block selection' },
       { 'CTRL + C/X/V', 'Copy / Cut / Paste' },
       { 'CTRL + I', 'Interpolate' },
       { 'Shift + Del', 'Delete block' },
       { 'CTRL + (SHIFT) + Z', 'Undo / Redo' }, 
-      { 'CTRL + ALT + Up/Down', 'Adjust [res]olution' },
-      { 'CTRL + ALT + Return', 'Commit [res]olution' },  
-      { '*//', 'In/Decrease [oct]ave' },     
-      { 'CTRL + Shift + Up/Down', 'Change [env]elope' },    
-      { 'CTRL + F1/F2', 'De/Increase [adv]ance' },
-      { 'CTRL + Up/Down', 'MIDI [out] up/down' },  
+      { 'CTRL + ALT + Up/Down', '[Res]olution Up/Down' },
+      { 'CTRL + ALT + Return', '[Res]olution Commit' },  
+      { '*//', '[Oct]ave Up/Down' },     
+      { 'CTRL + Shift + Up/Down', '[Env]elope change' },
+      { 'CTRL + F1/F2', '[Adv]ance De/Increase' },
+      { 'CTRL + Up/Down', 'MIDI [out] Up/Down' },  
       { '-/+', 'Switch MIDI item' },
       { 'CTRL + Shift + Return', 'Duplicate pattern' },
       { 'CTRL + Backspace', 'Rename pattern' },
       { 'F7', 'Toggle note play' },
       { 'CTRL + +/-', 'Advanced col options' },
-      { 'CTRL + Shift + +/-', 'Add CC (adv mode)' }
+      { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },
+      { '', '' },
+      { 'Harmony helper', '' },      
+      { 'F9', 'Toggle harmonizer' },
+      { 'CTRL + Click', 'Insert chord' },
+      { 'Alt', 'Invert first note' },
+      { 'Shift', 'Invert second note' },      
     }
   end
 end
@@ -1425,7 +1443,7 @@ function tracker:printGrid()
   
   ------------------------------
   -- Play location indicator
-  ------------------------------    
+  ------------------------------
   local playLoc = self:getPlayLocation()
   local xc = xloc[1] - .5 * plotData.indicatorShiftX
   local yc = yloc[1] - .8 * plotData.indicatorShiftY  
@@ -1460,7 +1478,7 @@ function tracker:printGrid()
     local helpwidth = self.helpwidth
     local ys = plotData.ystart - 1.3*plotData.indicatorShiftY
     local xs = plotData.xstart + tw
-    if ( self.scaleActive == 1 ) then
+    if ( self.cfg.scaleActive == 1 ) then
       xs = xs + self.scalewidth * 1
     end
     for i,v in pairs( help ) do
@@ -1475,8 +1493,11 @@ function tracker:printGrid()
     end
   end
   
-  if ( tracker.scaleActive == 1 ) then
-    local xs, ys, scaleY, keyMapH, scaleW, chordW, noteW, chordAreaY = self:chordLocations()
+  ------------------------------
+  -- Chorder
+  ------------------------------    
+  if ( tracker.cfg.scaleActive == 1 ) then
+    local xs, ys, scaleY, keyMapH, scaleW, chordW, noteW, chordAreaY, charW = self:chordLocations()
     local xwidth       = plotData.xwidth
     local names        = scales.names
     local progressions = scales.progressions
@@ -1485,6 +1506,19 @@ function tracker:printGrid()
     gfx.x = xs + self.scalewidth - 4 * noteW
     gfx.y = ys
     gfx.printf( "Harmony helper" )
+    
+    gfx.y = ys + keyMapH
+    if ( scales.picked and scales.picked.notes ) then
+      local s = ''
+      for i,v in pairs( scales.picked.notes ) do
+        s = s .. scales:pitchToNote(v) .. ","
+      end
+      gfx.x = xs + self.scalewidth - (4 + s:len() ) * charW
+      gfx.printf( "["..s:sub(1,-2).."]" )
+    else
+      gfx.x = xs + self.scalewidth - 4 * charW
+      gfx.printf( "[]" )   
+    end
     
     gfx.x = xs
     gfx.y = ys
@@ -1535,14 +1569,20 @@ function tracker:printGrid()
       end
       gfx.printf( scaleName )
       gfx.set(table.unpack(colors.textcolor))
-      
+        
       local chordmap = progressions[scaleName]
-      for j = 1,#(chordmap[1].notes) do
+      for j = 1,#(chordmap[i].notes) do
         local curx = xs + scaleW
-        for k = 1,7 do
+        for k = 1,7 do        
           gfx.x = curx
           gfx.y = cury
-          gfx.printf( chordmap[k].names[j] )
+          if ( chordmap[k].names[j] ) then
+            local score = scales:similarityScore( chordmap[k].notes[j] )
+            local col = { colors.textcolor[1], colors.textcolor[2], colors.textcolor[3], clamp( 0.1, 1, colors.textcolor[4] - 0.4 * score ) }
+            gfx.set(table.unpack(col))
+          
+            gfx.printf( chordmap[k].names[j] )
+          end
           
           curx = curx + chordW
         end
@@ -1626,7 +1666,7 @@ function tracker:optionLocations()
   if ( self.helpActive == 1 ) then
     xs = xs + self.helpwidth * 1.1
   end
-  if ( self.scaleActive == 1 ) then
+  if ( self.cfg.scaleActive == 1 ) then
     xs = xs + self.scalewidth * 1.1
   end
   
@@ -1641,6 +1681,8 @@ function tracker:optionLocations()
 end
 
 function tracker:chordLocations()
+  local grid     = tracker.grid
+  local dx       = grid.dx
   local plotData = self.plotData
   local tw       = plotData.totalwidth
   local th       = plotData.totalheight
@@ -1648,7 +1690,7 @@ function tracker:chordLocations()
   local itempady = plotData.itempady
   local xloc     = plotData.xloc
   local yloc     = plotData.yloc
-  local xwidth   = xloc[2]-xloc[1]
+  local xwidth   = dx
   local yheight  = (yloc[2]-yloc[1])*.8 --plotData.yheight
   
   local xs = plotData.xstart + tw + 4*itempadx
@@ -1664,7 +1706,7 @@ function tracker:chordLocations()
   local themeMapX = xs + xwidth
   local themeMapY = ys + yheight * 2
   
-  return xs, ys, scaleY, keyMapH, scaleW, chordW, noteW, ys + keyMapH * 4
+  return xs, ys, scaleY, keyMapH, scaleW, chordW, noteW, ys + keyMapH * 4, dx
 end
 
 -- Returns fieldtype, channel and row
@@ -4874,14 +4916,19 @@ function tracker:insertChord(chord)
   local jx        = self.xpos
   local rows      = self.rows
   local chtype, chan, origrow = self:getLocation()
-    
+  
+  -- Don't insert chords if we are at an invalid location
+  if ( chtype ~= 'text' ) then
+    return
+  end
+
   for i=1,#chord do
     local row = origrow
     
     -- 'NOTE' (1), pitch (2), velocity (3), startppq (4), endppq (5)
     local note = noteGrid[chan*rows+row-1]
     local noteToEdit = noteStart[rows*chan+row]
-    
+
     -- Note that used to be in these grid locations
     local noteToInterrupt
     if ( row > 0 ) then
@@ -4889,16 +4936,16 @@ function tracker:insertChord(chord)
     else
       noteToInterrupt = noteGrid[rows*chan+row]
     end    
-    
+
     -- If the location where the paste happens started with a note, then shorten it!
-    if ( ( self.ypos > 0 ) and ( note and ( note > -1 ) ) ) then
+    if ( ( self.ypos > 1 ) and ( note and ( note > -1 ) ) ) then
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[ note ] )
       local resize = row - self:ppqToRow(endppqpos)
       if ( resize ~= 0 ) then
         self:resizeNote(chan, self:ppqToRow(startppqpos), resize )
       end
     end
-       
+
     -- Is there already a note starting here? Simply change the note.
     if ( noteToEdit ) then
         reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, chord[i][2], chord[i][3], true)
@@ -4914,12 +4961,12 @@ function tracker:insertChord(chord)
           k = k + 1
         end
         self:addNote(row, k, chan, chord[i][2], chord[i][3])
-        
+
         local idx = rows*chan+k
         if ( noteGrid[idx] ) then
           if ( noteGrid[idx] < -1 ) then
             self:deleteNote(chan, k)
-            
+
             local offidx = self:gridValueToOFFidx( noteGrid[idx] )
             self:SAFE_DeleteText(self.take, offidx)
           end
@@ -5255,7 +5302,7 @@ local function updateLoop()
       end
     end
     
-    if ( tracker.scaleActive == 1 ) then
+    if ( tracker.cfg.scaleActive == 1 ) then
       local xs, ys, scaleY, keyMapH, scaleW, chordW, noteW, chordAreaY = tracker:chordLocations()    
       local scales = scales      
       local progressions = scales.progressions
@@ -5310,14 +5357,34 @@ local function updateLoop()
             local tone = math.floor( ( gfx.mouse_x - xs - scaleW ) / chordW ) + 1
             if ( ( tone > 0 ) and ( tone < 8 ) ) then
               local chord = scales:pickChord( scaleName, tone, chordrow+1 )
+              
               if ( chord ) then
                 local playChord = {}
+                
+                -- Get modifiers
+                local control = gfx.mouse_cap & 4
+                if ( control > 0 ) then control = 1 end  
+                local shift   = gfx.mouse_cap & 8
+                if ( shift > 0 ) then shift = 1 end
+                local alt     = gfx.mouse_cap & 16
+                if ( alt > 0 ) then alt = 1 end
+                
                 for i,v in pairs(chord) do
                   v = v + tracker.transpose * 12 + 11
                   playChord[i] = { 1, v, 127 }
                 end
-                local control = gfx.mouse_cap & 4
-                if ( control > 0 ) then control = 1 end
+                
+                if ( alt == 1 ) then
+                  if ( playChord[1][2] ) then
+                    playChord[1][2] = playChord[1][2] + 12
+                  end
+                end
+                if ( shift == 1 ) then
+                  if ( playChord[1][2] ) then
+                    playChord[2][2] = playChord[2][2] + 12
+                  end
+                end
+
                 if ( control == 1 ) then
                   tracker:insertChord( playChord )
                   tracker:deleteNow()
@@ -5568,8 +5635,9 @@ local function updateLoop()
       tracker.optionsActive = 1-tracker.optionsActive    
       tracker:resizeWindow()
     elseif inputs('harmony') then
-      tracker.scaleActive = 1-tracker.scaleActive
-      tracker:resizeWindow()      
+      tracker.cfg.scaleActive = 1-tracker.cfg.scaleActive
+      tracker:resizeWindow()
+      tracker:saveConfig(tracker.cfg)
     elseif inputs('nextMIDI') then
       tracker:seekMIDI(1)
     elseif inputs('prevMIDI') then  
@@ -5726,10 +5794,10 @@ function tracker:computeDims(inRows)
       rows = 16
     end
   end
-  if ( tracker.scaleActive == 1 ) then
+  if ( tracker.cfg.scaleActive == 1 ) then
     width = width + self.scalewidth
-    if ( rows < 20 ) then
-      rows = 20
+    if ( rows < 24 ) then
+      rows = 24
     end
   end
   
@@ -5793,7 +5861,13 @@ function tracker:loadConfig()
       local str = io.read()
       while ( str ) do
         for k, v in string.gmatch(str, "(%w+)=(%w+)") do
-          cfg[k] = v
+          local no = tonumber(v)
+        
+          if ( no ) then
+            cfg[k] = no
+          else
+            cfg[k] = v
+          end
         end
         str = io.read()
       end
@@ -5828,7 +5902,8 @@ local function Main()
     tracker:loadColors(cfg.colorscheme)
     tracker:initColors()
     tracker:loadKeys(cfg.keyset)
-    
+    tracker.cfg = cfg
+           
     tracker:generatePitches()
     tracker:initColors()   
   
