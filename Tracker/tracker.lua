@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.30
+@version 1.32
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -177,7 +177,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.30"
+tracker.name = "Hackey Trackey v1.32"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
