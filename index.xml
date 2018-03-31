@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="46ad58d2fc982dec5cd5b2ec00d2bff9d4b04196">
+<index version="1" name="Tracker tools" commit="90e08c7081f3bbd9025182bd7e96ae49cc8d42c9">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -183,6 +183,10 @@ here
 + Added harmonic minor scale (sort of).
 + Fixed bugs regarding note insertion.]]></changelog>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/46ad58d2fc982dec5cd5b2ec00d2bff9d4b04196/Tracker/tracker.lua</source>
+      </version>
+      <version name="1.34" author=": Joep Vanlier" time="2018-03-31T14:01:45Z">
+        <changelog><![CDATA[+ Added scale to cfg file so that it doesn't constantly reset]]></changelog>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/90e08c7081f3bbd9025182bd7e96ae49cc8d42c9/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
