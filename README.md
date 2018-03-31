@@ -110,6 +110,32 @@ new MIDI items. The default here is 960, but 1024, 2048 or 4096 is recommended f
 Hackey Trackey. Once configured correctly, you can open the note delay column for any note 
 by simply hitting CTRL + \+ for that column.
 
+### What is this Harmony Helper thing?
+Release 1.30 saw the addition of the Harmony Helper, this is an extension of Hackey Trackey 
+to facilitate easier use of melodic scales. You can toggle the Harmony Helper by pressing F9.
+
+The Harmony helper presents you with a selection of root notes and modes. You can pick your 
+desired musical key by selecting the root note (top row) and scale (left column). After 
+selecting a key, you are presented with chords that are present in that key.
+
+If the track is armed (denoted by the red [REC] label), it will play the chord you click. 
+To arm the track press CTRL \+ R.
+
+To insert a chord from the harmony helper, press control while clicking the chord. Inversions 
+can be obtained with other modifiers. Holding ALT will trigger an inversion of the first note, 
+while SHIFT inverts the second.
+
+Once a key is selected and the harmony helper is active, notes will transpose in a key-aware 
+manner when transposed. Diatonic notes will map to diatonic notes when transposed, while 
+accidentals will remain accidentals (as far as this is possible without an awareness which 
+notes are flat or sharp).
+
+To change the root of the key of a selection, simply select the notes and invoke 
+CTRL \+ ALT \+ SHIFT \+ + or - for transposition up and down respectively. This will also 
+update the root note in the harmony helper.
+
+![Pattern info](https://imgur.com/a/H0cZh)
+
 ### Is this repository reapack compatible?
 Yes. Just add: https://raw.githubusercontent.com/joepvanlier/Hackey-Trackey/master/index.xml
 
@@ -120,49 +146,59 @@ to edit the note keyboard, edit the keys.pitches table. If you wish to know what
 particular key has, set printKeys to 1 and start typing. Note that control modifies keystroke 
 values.
 
-
-| Key                   | Action                                                                |
-|:----------------------|:----------------------------------------------------------------------|
-| Arrow keys            | Navigate                                                              |
-| Backspace             | Delete item and shift rows up                                         |
-| Del                   | Delete item                                                           |
-| Insert                | Shift all items down by one                                           |
-| \-                    | Place note OFF                                                        |
-| ENTER                 | Start play at cursor position                                         |
-| Space                 | Start/Stop                                                            |
-| CTRL \+ Z             | Undo                                                                  |
-| CTRL \+ SHIFT + Z     | Redo                                                                  |
-| CTRL \+ B             | Start selection block                                                 |
-| CTRL \+ E             | End selection block                                                   |
-| SHIFT \+ Del          | Delete block                                                          |
-| CTRL \+ I 		| Interpolate block							|
-| CTRL \+ X             | Cut \(To do\)                                                         |
-| CTRL \+ V             | Paste \(To do\)                                                       |
-| CTRL \+ C             | Copy \(To do\)                                                        |
-| CTRL \+ /\\           | Shift current octave up                                               |
-| CTRL \+ \\/           | Shift current octave down                                             |
-| SHIFT \+ CTRL \+ /\\  | Switch envelope mode \(FX automation\)                                |
-| SHIFT \+ CTRL \+ \\/  | Switch envelope mode \(FX automation\)                                |
-| Shift \+ Numpad \+    | Shift selection up \(e.g. C\-1 \-> C\#1\)                             |
-| Shift \+ Numpad \-    | Shift selection down                                                  |
-| F1 			| Help 									|
-| F2 			| Decrease output channel						|
-| F3			| Increase output channel 						|
-| F4 			| Decrease advance amount						|
-| F5			| Increase advance amount						|
-| CTRL \+ L 		| Set loop to pattern bounds						|
-| CTRL \+ Q 		| Set loop start before current row					|
-| CTRL \+ W 		| Set loop end after current row					|
-| CTRL \+ ALT + Up 	| Increase row resolution 						|
-| CTRL \+ ALT + Down 	| Decrease row resolution 						|
-| CTRL \+ ALT + Enter 	| Commit row resolution (WARNING: Destructive)	 			|
-| CTRL \+ -> 		| Next MIDI item on track 						|
-| CTRL \+ <-		| Previous MIDI item on track 						|
-| CTRL \+ D		| Duplicate MIDI item							|
-| CTRL \+ N		| Rename MIDI Item    							|
-| CTRL \+ R		| Arm (plays notes)							|
-| CTRL \+ \+/\- 	| Enable/disable advanced options for this column 			|
-| CTRL \+ Shift \+ \+/\-| Add CC column (only possible when in advanced mode for CC programming |
+| Key                   		| Action                                                                |
+|:--------------------------------------|:----------------------------------------------------------------------|
+| Arrow keys            		| Navigate                                                              |
+| Backspace             		| Delete item and shift rows up                                         |
+| Del                   		| Delete item                                                           |
+| Insert                		| Shift all items down by one                                           |
+| \-                    		| Place note OFF                                                        |
+| ENTER                 		| Start play at cursor position                                         |
+| Space                 		| Start/Stop                                                            |
+| CTRL \+ Z             		| Undo                                                                  |
+| CTRL \+ SHIFT + Z     		| Redo                                                                  |
+| CTRL \+ B             		| Start selection block                                                 |
+| CTRL \+ E             		| End selection block                                                   |
+| SHIFT \+ Del          		| Delete block                                                          |
+| CTRL \+ I 				| Interpolate block							|
+| CTRL \+ X             		| Cut \(To do\)                                                         |
+| CTRL \+ V             		| Paste \(To do\)                                                       |
+| CTRL \+ C             		| Copy \(To do\)                                                        |
+| CTRL \+ /\\           		| Shift current octave up                                               |
+| CTRL \+ \\/           		| Shift current octave down                                             |
+| SHIFT \+ CTRL \+ /\\  		| Switch envelope mode \(FX automation\)                                |
+| SHIFT \+ CTRL \+ \\/  		| Switch envelope mode \(FX automation\)                                |
+| Shift \+ Numpad \+    		| Shift selection up \(e.g. C\-1 \-> C\#1\)                             |
+| Shift \+ Numpad \-    		| Shift selection down                                                  |
+| F1 					| Help 									|
+| F2 					| Decrease output channel						|
+| F3					| Increase output channel 						|
+| F4 					| Decrease advance amount						|
+| F5					| Increase advance amount						|
+| F8					| Stop playing								|
+| F11 					| Options screen (theme etc) 						|
+| F12 					| MIDI Panic (stop all notes) 						|
+| CTRL \+ L 				| Set loop to pattern bounds						|
+| CTRL \+ Q 				| Set loop start before current row					|
+| CTRL \+ W 				| Set loop end after current row					|
+| CTRL \+ ALT + Up 			| Increase row resolution 						|
+| CTRL \+ ALT + Down 			| Decrease row resolution 						|
+| CTRL \+ ALT + Enter 			| Commit row resolution (WARNING: Destructive)	 			|
+| CTRL \+ -> 				| Next MIDI item on track 						|
+| CTRL \+ <-				| Previous MIDI item on track 						|
+| CTRL \+ D				| Duplicate MIDI item							|
+| CTRL \+ N				| Rename MIDI Item    							|
+| CTRL \+ R				| Arm (plays notes)							|
+| CTRL \+ \+/\- 			| Enable/disable advanced options for this column 			|
+| CTRL \+ Shift \+ \+/\-		| Add CC column (only possible when in advanced mode for CC programming |
+| 					| 									|
+| Harmony Helper keys			|									|
+| F9 					| Open harmony helper 							|
+| CTRL + Click chord			| Insert chord at current position					|
+| ALT + Click chord			| Invert first note of chord 						|
+| SHIFT + Click chord			| Invert second note of chord 						|
+| Shift \+ CTRL \+ ALT \+ Numpad \+ 	| Shift root note up \(e.g. C\-1 \-> C\#1\)                             |
+| Shift \+ CTRL \+ ALT \+ Numpad \- 	| Shift root note down                                         	        |
 
 ## Feature requests
 Feature requests are always welcome, preferably with an idea of how to achieve it 

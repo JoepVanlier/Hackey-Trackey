@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.32
+@version 1.34
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,14 @@
 
 --[[
  * Changelog:
+ * v1.34 (2018-03-31)
+   + Added scale to cfg file so that it doesn't constantly reset
+ * v1.33 (2018-03-31)
+   + Added option to make transposition somewhat scale aware when harmonic helper is on.
+     It will only use notes from the key then and shift accidentals w.r.t. thei root.
+     Note however, that transposition like this will eventually lead to loss of accidentals 
+     due to them snapping to the scale and there being no information whether they are 
+     sharps of flats.
  * v1.32 (2018-03-31)
    + Added inversions (add ALT or SHIFT when clicking chords).
    + Added harmonic minor scale (sort of).
@@ -177,7 +185,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.32"
+tracker.name = "Hackey Trackey v1.34"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -403,8 +411,10 @@ function tracker:loadKeys( keySet )
     keys.cutBlock       = { 1,    0,  0,    24 }            -- CTRL + X
     keys.pasteBlock     = { 1,    0,  0,    22 }            -- CTRL + V
     keys.copyBlock      = { 1,    0,  0,    3 }             -- CTRL + C
-    keys.shiftItemUp    = { 0,    0,  1,    43 }            -- SHIFT + Num pad+
-    keys.shiftItemDown  = { 0,    0,  1,    45 }            -- SHIFT + Num pad-
+    keys.shiftItemUp    = { 0,    0,  1,    43 }            -- SHIFT + Num pad +
+    keys.shiftItemDown  = { 0,    0,  1,    45 }            -- SHIFT + Num pad -
+    keys.scaleUp        = { 1,    1,  1,    267 }           -- CTRL + SHIFT + ALT + Num pad +
+    keys.scaleDown      = { 1,    1,  1,    269 }           -- CTRL + SHIFT + ALT + Num pad -   
     keys.octaveup       = { 1,    0,  0,    30064 }         -- CTRL + /\
     keys.octavedown     = { 1,    0,  0,    1685026670 }    -- CTRL + \/
     keys.envshapeup     = { 1,    0,  1,    30064 }         -- CTRL + SHIFT + /\
@@ -476,7 +486,8 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Click', 'Insert chord' },
       { 'Alt', 'Invert first note' },
       { 'Shift', 'Invert second note' },
-    }    
+      { 'CTRL + Shift + Alt + +/-', 'Shift root note' },
+    }
     
   elseif keyset == "buzz" then
     --                    CTRL    ALT SHIFT Keycode
@@ -510,6 +521,8 @@ function tracker:loadKeys( keySet )
     keys.shiftItemDown  = { 0,    0,  1,    45 }            -- SHIFT + Num pad-
     keys.octaveup       = { 0,    0,  0,    42 }            -- *
     keys.octavedown     = { 0,    0,  0,    47 }            -- /
+    keys.scaleUp        = { 1,    1,  1,    267 }           -- CTRL + SHIFT + ALT + Num pad +
+    keys.scaleDown      = { 1,    1,  1,    269 }           -- CTRL + SHIFT + ALT + Num pad -    
     keys.envshapeup     = { 1,    0,  1,    30064 }         -- CTRL + SHIFT + /\
     keys.envshapedown   = { 1,    0,  1,    1685026670 }    -- CTRL + SHIFT + /\
     keys.help           = { 0,    0,  0,    26161 }         -- F1
@@ -575,7 +588,8 @@ function tracker:loadKeys( keySet )
       { 'F9', 'Toggle harmonizer' },
       { 'CTRL + Click', 'Insert chord' },
       { 'Alt', 'Invert first note' },
-      { 'Shift', 'Invert second note' },      
+      { 'Shift', 'Invert second note' },   
+      { 'CTRL + Shift + Alt + +/-', 'Shift root note' },
     }
   end
 end
@@ -1795,7 +1809,7 @@ end
 ---------------------
 -- Shift operator
 ---------------------
-function tracker:shiftAt( x, y, shift )
+function tracker:shiftAt( x, y, shift, scale )
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
   local noteStart = self.data.noteStart  
   local notes = self.notes
@@ -1808,7 +1822,19 @@ function tracker:shiftAt( x, y, shift )
     if ( datafields[x] == 'text' ) then
       -- Note
       local pitch, vel, startppqpos, endppqpos = table.unpack( note )
-      reaper.MIDI_SetNote(self.take, selected, nil, nil, nil, nil, nil, pitch+shift, nil, true) 
+      
+      local newPitch = 0
+      if ( self.cfg.scaleActive == 1 ) then
+        if ( scale and scale == 1 ) then
+          newPitch = scales:shiftRoot(pitch, shift)
+        else
+          newPitch = scales:shiftPitch(pitch, shift)
+        end
+      else
+        newPitch = pitch+shift
+      end
+      
+      reaper.MIDI_SetNote(self.take, selected, nil, nil, nil, nil, nil, newPitch, nil, true) 
     elseif ( datafields[x] == 'vel1' ) or ( datafields[x] == 'vel2' ) then
       -- Velocity
       local pitch, vel, startppqpos, endppqpos = table.unpack( note )
@@ -1874,6 +1900,47 @@ function tracker:shiftdown()
   end
   reaper.MIDI_Sort(self.take)
 end
+
+function tracker:shiftScaleUp()
+  local cp = self.cp
+  reaper.Undo_OnStateChange2(0, "Tracker: Shift root operation")
+  reaper.MarkProjectDirty(0)
+  
+  if ( cp.ystop == -1 ) then
+    self:shiftAt( tracker.xpos, tracker.ypos, 1, 1 )
+  else
+    for jx = cp.xstart, cp.xstop do
+      for jy = cp.ystart, cp.ystop do
+        self:shiftAt( jx, jy, 1, 1 )
+      end
+    end
+  end
+  
+  scales:switchRoot( scales.root + 1 )
+  self:saveConfig(self.cfg)
+  reaper.MIDI_Sort(self.take)
+end
+
+function tracker:shiftScaleDown()
+  local cp = self.cp
+  reaper.Undo_OnStateChange2(0, "Tracker: Shift root operation")
+  reaper.MarkProjectDirty(0)
+  
+  if ( cp.ystop == -1 ) then  
+    self:shiftAt( tracker.xpos, tracker.ypos, -1, 1 )
+  else
+    for jx = cp.xstart, cp.xstop do
+      for jy = cp.ystart, cp.ystop do
+        self:shiftAt( jx, jy, -1, 1 )
+      end
+    end
+  end
+  
+  scales:switchRoot( scales.root - 1 )
+  self:saveConfig(self.cfg)
+  reaper.MIDI_Sort(self.take)
+end
+
 
 function tracker:addNotePpq(startppqpos, endppqpos, chan, pitch, velocity)
   local endrow = self:ppqToRow(endppqpos)
@@ -5309,13 +5376,16 @@ local function updateLoop()
 
       if ( gfx.mouse_y > scaleY ) then
         if ( gfx.mouse_y < ( scaleY + keyMapH ) ) then
-          local note = math.floor( ( gfx.mouse_x - xs ) / noteW ) + 1
-          if ( note < 1 ) then
-            note = 1
-          elseif( note > 12 ) then
-            note = 12
+          if ( gfx.mouse_x > xs ) then
+            local note = math.floor( ( gfx.mouse_x - xs ) / noteW ) + 1
+            if ( note < 1 ) then
+              note = 1
+            elseif( note > 12 ) then
+              note = 12
+            end
+            scales:switchRoot(note)
+            tracker:saveConfig(tracker.cfg)
           end
-          scales:switchRoot(note)
         end
       end
 
@@ -5350,6 +5420,7 @@ local function updateLoop()
         if ( gfx.mouse_x > xs ) then
           if ( gfx.mouse_x < xs + scaleW ) then
             scales:setScale( scaleIdx )
+            tracker:saveConfig(tracker.cfg)
           end
           
           -- Selected a chord?
@@ -5575,6 +5646,12 @@ local function updateLoop()
     elseif inputs('shiftItemDown') then
       modified = 1
       tracker:shiftdown()
+    elseif inputs('scaleUp') then
+      modified = 1
+      tracker:shiftScaleUp()
+    elseif inputs('scaleDown') then
+      modified = 1
+      tracker:shiftScaleDown()
     elseif inputs('octaveup') then
       tracker.transpose = tracker.transpose + 1
       tracker:storeSettings()
@@ -5872,13 +5949,16 @@ function tracker:loadConfig()
         str = io.read()
       end
       io.close(file)
-    end
+    end    
     
     return cfg
 end
 
 function tracker:saveConfig(cfg)
   local file = io.open(get_script_path().."_hackey_trackey_options_.cfg", "w+")
+  
+  cfg.root  = scales.root
+  cfg.scale = scales.curScale
   
   if ( file ) then
     io.output(file)
@@ -5902,8 +5982,15 @@ local function Main()
     tracker:loadColors(cfg.colorscheme)
     tracker:initColors()
     tracker:loadKeys(cfg.keyset)
-    tracker.cfg = cfg
-           
+    tracker.cfg = cfg   
+    
+    if ( cfg.root and ( scales.root ~= cfg.root ) ) then
+      scales:switchRoot( cfg.root )
+    end
+    if ( cfg.scale and ( scales.curScale ~= cfg.scale ) ) then
+      scales:setScale( cfg.scale )
+    end
+    
     tracker:generatePitches()
     tracker:initColors()   
   

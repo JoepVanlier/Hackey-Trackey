@@ -506,7 +506,7 @@ function scales:setScale(curscale)
 end
 
 function scales:switchRoot( root )
-  self.root = root
+  self.root = self:wrapPitch(root-1)+1
   
   scales.scales = {}
   for i,v in pairs( scales.intervals ) do
@@ -550,6 +550,68 @@ end
 
 function scales:wrapPitch(pitch)
   return pitch-12*math.floor(pitch/12)
+end
+
+function scales:shiftPitch(pitch, shift)
+  local wPitch = scales:wrapPitch(pitch + 1)
+  wPitch = wPitch + 12
+  local base = pitch - wPitch
+
+  local i = 0
+  local sharp = 0
+  while( i < 24 ) do
+    i = i + 1
+    local D = self.scales[self.names[self.curScale]][i] - wPitch
+    
+    -- We found the pitch exactly
+    if ( self.scales[self.names[self.curScale]][i] == wPitch ) then
+      break
+    elseif ( D > 0 ) then
+      -- Too high? Must be an accidental. Note that these will be lost over time since they have a tendency
+      -- to snap to the scale with this approach
+      sharp = 1
+      i = i - 1
+      break
+    end
+  end
+  
+  local newLoc = i+shift
+  if ( newLoc < 1 ) then
+    return self.scales[self.names[self.curScale]][newLoc+7] + base + sharp - 12
+  else
+    return self.scales[self.names[self.curScale]][newLoc] + base + sharp
+  end
+end
+
+function scales:shiftRoot(pitch, shift)
+  local wPitch = scales:wrapPitch(pitch+1)
+  wPitch = wPitch+12
+  local base = pitch - wPitch
+
+  local i = 0
+  local sharp = 0
+  while( i < 24 ) do
+    i = i + 1
+    local D = self.scales[self.names[self.curScale]][i] - wPitch
+    
+    -- We found the pitch exactly
+    if ( self.scales[self.names[self.curScale]][i] == wPitch ) then
+      break
+    elseif ( D > 0 ) then
+      -- Too high? Must be an accidental. Note that these will be lost over time since they have a tendency
+      -- to snap to the scale with this approach
+      sharp = 1
+      i = i - 1
+      break
+    end
+  end
+
+  local newScale = scales:generateScale(self.root+shift, scales.names[self.curScale])
+  if ( i < 1 ) then
+    return newScale[i+7] + base + sharp - 12
+  else
+    return newScale[i] + base + sharp
+  end
 end
 
 function scales:similarityScore( notes )
