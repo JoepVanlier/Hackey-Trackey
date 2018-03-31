@@ -134,7 +134,7 @@ To change the root of the key of a selection, simply select the notes and invoke
 CTRL \+ ALT \+ SHIFT \+ + or - for transposition up and down respectively. This will also 
 update the root note in the harmony helper.
 
-![Pattern info](https://imgur.com/a/H0cZh)
+![Harmony Helper](https://i.imgur.com/p2MGQTB.png)
 
 ### Is this repository reapack compatible?
 Yes. Just add: https://raw.githubusercontent.com/joepvanlier/Hackey-Trackey/master/index.xml
