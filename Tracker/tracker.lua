@@ -3,11 +3,11 @@
 @author: Joep Vanlier
 @provides
   scales.lua
-  [main] tracker.lua
+  [main] .
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.34b
+@version 1.35
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.35 (2018-04-04)
+   + Repackaging scales lib
  * v1.34 (2018-03-31)
    + Added scale to cfg file so that it doesn't constantly reset
  * v1.33 (2018-03-31)
