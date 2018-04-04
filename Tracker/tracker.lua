@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.35
+@version 1.36
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.36 (2018-04-04)
+   + Minor bugfix when no options available yet
  * v1.35 (2018-04-04)
    + Repackaging scales lib
  * v1.34 (2018-03-31)
@@ -190,7 +192,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.34"
+tracker.name = "Hackey Trackey v1.36"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -5717,7 +5719,7 @@ local function updateLoop()
       tracker.optionsActive = 1-tracker.optionsActive    
       tracker:resizeWindow()
     elseif inputs('harmony') then
-      tracker.cfg.scaleActive = 1-tracker.cfg.scaleActive
+      tracker.cfg.scaleActive = 1-(tracker.cfg.scaleActive or 0)
       tracker:resizeWindow()
       tracker:saveConfig(tracker.cfg)
     elseif inputs('nextMIDI') then
