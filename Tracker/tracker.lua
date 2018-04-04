@@ -1,6 +1,9 @@
---[[
+﻿--[[
 @description Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.
 @author: Joep Vanlier
+@provides
+  scales.lua
+  [main] tracker.lua
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
