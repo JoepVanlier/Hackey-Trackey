@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.34
+@version 1.34b
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
