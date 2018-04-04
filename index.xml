@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="90e08c7081f3bbd9025182bd7e96ae49cc8d42c9">
+<index version="1" name="Tracker tools" commit="aa672ec3f42793fa038648ac91cba6057c11f651">
   <category name="Tracker">
+    <reapack name="scales.lua" type="script" desc="Scales library for Hackey Trackey.">
+      <version name="1.34" author=": Joep Vanlier" time="2018-04-04T09:53:03Z">
+        <source>https://github.com/JoepVanlier/Hackey-Trackey/raw/aa672ec3f42793fa038648ac91cba6057c11f651/Tracker/scales.lua</source>
+      </version>
+    </reapack>
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
         <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 Courier;}}
