@@ -1,3 +1,10 @@
+--[[
+@description Scales library for Hackey Trackey.
+@author: Joep Vanlier
+@license MIT
+@version 1.34
+@provides [nomain] .
+]]--
 
 -- These are scale/chord aware helper functions for the chord toolbar in Hackey Trackey
 
