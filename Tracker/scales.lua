@@ -1,3 +1,8 @@
+-- @version 1.0
+-- @provides
+--   scales.lua
+--   [main] tracker.lua
+
 -- These are scale/chord aware helper functions for the chord toolbar in Hackey Trackey
 
 -- Scales
