@@ -315,7 +315,7 @@ tracker.automationBug = 1 -- This fixes a bug in v5.70
 -- Default configuration
 tracker.cfg = {}
 tracker.cfg.colorscheme = "buzz"
-tracker.cfg.keyset = "default"
+tracker.cfg.keyset = "buzz"
 tracker.cfg.scaleActive = 0
 
 tracker.colorschemes = {"default", "buzz", "it"}
