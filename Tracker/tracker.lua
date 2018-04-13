@@ -1,4 +1,4 @@
-﻿--[[
+--[[
 @description Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.
 @author: Joep Vanlier
 @provides
@@ -7,11 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-<<<<<<< HEAD
-@version 1.35
-=======
-@version 1.36
->>>>>>> cb01085e7f56b1bed7f24cf2fc7eda42645ac5ef
+@version 1.37
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -42,15 +38,12 @@
 
 --[[
  * Changelog:
-<<<<<<< HEAD
- * v1.35 (2018-04-14)
+ * v1.37 (2018-04-14)
    + Fixed bug that falsely allowed notes beyond end causing starting note in next column to switch column.
-=======
  * v1.36 (2018-04-04)
    + Minor bugfix when no options available yet
  * v1.35 (2018-04-04)
    + Repackaging scales lib
->>>>>>> cb01085e7f56b1bed7f24cf2fc7eda42645ac5ef
  * v1.34 (2018-03-31)
    + Added scale to cfg file so that it doesn't constantly reset
  * v1.33 (2018-03-31)
@@ -201,11 +194,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-<<<<<<< HEAD
-tracker.name = "Hackey Trackey v1.35"
-=======
-tracker.name = "Hackey Trackey v1.36"
->>>>>>> cb01085e7f56b1bed7f24cf2fc7eda42645ac5ef
+tracker.name = "Hackey Trackey v1.37"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
