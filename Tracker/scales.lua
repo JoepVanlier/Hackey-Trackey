@@ -1,3 +1,7 @@
+--[[
+@noindex
+]]--
+
 -- These are scale/chord aware helper functions for the chord toolbar in Hackey Trackey
 
 -- Scales

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="90e08c7081f3bbd9025182bd7e96ae49cc8d42c9">
+<index version="1" name="Tracker tools" commit="bfe68100374598494d06271e63c7c31b7b28f359">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -187,6 +187,20 @@ here
       <version name="1.34" author=": Joep Vanlier" time="2018-03-31T14:01:45Z">
         <changelog><![CDATA[+ Added scale to cfg file so that it doesn't constantly reset]]></changelog>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/90e08c7081f3bbd9025182bd7e96ae49cc8d42c9/Tracker/tracker.lua</source>
+      </version>
+      <version name="1.34b" author=": Joep Vanlier" time="2018-04-04T09:56:14Z">
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/c8c098274241ddf33cd1fb58ff02fb2ff4185f66/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/c8c098274241ddf33cd1fb58ff02fb2ff4185f66/Tracker/tracker.lua</source>
+      </version>
+      <version name="1.35" author=": Joep Vanlier" time="2018-04-04T10:02:45Z">
+        <changelog><![CDATA[+ Repackaging scales lib]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/0ff0447879521e7a1b2b144f027069ed4ad4f982/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/0ff0447879521e7a1b2b144f027069ed4ad4f982/Tracker/tracker.lua</source>
+      </version>
+      <version name="1.36" author=": Joep Vanlier" time="2018-04-04T10:12:10Z">
+        <changelog><![CDATA[+ Minor bugfix when no options available yet]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/bfe68100374598494d06271e63c7c31b7b28f359/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/bfe68100374598494d06271e63c7c31b7b28f359/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
