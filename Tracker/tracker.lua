@@ -4,7 +4,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.34
+@version 1.35
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -35,6 +35,8 @@
 
 --[[
  * Changelog:
+ * v1.35 (2018-04-14)
+   + Fixed bug that falsely allowed notes beyond end causing starting note in next column to switch column.
  * v1.34 (2018-03-31)
    + Added scale to cfg file so that it doesn't constantly reset
  * v1.33 (2018-03-31)
@@ -185,7 +187,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.34"
+tracker.name = "Hackey Trackey v1.35"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -2723,15 +2725,15 @@ function tracker:shiftNote(chan, row, shift)
     local magicOverlap = self.magicOverlap
     local pitch, vel, startppqpos, endppqpos = table.unpack( notes[gridValue] )
     local wasLegatoTransition = self.legato[self:ppqToRow(endppqpos)]
-    local newEnd = endppqpos + shift*singlerow
+    local newEnd = endppqpos + shift*singlerow   
     local isLegatoTransition = self.legato[self:ppqToRow(newEnd)]
     
     -- Is it the last note with an open end, then stay that way.
     -- There is nothingness outside our pattern! :)
     if ( endppqpos > self:rowToPpq( self.rows-1 ) ) then
-      if ( shift < 0 ) then
+--      if ( shift < 0 ) then
         newEnd = endppqpos
-      end
+--      end
     else
       -- Is it a legato note?
       if ( chan == 1 ) then     
