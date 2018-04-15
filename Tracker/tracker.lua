@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.37
+@version 1.38
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.38 (2018-04-15)
+   + Added sixth chords for the minor and major scale
  * v1.37 (2018-04-14)
    + Fixed bug that falsely allowed notes beyond end causing starting note in next column to switch column.
  * v1.36 (2018-04-04)
@@ -194,7 +196,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.37"
+tracker.name = "Hackey Trackey v1.38"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -1568,7 +1570,7 @@ function tracker:printGrid()
     local curx = xs + scaleW
     
     -- Currently marked for major, could choose to incorporate others
-    local markings = { 'I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii0' }
+    local markings = { 'I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii0', 'VIII' }
     for k = 1,7 do
       gfx.x = curx
       gfx.y = cury
@@ -5882,8 +5884,8 @@ function tracker:computeDims(inRows)
   end
   if ( tracker.cfg.scaleActive == 1 ) then
     width = width + self.scalewidth
-    if ( rows < 24 ) then
-      rows = 24
+    if ( rows < 26 ) then
+      rows = 26
     end
   end
   

@@ -137,13 +137,16 @@ scales.chordDisplay = {
   ['Dom7th']     = '7',
   ['Maj7th']     = 'M7',
   ['Aug7th']     = 'aug7',
+  ['Aug6th']     = 'aug6',  
   ['Aug7th5']    = 'aug7b5', -- ??
   ['7th9']       = '7#9', --Hendrix chord
   ['7th11']      = '7#11',
   ['Maj7th11']   = 'M7-11',
   ['9th']        = '9',
   ['Maj9th']     = 'M9',
+  ['Maj9th#5']   = 'M9#5',
   ['Add9th']     = 'add9',
+  ['Minb6th']    = 'b6',
   ['Dom6th']     = '6',
   ['11th']       = '11',
   ['13th']       = '13',
@@ -189,13 +192,17 @@ scales.chords = {
 -- Chords for heightened interest
   ['Dom7th']     = { {1, 0}, {3, 0}, {5, 0}, {7,-1} },
   ['Maj7th']     = { {1, 0}, {3, 0}, {5, 0}, {7, 0} },
-  ['Aug7th']     = { {1, 0}, {3, 0}, {5, 1}, {7, 0} },  
+  ['Aug7th']     = { {1, 0}, {3, 0}, {5, 1}, {7, 0} }, 
+  ['Aug6th']     = { {1, 0}, {3, 0}, {5, 1}, {6, 0} },
   ['Aug7th5']    = { {1, 0}, {3, 0}, {5, 1}, {7,-1} },
   ['7th9']       = { {1, 0}, {3, 0}, {5, 0}, {7,-1}, {9, 1} }, --Hendrix chord
   ['7th11']      = { {1, 0}, {3, 0}, {5, 0}, {7,-1}, {11, 1} },
   ['Maj7th11']   = { {1, 0}, {3, 0}, {5, 0}, {7, 0}, {9, 0}, {11, 1} },
   ['9th']        = { {1, 0}, {3, 0}, {5, 0}, {7,-1}, {9, 0} },
   ['Maj9th']     = { {1, 0}, {3, 0}, {5, 0}, {7, 0}, {9, 0} },
+  ['Maj9th#5']   = { {1, 0}, {3, 0}, {5, 1}, {7, 0}, {9, 0} },  
+
+  
   ['Add9th']     = { {1, 0}, {3, 0}, {5, 0}, {9, 0} },
   ['Dom6th']     = { {1, 0}, {3, 0}, {5, 0}, {6, 0} },
   ['11th']       = { {1, 0}, {5, 0}, {7,-1}, {9, 0}, {11, 0} },
@@ -207,11 +214,12 @@ scales.chords = {
   -- Relevant for harmonic minor
   ['MinMaj7th']  = { {1, 0}, {3,-1}, {5, 0}, {7, 0} },
   
-   ['MinMaj7thAdd9'] = { {1, 0}, {3,-1}, {5, 0}, {7, 0}, {9, 0} },
+  ['MinMaj7thAdd9'] = { {1, 0}, {3,-1}, {5, 0}, {7, 0}, {9, 0} },
   ['Min7th']     = { {1, 0}, {3,-1}, {5, 0}, {7,-1} },
   ['Dim7th']     = { {1, 0}, {3,-1}, {5,-1}, {7,-2} },
   ['Dim7thAdd9'] = { {1, 0}, {3,-1}, {5,-1}, {7,-2}, {9, 0} },  
   ['HDim7th']    = { {1, 0}, {3,-1}, {5,-1}, {7,-1} },
+  ['Minb6th']    = { {1, 0}, {3,-1}, {5, 0}, {6, -1} },  
   ['Min6th']     = { {1, 0}, {3,-1}, {5, 0}, {6, 0} },
   ['Min9th']     = { {1, 0}, {3,-1}, {5, 0}, {7,-1}, {9, 0} },
   ['MinAdd9th']  = { {1, 0}, {3,-1}, {5, 0}, {9, 0} },
@@ -432,6 +440,11 @@ function scales:generateProgression( root, scale )
       -- Suspended chords
       progression[i].notes[n] = { scaleNotes[1+base], scaleNotes[1+base] + 5, scaleNotes[5+base], scaleNotes[1+base]+10 }
       progression[i].names[n] = self:identifyChord(progression[i].notes[n], progression[i].notes[n][1])    
+
+      -- add6
+      n = n + 1
+      progression[i].notes[n] = { scaleNotes[1+base], scaleNotes[3+base], scaleNotes[5+base], scaleNotes[6+base] }
+      progression[i].names[n] = self:identifyChord(progression[i].notes[n], progression[i].notes[n][1])   
 
       -- add9
       n = n + 1
