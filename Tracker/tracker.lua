@@ -1,4 +1,4 @@
-﻿--[[
+--[[
 @description Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.
 @author: Joep Vanlier
 @provides
@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.36
+@version 1.38
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,10 @@
 
 --[[
  * Changelog:
+ * v1.38 (2018-04-15)
+   + Added sixth chords for the minor and major scale
+ * v1.37 (2018-04-14)
+   + Fixed bug that falsely allowed notes beyond end causing starting note in next column to switch column.
  * v1.36 (2018-04-04)
    + Minor bugfix when no options available yet
  * v1.35 (2018-04-04)
@@ -192,7 +196,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.36"
+tracker.name = "Hackey Trackey v1.38"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -1566,7 +1570,7 @@ function tracker:printGrid()
     local curx = xs + scaleW
     
     -- Currently marked for major, could choose to incorporate others
-    local markings = { 'I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii0' }
+    local markings = { 'I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii0', 'VIII' }
     for k = 1,7 do
       gfx.x = curx
       gfx.y = cury
@@ -2730,15 +2734,15 @@ function tracker:shiftNote(chan, row, shift)
     local magicOverlap = self.magicOverlap
     local pitch, vel, startppqpos, endppqpos = table.unpack( notes[gridValue] )
     local wasLegatoTransition = self.legato[self:ppqToRow(endppqpos)]
-    local newEnd = endppqpos + shift*singlerow
+    local newEnd = endppqpos + shift*singlerow   
     local isLegatoTransition = self.legato[self:ppqToRow(newEnd)]
     
     -- Is it the last note with an open end, then stay that way.
     -- There is nothingness outside our pattern! :)
     if ( endppqpos > self:rowToPpq( self.rows-1 ) ) then
-      if ( shift < 0 ) then
+--      if ( shift < 0 ) then
         newEnd = endppqpos
-      end
+--      end
     else
       -- Is it a legato note?
       if ( chan == 1 ) then     
@@ -5880,8 +5884,8 @@ function tracker:computeDims(inRows)
   end
   if ( tracker.cfg.scaleActive == 1 ) then
     width = width + self.scalewidth
-    if ( rows < 24 ) then
-      rows = 24
+    if ( rows < 26 ) then
+      rows = 26
     end
   end
   
