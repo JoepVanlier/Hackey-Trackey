@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.41
+@version 1.42
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.42 (2018-05-02)
+   + Fixed bug in pattern length rendering and allow resizing of columns
  * v1.41 (2018-05-02)
    + Added option to follow what MIDI item is selected
  * v1.40 (2018-05-02)   
@@ -204,7 +206,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.41"
+tracker.name = "Hackey Trackey v1.42"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -332,13 +334,15 @@ tracker.cfg.scaleActive = 0
 tracker.cfg.autoResize = 1
 tracker.cfg.followSelection = 0
 tracker.cfg.stickToBottom = 0
+tracker.cfg.colResize = 1
 
 tracker.binaryOptions = { 
     { 'autoResize', 'Auto Resize' }, 
     { 'followSelection', 'Follow Selection' }, 
-    { 'stickToBottom', 'Info Sticks to Bottom' } 
+    { 'stickToBottom', 'Info Sticks to Bottom' },
+    { 'colResize', 'Adjust Column Count to Window' },
     }
-
+    
 tracker.colorschemes = {"default", "buzz", "it"}
 
 function tracker:loadColors(colorScheme)
@@ -1105,7 +1109,7 @@ function tracker:updatePlotLink()
   fov.width = q-fov.scrollx
   plotData.xloc = xloc
   plotData.xwidth = xwidth
-  plotData.totalwidth = 400 --x - padsizes[#padsizes] * dx - colsizes[#colsizes] * dx
+  plotData.totalwidth = tracker.fov.abswidth - 1.5*originx --x - padsizes[#padsizes] * dx - colsizes[#colsizes] * dx
   plotData.xstart = originx
   -- Variable dlink indicates what field the data can be found
   -- Variable xlink indicates the index that is being displayed
@@ -1129,6 +1133,7 @@ function tracker:updatePlotLink()
   plotData.yshift = 0.2 * dy
   plotData.totalheight = y - originy
   plotData.ystart = originy
+  plotData.textSize = dx
   
   self.plotData = plotData
   
@@ -1277,7 +1282,7 @@ function tracker:getSizeIndicatorLocation()
   else
     yl = yloc[#yloc] + 1 * yheight[1] + plotData.itempady
   end
-  local xm = xl + (xloc[2]-xloc[1])*3
+  local xm = xl + plotData.textSize*3
   local ym = yl+yheight[1]-6
   
   return xl, yl, xm, ym
@@ -5362,6 +5367,20 @@ end
 local function updateLoop()
   local tracker = tracker
 
+  if ( tracker.cfg.colResize == 1 ) then
+    tracker:autoResize()
+    tracker:computeDims(tracker.rows)
+    
+    if ( tracker.fov.abswidth ~= tracker.fov.lastabswidth ) then
+      if ( tracker.fov.abswidth < 450 ) then
+        tracker.fov.abswidth = 450
+      end
+    
+      tracker.lastabswidth = tracker.fov.abswidth
+      tracker:update()
+    end
+  end
+
   tracker:clearDeleteLists()
   tracker:clearInsertLists()
 
@@ -5942,6 +5961,20 @@ local function updateLoop()
     tracker:stopNote()
     gfx.quit()
   end
+end
+
+function tracker:autoResize()
+  local siz = gfx.w
+  if ( tracker.helpActive == 1 ) then
+    siz = siz - self.helpwidth
+  end
+  if ( tracker.optionsActive == 1 ) then
+    siz = siz - self.optionswidth
+  end
+  if ( tracker.scaleActive == 1 ) then
+    siz = siz - self.scalewidth
+  end
+  tracker.fov.abswidth = siz
 end
 
 -- To do: Automatic width estimation
