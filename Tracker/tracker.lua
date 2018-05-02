@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.38
+@version 1.41
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,14 @@
 
 --[[
  * Changelog:
+ * v1.41 (2018-05-02)
+   + Added option to follow what MIDI item is selected
+ * v1.40 (2018-05-02)   
+   + Added option to not resize the window when switching patterns
+   + Added option to have properties stick to bottom
+ * v1.39 (2018-05-02)
+   + Fixed occasional bug in pattern resize operation (losing track of which MIDI take we were editing)
+   + Fixed bug that occurred when leafing through patterns with a clipboard selection
  * v1.38 (2018-04-15)
    + Added sixth chords for the minor and major scale
  * v1.37 (2018-04-14)
@@ -196,7 +204,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.38"
+tracker.name = "Hackey Trackey v1.41"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -321,8 +329,18 @@ tracker.cfg = {}
 tracker.cfg.colorscheme = "buzz"
 tracker.cfg.keyset = "default"
 tracker.cfg.scaleActive = 0
+tracker.cfg.autoResize = 1
+tracker.cfg.followSelection = 0
+tracker.cfg.stickToBottom = 0
+
+tracker.binaryOptions = { 
+    { 'autoResize', 'Auto Resize' }, 
+    { 'followSelection', 'Follow Selection' }, 
+    { 'stickToBottom', 'Info Sticks to Bottom' } 
+    }
 
 tracker.colorschemes = {"default", "buzz", "it"}
+
 function tracker:loadColors(colorScheme)
   -- If you come up with a cool alternative color scheme, let me know
   self.colors = {}
@@ -1246,14 +1264,19 @@ function scrollbar.create( w )
   return self
 end
 
-
 function tracker:getSizeIndicatorLocation()
   local plotData  = self.plotData
   local xloc      = plotData.xloc
   local yloc      = plotData.yloc
   local yheight   = plotData.yheight
   local xl = xloc[1] - plotData.indicatorShiftX
-  local yl = yloc[#yloc] + plotData.indicatorShiftY
+  local yl
+
+  if ( self.cfg.stickToBottom == 1 ) then
+    yl = self.windowHeight - yheight[1]*2
+  else
+    yl = yloc[#yloc] + 1 * yheight[1] + plotData.itempady
+  end
   local xm = xl + (xloc[2]-xloc[1])*3
   local ym = yl+yheight[1]-6
   
@@ -1357,8 +1380,15 @@ function tracker:printGrid()
   ------------------------------
   -- Field descriptions
   ------------------------------
+  local bottom
+  if ( self.cfg.stickToBottom == 1 ) then
+    bottom = self.windowHeight - yheight[1] * 2
+  else
+    bottom = yloc[#yloc] + yheight[1] + itempady
+  end
+  
   gfx.x = plotData.xstart
-  gfx.y = yloc[#yloc] + 1 * yheight[1] + itempady
+  gfx.y = bottom
   gfx.set(table.unpack(colors.headercolor))
   if ( tracker.renaming ~= 2 ) then
     gfx.printf("%s", description[relx])
@@ -1373,7 +1403,7 @@ function tracker:printGrid()
   
   local patternName
   gfx.set(table.unpack(colors.headercolor))
-  gfx.y = yloc[#yloc] + 1 * yheight[1] + itempady
+  gfx.y = bottom
   if ( tracker.renaming == 1 ) then
     gfx.set(table.unpack(colors.changed))
     if ( self.midiName:len() > 0 ) then
@@ -1392,7 +1422,7 @@ function tracker:printGrid()
   gfx.set(table.unpack(colors.headercolor))
   local str = string.format("Oct [%d] Adv [%d] Env [%s] Out [%s]", self.transpose, self.advance, tracker.envShapes[tracker.envShape], self:outString() )
   gfx.x = plotData.xstart + tw - 8.2 * string.len(str)
-  gfx.y = yloc[#yloc] + 2 * yheight[1] + itempady
+  gfx.y = bottom + yheight[1]
   gfx.set(table.unpack(colors.headercolor))
   gfx.printf(str)
 
@@ -1412,7 +1442,7 @@ function tracker:printGrid()
     gfx.set(table.unpack(colors.headercolor))
   end
   gfx.x = plotData.xstart + tw - 8.2 * string.len(str) - 8.2 * string.len(str2)
-  gfx.y = yloc[#yloc] + 2 * yheight[1] + itempady
+  gfx.y = bottom + yheight[1]
   gfx.printf(str2)
  
   -- Draw the headers so we don't get lost :)
@@ -1623,7 +1653,7 @@ function tracker:printGrid()
     local help = help
     local helpwidth = self.helpwidth
     
-    local xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY = self:optionLocations()
+    local xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, binaryOptionsH = self:optionLocations()
 
     gfx.set(table.unpack(colors.helpcolor2))
     gfx.x = xs
@@ -1667,7 +1697,31 @@ function tracker:printGrid()
         gfx.set(table.unpack(colors.helpcolor))
       end
       gfx.printf(v)
-    end    
+    end
+    
+    xs = binaryOptionsX
+    ys = binaryOptionsY
+    gfx.x = xs
+    gfx.y = ys
+    
+    for i=1,#self.binaryOptions do
+      gfx.set(table.unpack(colors.helpcolor2))
+      gfx.x = xs
+      local cys = ys + i * binaryOptionsH
+      gfx.y = cys
+      
+      gfx.line(xs, cys, xs,  cys+8)
+      gfx.line(xs+8, cys, xs+8,  cys+8)
+      gfx.line(xs, cys, xs+8,  cys)
+      gfx.line(xs, cys+8, xs+8,  cys+8)
+      
+      if ( self.cfg[self.binaryOptions[i][1]] == 1 ) then
+        gfx.line(xs, cys, xs+8,  cys+8)
+        gfx.line(xs+8, cys, xs,  cys+8)        
+      end
+      
+      gfx.printf( "  %s", self.binaryOptions[i][2] )
+    end
   end
   
 end
@@ -1702,7 +1756,10 @@ function tracker:optionLocations()
   local themeMapX = xs + 8.2 * 2
   local themeMapY = ys + yheight * 2
   
-  return xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY
+  local binaryOptionsX = xs + 8.2 * 2
+  local binaryOptionsY = ys + yheight * ( 5 + #tracker.colorschemes + #keysets )
+  
+  return xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, keyMapH
 end
 
 function tracker:chordLocations()
@@ -3801,7 +3858,6 @@ function tracker:getTakeEnvelopes()
       -- Check the scaling of the envelope
       --number reaper.ScaleFromEnvelopeMode(integer scaling_mode, number val)
       local retval, str = reaper.GetEnvelopeName(envelope, ' ')
-      --print(str)
       if ( tracker.signed[str] ) then
         signed[#signed + 1] = 1
       else
@@ -3900,8 +3956,8 @@ end
 --------------------------------------------------------------
 function tracker:update()
   local reaper = reaper
-  if ( self.take and self.item ) then 
   
+  if ( self.take and self.item ) then 
     if ( self.debug == 1 ) then
       print( "Updating the grid ..." )
     end
@@ -4112,6 +4168,11 @@ function tracker:checkChange()
   if not pcall( self.testGetTake ) then
     return false
   end
+  
+  if ( self.cfg.followSelection == 1 ) then
+    tracker:grabActiveItem()
+  end
+  
   take = reaper.GetActiveTake(self.item)
   self.track = reaper.GetMediaItem_Track(self.item)
   
@@ -5272,6 +5333,9 @@ function tracker:resizePattern()
     -- Glue it (prevents unpredictable loops that were outside the pattern range)
     reaper.Main_OnCommand(glueCmd, 0)
     reaper.Main_OnCommand(42089, 0)
+    
+    -- Make sure we have the correct item
+    self:grabActiveItem()
     reaper.SetMediaItemInfo_Value(self.item, "D_LENGTH", newLenS )
     
     -- Resize it
@@ -5485,7 +5549,7 @@ local function updateLoop()
     -- Mouse in range of options?
     if ( tracker.optionsActive == 1 ) then
       local changedOptions = 0
-      local xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY = tracker:optionLocations()
+      local xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, binaryOptionsH = tracker:optionLocations()    
       
       -- Color themes
       if ( gfx.mouse_x > themeMapX ) then
@@ -5515,6 +5579,23 @@ local function updateLoop()
         end
       end
       
+      -- Binary options
+      if ( gfx.mouse_x > binaryOptionsX ) then
+        if ( gfx.mouse_y > binaryOptionsY ) then        
+          for i=1,#tracker.binaryOptions do
+            local xs = binaryOptionsX
+            local ys = binaryOptionsY + i * binaryOptionsH
+            local xm = xs + 8
+            local ym = ys + 8
+            if ( ( gfx.mouse_x > xs ) and  ( gfx.mouse_x < xm ) and ( gfx.mouse_y > ys ) and ( gfx.mouse_y < ym ) and not tracker.holding ) then
+              tracker.cfg[tracker.binaryOptions[i][1]] = 1 - tracker.cfg[tracker.binaryOptions[i][1]]
+              changedOptions = 1
+              tracker.holding = 1
+            end
+          end
+        end
+      end      
+      
       if ( changedOptions == 1 ) then
         local cfg = tracker.cfg
         tracker:saveConfig(cfg)
@@ -5527,7 +5608,7 @@ local function updateLoop()
     if ( tracker.lastChord ) then
       tracker:stopChord()
     end
-  
+    tracker.holding = nil
   end 
   tracker.lastleft = left
   
@@ -5728,8 +5809,10 @@ local function updateLoop()
       tracker:saveConfig(tracker.cfg)
     elseif inputs('nextMIDI') then
       tracker:seekMIDI(1)
+      tracker:resizeWindow()
     elseif inputs('prevMIDI') then  
       tracker:seekMIDI(-1)
+      tracker:resizeWindow()
     elseif inputs('duplicate') then
       reaper.Undo_OnStateChange2(0, "Tracker: Duplicate pattern")
       reaper.MarkProjectDirty(0) 
@@ -5892,9 +5975,21 @@ function tracker:computeDims(inRows)
   local grid = tracker.grid
   height = grid.originy + (rows+1) * grid.dy + 2*grid.itempady  
   
+  if ( tracker.cfg.autoResize == 0 ) then
+    if ( self.lastY ) then
+      height = self.lastY
+    end
+  end
+  
   local changed
-  if ( not self.lastY or ( self.lastY ~= height) or not self.lastX or ( self.lastX ~= width ) ) then
+  if ( not self.lastY or ( self.lastY ~= height) or not self.lastX or ( self.lastX ~= width ) ) then    
+    self:resetBlock()
+    
     changed = 1
+    if ( not self.lastX or ( self.lastX ~= width ) ) then
+      changed = 2
+    end
+    
     self.lastY = height
     self.lastX = width
   else
@@ -5906,12 +6001,12 @@ end
 
 function tracker:resizeWindow()
   local width, height, changed = self:computeDims(self.rows)
-  if ( changed == 1 ) then
+  if ( ( changed == 1 and ( tracker.cfg.autoResize == 1 ) ) or ( changed == 2 ) ) then
     local v, wx, wy, ww, wh
     local d, wx, wh = gfx.dock(-1, 1, 1, nil, nil)
     gfx.quit()
-    
     gfx.init( self.windowTitle, width, height, d, wx, wh)
+    self.windowHeight = height
   end
 end
 
@@ -5941,7 +6036,7 @@ function tracker:updateNames()
 end
 
 function tracker:loadConfig()
-    local cfg = {}
+    local cfg = self.cfg
     local file = io.open(get_script_path().."_hackey_trackey_options_.cfg", "r")
     
     if ( file ) then
@@ -5980,6 +6075,18 @@ function tracker:saveConfig(cfg)
   end
 end
 
+function tracker:grabActiveItem()
+    local item = reaper.GetSelectedMediaItem(0, 0)
+    if ( item ) then
+      local take = reaper.GetActiveTake(item)
+      if ( reaper.TakeIsMIDI( take ) == true ) then
+        tracker:setItem( item )
+        tracker:setTake( take )
+        return 1
+      end
+    end
+end
+
 --tracker.saveConfig(tracker.cfg)
 local function Main()
   local tracker = tracker  
@@ -6003,17 +6110,13 @@ local function Main()
     end
     
     tracker:generatePitches()
-    tracker:initColors()   
-  
-    local item = reaper.GetSelectedMediaItem(0, 0)
-    local take = reaper.GetActiveTake(item)
-    if ( reaper.TakeIsMIDI( take ) == true ) then
-      tracker:setItem( item )
-      tracker:setTake( take )
+    tracker:initColors()
+    if ( tracker:grabActiveItem() ) then
       
       local width, height = tracker:computeDims(48)
       tracker:updateNames()
       gfx.init(tracker.windowTitle, width, height, 0, 200, 200)
+      tracker.windowHeight = height
       
       if ( tracker.outChannel ) then
         tracker:setOutChannel( tracker.outChannel )
