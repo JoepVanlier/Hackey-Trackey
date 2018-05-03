@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.45
+@version 1.46
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.46 (2018-05-03)
+   + Bugfix for when item is deleted
  * v1.45 (2018-05-03)
    + Added hackey mode and optional CRT effect
  * v1.44 (2018-05-02)
@@ -212,7 +214,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.45"
+tracker.name = "Hackey Trackey v1.46"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -3048,6 +3050,7 @@ function tracker:toQn(seconds)
 end
 
 function tracker:getResolution( reso )
+
   -- Determine Row per Qn for this MIDI item
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   for i=0,textsyxevtcntOut do
@@ -5453,6 +5456,12 @@ end
 local function updateLoop()
   local tracker = tracker
 
+  -- Check if the note data or take changed, if so, update the note contents
+  if ( not tracker:checkChange() ) then
+    gfx.quit()
+    return
+  end
+
   if ( tracker.cfg.colResize == 1 ) then
     tracker:autoResize()
     tracker:computeDims(tracker.rows)
@@ -5469,12 +5478,6 @@ local function updateLoop()
 
   tracker:clearDeleteLists()
   tracker:clearInsertLists()
-
-  -- Check if the note data or take changed, if so, update the note contents
-  if ( not tracker:checkChange() ) then
-    gfx.quit()
-    return
-  end
 
   tracker:resizeWindow()
   tracker:checkArmed()
