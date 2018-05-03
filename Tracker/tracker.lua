@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.43
+@version 1.44
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.44 (2018-05-02)
+   + Added option to only listen (escape when record is on)
  * v1.43 (2018-05-02)
    + Add option for always record
  * v1.42 (2018-05-02)
@@ -208,7 +210,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.43"
+tracker.name = "Hackey Trackey v1.44"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -313,6 +315,8 @@ tracker.optionswidth = 370
 tracker.scalewidth = 500
 tracker.renaming = 0
 
+tracker.onlyListen = 0
+
 tracker.cp = {}
 tracker.cp.lastShiftCoord = nil
 tracker.cp.xstart = -1
@@ -344,7 +348,7 @@ tracker.binaryOptions = {
     { 'followSelection', 'Follow Selection' }, 
     { 'stickToBottom', 'Info Sticks to Bottom' },
     { 'colResize', 'Adjust Column Count to Window' },
-    { 'alwaysRecord', 'Always enable recording' },    
+    { 'alwaysRecord', 'Always Enable Recording' },    
     }
     
 tracker.colorschemes = {"default", "buzz", "it"}
@@ -370,6 +374,7 @@ function tracker:loadColors(colorScheme)
     self.colors.scrollbar1   = {.2, .1, .6, 1.0}
     self.colors.scrollbar2   = {.1, .0, .3, 1.0}
     self.colors.changed      = {1.0, 0.1, 0.1, 1.0} 
+    self.colors.changed2     = {0.0, 0.1, 1.0, .5} -- Only listening    
     self.colors.windowbackground = {0, 0, 0, 1}
   elseif colorScheme == "buzz" then
     -- Buzz
@@ -388,6 +393,7 @@ function tracker:loadColors(colorScheme)
     self.colors.scrollbar1       = {1/256*48, 1/256*48, 1/256*33, 1} -- scrollbar handle & outline
     self.colors.scrollbar2       = {1/256*218, 1/256*214, 1/256*201, 1} -- scrollbar background
     self.colors.changed          = {1, 1, 0, 1} -- Uncommited resolution changes
+    self.colors.changed2         = {0, .5, 1, .5} -- Only listening
     self.colors.windowbackground = {1/256*218, 1/256*214, 1/256*201, 1}
   elseif colorScheme == "it" then
     -- Reapulse Tracker (Impulse Tracker)
@@ -406,6 +412,7 @@ function tracker:loadColors(colorScheme)
     self.colors.scrollbar1       = {1/256*124, 1/256*88, 1/256*68, 1} -- scrollbar handle & outline
     self.colors.scrollbar2       = {1/256*180, 1/256*148, 1/256*120, 1} -- scrollbar background
     self.colors.changed          = {1, 1, 0, 1}
+    self.colors.changed2         = {0, .5, 1, .5} -- Only listening
     self.colors.windowbackground = {1/256*180, 1/256*148, 1/256*120, 1}
   end
   -- clear colour is in a different format cos why not
@@ -1437,9 +1444,13 @@ function tracker:printGrid()
 
   gfx.x = plotData.xstart
   if ( self.armed == 1) then
-    gfx.set(table.unpack(colors.changed))
+    if ( self.onlyListen == 1 ) then
+      gfx.set(table.unpack(colors.changed2))    
+    else
+      gfx.set(table.unpack(colors.changed))
+    end
     gfx.printf("[Rec]")
-    gfx.set(table.unpack(colors.headercolor))    
+    gfx.set(table.unpack(colors.headercolor))
   else
     gfx.printf("[Rec]")
   end
@@ -2117,7 +2128,7 @@ function tracker:createNote( inChar )
   if ( not inChar or ( inChar > 256 ) ) then
     return
   end
-
+ 
   local char      = string.lower(string.char(inChar))
   local data      = self.data
   local notes     = self.notes
@@ -2128,6 +2139,18 @@ function tracker:createNote( inChar )
 
   -- Determine fieldtype, channel and row
   local ftype, chan, row = self:getLocation()
+  
+  if ( ( self.armed == 1 ) and ( self.onlyListen == 1 ) ) then
+    local note = keys.pitches[char]
+    if ( note ) then
+      -- Note is present, we are good to go!
+      local pitch = note + tracker.transpose * 12
+      self:playNote(chan, pitch, self.lastVel)
+    end
+    
+    return
+  end
+  
   local noteToEdit = noteStart[rows*chan+row]
   local noteToInterrupt
   if ( row > 0 ) then
@@ -5891,6 +5914,10 @@ local function updateLoop()
         tracker:disarm()
       else
         tracker:arm()
+      end
+    elseif inputs('escape') then
+      if ( tracker.armed == 1 ) then
+        tracker.onlyListen = 1 - tracker.onlyListen
       end
     elseif ( lastChar == 0 ) then
       -- No input
