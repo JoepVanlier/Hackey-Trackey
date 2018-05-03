@@ -139,6 +139,34 @@ update the root note in the harmony helper.
 ### Is this repository reapack compatible?
 Yes. Just add: https://raw.githubusercontent.com/joepvanlier/Hackey-Trackey/master/index.xml
 
+### Options
+Hackey-Trackey has a few options to allow for some customization in workflow. Pressing F11 
+opens the options dialog, where themes and keymappings can be chosen. Additionally, the following 
+options can be checked or unchecked.
+
+#### Auto Resize
+Auto resize determines whether Hackey Trackey should resize whenever a new pattern is 
+selected. The resizing in this case refers to the height of Hackey Trackey.
+
+#### Follow Selection
+When this is enabled, Hackey Trackey will always load the pattern currently selected in 
+the sequencer. Note that this means that you cannot open multiple Hackey Trackey's anymore 
+to look at different patterns simultaneously.
+
+#### Info Sticks to Bottom
+This makes the info at the bottom of the pattern remain fixed at the bottom, even when the 
+pattern is shorter than the window. Alternatively, it will be at the end of the pattern.
+
+#### Adjust Column Count to Window
+This will automatically add columns to be visible whenever Hackey Trackey is resized.
+
+#### Always Enable Recording
+This will make Hackey Trackey always enable recording when opened. Note however that this 
+changes the recording status of your project and is therefore disabled by default.
+
+#### CRT mode
+Enable cheesy CRT effect. Works best with Hacker theme.
+
 ## Special keys
 These are just the default key bindings when you download the script. They are optimized 
 for a QWERTY layout. If you wish to change the shortcuts, edit the keys table. If you wish 
