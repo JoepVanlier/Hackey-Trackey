@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.44
+@version 1.45
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.45 (2018-05-03)
+   + Added hackey mode and optional CRT effect
  * v1.44 (2018-05-02)
    + Added option to only listen (escape when record is on)
  * v1.43 (2018-05-02)
@@ -210,7 +212,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.44"
+tracker.name = "Hackey Trackey v1.45"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -342,16 +344,18 @@ tracker.cfg.followSelection = 0
 tracker.cfg.stickToBottom = 0
 tracker.cfg.colResize = 1
 tracker.cfg.alwaysRecord = 0
+tracker.cfg.CRT = 0
 
 tracker.binaryOptions = { 
     { 'autoResize', 'Auto Resize' }, 
     { 'followSelection', 'Follow Selection' }, 
     { 'stickToBottom', 'Info Sticks to Bottom' },
     { 'colResize', 'Adjust Column Count to Window' },
-    { 'alwaysRecord', 'Always Enable Recording' },    
+    { 'alwaysRecord', 'Always Enable Recording' },  
+    { 'CRT', 'CRT mode' },  
     }
     
-tracker.colorschemes = {"default", "buzz", "it"}
+tracker.colorschemes = {"default", "buzz", "it", "hacker"}
 
 function tracker:loadColors(colorScheme)
   -- If you come up with a cool alternative color scheme, let me know
@@ -376,6 +380,26 @@ function tracker:loadColors(colorScheme)
     self.colors.changed      = {1.0, 0.1, 0.1, 1.0} 
     self.colors.changed2     = {0.0, 0.1, 1.0, .5} -- Only listening    
     self.colors.windowbackground = {0, 0, 0, 1}
+    self.crtStrength         = 2
+  elseif colorScheme == "hacker" then
+    self.colors.helpcolor    = {0, .8, 0, 1}
+    self.colors.helpcolor2   = {0, .7, 0, 1}
+    self.colors.selectcolor  = {0, .3, 0, 1}
+    self.colors.textcolor    = {0, .9, .6, 1}
+    self.colors.headercolor  = {0, .9, .5, 1}
+    self.colors.linecolor    = {0, .1, 0, .4}
+    self.colors.linecolor2   = {0, .4, .4, .4}
+    self.colors.linecolor3   = {0, .2, 0, 1}
+    self.colors.linecolor4   = {0, .1, .1, .5}
+    self.colors.linecolor5   = {0, .5, .5, .4}
+    self.colors.loopcolor    = {0, .3, 0, .5}
+    self.colors.copypaste    = {0, .7, .5, .2}
+    self.colors.scrollbar1   = {0, .1, 0, 1.0}
+    self.colors.scrollbar2   = {0, .0, 0, 1.0}
+    self.colors.changed      = {.4,  1, .4, 1.0} 
+    self.colors.changed2     = {.4,  .5, .4, .5} -- Only listening    
+    self.colors.windowbackground = {0, 0, 0, 1}
+    self.crtStrength         = 5
   elseif colorScheme == "buzz" then
     -- Buzz
     self.colors.helpcolor        = {1/256*159, 1/256*147, 1/256*115, 1} -- the functions
@@ -395,6 +419,7 @@ function tracker:loadColors(colorScheme)
     self.colors.changed          = {1, 1, 0, 1} -- Uncommited resolution changes
     self.colors.changed2         = {0, .5, 1, .5} -- Only listening
     self.colors.windowbackground = {1/256*218, 1/256*214, 1/256*201, 1}
+    self.crtStrength             = .3
   elseif colorScheme == "it" then
     -- Reapulse Tracker (Impulse Tracker)
     self.colors.helpcolor        = {0, 0, 0, 1} -- the functions
@@ -414,6 +439,7 @@ function tracker:loadColors(colorScheme)
     self.colors.changed          = {1, 1, 0, 1}
     self.colors.changed2         = {0, .5, 1, .5} -- Only listening
     self.colors.windowbackground = {1/256*180, 1/256*148, 1/256*120, 1}
+    self.crtStrength             = .5
   end
   -- clear colour is in a different format cos why not
   gfx.clear = tracker.colors.windowbackground[1]*256+(tracker.colors.windowbackground[2]*256*256)+(tracker.colors.windowbackground[3]*256*256*256)
@@ -1744,6 +1770,28 @@ function tracker:printGrid()
     end
   end
   
+  ------------------------------------------
+  -- Cheap CRT effect
+  ------------------------------------------
+  if ( self.cfg.CRT == 1 ) then
+    local str = self.crtStrength
+    self.crt_time = ( self.crt_time or 0 ) + 0.1
+    for c = 0,gfx.h,4 do
+      local q = math.sin( self.crt_time + .05 * c ) - 0.1
+      gfx.set(0, 0, 0, str * 0.05 * ( 1 + 0.7 * q*q*q*q ) )
+      gfx.line(0, c, gfx.w,  c)
+      gfx.set(0, 0, 0, str * 0.02 * ( 1 + 0.7 * q*q*q*q ) )      
+      gfx.line(0, c+1, gfx.w,  c+1)
+    end
+    for c = 0,gfx.w,4 do
+      gfx.set(1.0, 0, 0, 0.02 * ( 1 + 0.1 * str ) )
+      gfx.line(c, 0, c, gfx.h)
+    end
+    for c = 3,gfx.w,4 do
+      gfx.set(0, 1.0, 0, 0.02 * ( 1 + 0.1 * str ) )
+      gfx.line(c, 0, c, gfx.h)
+    end    
+  end
 end
 
 -- Load the scales
@@ -1770,14 +1818,14 @@ function tracker:optionLocations()
   end
   
   local keyMapX = xs + 8.2 * 2
-  local keyMapY = ys + yheight * ( 5 + #keysets )
+  local keyMapY = ys + yheight * ( 6 + #keysets )
   local keyMapH = yheight
   
   local themeMapX = xs + 8.2 * 2
   local themeMapY = ys + yheight * 2
   
   local binaryOptionsX = xs + 8.2 * 2
-  local binaryOptionsY = ys + yheight * ( 5 + #tracker.colorschemes + #keysets )
+  local binaryOptionsY = ys + yheight * ( 6 + #tracker.colorschemes + #keysets )
   
   return xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, keyMapH
 end
