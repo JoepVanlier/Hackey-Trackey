@@ -382,16 +382,16 @@ function tracker:loadColors(colorScheme)
     self.colors.windowbackground = {0, 0, 0, 1}
     self.crtStrength         = 2
   elseif colorScheme == "hacker" then
-    self.colors.helpcolor    = {0, .8, 0, 1}
-    self.colors.helpcolor2   = {0, .7, 0, 1}
+    self.colors.helpcolor    = {0, .4, .2, 1}
+    self.colors.helpcolor2   = {0, .7, .3, 1}
     self.colors.selectcolor  = {0, .3, 0, 1}
     self.colors.textcolor    = {0, .9, .6, 1}
     self.colors.headercolor  = {0, .9, .5, 1}
     self.colors.linecolor    = {0, .1, 0, .4}
-    self.colors.linecolor2   = {0, .4, .4, .4}
+    self.colors.linecolor2   = {0, .3, .2, .4}
     self.colors.linecolor3   = {0, .2, 0, 1}
     self.colors.linecolor4   = {0, .1, .1, .5}
-    self.colors.linecolor5   = {0, .5, .5, .4}
+    self.colors.linecolor5   = {0, .6, .5, .4}
     self.colors.loopcolor    = {0, .3, 0, .5}
     self.colors.copypaste    = {0, .7, .5, .2}
     self.colors.scrollbar1   = {0, .1, 0, 1.0}
@@ -399,7 +399,7 @@ function tracker:loadColors(colorScheme)
     self.colors.changed      = {.4,  1, .4, 1.0} 
     self.colors.changed2     = {.4,  .5, .4, .5} -- Only listening    
     self.colors.windowbackground = {0, 0, 0, 1}
-    self.crtStrength         = 5
+    self.crtStrength         = 4
   elseif colorScheme == "buzz" then
     -- Buzz
     self.colors.helpcolor        = {1/256*159, 1/256*147, 1/256*115, 1} -- the functions
