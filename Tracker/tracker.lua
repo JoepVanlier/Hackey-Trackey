@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.42
+@version 1.43
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.43 (2018-05-02)
+   + Add option for always record
  * v1.42 (2018-05-02)
    + Fixed bug in pattern length rendering and allow resizing of columns
  * v1.41 (2018-05-02)
@@ -206,7 +208,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.42"
+tracker.name = "Hackey Trackey v1.43"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -335,12 +337,14 @@ tracker.cfg.autoResize = 1
 tracker.cfg.followSelection = 0
 tracker.cfg.stickToBottom = 0
 tracker.cfg.colResize = 1
+tracker.cfg.alwaysRecord = 0
 
 tracker.binaryOptions = { 
     { 'autoResize', 'Auto Resize' }, 
     { 'followSelection', 'Follow Selection' }, 
     { 'stickToBottom', 'Info Sticks to Bottom' },
     { 'colResize', 'Adjust Column Count to Window' },
+    { 'alwaysRecord', 'Always enable recording' },    
     }
     
 tracker.colorschemes = {"default", "buzz", "it"}
@@ -4145,12 +4149,23 @@ function tracker:setTake( take )
   -- Only switch if we're actually changing take
   if ( self.take ~= take ) then
     if ( reaper.TakeIsMIDI( take ) == true ) then
+    
+      if ( tracker.armed == 1 ) then
+        tracker:stopNote()
+        tracker:disarm()
+      end
+    
       self.take = take
       self.track = reaper.GetMediaItem_Track(self.item)
       -- Store note hash (second arg = notes only)
       self.hash = reaper.MIDI_GetHash( self.take, false, "?" )
       self.newRowPerQn = self:getResolution()
       self:update()
+      
+      if ( self.cfg.alwaysRecord == 1 ) then
+        tracker:arm()
+      end
+      
       return true
     end
   end
