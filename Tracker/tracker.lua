@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.46
+@version 1.47
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.47 (2018-05-03)
+   + Bugfix regarding scale behaviour when harmony helper is open
  * v1.46 (2018-05-03)
    + Bugfix for when item is deleted
  * v1.45 (2018-05-03)
@@ -214,7 +216,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.46"
+tracker.name = "Hackey Trackey v1.47"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -6064,7 +6066,7 @@ function tracker:autoResize()
   if ( tracker.optionsActive == 1 ) then
     siz = siz - self.optionswidth
   end
-  if ( tracker.scaleActive == 1 ) then
+  if ( tracker.cfg.scaleActive == 1 ) then
     siz = siz - self.scalewidth
   end
   tracker.fov.abswidth = siz
