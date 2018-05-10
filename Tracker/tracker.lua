@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.47
+@version 1.48
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.48 (2018-05-03)
+   + Changed resolution change to Alt + Shift + Up/Down to avoid conflict with windows screenflipping shortcut.
  * v1.47 (2018-05-03)
    + Bugfix regarding scale behaviour when harmony helper is open
  * v1.46 (2018-05-03)
@@ -511,9 +513,9 @@ function tracker:loadKeys( keySet )
     keys.shiftup        = { 0,    0,  1,    30064 }         -- Shift + /\
     keys.shiftdown      = { 0,    0,  1,    1685026670 }    -- Shift + \/
     keys.deleteBlock    = { 0,    0,  1,    6579564 }       -- Shift + Del
-    keys.resolutionUp   = { 1,    1,  0,    30064 }         -- CTRL + Alt + Up
-    keys.resolutionDown = { 1,    1,  0,    1685026670 }    -- CTRL + Alt + Down
-    keys.commit         = { 1,    1,  0,    13 }            -- CTRL + Alt + Enter
+    keys.resolutionUp   = { 0,    1,  1,    30064 }         -- SHIFT + Alt + Up
+    keys.resolutionDown = { 0,    1,  1,    1685026670 }    -- SHIFT + Alt + Down
+    keys.commit         = { 0,    1,  1,    13 }            -- SHIFT + Alt + Enter
     keys.nextMIDI       = { 1,    0,  0,    1919379572.0 }  -- CTRL + ->
     keys.prevMIDI       = { 1,    0,  0,    1818584692.0 }  -- CTRL + <-
     keys.duplicate      = { 1,    0,  0,    4 }             -- CTRL + D
@@ -541,8 +543,8 @@ function tracker:loadKeys( keySet )
       { 'CTRL + I', 'Interpolate' },
       { 'Shift + Del', 'Delete block' },
       { 'CTRL + (SHIFT) + Z', 'Undo / Redo' }, 
-      { 'CTRL + ALT + Up/Down', '[Res]olution Up/Down' },
-      { 'CTRL + ALT + Enter', '[Res]olution Commit' },  
+      { 'SHIFT + Alt + Up/Down', '[Res]olution Up/Down' },
+      { 'SHIFT + Alt + Enter', '[Res]olution Commit' },  
       { 'CTRL + Up/Down', '[Oct]ave up/down' },
       { 'CTRL + Shift + Up/Down', '[Env]elope change' },
       { 'F4/F5', '[Adv]ance De/Increase' },
@@ -613,9 +615,9 @@ function tracker:loadKeys( keySet )
     keys.shiftup        = { 0,    0,  1,    30064 }         -- Shift + /\
     keys.shiftdown      = { 0,    0,  1,    1685026670 }    -- Shift + \/
     keys.deleteBlock    = { 0,    0,  1,    6579564 }       -- Shift + Del
-    keys.resolutionUp   = { 1,    1,  0,    30064 }         -- CTRL + Alt + Up    (no equiv, would be set in pattern properties)
-    keys.resolutionDown = { 1,    1,  0,    1685026670 }    -- CTRL + Alt + Down  (ditto)
-    keys.commit         = { 1,    1,  0,    13 }            -- CTRL + Alt + Enter (ditto)
+    keys.resolutionUp   = { 0,    1,  1,    30064 }         -- SHIFT + Alt + Up    (no equiv, would be set in pattern properties)
+    keys.resolutionDown = { 0,    1,  1,    1685026670 }    -- SHIFT + Alt + Down  (ditto)
+    keys.commit         = { 0,    1,  1,    13 }            -- SHIFT + Alt + Enter (ditto)
     keys.nextMIDI       = { 0,    0,  0,    43 }            -- +
     keys.prevMIDI       = { 0,    0,  0,    45 }            -- -
     keys.duplicate      = { 1,    0,  1,    13 }            -- CTRL + Shift + Return = create copy
@@ -645,8 +647,8 @@ function tracker:loadKeys( keySet )
       { 'CTRL + I', 'Interpolate' },
       { 'Shift + Del', 'Delete block' },
       { 'CTRL + (SHIFT) + Z', 'Undo / Redo' }, 
-      { 'CTRL + ALT + Up/Down', '[Res]olution Up/Down' },
-      { 'CTRL + ALT + Return', '[Res]olution Commit' },  
+      { 'SHIFT + Alt + Up/Down', '[Res]olution Up/Down' },
+      { 'SHIFT + Alt + Return', '[Res]olution Commit' },  
       { '*//', '[Oct]ave Up/Down' },     
       { 'CTRL + Shift + Up/Down', '[Env]elope change' },
       { 'CTRL + F1/F2', '[Adv]ance De/Increase' },
@@ -5485,6 +5487,7 @@ local function updateLoop()
   tracker:checkArmed()
 
   -- Maintain the loop until the window is closed or escape is pressed
+  prevChar = lastChar
   lastChar = gfx.getchar()
   
   -- Check if the length changed, if so, update the time data
@@ -5894,14 +5897,18 @@ local function updateLoop()
       end
       tracker:storeSettings()
     elseif inputs('resolutionUp') then
-      tracker.newRowPerQn = tracker.newRowPerQn + 1
-      if ( tracker.newRowPerQn > tracker.maxRowPerQn ) then
-        tracker.newRowPerQn = 1
+      if ( prevChar ~= lastChar ) then
+        tracker.newRowPerQn = tracker.newRowPerQn + 1
+        if ( tracker.newRowPerQn > tracker.maxRowPerQn ) then
+          tracker.newRowPerQn = 1
+        end
       end
     elseif inputs('resolutionDown') then  
-      tracker.newRowPerQn = tracker.newRowPerQn - 1
-      if ( tracker.newRowPerQn < 1 ) then
-        tracker.newRowPerQn = tracker.maxRowPerQn
+      if ( prevChar ~= lastChar ) then
+        tracker.newRowPerQn = tracker.newRowPerQn - 1
+        if ( tracker.newRowPerQn < 1 ) then
+          tracker.newRowPerQn = tracker.maxRowPerQn
+        end
       end
     elseif inputs('stop2') then
       reaper.Main_OnCommand(1016, 0)
