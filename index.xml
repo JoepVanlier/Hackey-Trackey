@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="87db5fdd42e92d2c8c725fa3b7593c017879377f">
+<index version="1" name="Tracker tools" commit="bbcef6c1ef4cf156346f27c28ce4060b18633bbb">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -256,6 +256,11 @@ here
         <changelog><![CDATA[+ Added saving defaults for advance / octave / resolution / envelope]]></changelog>
         <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/87db5fdd42e92d2c8c725fa3b7593c017879377f/Tracker/scales.lua</source>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/87db5fdd42e92d2c8c725fa3b7593c017879377f/Tracker/tracker.lua</source>
+      </version>
+      <version name="1.51" author=": Joep Vanlier" time="2018-05-20T00:38:14Z">
+        <changelog><![CDATA[+ Minor bugfix to make sure that renoise keyset is immediately available after change]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/bbcef6c1ef4cf156346f27c28ce4060b18633bbb/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/bbcef6c1ef4cf156346f27c28ce4060b18633bbb/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
