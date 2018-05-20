@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.50
+@version 1.51
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.51 (2018-05-21)
+   + Minor bugfix to make sure that renoise keyset is immediately available after change
  * v1.50 (2018-05-21)
    + Added saving defaults for advance / octave / resolution / envelope
  * v1.49 (2018-05-20)
@@ -222,7 +224,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.49"
+tracker.name = "Hackey Trackey v1.51"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -5863,6 +5865,7 @@ local function updateLoop()
               changedOptions = 1
             end
             tracker.cfg.keyset = keysets[sel]
+            setKeyboard(tracker.cfg.keyset)
           end
         end
       end
