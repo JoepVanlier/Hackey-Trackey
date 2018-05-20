@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.48
+@version 1.50
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,10 @@
 
 --[[
  * Changelog:
+ * v1.50 (2018-05-21)
+   + Added saving defaults for advance / octave / resolution / envelope
+ * v1.49 (2018-05-20)
+   + Added some compatibility features to be more like renoise
  * v1.48 (2018-05-03)
    + Changed resolution change to Alt + Shift + Up/Down to avoid conflict with windows screenflipping shortcut.
  * v1.47 (2018-05-03)
@@ -218,7 +222,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.47"
+tracker.name = "Hackey Trackey v1.49"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -351,14 +355,18 @@ tracker.cfg.stickToBottom = 0
 tracker.cfg.colResize = 1
 tracker.cfg.alwaysRecord = 0
 tracker.cfg.CRT = 0
+tracker.cfg.keyboard = "buzz"
+tracker.cfg.rowPerQn = 4
+tracker.cfg.storedSettings = 1
 
 tracker.binaryOptions = { 
     { 'autoResize', 'Auto Resize' }, 
     { 'followSelection', 'Follow Selection' }, 
+    { 'storedSettings', 'Use settings stored in pattern' },     
     { 'stickToBottom', 'Info Sticks to Bottom' },
     { 'colResize', 'Adjust Column Count to Window' },
     { 'alwaysRecord', 'Always Enable Recording' },  
-    { 'CRT', 'CRT mode' },  
+    { 'CRT', 'CRT mode' }
     }
     
 tracker.colorschemes = {"default", "buzz", "it", "hacker"}
@@ -457,7 +465,7 @@ end
 -- of chooser here.
 
 -- Default when no config file is present
-keysets = { "default", "buzz" }
+keysets = { "default", "buzz", "renoise" }
 keys = {}
 
 -- You can find the keycodes by setting printKeys to 1 and hitting any key.
@@ -476,6 +484,7 @@ function tracker:loadKeys( keySet )
     keys.End            = { 0,    0,  0,    6647396 }       -- End
     keys.toggle         = { 0,    0,  0,    32 }            -- Space
     keys.playfrom       = { 0,    0,  0,    13 }            -- Enter
+    keys.enter          = { 0,    0,  0,    13 }            -- Enter        
     keys.insert         = { 0,    0,  0,    6909555 }       -- Insert
     keys.remove         = { 0,    0,  0,    8 }             -- Backspace
     keys.pgup           = { 0,    0,  0,    1885828464 }    -- Page up
@@ -528,6 +537,10 @@ function tracker:loadKeys( keySet )
     keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -
     keys.tab            = { 0,    0,  0,    9 }             -- Tab
     keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
+    keys.m0             = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.m25            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.m50            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.m75            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     
     help = {
       { 'Arrow Keys', 'Move' },
@@ -576,6 +589,7 @@ function tracker:loadKeys( keySet )
     keys.delete2        = { 0,    0,  0,    46 }            -- .
     keys.home           = { 0,    0,  0,    1752132965 }    -- Home
     keys.End            = { 0,    0,  0,    6647396 }       -- End
+    keys.enter          = { 0,    0,  0,    13 }            -- Enter        
     keys.toggle         = { 0,    0,  0,    26165 }         -- f5 = play/pause
     keys.playfrom       = { 0,    0,  0,    26166 }         -- f6 = play here 
     keys.stop2          = { 0,    0,  0,    26168 }         -- f8 = Stop
@@ -630,6 +644,10 @@ function tracker:loadKeys( keySet )
     keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -
     keys.tab            = { 0,    0,  0,    9 }             -- Tab
     keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
+    keys.m0             = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.m25            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.m50            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.m75            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     
     help = {
       { 'Arrow Keys', 'Move' },
@@ -667,6 +685,113 @@ function tracker:loadKeys( keySet )
       { 'Shift', 'Invert second note' },   
       { 'CTRL + Shift + Alt + +/-', 'Shift root note' },
     }
+  elseif keyset == "renoise" then
+    --                    CTRL    ALT SHIFT Keycode
+    keys.left           = { 0,    0,  0,    1818584692 }    -- <-
+    keys.right          = { 0,    0,  0,    1919379572 }    -- ->
+    keys.up             = { 0,    0,  0,    30064 }         -- /\
+    keys.down           = { 0,    0,  0,    1685026670 }    -- \/
+    keys.off            = { 0,    0,  0,    92 }            -- Backslash (\) (temporary)
+    keys.delete         = { 0,    0,  0,    657564 }        -- Del
+    keys.delete2        = { 0,    0,  0,    500000000000000000000000 }  -- Not assigned
+    keys.home           = { 0,    0,  0,    1752132965 }    -- Home
+    keys.End            = { 0,    0,  0,    6647396 }       -- End
+    keys.enter          = { 0,    0,  0,    13 }            -- Enter        
+    keys.toggle         = { 0,    0,  0,    32 }            -- Play/pause (space)
+    keys.playfrom       = { 0,    0,  0,    500000000000000000000000 }  -- Not assigned
+    keys.stop2          = { 0,    0,  0,    500000000000000000000000 }  -- Not assigned
+    keys.harmony        = { 1,    0,  0,    8 }             -- ctrl+h harmony helper
+    keys.options        = { 1,    0,  0,    15 }            -- ctrl+o options
+    keys.panic          = { 0,    0,  0,    27 }            -- Escape = MIDI Panic!
+    keys.insert         = { 0,    0,  0,    6909555 }       -- Insert
+    keys.remove         = { 0,    0,  0,    8 }             -- Backspace
+    keys.pgup           = { 0,    0,  0,    1885828464 }    -- Page up
+    keys.pgdown         = { 0,    0,  0,    1885824110 }    -- Page down
+    keys.m0             = { 0,    0,  0,    26169.0 }       -- F9
+    keys.m25            = { 0,    0,  0,    6697264.0 }     -- F10
+    keys.m50            = { 0,    0,  0,    6697265.0 }     -- F11
+    keys.m75            = { 0,    0,  0,    6697266.0 }     -- F12
+    keys.undo           = { 1,    0,  0,    26 }            -- CTRL + Z
+    keys.redo           = { 1,    0,  1,    26 }            -- CTRL + SHIFT + Z
+    keys.beginBlock     = { 1,    0,  0,    2 }             -- CTRL + B
+    keys.endBlock       = { 1,    0,  0,    5 }             -- CTRL + E
+    keys.cutBlock       = { 1,    0,  0,    24 }            -- CTRL + X
+    keys.pasteBlock     = { 1,    0,  0,    22 }            -- CTRL + V
+    keys.copyBlock      = { 1,    0,  0,    3 }             -- CTRL + C
+    keys.shiftItemUp    = { 0,    0,  1,    43 }            -- SHIFT + Num pad+
+    keys.shiftItemDown  = { 0,    0,  1,    45 }            -- SHIFT + Num pad-
+    keys.octaveup       = { 0,    0,  0,    42 }            -- *
+    keys.octavedown     = { 0,    0,  0,    47 }            -- /
+    keys.scaleUp        = { 1,    1,  1,    267 }           -- CTRL + SHIFT + ALT + Num pad +
+    keys.scaleDown      = { 1,    1,  1,    269 }           -- CTRL + SHIFT + ALT + Num pad -    
+    keys.envshapeup     = { 1,    0,  1,    30064 }         -- CTRL + SHIFT + /\
+    keys.envshapedown   = { 1,    0,  1,    1685026670 }    -- CTRL + SHIFT + /\
+    keys.help           = { 0,    0,  0,    26161 }         -- F1
+    keys.outchanup      = { 0,    0,  0,    43 }            -- +
+    keys.outchandown    = { 0,    0,  0,    45 }            -- -
+    keys.advancedown    = { 1,    0,  0,    13 }            -- CTRL + -
+    keys.advanceup      = { 1,    0,  0,    11 }            -- CTRL + +
+    keys.setloop        = { 0,    0,  0,    13 }            -- Enter
+    keys.setloopstart   = { 1,    0,  0,    17 }            -- CTRL + Q (ditto)
+    keys.setloopend     = { 1,    0,  0,    23 }            -- CTRL + W (ditto)
+    keys.interpolate    = { 1,    0,  0,    9 }             -- CTRL + I
+    keys.shiftleft      = { 0,    0,  1,    1818584692 }    -- Shift + <-
+    keys.shiftright     = { 0,    0,  1,    1919379572 }    -- Shift + ->
+    keys.shiftup        = { 0,    0,  1,    30064 }         -- Shift + /\
+    keys.shiftdown      = { 0,    0,  1,    1685026670 }    -- Shift + \/
+    keys.deleteBlock    = { 0,    0,  1,    6579564 }       -- Shift + Del
+    keys.resolutionUp   = { 0,    1,  1,    30064 }         -- SHIFT + Alt + Up    (no equiv, would be set in pattern properties)
+    keys.resolutionDown = { 0,    1,  1,    1685026670 }    -- SHIFT + Alt + Down  (ditto)
+    keys.commit         = { 0,    1,  1,    13 }            -- SHIFT + Alt + Enter (ditto)
+    keys.nextMIDI       = { 1,    0,  0,    1685026670.0 }  -- CTRL + /\
+    keys.prevMIDI       = { 1,    0,  0,    30064.0 }       -- CTRL + \/
+    keys.duplicate      = { 1,    0,  1,    13 }            -- CTRL + Shift + Return = create copy
+    keys.rename         = { 1,    0,  1,    14 }            -- CTRL + SHIFT + N
+    keys.escape         = { 0,    0,  0,    27 }            -- Escape
+    keys.toggleRec      = { 1,    0,  0,    18 }            -- CTRL + N
+    keys.showMore       = { 1,    1,  0,    267 }           -- CTRL + Alt + +
+    keys.showLess       = { 1,    1,  0,    269 }           -- CTRL + Alt + -
+    keys.addCol         = { 1,    0,  1,    11 }            -- CTRL + Shift + +
+    keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -
+    keys.tab            = { 0,    0,  0,    9 }             -- Tab
+    keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
+    
+    help = {
+      { 'Arrow Keys', 'Move' },
+      { '\\', 'Note OFF' },
+      { 'Insert/Backspace', 'Insert/Remove line' },   
+      { 'Del/.', 'Delete' }, 
+      { 'Space', 'Play' },
+      { 'Ctrl + O / Escape', 'Options / Stop all notes' },
+      { 'Enter', 'Loop pattern' },
+      { 'CTRL + Q/W', 'Loop start/end' },
+      { 'Shift + +/-', 'Transpose selection' },
+      { 'CTRL + B/E', 'Selection Begin/End' },
+      { 'SHIFT + Arrow Keys', 'Block selection' },
+      { 'CTRL + C/X/V', 'Copy / Cut / Paste' },
+      { 'CTRL + I', 'Interpolate' },
+      { 'Shift + Del', 'Delete block' },
+      { 'CTRL + (SHIFT) + Z', 'Undo / Redo' }, 
+      { 'SHIFT + Alt + Up/Down', '[Res]olution Up/Down' },
+      { 'SHIFT + Alt + Return', '[Res]olution Commit' },  
+      { '*//', '[Oct]ave Up/Down' },     
+      { 'CTRL + Shift + Up/Down', '[Env]elope change' },
+      { 'CTRL + -/+', '[Adv]ance De/Increase' },
+      { '+/-', 'MIDI [out] Up/Down' },  
+      { 'CTRL + Up/Down', 'Switch MIDI item' },
+      { 'CTRL + Shift + Return', 'Duplicate pattern' },
+      { 'CTRL + SHIFT + N', 'Rename pattern' },
+      { 'CTRL + R', 'Toggle note play' },
+      { 'CTRL + Alt + +/-', 'Advanced col options' },
+      { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },
+      { 'F9/F10/F11/F12', 'Goto 0, 25, 50 and 75%%' },
+      { '---', '' },      
+      { 'CTRL + H', 'Toggle harmonizer' },
+      { 'CTRL + Click', 'Insert chord' },
+      { 'Alt', 'Invert first note' },
+      { 'Shift', 'Invert second note' },   
+      { 'CTRL + Shift + Alt + +/-', 'Shift root note' },
+    }    
   end
 end
 
@@ -693,41 +818,91 @@ keys.Cbase = 24-12
 
 --- Base pitches
 --- Can customize the 'keyboard' here, if they aren't working for you
-keys.pitches = {}
-keys.pitches.z = 24-12
-keys.pitches.x = 26-12
-keys.pitches.c = 28-12
-keys.pitches.v = 29-12
-keys.pitches.b = 31-12
-keys.pitches.n = 33-12
-keys.pitches.m = 35-12
-keys.pitches.s = 25-12
-keys.pitches.d = 27-12
-keys.pitches.g = 30-12
-keys.pitches.h = 32-12
-keys.pitches.j = 34-12
-keys.pitches.q = 36-12
-keys.pitches.w = 38-12
-keys.pitches.e = 40-12
-keys.pitches.r = 41-12
-keys.pitches.t = 43-12
-keys.pitches.y = 45-12
-keys.pitches.u = 47-12
-keys.pitches.i = 48-12
-keys.pitches.o = 50-12
-keys.pitches.p = 52-12
+local function setKeyboard( choice )
+  if ( choice == "buzz" or choice == "default" ) then
+    keys.pitches = {}
+    keys.pitches.z = 24-12
+    keys.pitches.x = 26-12
+    keys.pitches.c = 28-12
+    keys.pitches.v = 29-12
+    keys.pitches.b = 31-12
+    keys.pitches.n = 33-12
+    keys.pitches.m = 35-12
+    keys.pitches.s = 25-12
+    keys.pitches.d = 27-12
+    keys.pitches.g = 30-12
+    keys.pitches.h = 32-12
+    keys.pitches.j = 34-12
+    keys.pitches.q = 36-12
+    keys.pitches.w = 38-12
+    keys.pitches.e = 40-12
+    keys.pitches.r = 41-12
+    keys.pitches.t = 43-12
+    keys.pitches.y = 45-12
+    keys.pitches.u = 47-12
+    keys.pitches.i = 48-12
+    keys.pitches.o = 50-12
+    keys.pitches.p = 52-12
+  
+    keys.octaves = {}
+    keys.octaves['0'] = 0
+    keys.octaves['1'] = 1
+    keys.octaves['2'] = 2
+    keys.octaves['3'] = 3
+    keys.octaves['4'] = 4
+    keys.octaves['5'] = 5
+    keys.octaves['6'] = 6
+    keys.octaves['7'] = 7
+    keys.octaves['8'] = 8
+    keys.octaves['9'] = 9
+  elseif ( choice == "renoise" ) then
+    keys.pitches = {}
+    keys.pitches.z = 24-12
+    keys.pitches.x = 26-12
+    keys.pitches.c = 28-12
+    keys.pitches.v = 29-12
+    keys.pitches.b = 31-12
+    keys.pitches.n = 33-12
+    keys.pitches.m = 35-12
+    keys.pitches[","] = 36-12
+    keys.pitches["."] = 38-12
+    keys.pitches["/"] = 40-12    
+    
+    keys.pitches.s = 25-12
+    keys.pitches.d = 27-12
+    keys.pitches.g = 30-12
+    keys.pitches.h = 32-12
+    keys.pitches.j = 34-12
+    keys.pitches.l = 37-12
+    keys.pitches[';'] = 39-12    
+    
+    keys.pitches.q = 36-12
+    keys.pitches.w = 38-12
+    keys.pitches.e = 40-12
+    keys.pitches.r = 41-12
+    keys.pitches.t = 43-12
+    keys.pitches.y = 45-12
+    keys.pitches.u = 47-12
+    keys.pitches.i = 48-12
+    keys.pitches.o = 50-12
+    keys.pitches.p = 52-12
+    keys.pitches['['] = 53-12
+    keys.pitches[']'] = 55-12    
+    
+    keys.pitches['2'] = 37-12
+    keys.pitches['3'] = 39-12
+    keys.pitches['5'] = 42-12
+    keys.pitches['6'] = 44-12
+    keys.pitches['7'] = 46-12
+    keys.pitches['9'] = 49-12
+    keys.pitches['0'] = 51-12
+    keys.pitches['='] = 54-12
+    
+    keys.octaves = {}
+  end
+end
 
-keys.octaves = {}
-keys.octaves['0'] = 0
-keys.octaves['1'] = 1
-keys.octaves['2'] = 2
-keys.octaves['3'] = 3
-keys.octaves['4'] = 4
-keys.octaves['5'] = 5
-keys.octaves['6'] = 6
-keys.octaves['7'] = 7
-keys.octaves['8'] = 8
-keys.octaves['9'] = 9
+setKeyboard(tracker.cfg.keyboard)
 
 CC = {}
 CC[0] = "Bank Select"
@@ -3068,13 +3243,13 @@ function tracker:getResolution( reso )
     end
   end
   
-  return self.rowPerQn
+  return tracker.cfg.rowPerQn
 end
 
 function tracker:getSettings( )
   local oct, adv, env, modMode
   local foundOpt = 0
-  if ( self.rememberSettings == 1 ) then
+  if ( tracker.cfg.storedSettings == 1 ) then
     local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
     for i=0,textsyxevtcntOut do
       local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
@@ -3092,9 +3267,9 @@ function tracker:getSettings( )
       end
     end
     
-    self.transpose  = oct or self.transpose
-    self.advance    = adv or self.advance
-    self.envShape   = env or self.envShape
+    self.transpose  = oct or tracker.cfg.transpose or self.transpose
+    self.advance    = adv or tracker.cfg.advance or self.advance
+    self.envShape   = env or tracker.cfg.envShape or self.envShape
     self.modMode    = modMode or self.modMode
   end
   self:deleteNow()
@@ -5789,6 +5964,14 @@ local function updateLoop()
       tracker.ypos = 0
     elseif inputs('End') then
       tracker.ypos = tracker.rows
+    elseif inputs('m0') then
+      tracker.ypos = 0
+    elseif inputs('m25') then
+      tracker.ypos = math.ceil(tracker.rows * 0.25)+1
+    elseif inputs('m50') then
+      tracker.ypos = math.ceil(tracker.rows * 0.5)+1
+    elseif inputs('m75') then
+      tracker.ypos = math.ceil(tracker.rows * 0.75)+1
     elseif inputs('toggle') then
       togglePlayPause()
     elseif inputs('playfrom') then
@@ -5860,21 +6043,25 @@ local function updateLoop()
     elseif inputs('octaveup') then
       tracker.transpose = tracker.transpose + 1
       tracker:storeSettings()
+      tracker:saveConfig(tracker.cfg)
     elseif inputs('octavedown') then
       tracker.transpose = tracker.transpose - 1  
-      tracker:storeSettings()    
+      tracker:storeSettings()
+      tracker:saveConfig(tracker.cfg)
     elseif inputs('envshapeup') then
       tracker.envShape = tracker.envShape + 1
       if ( tracker.envShape > #tracker.envShapes ) then
         tracker.envShape = 0
       end
       tracker:storeSettings()
+      tracker:saveConfig(tracker.cfg)
     elseif inputs('envshapedown') then
       tracker.envShape = tracker.envShape - 1
       if ( tracker.envShape < 0 ) then
         tracker.envShape = #tracker.envShapes
       end
       tracker:storeSettings()
+      tracker:saveConfig(tracker.cfg)
     elseif inputs('outchanup') then
       tracker.outChannel = tracker.outChannel + 1
       if ( tracker.outChannel > 16 ) then
@@ -5890,12 +6077,14 @@ local function updateLoop()
     elseif inputs('advanceup') then
       tracker.advance = tracker.advance + 1
       tracker:storeSettings()
+      tracker:saveConfig(tracker.cfg)
     elseif inputs('advancedown') then
       tracker.advance = tracker.advance - 1
       if ( tracker.advance < 0 ) then
         tracker.advance = 0
       end
       tracker:storeSettings()
+      tracker:saveConfig(tracker.cfg)      
     elseif inputs('resolutionUp') then
       if ( prevChar ~= lastChar ) then
         tracker.newRowPerQn = tracker.newRowPerQn + 1
@@ -5936,6 +6125,7 @@ local function updateLoop()
       tracker:duplicate()
     elseif inputs('commit') then
       tracker:setResolution( tracker.newRowPerQn )
+      tracker:saveConfig(tracker.cfg)      
       self.hash = math.random()
     elseif inputs('setloop') then
       local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
@@ -5994,7 +6184,7 @@ local function updateLoop()
     end
   elseif( tracker.renaming == 1 ) then
     -- Renaming pattern
-    if inputs( 'playfrom' ) then
+    if inputs( 'enter' ) then
       tracker.renaming = 0
     elseif inputs( 'escape' ) then
       tracker.midiName = tracker.oldMidiName
@@ -6012,7 +6202,7 @@ local function updateLoop()
     end
   elseif ( tracker.renaming == 2 ) then
     -- Adding column
-    if inputs( 'playfrom' ) then
+    if inputs( 'enter' ) then
       tracker.renaming = 0
       tracker:createCCCol()
     elseif( inputs( 'escape' ) ) then
@@ -6027,7 +6217,7 @@ local function updateLoop()
     end
   elseif ( tracker.renaming == 3 ) then
     -- Resizing pattern
-    if inputs( 'playfrom' ) then
+    if inputs( 'enter' ) then
       tracker.renaming = 0
       tracker:resizePattern()
     elseif( inputs( 'escape' ) ) then
@@ -6198,8 +6388,12 @@ end
 function tracker:saveConfig(cfg)
   local file = io.open(get_script_path().."_hackey_trackey_options_.cfg", "w+")
   
-  cfg.root  = scales.root
-  cfg.scale = scales.curScale
+  cfg.root      = scales.root
+  cfg.scale     = scales.curScale
+  cfg.rowPerQn  = tracker.rowPerQn
+  cfg.transpose = tracker.transpose
+  cfg.advance   = tracker.advance
+  cfg.envShape  = tracker.envShape
   
   if ( file ) then
     io.output(file)
@@ -6235,6 +6429,7 @@ local function Main()
     tracker:loadColors(cfg.colorscheme)
     tracker:initColors()
     tracker:loadKeys(cfg.keyset)
+    setKeyboard(cfg.keyset)    
     tracker.cfg = cfg   
     
     if ( cfg.root and ( scales.root ~= cfg.root ) ) then
