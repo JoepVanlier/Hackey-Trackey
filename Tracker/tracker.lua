@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.52
+@version 1.54
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,12 +38,14 @@
 
 --[[
  * Changelog:
+ * v1.54 (2018-05-22)
+   + Added mouse interactivity for the bottom panel (resolution, octave, record etc)
  * v1.53 (2018-05-21)
-   + Renoise color scheme
+   + Renoise-like color scheme
  * v1.52 (2018-05-21)
    + Option to follow tracker within a track
  * v1.51 (2018-05-21)
-   + Minor bugfix to make sure that renoise keyset is immediately available after change
+   + Minor bugfix to make sure that renoise-like keyset is immediately available after change
  * v1.50 (2018-05-21)
    + Added saving defaults for advance / octave / resolution / envelope
  * v1.49 (2018-05-20)
@@ -228,7 +230,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.53"
+tracker.name = "Hackey Trackey v1.54"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -1767,12 +1769,26 @@ function tracker:printGrid()
     gfx.printf(patternName)
   end
    
+  -- Draw the bottom indicators
   gfx.set(table.unpack(colors.headercolor))
-  local str = string.format("Oct [%d] Adv [%d] Env [%s] Out [%s]", self.transpose, self.advance, tracker.envShapes[tracker.envShape], self:outString() )
-  gfx.x = plotData.xstart + tw - 8.2 * string.len(str)
+  local strs, locs, yh = tracker:infoString()
+  gfx.y = yh
+  
+  for i=1,#locs-1 do
+    gfx.x = locs[i]
+    gfx.printf(strs[i])
+  end
+  
+  if ( tracker.newRowPerQn ~= tracker.rowPerQn ) then
+    gfx.set(table.unpack(colors.changed))
+  else
+    gfx.set(table.unpack(colors.headercolor))
+  end
+  gfx.x = locs[#locs]
   gfx.y = bottom + yheight[1]
+  gfx.printf(strs[#locs])
+
   gfx.set(table.unpack(colors.headercolor))
-  gfx.printf(str)
 
   gfx.x = plotData.xstart
   if ( self.armed == 1) then
@@ -1800,16 +1816,6 @@ function tracker:printGrid()
     gfx.set(table.unpack(colors.inactive))  
   end
   gfx.rect( plotData.xstart + 40, bottom + yheight[1] + 4, 3, 3 )
- 
-  local str2 = string.format("Res [%d] ", tracker.newRowPerQn )
-  if ( tracker.newRowPerQn ~= tracker.rowPerQn ) then
-    gfx.set(table.unpack(colors.changed))
-  else
-    gfx.set(table.unpack(colors.headercolor))
-  end
-  gfx.x = plotData.xstart + tw - 8.2 * string.len(str) - 8.2 * string.len(str2)
-  gfx.y = bottom + yheight[1]
-  gfx.printf(str2)
  
   -- Draw the headers so we don't get lost :)
   gfx.set(table.unpack(colors.headercolor))
@@ -2119,6 +2125,32 @@ end
 dofile(get_script_path() .. 'scales.lua')
 scales:initialize()
 
+function tracker:infoString()
+  local plotData = self.plotData
+  local tw       = plotData.totalwidth
+  local yloc     = plotData.yloc
+  local yheight  = (yloc[2]-yloc[1])*.7
+
+  local str = {}
+  str[4] = string.format( "Oct [%d]", self.transpose )
+  str[3] = string.format( "Adv [%d]", self.advance )
+  str[2] = string.format( "Env [%s]", tracker.envShapes[tracker.envShape] )
+  str[1] = string.format( "Out [%s]", self:outString() )
+  str[5] = string.format( "Res [%d]", tracker.newRowPerQn )
+
+  local locs = {}
+  local xs = plotData.xstart + tw - 5
+  for i=1,#str do
+    xs = xs - gfx.measurestr(str[i])
+    locs[i] = xs
+    xs = xs - gfx.measurestr("p")
+  end
+  
+  local y = self:getBottom() + yheight
+
+  return str, locs, y
+end
+
 function tracker:getBottom()
   local plotData = self.plotData
   local yloc     = plotData.yloc
@@ -2132,7 +2164,7 @@ function tracker:getBottom()
     bottom = yloc[#yloc] + yheight + itempady
   end
   
-  return bottom
+  return bottom, yheight
 end
 
 function tracker:optionLocations()
@@ -5811,6 +5843,25 @@ function tracker:resizePattern()
   end
 end
 
+
+-- Capture the mouse?
+mouse_cap = 0
+capture = {}
+local function setCapMode( mode, ref, min, max )
+  mouse_cap = mode
+  capture.lastY = gfx.mouse_y;
+  capture.ref = ref;
+  capture.min = min;
+  capture.max = max;
+end
+
+local function getCapValue( sensitivity )
+  local movement = math.floor( sensitivity * ( capture.lastY - gfx.mouse_y ) )
+  local value = capture.ref + movement;
+
+  return ( ( value - capture.min ) % (capture.max - capture.min + 1) ) + capture.min
+end
+
 ------------------------------
 -- Main update loop
 -----------------------------
@@ -5861,14 +5912,44 @@ local function updateLoop()
   -- Mouse
   local left, right = mouseStatus()
   if ( tracker.fov.height < tracker.rows ) then
-    local loc = tracker.scrollbar:mouseUpdate(gfx.mouse_x, gfx.mouse_y, left)
-    if ( loc ) then
-      tracker.ypos = math.floor(loc*(tracker.rows+1))
-      tracker:forceCursorInRange()
+    if ( mouse_cap == 0 ) then
+      local loc = tracker.scrollbar:mouseUpdate(gfx.mouse_x, gfx.mouse_y, left)
+      if ( loc ) then
+        tracker.ypos = math.floor(loc*(tracker.rows+1))
+        tracker:forceCursorInRange()
+      end
     end
   end
   
-  if ( left == 1  ) then
+  if ( left == 1 and mouse_cap > 0 ) then
+    if ( mouse_cap == 1 ) then
+      -- Out
+      tracker.outChannel = getCapValue( 0.05 )
+    elseif ( mouse_cap == 2 ) then
+      -- Envelope
+      tracker.envShape = getCapValue( 0.05 )
+    elseif ( mouse_cap == 3 ) then
+      -- Advance
+      tracker.advance = getCapValue( 0.05 )
+    elseif ( mouse_cap == 4 ) then
+      -- Octave
+      tracker.transpose = getCapValue( 0.05 )      
+    elseif ( mouse_cap == 5 ) then
+      -- Resolution
+      tracker.newRowPerQn = getCapValue( 0.05 )
+      
+      if ( right == 1 and tracker.lastright == 0 ) then
+        tracker:setResolution( tracker.newRowPerQn )
+        tracker:saveConfig(tracker.cfg)      
+        self.hash = math.random()
+      end
+    end
+  end
+  if ( left == 0 ) then
+    mouse_cap = 0
+  end
+  
+  if ( left == 1 and mouse_cap == 0 ) then
     local Inew
     local Jnew
     local plotData  = tracker.plotData
@@ -5885,6 +5966,28 @@ local function updateLoop()
             tracker.renaming = 3
             tracker.newLength = tostring(tracker.max_ypos)
           end
+        end
+      end
+    end
+    
+    -- Mouse in range of bottom fields?
+    local strs, locs, yh = tracker:infoString()
+    if ( gfx.mouse_y > yh and gfx.mouse_y < yh + 10 and gfx.mouse_x < xloc[#xloc] ) then
+      -- Calculate the positions
+      local strs, locs, yh = tracker:infoString()
+      if ( gfx.mouse_x > locs[1] ) then
+        setCapMode(1, tracker.outChannel, 0, 16) -- Out
+      elseif ( gfx.mouse_x > locs[2] ) then
+        setCapMode(2, tracker.envShape, 0, #tracker.envShapes ) -- Env     
+      elseif ( gfx.mouse_x > locs[3] ) then
+        setCapMode(3, tracker.advance, -99, 99) -- Adv   
+      elseif ( gfx.mouse_x > locs[4] ) then
+        setCapMode(4, tracker.transpose, -2, 12) -- Oct             
+      elseif ( gfx.mouse_x > locs[5] ) then
+        setCapMode(5, tracker.newRowPerQn, 1, tracker.maxRowPerQn) -- Res
+      elseif ( gfx.mouse_x < plotData.xstart + gfx.measurestr("[Rec]") ) and ( gfx.mouse_x > plotData.xstart ) then
+        if ( tracker.lastleft ~= 1 ) then
+          tracker:toggleRec()
         end
       end
     end
@@ -6082,6 +6185,7 @@ local function updateLoop()
     tracker.holding = nil
   end 
   tracker.lastleft = left
+  tracker.lastright = right
   
   if ( gfx.mouse_wheel ~= 0 ) then
     tracker.ypos = tracker.ypos - math.floor( gfx.mouse_wheel / 120 )
@@ -6345,12 +6449,7 @@ local function updateLoop()
       tracker.renaming = 1
       tracker:updateMidiName()
     elseif inputs('toggleRec') then
-      if ( tracker.armed == 1 ) then
-        tracker:stopNote()
-        tracker:disarm()
-      else
-        tracker:arm()
-      end
+      tracker:toggleRec()
     elseif inputs('escape') then
       if ( tracker.armed == 1 ) then
         tracker.onlyListen = 1 - tracker.onlyListen
@@ -6454,6 +6553,15 @@ local function updateLoop()
   else
     tracker:stopNote()
     gfx.quit()
+  end
+end
+
+function tracker:toggleRec()
+  if ( self.armed == 1 ) then
+     self:stopNote()
+     self:disarm()
+  else
+     self:arm()
   end
 end
 
