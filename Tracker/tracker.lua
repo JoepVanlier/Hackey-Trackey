@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.51
+@version 1.52
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.52 (2018-05-21)
+   + Option to follow tracker within a track
  * v1.51 (2018-05-21)
    + Minor bugfix to make sure that renoise keyset is immediately available after change
  * v1.50 (2018-05-21)
@@ -224,7 +226,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.51"
+tracker.name = "Hackey Trackey v1.52"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -360,11 +362,13 @@ tracker.cfg.CRT = 0
 tracker.cfg.keyboard = "buzz"
 tracker.cfg.rowPerQn = 4
 tracker.cfg.storedSettings = 1
+tracker.cfg.followSong = 0
 
 tracker.binaryOptions = { 
     { 'autoResize', 'Auto Resize' }, 
     { 'followSelection', 'Follow Selection' }, 
-    { 'storedSettings', 'Use settings stored in pattern' },     
+    { 'storedSettings', 'Use settings stored in pattern' },
+    { 'followSong', 'Follow Song (CTRL + F)' },
     { 'stickToBottom', 'Info Sticks to Bottom' },
     { 'colResize', 'Adjust Column Count to Window' },
     { 'alwaysRecord', 'Always Enable Recording' },  
@@ -539,6 +543,7 @@ function tracker:loadKeys( keySet )
     keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -
     keys.tab            = { 0,    0,  0,    9 }             -- Tab
     keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
+    keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F
     keys.m0             = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m25            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m50            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
@@ -646,6 +651,7 @@ function tracker:loadKeys( keySet )
     keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -
     keys.tab            = { 0,    0,  0,    9 }             -- Tab
     keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
+    keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F    
     keys.m0             = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m25            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m50            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
@@ -757,6 +763,7 @@ function tracker:loadKeys( keySet )
     keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -
     keys.tab            = { 0,    0,  0,    9 }             -- Tab
     keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
+    keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F
     
     help = {
       { 'Arrow Keys', 'Move' },
@@ -1529,7 +1536,9 @@ function tracker:printGrid()
   local rely = tracker.ypos-fov.scrolly
   
   gfx.set(table.unpack(colors.selectcolor))
-  gfx.rect(xloc[relx], yloc[rely]-plotData.yshift, xwidth[relx], yheight[rely])
+  if ( xloc[relx] and yloc[rely] ) then
+    gfx.rect(xloc[relx], yloc[rely]-plotData.yshift, xwidth[relx], yheight[rely])
+  end
   
   local dlink         = plotData.dlink
   local xlink         = plotData.xlink
@@ -3170,27 +3179,36 @@ end
 ------------------------------
 -- Force selector in range
 ------------------------------
-function tracker:forceCursorInRange()
+-- forceY indicates that a certain row must be in view!
+function tracker:forceCursorInRange(forceY)
   local fov = self.fov
   if ( self.xpos < 1 ) then
     self.xpos = 1
   end
+  local yTarget = forceY or self.ypos
+  if ( yTarget < 1 ) then
+    yTarget = 1
+  end
   if ( self.ypos < 1 ) then
     self.ypos = 1
-  end
+  end  
   if ( self.xpos > self.max_xpos ) then
     self.xpos = math.floor( self.max_xpos )
   end
+  if ( yTarget > self.max_ypos ) then
+    yTarget = math.floor( self.max_ypos )
+  end
   if ( self.ypos > self.max_ypos ) then
     self.ypos = math.floor( self.max_ypos )
-  end
+  end  
   -- Is the cursor off fov?
-  if ( ( self.ypos - fov.scrolly ) > self.fov.height ) then
-    self.fov.scrolly = self.ypos - self.fov.height
+  if ( ( yTarget - fov.scrolly ) > self.fov.height ) then
+    self.fov.scrolly = yTarget - self.fov.height
   end
-  if ( ( self.ypos - fov.scrolly ) < 1 ) then
-    self.fov.scrolly = self.ypos - 1
+  if ( ( yTarget - fov.scrolly ) < 1 ) then
+    self.fov.scrolly = yTarget - 1
   end
+    
   -- Is the cursor off fov?
   if ( ( self.xpos - fov.scrollx ) > self.fov.width ) then
     self.fov.scrollx = self.xpos - self.fov.width
@@ -4214,6 +4232,24 @@ function tracker:remCol()
   end
 end
 
+
+function tracker:findTakeAtSongPos()
+  local playPos = reaper.GetPlayPosition()
+  local nItems = reaper.GetTrackNumMediaItems(self.track)
+  for i=0,nItems-1 do
+    local item = reaper.GetTrackMediaItem(self.track, i)
+    local loc = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
+    local loc2 = reaper.GetMediaItemInfo_Value(item, "D_LENGTH")
+
+    if ( playPos > loc and playPos < (loc+loc2) ) then
+      if ( self:tryTake(i) == true ) then
+        self:update()
+        self:resetShiftSelect()
+      end
+    end
+  end
+end
+
 --------------------------------------------------------------
 -- Update function
 -- heavy-ish, avoid calling too often (only on MIDI changes)
@@ -4225,13 +4261,12 @@ function tracker:update()
     if ( self.debug == 1 ) then
       print( "Updating the grid ..." )
     end
-  
+
     self:getRowInfo()
     self:getSettings()
     self:getTakeEnvelopes()
     self:initializeGrid()
     self:updateEnvelopes()
-    
     self:updateNames()
     
     -- Remove duplicates potentially caused by legato system
@@ -5458,7 +5493,7 @@ end
 function tracker:selectCurrent()
   reaper.SelectAllMediaItems(0, false)
   reaper.SetMediaItemSelected(tracker.item, true)
-end  
+end
     
 function tracker:duplicate()
   local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
@@ -5652,7 +5687,7 @@ local function updateLoop()
         tracker.fov.abswidth = 450
       end
     
-      tracker.lastabswidth = tracker.fov.abswidth
+      tracker.fov.lastabswidth = tracker.fov.abswidth
       tracker:update()
     end
   end
@@ -5670,7 +5705,7 @@ local function updateLoop()
   -- Check if the length changed, if so, update the time data
   if ( tracker:getRowInfo() == true ) then
     tracker:update()
-  end  
+  end
 
   if ( tracker.printKeys == 1 ) then
     if ( lastChar ~= 0 ) then
@@ -5907,7 +5942,7 @@ local function updateLoop()
     tracker.ypos = tracker.ypos - math.floor( gfx.mouse_wheel / 120 )
     tracker:resetShiftSelect()
     gfx.mouse_wheel = 0
-  end
+  end 
   
   local modified = 0
   if ( tracker.renaming == 0 ) then
@@ -6138,6 +6173,9 @@ local function updateLoop()
       tracker:setLoopStart()  
     elseif inputs('setloopend') then
       tracker:setLoopEnd()   
+    elseif inputs('follow') then
+      tracker.cfg.followSong = 1 - tracker.cfg.followSong
+      tracker:saveConfig(tracker.cfg)
     elseif inputs('interpolate') then
       reaper.Undo_OnStateChange2(0, "Tracker: Interpolate")
       reaper.MarkProjectDirty(0)  
@@ -6236,6 +6274,22 @@ local function updateLoop()
   end
   
   tracker:forceCursorInRange()
+  if ( tracker.cfg.followSong == 1 ) then
+    if ( reaper.GetPlayState() ~= 0 ) then
+      -- Check where we are
+      local playPos = reaper.GetPlayPosition()
+      local loc = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+      local loc2 = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")
+      if ( playPos < loc or playPos > ( loc+loc2 ) ) then
+        if ( tracker.track ) then
+          tracker:findTakeAtSongPos()
+        end
+      end
+      local row = math.floor( ( playPos - loc ) * tracker.rowPerSec)
+      tracker:forceCursorInRange(row)
+    end
+  end
+
   tracker:printGrid()
   gfx.update()
   tracker:insertNow()
