@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.53 (2018-05-21)
+   + Renoise color scheme
  * v1.52 (2018-05-21)
    + Option to follow tracker within a track
  * v1.51 (2018-05-21)
@@ -226,7 +228,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.52"
+tracker.name = "Hackey Trackey v1.53"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -328,7 +330,7 @@ tracker.helpActive = 0
 tracker.optionsActive = 0
 tracker.helpwidth = 380
 tracker.optionswidth = 370
-tracker.scalewidth = 500
+tracker.scalewidth = 520
 tracker.renaming = 0
 
 tracker.onlyListen = 0
@@ -375,19 +377,22 @@ tracker.binaryOptions = {
     { 'CRT', 'CRT mode' }
     }
     
-tracker.colorschemes = {"default", "buzz", "it", "hacker"}
+tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise"}
 
 function tracker:loadColors(colorScheme)
   -- If you come up with a cool alternative color scheme, let me know
   self.colors = {}
+  self.colors.bar = {}
+  self.colors.normal = {}
   local colorScheme = colorScheme or tracker.cfg.colorscheme
   if colorScheme == "default" then
   -- default
     self.colors.helpcolor    = {.8, .8, .9, 1}
     self.colors.helpcolor2   = {.7, .7, .9, 1}
-    self.colors.selectcolor  = {1, 0, 1, 1}
+    self.colors.selectcolor  = {.6, 0, .6, 1}
     self.colors.textcolor    = {.7, .8, .8, 1}
     self.colors.headercolor  = {.5, .5, .8, 1}
+    self.colors.inactive     = {.2, .2, .3, 1}    
     self.colors.linecolor    = {.1, .0, .4, .4}
     self.colors.linecolor2   = {.3, .0, .6, .4}
     self.colors.linecolor3   = {.4, .1, 1, 1}
@@ -405,8 +410,10 @@ function tracker:loadColors(colorScheme)
     self.colors.helpcolor    = {0, .4, .2, 1}
     self.colors.helpcolor2   = {0, .7, .3, 1}
     self.colors.selectcolor  = {0, .3, 0, 1}
-    self.colors.textcolor    = {0, .9, .6, 1}
+    self.colors.textcolor    = {0, .8, .4, 1}
+    self.colors.textcolorbar = {0.05, 1.0, .7, 1}    
     self.colors.headercolor  = {0, .9, .5, 1}
+    self.colors.inactive     = {0, .3, .1, 1}    
     self.colors.linecolor    = {0, .1, 0, .4}
     self.colors.linecolor2   = {0, .3, .2, .4}
     self.colors.linecolor3   = {0, .2, 0, 1}
@@ -420,13 +427,16 @@ function tracker:loadColors(colorScheme)
     self.colors.changed2     = {.4,  .5, .4, .5} -- Only listening    
     self.colors.windowbackground = {0, 0, 0, 1}
     self.crtStrength         = 4
+    self.colors.ellipsis     = 1
   elseif colorScheme == "buzz" then
     -- Buzz
     self.colors.helpcolor        = {1/256*159, 1/256*147, 1/256*115, 1} -- the functions
     self.colors.helpcolor2       = {1/256*48, 1/256*48, 1/256*33, 1} -- the keys
-    self.colors.selectcolor      = {1, 1, 1, 1} -- the cursor
+    self.colors.selectcolor      = {37/256, 41/256, 54/256, 1} -- the cursor
+    self.colors.selecttext       = {207/256, 207/256, 222/256, 1} -- the cursor
     self.colors.textcolor        = {1/256*48, 1/256*48, 1/256*33, 1} -- main pattern data
     self.colors.headercolor      = {1/256*48, 1/256*48, 1/256*33, 1} -- column headers, statusbar etc
+    self.colors.inactive         = {1/256*178, 1/256*174, 1/256*161, 1} -- column headers, statusbar etc    
     self.colors.linecolor        = {1/256*218, 1/256*214, 1/256*201, 0} -- normal row
     self.colors.linecolor2       = {1/256*181, 1/256*189, 1/256*158, 0.4} -- beats (must not have 100% alpha as it's drawn over the cursor(!))
     self.colors.linecolor3       = {1/256*159, 1/256*147, 1/256*115, 1} -- scroll indicating trangle thingy
@@ -447,6 +457,7 @@ function tracker:loadColors(colorScheme)
     self.colors.selectcolor      = {1, 1, 1, 1} -- the cursor
     self.colors.textcolor        = {1, 1, 1, 1} --{1/256*60, 1/256*105, 1/256*59, 1} -- main pattern data (rows should all be darker & this should be green)
     self.colors.headercolor      = {0, 0, 0, 1} -- column headers, statusbar etc
+    self.colors.inactive         = {.2, .2, .2, 1} -- column headers, statusbar etc    
     self.colors.linecolor        = {0,0,0, 0.6} -- normal row
     self.colors.linecolor2       = {1/256*52, 1/256*48, 1/256*44, 0.6} -- beats (must not have 100% alpha as it's drawn over the cursor(!))
     self.colors.linecolor3       = {1/256*180, 1/256*148, 1/256*120, 1} -- scroll indicating trangle thingy
@@ -460,8 +471,63 @@ function tracker:loadColors(colorScheme)
     self.colors.changed2         = {0, .5, 1, .5} -- Only listening
     self.colors.windowbackground = {1/256*180, 1/256*148, 1/256*120, 1}
     self.crtStrength             = .5
+  elseif colorScheme == "renoise" then
+    self.colors.ellipsis         = 1
+    self.colors.harmonycolor     = {177/255, 171/255, 116/255, 1.0}
+    self.colors.harmonyselect    = {183/255, 255/255, 191/255, 1.0}
+    self.colors.helpcolor        = {243/255, 171/255, 116/255, 1.0} -- the functions
+    self.colors.helpcolor2       = {178/256, 178/256, 178/256, 1} -- the keys
+    self.colors.selectcolor      = {1, 234/256, 20/256, 1} -- the cursor
+    self.colors.selecttext       = {0, 0, 0, 1} -- the cursor
+    self.colors.textcolor        = {148/256, 148/256, 148/256, 1} --{1/256*60, 1/256*105, 1/256*59, 1} -- main pattern data (rows should all be darker & this should be green)
+    self.colors.textcolorbar     = {1, 1, 1, 1}
+    self.colors.headercolor      = {215/256, 215/256, 215/256, 1} -- column headers, statusbar etc
+    self.colors.inactive         = {115/256, 115/256, 115/256, 1} -- column headers, statusbar etc    
+    self.colors.linecolor        = {18/256,18/256,18/256, 0.6} -- normal row
+    self.colors.linecolor2       = {1/256*55, 1/256*55, 1/256*55, 0.6} -- beats (must not have 100% alpha as it's drawn over the cursor(!))
+    self.colors.linecolor3       = {1/256*180, 1/256*148, 1/256*120, 1} -- scroll indicating trangle thingy
+    self.colors.linecolor4       = {1/256*204, 1/256*204, 1/256*68, 1} -- Reaper edit cursor
+    self.colors.linecolor5       = {41/256, 41/256, 41/256, 1.0} -- Bar start
+    self.colors.loopcolor        = {1/256*204, 1/256*204, 1/256*68, 1} -- lines surrounding loop
+    self.colors.copypaste        = {1/256*57, 1/256*57, 1/256*20, 0.66}  -- the selection (should be lighter(not alpha blanded) but is drawn over the data)
+    self.colors.scrollbar1       = {98/256, 98/256, 98/256, 1} -- scrollbar handle & outline
+    self.colors.scrollbar2       = {19/256, 19/256, 19/256, 1} -- scrollbar background
+    self.colors.changed          = {1, 1, 0, 1}
+    self.colors.changed2         = {0, .5, 1, .5} -- Only listening
+    self.colors.windowbackground = {18/256, 18/256, 18/256, 1}
+    self.crtStrength             = 0   
+    
+    self.colors.normal.mod1      = {243/255, 171/255, 116/255, 1.0}
+    self.colors.normal.mod2      = self.colors.normal.mod1
+    self.colors.normal.mod3      = self.colors.normal.mod1
+    self.colors.normal.mod4      = self.colors.normal.mod1
+    self.colors.normal.modtxt1   = {243/255, 171/255, 116/255, 1.0}
+    self.colors.normal.modtxt2   = self.colors.normal.modtxt1
+    self.colors.normal.modtxt3   = self.colors.normal.modtxt1
+    self.colors.normal.modtxt4   = self.colors.normal.modtxt1
+    self.colors.normal.vel1      = {186/255, 185/255, 108/255, 1.0}
+    self.colors.normal.vel2      = self.colors.normal.vel1
+    self.colors.normal.delay1    = {123/255, 149/255, 197/255, 1.0}
+    self.colors.normal.delay2    = self.colors.normal.delay1
+    self.colors.normal.fx1       = {183/255, 255/255, 191/255, 1.0}
+    self.colors.normal.fx2       = self.colors.normal.fx1
+    
+    self.colors.bar.mod1         = {255/255, 159/255, 88/255, 1.0}
+    self.colors.bar.mod2         = self.colors.bar.mod1
+    self.colors.bar.mod3         = self.colors.bar.mod1
+    self.colors.bar.mod4         = self.colors.bar.mod1
+    self.colors.bar.modtxt1      = {255/255, 159/255, 88/255, 1.0}
+    self.colors.bar.modtxt2      = self.colors.bar.modtxt1
+    self.colors.bar.modtxt3      = self.colors.bar.modtxt1
+    self.colors.bar.modtxt4      = self.colors.bar.modtxt1
+    self.colors.bar.vel1         = {171/255, 169/255, 77/255, 1.0}
+    self.colors.bar.vel2         = self.colors.bar.vel1
+    self.colors.bar.delay1       = {116/255, 162/255, 255/255, 1.0}
+    self.colors.bar.delay2       = self.colors.bar.delay1    
+    self.colors.bar.fx1          = {146/255, 255/255, 157/255, 1.0}
+    self.colors.bar.fx2          = self.colors.normal.fx1    
   end
-  -- clear colour is in a different format cos why not
+  -- clear colour is in a different format
   gfx.clear = tracker.colors.windowbackground[1]*256+(tracker.colors.windowbackground[2]*256*256)+(tracker.colors.windowbackground[3]*256*256*256)
 end
 
@@ -1515,10 +1581,43 @@ function tracker:getSizeIndicatorLocation()
   return xl, yl, xm, ym
 end
 
+function tracker:writeField(cdata, ellipsis, x, y)
+  if ( type(cdata) == "number" ) then
+    if ( cdata == -1 ) then
+      if ( ellipsis == 1 ) then
+        local py = y + 6
+        gfx.rect(x,  py, 1, 1)
+        gfx.rect(x+2, py, 1, 1)
+        gfx.rect(x+4, py, 1, 1)            
+        gfx.rect(x+9, py, 1, 1)
+        gfx.rect(x+11, py, 1, 1)
+        gfx.rect(x+13, py, 1, 1) 
+        gfx.rect(x+18, py, 1, 1)
+        gfx.rect(x+20, py, 1, 1)
+        gfx.rect(x+22, py, 1, 1)
+      else
+        gfx.printf("...", cdata)
+      end
+    else
+      if ( ellipsis == 1 ) then
+        local py = y + 6
+        gfx.rect(x,  py, 1, 1)
+        gfx.rect(x+2, py, 1, 1)
+        gfx.rect(x+4, py, 1, 1)
+      else
+        gfx.printf(".", cdata)
+      end
+    end
+  else
+    gfx.printf("%s", cdata)
+  end
+end
+
 ------------------------------
 -- Draw the GUI
 ------------------------------
 function tracker:printGrid()
+  local ellipsis  = self.colors.ellipsis
   local tracker   = tracker
   local colors    = tracker.colors
   local gfx       = gfx
@@ -1534,12 +1633,7 @@ function tracker:printGrid()
   
   local relx = tracker.xpos-fov.scrollx
   local rely = tracker.ypos-fov.scrolly
-  
-  gfx.set(table.unpack(colors.selectcolor))
-  if ( xloc[relx] and yloc[rely] ) then
-    gfx.rect(xloc[relx], yloc[rely]-plotData.yshift, xwidth[relx], yheight[rely])
-  end
-  
+   
   local dlink         = plotData.dlink
   local xlink         = plotData.xlink
   local glink         = plotData.glink
@@ -1553,40 +1647,65 @@ function tracker:printGrid()
   local yshift        = plotData.yshift
   
   -- Render in relative FOV coordinates
-  local data      = self.data
+  local data        = self.data
   for y=1,#yloc do
     gfx.y = yloc[y]
     gfx.x = xloc[1] - plotData.indicatorShiftX
     local absy = y + scrolly
-    gfx.set(table.unpack(colors.headercolor))
+    
+    local c1, c2, tx
+    if ( (((absy-1)/16) - math.floor((absy-1)/16)) == 0 ) then -- TODO This should depend on current time signature
+      c1 = colors.linecolor5
+      c2 = colors.linecolor5s
+      tx = colors.textcolorbar or colors.textcolor
+      fc = colors.bar
+    elseif ( (((absy-1)/4) - math.floor((absy-1)/4)) == 0 ) then
+      c1 = colors.linecolor2
+      c2 = colors.linecolor2s
+      tx = colors.textcolorbar or colors.textcolor
+      fc = colors.bar      
+    else
+      c1 = colors.linecolor
+      c2 = colors.linecolors
+      tx = colors.textcolor
+      fc = colors.normal      
+    end
+    
+    gfx.set(table.unpack(tx))    
     if tracker.zeroindexed == 1 then
       gfx.printf("%3d", absy-1)
     else
       gfx.printf("%3d", absy)
-    end
-    local c1, c2
-    if ( (((absy-1)/16) - math.floor((absy-1)/16)) == 0 ) then -- TODO This should depend on current time signature
-      c1 = colors.linecolor5
-      c2 = colors.linecolor5s
-    elseif ( (((absy-1)/4) - math.floor((absy-1)/4)) == 0 ) then
-      c1 = colors.linecolor2
-      c2 = colors.linecolor2s
-    else
-      c1 = colors.linecolor
-      c2 = colors.linecolors
     end
     gfx.set(table.unpack(c1))
     gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, yheight[1] + itempady)
     gfx.set(table.unpack(c2))
     gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, 1)
     gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, 1, yheight[y])
-    gfx.rect(xloc[1] - itempadx + tw + 0, yloc[y] - yshift, 1, yheight[y] + itempady)
+    gfx.rect(xloc[1] - itempadx + tw + 0, yloc[y] - yshift, 1, yheight[y] + itempady)    
+    
     for x=1,#xloc do
+      local thisfield = dlink[x]
       gfx.x = xloc[x]
-      gfx.set(table.unpack(colors.textcolor))
-      gfx.printf("%s", data[dlink[x]][rows*xlink[x]+absy-1])
+      gfx.set(table.unpack(fc[thisfield] or tx))
+      
+      local cdata = data[thisfield][rows*xlink[x]+absy-1]
+      self:writeField( cdata, ellipsis, xloc[x], yloc[y] )
     end
   end
+  
+  if ( xloc[relx] and yloc[rely] ) then
+    local absy = rely + scrolly 
+    gfx.set(table.unpack(colors.selectcolor))
+    gfx.rect(xloc[relx]-1, yloc[rely]-plotData.yshift, xwidth[relx], yheight[rely])
+    
+    gfx.x = xloc[relx]
+    gfx.y = yloc[rely]
+    gfx.set(table.unpack(colors.selecttext or colors.textcolor))
+
+    local cdata = data[dlink[relx]][rows*xlink[relx]+absy-1]
+    self:writeField( cdata, ellipsis, xloc[relx], yloc[rely] )
+  end 
   
   -- Pattern Length Indicator
   local xl, yl, xm, ym = self:getSizeIndicatorLocation()
@@ -1614,12 +1733,7 @@ function tracker:printGrid()
   ------------------------------
   -- Field descriptions
   ------------------------------
-  local bottom
-  if ( self.cfg.stickToBottom == 1 ) then
-    bottom = self.windowHeight - yheight[1] * 2
-  else
-    bottom = yloc[#yloc] + yheight[1] + itempady
-  end
+  local bottom = self:getBottom()
   
   gfx.x = plotData.xstart
   gfx.y = bottom
@@ -1672,6 +1786,20 @@ function tracker:printGrid()
   else
     gfx.printf("[Rec]")
   end
+  
+  if ( self.cfg.followSong == 1 ) then
+    gfx.set(table.unpack(colors.headercolor))
+  else
+    gfx.set(table.unpack(colors.inactive))  
+  end
+  gfx.rect( plotData.xstart + 40, bottom + yheight[1], 3, 3 )
+  
+  if ( self.cfg.followSelection == 1 ) then
+    gfx.set(table.unpack(colors.headercolor))
+  else    
+    gfx.set(table.unpack(colors.inactive))  
+  end
+  gfx.rect( plotData.xstart + 40, bottom + yheight[1] + 4, 3, 3 )
  
   local str2 = string.format("Res [%d] ", tracker.newRowPerQn )
   if ( tracker.newRowPerQn ~= tracker.rowPerQn ) then
@@ -1795,8 +1923,8 @@ function tracker:printGrid()
     local names        = scales.names
     local progressions = scales.progressions
     
-    gfx.set(table.unpack(colors.helpcolor2))
-    gfx.x = xs + self.scalewidth - 4 * noteW
+    gfx.set(table.unpack(colors.textcolorbar or colors.textcolor))
+    gfx.x = xs + self.scalewidth - 4 * noteW - 5
     gfx.y = ys
     gfx.printf( "Harmony helper" )
     
@@ -1809,7 +1937,7 @@ function tracker:printGrid()
       gfx.x = xs + self.scalewidth - (4 + s:len() ) * charW
       gfx.printf( "["..s:sub(1,-2).."]" )
     else
-      gfx.x = xs + self.scalewidth - 4 * charW
+      gfx.x = xs + self.scalewidth - 4 * charW - 5
       gfx.printf( "[]" )   
     end
     
@@ -1824,7 +1952,7 @@ function tracker:printGrid()
       local notetxt = scales:getNote(k)
       gfx.x = curx + 0.5 * noteW - 0.1 * noteW * (#notetxt-1)
       if ( k == root ) then
-        gfx.set(table.unpack(colors.textcolor))
+        gfx.set(table.unpack(colors.harmonyselect or colors.textcolor))
       else
         gfx.set(table.unpack(colors.helpcolor))
       end
@@ -1832,7 +1960,7 @@ function tracker:printGrid()
           
       curx = curx + noteW
     end
-    gfx.set(table.unpack(colors.textcolor))
+    gfx.set(table.unpack(colors.helpcolor))
     
     local cury = ys + chordAreaY - keyMapH
     local curx = xs + scaleW
@@ -1848,7 +1976,7 @@ function tracker:printGrid()
     end    
     cury = cury + keyMapH
     gfx.set(table.unpack(colors.helpcolor))
-    gfx.line(xs-5, cury-4, xs+self.scalewidth*0.95, cury-5)
+    gfx.line(xs-5, cury-4, xs+self.scalewidth*0.94, cury-5)
     gfx.set(table.unpack(colors.textcolor))
     local selectedScale = scales:getScaleValue()
     for i = 1,#names do
@@ -1856,7 +1984,7 @@ function tracker:printGrid()
       gfx.y = cury
       local scaleName = scales.names[i]
       if ( i == selectedScale ) then
-        gfx.set(table.unpack(colors.textcolor))      
+        gfx.set(table.unpack(colors.harmonyselect or colors.textcolor))      
       else
         gfx.set(table.unpack(colors.helpcolor))
       end
@@ -1871,7 +1999,8 @@ function tracker:printGrid()
           gfx.y = cury
           if ( chordmap[k].names[j] ) then
             local score = scales:similarityScore( chordmap[k].notes[j] )
-            local col = { colors.textcolor[1], colors.textcolor[2], colors.textcolor[3], clamp( 0.1, 1, colors.textcolor[4] - 0.4 * score ) }
+            local ccc = colors.harmonycolor or colors.textcolor
+            local col = { ccc[1], ccc[2], ccc[3], clamp( 0.1, 1, ccc[4] - 0.4 * score ) }
             gfx.set(table.unpack(col))
           
             gfx.printf( chordmap[k].names[j] )
@@ -1882,7 +2011,7 @@ function tracker:printGrid()
         cury = cury + keyMapH
       end
       gfx.set(table.unpack(colors.helpcolor))
-      gfx.line(xs-5, cury-4, xs+self.scalewidth*0.95, cury-5)
+      gfx.line(xs-5, cury-4, xs+self.scalewidth*0.94, cury-5)
       gfx.set(table.unpack(colors.textcolor))
     end
   end
@@ -1893,7 +2022,7 @@ function tracker:printGrid()
     
     local xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, binaryOptionsH = self:optionLocations()
 
-    gfx.set(table.unpack(colors.helpcolor2))
+    gfx.set(table.unpack(colors.textcolorbar or colors.helpcolor2))
     gfx.x = xs
     gfx.y = ys
     gfx.printf( "Options" )
@@ -1910,14 +2039,14 @@ function tracker:printGrid()
       gfx.x = xs + 8.2*2
       
       if ( v == tracker.cfg.colorscheme ) then
-        gfx.set(table.unpack(colors.helpcolor2))
+        gfx.set(table.unpack(colors.harmonyselect or colors.helpcolor2))
       else
         gfx.set(table.unpack(colors.helpcolor))
       end
       gfx.printf(v)
     end
     
-    gfx.set(table.unpack(colors.helpcolor2))
+    gfx.set(table.unpack(colors.textcolorbar or colors.helpcolor2))
     xs = keyMapX
     ys = keyMapY
     gfx.y = ys
@@ -1930,7 +2059,7 @@ function tracker:printGrid()
       gfx.x = xs + 8.2*2
       
       if ( v == tracker.cfg.keyset ) then
-        gfx.set(table.unpack(colors.helpcolor2))
+        gfx.set(table.unpack(colors.harmonyselect or colors.helpcolor2))
       else
         gfx.set(table.unpack(colors.helpcolor))
       end
@@ -1943,7 +2072,7 @@ function tracker:printGrid()
     gfx.y = ys
     
     for i=1,#self.binaryOptions do
-      gfx.set(table.unpack(colors.helpcolor2))
+      gfx.set(table.unpack(colors.textcolorbar or colors.helpcolor2))
       gfx.x = xs
       local cys = ys + i * binaryOptionsH
       gfx.y = cys
@@ -1990,6 +2119,22 @@ end
 dofile(get_script_path() .. 'scales.lua')
 scales:initialize()
 
+function tracker:getBottom()
+  local plotData = self.plotData
+  local yloc     = plotData.yloc
+  local yheight  = (yloc[2]-yloc[1])*.7 --plotData.yheight
+  local itempady = plotData.itempady
+
+  local bottom
+  if ( self.cfg.stickToBottom == 1 ) then
+    bottom = self.windowHeight - yheight[1] * 2
+  else
+    bottom = yloc[#yloc] + yheight + itempady
+  end
+  
+  return bottom
+end
+
 function tracker:optionLocations()
   local plotData = self.plotData
   local tw       = plotData.totalwidth
@@ -2026,7 +2171,7 @@ function tracker:chordLocations()
   local grid     = tracker.grid
   local dx       = grid.dx
   local plotData = self.plotData
-  local tw       = plotData.totalwidth
+  local tw       = plotData.totalwidth + 8
   local th       = plotData.totalheight
   local itempadx = plotData.itempadx
   local itempady = plotData.itempady
@@ -2035,8 +2180,8 @@ function tracker:chordLocations()
   local xwidth   = dx
   local yheight  = (yloc[2]-yloc[1])*.8 --plotData.yheight
   
-  local xs = plotData.xstart + tw + 4*itempadx
-  local ys = plotData.ystart - 1.3*plotData.indicatorShiftY + .5 * yheight
+  local xs       = plotData.xstart + tw + 4*itempadx
+  local ys       = plotData.ystart - 1.3*plotData.indicatorShiftY + .5 * yheight
    
   local scaleY    = ys + 1.5*yheight
   local keyMapH   = yheight
@@ -3652,7 +3797,7 @@ function tracker:initializeGrid()
   for x=0,channels-1 do
     for y=0,rows-1 do
       data.note[rows*x+y]   = nil
-      data.text[rows*x+y]   = '...'
+      data.text[rows*x+y]   = -1
       data.vel1[rows*x+y]   = '.'
       data.vel2[rows*x+y]   = '.'
       if ( self.showDelays[x] == 1 ) then
@@ -3672,10 +3817,10 @@ function tracker:initializeGrid()
   end
   
   for y=0,rows-1 do
-    data.mod1[y] = "."
-    data.mod2[y] = "."
-    data.mod3[y] = "."
-    data.mod4[y] = "."            
+    data.mod1[y] = -2
+    data.mod2[y] = -2
+    data.mod3[y] = -2
+    data.mod4[y] = -2
   end
   
   for y=0,rows do
