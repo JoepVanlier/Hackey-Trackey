@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.56
+@version 1.57
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,10 @@
 
 --[[
  * Changelog:
+ * v1.57 (2018-05-23)
+   + Added: Optional note length column (reveal with CTRL + + twice)
+   + The value indicates the length of the last tick that the note is active.
+     FF = the full length of the last tick.
  * v1.56 (2018-05-22)
    + Fixed bug involving envelopes that were constantly resetting and added fast envelope.
  * v1.55 (2018-05-22)
@@ -236,7 +240,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.56"
+tracker.name = "Hackey Trackey v1.57"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -2633,6 +2637,9 @@ function tracker:addNote(startrow, endrow, chan, pitch, velocity)
   reaper.MIDI_InsertNote( self.take, false, false, startppqpos, endppqpos, chan, pitch, velocity, true )
 end
 
+----------------------------
+-- Handle note delays
+----------------------------
 function tracker:getNoteDelay( note )
   local notes = self.notes
   local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
@@ -2646,6 +2653,23 @@ function tracker:setNoteDelay( note, newDelay )
   reaper.MIDI_SetNote(self.take, note, nil, nil, newppq, nil, nil, nil, nil, true)
 end
 
+function tracker:ppqToDelay( ppq )
+  local rows = self.rows
+  local eps = self.eps
+  local singlerow = self:rowToPpq(1)
+  local ppq = ppq - self:rowToPpq( self:ppqToRow(ppq) )  --singlerow * math.floor( ( ppq + eps ) / singlerow ) -- modulo
+  return math.floor( 256 * ( ppq / singlerow ) )
+end
+
+function tracker:delayToPpq( ppq, delay )
+  local singlerow = self:rowToPpq(1)
+  local ppq = self:rowToPpq( self:ppqToRow(ppq) )
+  return ppq + singlerow * ( delay / 256.0 )
+end
+
+----------------------------
+-- Handle note ends
+----------------------------
 function tracker:getNoteEnd( note )
   local notes = self.notes
   local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
@@ -2659,31 +2683,23 @@ function tracker:setNoteEnd( note, newEnd )
   reaper.MIDI_SetNote(self.take, note, nil, nil, nil, newendppq, nil, nil, nil, true)
 end
 
-function tracker:ppqToDelay( ppq )
-  local rows = self.rows
-  local eps = self.eps
-  local singlerow = self:rowToPpq(1)
-  local ppq = ppq - self:rowToPpq( self:ppqToRow(ppq) )  --singlerow * math.floor( ( ppq + eps ) / singlerow ) -- modulo
-  return math.floor( 256 * ( ppq / singlerow ) )
-end
-
 function tracker:ppqToEnd( ppq )
   local rows = self.rows
   local eps = self.eps
   local singlerow = self:rowToPpq(1)
-  return 1 - math.abs( ppq - self:rowToPpq( self:ppqToRow(ppq) ) ) - eps
-end
-
-function tracker:delayToPpq( ppq, delay )
-  local singlerow = self:rowToPpq(1)
-  local ppq = self:rowToPpq( self:ppqToRow(ppq) )
-  return ppq + singlerow * ( delay / 256.0 )
+  local ppq = ppq - self:rowToPpq( self:ppqToRow(ppq-eps) )
+  return math.floor( 256 * ( ppq / singlerow ) - eps )
 end
 
 function tracker:endToPpq( ppq, enddiff )
   local singlerow = self:rowToPpq(1)
-  local ppq = self:rowToPpq( self:ppqToRow(ppq) )
-  return ppq - singlerow * ( enddiff / 256.0 )
+  local eps = self.eps
+  local ppq = self:rowToPpq( self:ppqToRow(ppq - eps) )
+  
+  if ( enddiff > 250 ) then
+    enddiff = 255;
+  end
+  return ppq + singlerow * ( enddiff / 255.0 )
 end
 
 ----------------------
@@ -2691,7 +2707,7 @@ end
 ----------------------
 function tracker:showMore()
   local ftype, chan, row = self:getLocation()
-  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) ) then
+  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) ) then
     if ( self.showDelays[chan] == 1 ) then
       self.showEnd[chan] = 1
       self.hash = 0
