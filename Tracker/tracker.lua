@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.58
+@version 1.59
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.59 (2018-05-23)
+   + Bugfix: Fixed delete key not working in renoise theme.
  * v1.58 (2018-05-23)
    + Bugfix: Fixed bug that caused copy error when subtick fields were being copied (delay or end)
  * v1.57 (2018-05-23)
@@ -242,7 +244,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.58"
+tracker.name = "Hackey Trackey v1.59"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -852,7 +854,7 @@ function tracker:loadKeys( keySet )
     keys.up             = { 0,    0,  0,    30064 }         -- /\
     keys.down           = { 0,    0,  0,    1685026670 }    -- \/
     keys.off            = { 0,    0,  0,    92 }            -- Backslash (\) (temporary)
-    keys.delete         = { 0,    0,  0,    657564 }        -- Del
+    keys.delete         = { 0,    0,  0,    6579564 }        -- Del
     keys.delete2        = { 0,    0,  0,    500000000000000000000000 }  -- Not assigned
     keys.home           = { 0,    0,  0,    1752132965 }    -- Home
     keys.End            = { 0,    0,  0,    6647396 }       -- End
@@ -5180,6 +5182,7 @@ tracker.colgroups['delay2'] = { 'delay1', 'delay2' }
 tracker.colgroups['end1'] = { 'end1', 'end2' }
 tracker.colgroups['end2'] = { 'end1', 'end2' }
 tracker.colgroups['legato'] = { 'legato' }
+
 tracker.colref = {}
 tracker.colref['mod1'] = 0
 tracker.colref['mod2'] = -1
