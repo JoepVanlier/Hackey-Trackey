@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.55
+@version 1.56
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.56 (2018-05-22)
+   + Fixed bug involving envelopes that were constantly resetting and added fast envelope.
  * v1.55 (2018-05-22)
    + Bugfix bottom option
    + Added renoise-like theme with different font
@@ -234,7 +236,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.55"
+tracker.name = "Hackey Trackey v1.56"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -254,8 +256,6 @@ tracker.magicOverlap = 10
 tracker.trackFX = 1
 
 -- Defaults
-tracker.transpose = 3
-tracker.advance = 1
 tracker.showloop = 1
 
 -- Set this to one if you want to see what keystrokes correspond to which keys
@@ -294,7 +294,8 @@ tracker.enveps = 1e-4
 tracker.duplicationBehaviour = 2
 
 -- Do we want delays to be shown?
-tracker.showDelays = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+tracker.showDelays    = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+tracker.showEnd       = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 
 -- Start by default in mono or multi-col CC mode
 -- Mono-col (0) mode shows one column for the CC's that is always displayed
@@ -327,7 +328,6 @@ tracker.xint = 0
 tracker.page = 4
 tracker.lastVel = 96
 tracker.lastEnv = 1
-tracker.envShape = 1
 tracker.rowPerQn = 4
 tracker.newRowPerQn = 4
 tracker.maxRowPerQn = 16
@@ -371,6 +371,11 @@ tracker.cfg.keyboard = "buzz"
 tracker.cfg.rowPerQn = 4
 tracker.cfg.storedSettings = 1
 tracker.cfg.followSong = 0
+
+-- Defaults
+tracker.cfg.transpose = 3
+tracker.cfg.advance = 1
+tracker.cfg.envShape = 1
 
 tracker.binaryOptions = { 
     { 'autoResize', 'Auto Resize' }, 
@@ -519,6 +524,8 @@ function tracker:loadColors(colorScheme)
     self.colors.normal.delay2    = self.colors.normal.delay1
     self.colors.normal.fx1       = {183/255, 255/255, 191/255, 1.0}
     self.colors.normal.fx2       = self.colors.normal.fx1
+    self.colors.normal.end1      = {136/255, 80/255, 178/255, 1.0}
+    self.colors.normal.end2      = self.colors.normal.end1
     
     self.colors.bar.mod1         = {255/255, 159/255, 88/255, 1.0}
     self.colors.bar.mod2         = self.colors.bar.mod1
@@ -534,6 +541,8 @@ function tracker:loadColors(colorScheme)
     self.colors.bar.delay2       = self.colors.bar.delay1    
     self.colors.bar.fx1          = {146/255, 255/255, 157/255, 1.0}
     self.colors.bar.fx2          = self.colors.normal.fx1   
+    self.colors.bar.end1         = {136/255, 80/255, 178/255, 1.0}
+    self.colors.bar.end2         = self.colors.bar.end1
   elseif colorScheme == "renoiseB" then
     self.colors.ellipsis         = 1
     self.colors.harmonycolor     = {177/255, 171/255, 116/255, 1.0}
@@ -574,6 +583,8 @@ function tracker:loadColors(colorScheme)
     self.colors.normal.delay2    = self.colors.normal.delay1
     self.colors.normal.fx1       = {183/255, 255/255, 191/255, 1.0}
     self.colors.normal.fx2       = self.colors.normal.fx1
+    self.colors.normal.end1      = {136/255, 80/255, 178/255, 1.0}
+    self.colors.normal.end2      = self.colors.normal.end1
     
     self.colors.bar.mod1         = {255/255, 159/255, 88/255, 1.0}
     self.colors.bar.mod2         = self.colors.bar.mod1
@@ -589,6 +600,8 @@ function tracker:loadColors(colorScheme)
     self.colors.bar.delay2       = self.colors.bar.delay1    
     self.colors.bar.fx1          = {146/255, 255/255, 157/255, 1.0}
     self.colors.bar.fx2          = self.colors.normal.fx1   
+    self.colors.bar.end1         = {136/255, 80/255, 178/255, 1.0}
+    self.colors.bar.end2         = self.colors.bar.end1
     
     self.colors.patternFont         = "DejaVu Sans"
     self.colors.patternFontSize     = 14
@@ -942,6 +955,7 @@ tracker.envShapes = {}
 tracker.envShapes[0] = 'Lin'
 tracker.envShapes[1] = 'S&H'
 tracker.envShapes[2] = 'Exp'
+tracker.envShapes[3] = 'Fst'
 
 tracker.signed = {}
 tracker.signed["Pan (Pre-FX)"] = 1
@@ -1203,6 +1217,7 @@ function tracker:linkData()
   local fx          = self.fx
   local data        = self.data
   local showDelays  = self.showDelays
+  local showEnd     = self.showEnd
   
   -- Here is where the linkage between the display and the actual data fields in "tracker" is made
   local colsizes  = {}
@@ -1329,7 +1344,8 @@ function tracker:linkData()
   hints[#hints+1]         = 'Legato toggle'
   
   for j = 1,self.displaychannels do
-    local hasDelay = (self.showDelays[j] == 1)
+    local hasDelay = self.showDelays[j] or 0
+    local hasEnd   = self.showEnd[j] or 0
     
     -- Link up the note fields
     master[#master+1]       = 1
@@ -1343,11 +1359,7 @@ function tracker:linkData()
       grouplink[#grouplink+1] = {0}    
     end
     headers[#headers + 1]   = string.format('Ch%2d', j)    
-    if ( hasDelay ) then
-      headerW[#headerW+1]     = 9
-    else
-      headerW[#headerW+1]     = 6
-    end
+    headerW[#headerW+1]     = 6 + 3 * hasDelay + 3 * hasEnd
     hints[#hints+1]         = string.format('Note channel %2d', j)
     
     -- Link up the velocity fields
@@ -1381,7 +1393,7 @@ function tracker:linkData()
     hints[#hints+1]         = string.format('Velocity channel %2d', j)
     
     -- Link up the delay fields (if active)
-    if ( hasDelay == true ) then
+    if ( hasDelay == 1 ) then
       padsizes[#padsizes]     = 1
       
       master[#master+1]       = 0    
@@ -1412,6 +1424,40 @@ function tracker:linkData()
       headers[#headers + 1]   = ''
       headerW[#headerW+1]     = 0  
       hints[#hints+1]         = string.format('Note delay channel %2d', j)
+    end
+    
+    -- Link up the delay fields (if active)
+    if ( hasEnd == 1 ) then
+      padsizes[#padsizes]     = 1
+      
+      master[#master+1]       = 0    
+      datafield[#datafield+1] = 'end1'
+      idx[#idx+1]             = j
+      colsizes[#colsizes + 1] = 1
+      padsizes[#padsizes + 1] = 0
+      if ( self.selectionBehavior == 1 ) then
+        grouplink[#grouplink+1] = {1}
+      else
+        grouplink[#grouplink+1] = {1}
+      end
+      headers[#headers + 1]   = ''
+      headerW[#headerW+1]     = 0 
+      hints[#hints+1]         = string.format('Note end channel %2d', j) 
+  
+      -- Link up the delay fields
+      master[#master+1]       = 0      
+      datafield[#datafield+1] = 'end2'
+      idx[#idx+1]             = j
+      colsizes[#colsizes + 1] = 1
+      padsizes[#padsizes + 1] = 2
+      if ( self.selectionBehavior == 1 ) then
+        grouplink[#grouplink+1] = {-1}
+      else
+        grouplink[#grouplink+1] = {-1}    
+      end
+      headers[#headers + 1]   = ''
+      headerW[#headerW+1]     = 0  
+      hints[#hints+1]         = string.format('Note end channel %2d', j)
     end
   end
   
@@ -2363,7 +2409,7 @@ function tracker:placeOff()
   local idx = chan*rows+row
   local note = noteGrid[idx]
   local start = noteStart[idx]
-  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) ) then  
+  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) or ( ftype == 'end1' ) or ( ftype == 'end2' )) then  
     -- If there is no note here add a marker for the note off event
     if ( not note ) then
       ppq = self:rowToPpq(row)
@@ -2459,6 +2505,10 @@ function tracker:shiftAt( x, y, shift, scale )
       -- Note delay
       local delay = self:getNoteDelay( selected )
       self:setNoteDelay( selected, delay + shift )
+    elseif ( datafields[x] == 'end1' ) or ( datafields[x] == 'end2' ) then
+      -- Note end
+      local newend = self:getNoteEnd( selected )
+      self:setNoteEnd( selected, newend + shift )
     end
   end
   if ( ( datafields[x] == 'mod1' ) or ( datafields[x] == 'mod2' ) or ( datafields[x] == 'mod3' ) or ( datafields[x] == 'mod4' ) ) then
@@ -2596,6 +2646,19 @@ function tracker:setNoteDelay( note, newDelay )
   reaper.MIDI_SetNote(self.take, note, nil, nil, newppq, nil, nil, nil, nil, true)
 end
 
+function tracker:getNoteEnd( note )
+  local notes = self.notes
+  local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
+  return self:ppqToEnd( endppqpos )
+end
+
+function tracker:setNoteEnd( note, newEnd )
+  local notes = self.notes
+  local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
+  local newendppq = self:endToPpq( endppqpos, newEnd )
+  reaper.MIDI_SetNote(self.take, note, nil, nil, nil, newendppq, nil, nil, nil, true)
+end
+
 function tracker:ppqToDelay( ppq )
   local rows = self.rows
   local eps = self.eps
@@ -2604,10 +2667,23 @@ function tracker:ppqToDelay( ppq )
   return math.floor( 256 * ( ppq / singlerow ) )
 end
 
+function tracker:ppqToEnd( ppq )
+  local rows = self.rows
+  local eps = self.eps
+  local singlerow = self:rowToPpq(1)
+  return 1 - math.abs( ppq - self:rowToPpq( self:ppqToRow(ppq) ) ) - eps
+end
+
 function tracker:delayToPpq( ppq, delay )
   local singlerow = self:rowToPpq(1)
   local ppq = self:rowToPpq( self:ppqToRow(ppq) )
   return ppq + singlerow * ( delay / 256.0 )
+end
+
+function tracker:endToPpq( ppq, enddiff )
+  local singlerow = self:rowToPpq(1)
+  local ppq = self:rowToPpq( self:ppqToRow(ppq) )
+  return ppq - singlerow * ( enddiff / 256.0 )
 end
 
 ----------------------
@@ -2616,16 +2692,21 @@ end
 function tracker:showMore()
   local ftype, chan, row = self:getLocation()
   if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) ) then
-    local singlerow = math.floor(self:rowToPpq(1))
-    if ( ( singlerow / 256 ) ~= math.floor( singlerow/256 ) ) then
-      if ( not self.showedWarning ) then
-        reaper.ShowMessageBox("WARNING: This functionality only works reliably when MIDI pulses per row is set to a multiple of 256!\nPreferences > Media/MIDI > Ticks per quarter note for new MIDI items.", "WARNING", 0)
-        self.showedWarning = 1
+    if ( self.showDelays[chan] == 1 ) then
+      self.showEnd[chan] = 1
+      self.hash = 0
+    else
+      local singlerow = math.floor(self:rowToPpq(1))
+      if ( ( singlerow / 256 ) ~= math.floor( singlerow/256 ) ) then
+        if ( not self.showedWarning ) then
+          reaper.ShowMessageBox("WARNING: This functionality only works reliably when MIDI pulses per row is set to a multiple of 256!\nPreferences > Media/MIDI > Ticks per quarter note for new MIDI items.", "WARNING", 0)
+          self.showedWarning = 1
+        end
       end
+    
+      self.showDelays[chan] = 1
+      self.hash = 0
     end
-  
-    self.showDelays[chan] = 1
-    self.hash = 0
   end
   
   if ( ( ftype == 'mod1' ) or ( ftype == 'mod2' ) or ( ftype == 'mod3' ) or ( ftype == 'mod4' ) ) then
@@ -2637,6 +2718,11 @@ end
 
 function tracker:showLess()
   local ftype, chan, row = self:getLocation()
+  
+  if ( ftype == 'end1' ) or ( ftype == 'end2' ) then
+    self.showEnd[chan] = 0
+    self.hash = 0
+  end
   if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) ) then
     self.showDelays[chan] = 0
     self.hash = 0
@@ -2804,6 +2890,20 @@ function tracker:createNote( inChar )
       local delay = self:getNoteDelay( noteToEdit )
       local newDelay = self:editCCField( delay, 2, char )
       self:setNoteDelay( noteToEdit, newDelay )
+      self.ypos = self.ypos + self.advance
+    end
+  elseif ( ( ftype == 'end1' ) and validHex( char ) ) then
+    if ( noteToEdit ) then
+      local oldEnd = self:getNoteEnd( noteToEdit )
+      local newEnd = self:editCCField( oldEnd, 1, char )
+      self:setNoteEnd( noteToEdit, newEnd )
+      self.ypos = self.ypos + self.advance
+    end
+  elseif ( ( ftype == 'end2' ) and validHex( char ) ) then
+    if ( noteToEdit ) then
+      local oldEnd = self:getNoteEnd( noteToEdit )
+      local newEnd = self:editCCField( oldEnd, 2, char )
+      self:setNoteEnd( noteToEdit, newEnd )
       self.ypos = self.ypos + self.advance
     end
   elseif ( ( ftype == 'mod1' ) and validHex( char ) ) then
@@ -3110,7 +3210,7 @@ function tracker:backspace()
   local ftype, chan, row = self:getLocation()
   
    -- What are we manipulating here?
-  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) ) then
+  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) or ( ftype == 'end1' ) or ( ftype == 'end2' ) ) then
     local noteGrid = data.note
     local noteStart = data.noteStart          
     local lastnote
@@ -3290,7 +3390,7 @@ function tracker:delete()
   local ftype, chan, row = self:getLocation()
   
   -- What are we manipulating here?
-  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) ) then
+  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) or ( ftype == 'end1' ) or ( ftype == 'end2' ) ) then
     local noteGrid = data.note
     local noteStart = data.noteStart
   
@@ -3397,7 +3497,7 @@ function tracker:insert()
   local ftype, chan, row = self:getLocation()  
   
   -- What are we manipulating here?
-  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) ) then
+  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) or ( ftype == 'end1' ) or ( ftype == 'end2' ) ) then
     local noteGrid = data.note
     local noteStart= data.noteStart    
     local notes    = self.notes
@@ -3575,9 +3675,9 @@ function tracker:getSettings( )
       end
     end
     
-    self.transpose  = oct or tracker.cfg.transpose or self.transpose
-    self.advance    = adv or tracker.cfg.advance or self.advance
-    self.envShape   = env or tracker.cfg.envShape or self.envShape
+    self.transpose  = oct or self.transpose or tracker.cfg.transpose
+    self.advance    = adv or self.advance or tracker.cfg.advance
+    self.envShape   = env or self.envShape or tracker.cfg.envShape
     self.modMode    = modMode or self.modMode
   end
   self:deleteNow()
@@ -3796,6 +3896,12 @@ function tracker:assignFromMIDI(channel, idx)
       data.delay1[rows*channel+ystart]  = self:velToField(delay, 1)
       data.delay2[rows*channel+ystart]  = self:velToField(delay, 2)    
     end
+    
+    if ( self.showEnd[ channel ] == 1 ) then
+      local curEnd = self:ppqToEnd( endppqpos )
+      data.end1[rows*channel+ystart]  = self:velToField(curEnd, 1)
+      data.end2[rows*channel+ystart]  = self:velToField(curEnd, 2)    
+    end
 
     data.noteStart[rows*channel+ystart] = idx
     for y = ystart,yend,1 do
@@ -3926,7 +4032,9 @@ function tracker:initializeGrid()
   data.vel1 = {}
   data.vel2 = {}
   data.delay1 = {}
-  data.delay2 = {}    
+  data.delay2 = {}
+  data.end1 = {}
+  data.end2 = {}    
   data.legato = {}
   self.legato = {}
   data.fx1 = {}
@@ -3946,6 +4054,10 @@ function tracker:initializeGrid()
       if ( self.showDelays[x] == 1 ) then
         data.delay1[rows*x+y] = '.'
         data.delay2[rows*x+y] = '.'        
+      end
+      if ( self.showEnd[x] == 1 ) then
+        data.end1[rows*x+y] = '.'
+        data.end2[rows*x+y] = '.'        
       end
     end
   end
@@ -4353,6 +4465,10 @@ function tracker:addEnvPt(fxid, time, value, shape)
   local val = value or 5
   local envShape = shape or 0
   local envTension = nil
+  
+  if ( envShape == 4 ) then
+    envShape = 6
+  end
   
   -- The 0.5 shift is to get 80 at the true center (analogously to buzz)
   -- even though 256 values do not have an actual center. This results in
@@ -5020,6 +5136,10 @@ function tracker:getAdvance( chtype, ch, extraShift )
     return 2
   elseif ( chtype == 'delay2' ) then
     return 1
+  elseif ( chtype == 'end1' ) then
+    return 2
+  elseif ( chtype == 'end2' ) then
+    return 1    
   else
     return 1
   end
