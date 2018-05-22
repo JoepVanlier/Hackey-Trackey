@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.57
+@version 1.58
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.58 (2018-05-23)
+   + Bugfix: Fixed bug that caused copy error when subtick fields were being copied (delay or end)
  * v1.57 (2018-05-23)
    + Added: Optional note length column (reveal with CTRL + + twice)
    + The value indicates the length of the last tick that the note is active.
@@ -240,7 +242,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.57"
+tracker.name = "Hackey Trackey v1.58"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -5173,6 +5175,10 @@ tracker.colgroups['vel1'] = { 'text', 'vel1', 'vel2' }
 tracker.colgroups['vel2'] = { 'text', 'vel1', 'vel2' }
 tracker.colgroups['fx1'] = { 'fx1', 'fx2' }
 tracker.colgroups['fx2'] = { 'fx1', 'fx2' }
+tracker.colgroups['delay1'] = { 'delay1', 'delay2' }
+tracker.colgroups['delay2'] = { 'delay1', 'delay2' }
+tracker.colgroups['end1'] = { 'end1', 'end2' }
+tracker.colgroups['end2'] = { 'end1', 'end2' }
 tracker.colgroups['legato'] = { 'legato' }
 tracker.colref = {}
 tracker.colref['mod1'] = 0
@@ -5186,6 +5192,10 @@ tracker.colref['vel1'] = -1
 tracker.colref['vel2'] = -2
 tracker.colref['fx1'] = 0
 tracker.colref['fx2'] = -1
+tracker.colref['delay1'] = 0
+tracker.colref['delay2'] = -1
+tracker.colref['end1'] = 0
+tracker.colref['end2'] = -1
 tracker.colref['legato'] = 0
 
 function tracker:pasteClipboard()
