@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.54
+@version 1.55
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,10 @@
 
 --[[
  * Changelog:
+ * v1.55 (2018-05-22)
+   + Bugfix bottom option
+   + Added renoise-like theme with different font
+   + Added shift+space as play from in the renoise keyset
  * v1.54 (2018-05-22)
    + Added mouse interactivity for the bottom panel (resolution, octave, record etc)
  * v1.53 (2018-05-21)
@@ -230,7 +234,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.54"
+tracker.name = "Hackey Trackey v1.55"
 
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
@@ -379,13 +383,15 @@ tracker.binaryOptions = {
     { 'CRT', 'CRT mode' }
     }
     
-tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise"}
+tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB"}
 
 function tracker:loadColors(colorScheme)
   -- If you come up with a cool alternative color scheme, let me know
   self.colors = {}
   self.colors.bar = {}
   self.colors.normal = {}
+  self.colors.patternFont = nil
+  self.colors.patternFontSize = nil
   local colorScheme = colorScheme or tracker.cfg.colorscheme
   if colorScheme == "default" then
   -- default
@@ -527,7 +533,66 @@ function tracker:loadColors(colorScheme)
     self.colors.bar.delay1       = {116/255, 162/255, 255/255, 1.0}
     self.colors.bar.delay2       = self.colors.bar.delay1    
     self.colors.bar.fx1          = {146/255, 255/255, 157/255, 1.0}
-    self.colors.bar.fx2          = self.colors.normal.fx1    
+    self.colors.bar.fx2          = self.colors.normal.fx1   
+  elseif colorScheme == "renoiseB" then
+    self.colors.ellipsis         = 1
+    self.colors.harmonycolor     = {177/255, 171/255, 116/255, 1.0}
+    self.colors.harmonyselect    = {183/255, 255/255, 191/255, 1.0}
+    self.colors.helpcolor        = {243/255, 171/255, 116/255, 1.0} -- the functions
+    self.colors.helpcolor2       = {178/256, 178/256, 178/256, 1} -- the keys
+    self.colors.selectcolor      = {1, 234/256, 20/256, 1} -- the cursor
+    self.colors.selecttext       = {0, 0, 0, 1} -- the cursor
+    self.colors.textcolor        = {148/256, 148/256, 148/256, 1} --{1/256*60, 1/256*105, 1/256*59, 1} -- main pattern data (rows should all be darker & this should be green)
+    self.colors.textcolorbar     = {1, 1, 1, 1}
+    self.colors.headercolor      = {215/256, 215/256, 215/256, 1} -- column headers, statusbar etc
+    self.colors.inactive         = {115/256, 115/256, 115/256, 1} -- column headers, statusbar etc    
+    self.colors.linecolor        = {18/256,18/256,18/256, 0.6} -- normal row
+    self.colors.linecolor2       = {1/256*55, 1/256*55, 1/256*55, 0.6} -- beats (must not have 100% alpha as it's drawn over the cursor(!))
+    self.colors.linecolor3       = {1/256*180, 1/256*148, 1/256*120, 1} -- scroll indicating trangle thingy
+    self.colors.linecolor4       = {1/256*204, 1/256*204, 1/256*68, 1} -- Reaper edit cursor
+    self.colors.linecolor5       = {41/256, 41/256, 41/256, 1.0} -- Bar start
+    self.colors.loopcolor        = {1/256*204, 1/256*204, 1/256*68, 1} -- lines surrounding loop
+    self.colors.copypaste        = {1/256*57, 1/256*57, 1/256*20, 0.66}  -- the selection (should be lighter(not alpha blanded) but is drawn over the data)
+    self.colors.scrollbar1       = {98/256, 98/256, 98/256, 1} -- scrollbar handle & outline
+    self.colors.scrollbar2       = {19/256, 19/256, 19/256, 1} -- scrollbar background
+    self.colors.changed          = {1, 1, 0, 1}
+    self.colors.changed2         = {0, .5, 1, .5} -- Only listening
+    self.colors.windowbackground = {18/256, 18/256, 18/256, 1}
+    self.crtStrength             = 0   
+    
+    self.colors.normal.mod1      = {243/255, 171/255, 116/255, 1.0}
+    self.colors.normal.mod2      = self.colors.normal.mod1
+    self.colors.normal.mod3      = self.colors.normal.mod1
+    self.colors.normal.mod4      = self.colors.normal.mod1
+    self.colors.normal.modtxt1   = {243/255, 171/255, 116/255, 1.0}
+    self.colors.normal.modtxt2   = self.colors.normal.modtxt1
+    self.colors.normal.modtxt3   = self.colors.normal.modtxt1
+    self.colors.normal.modtxt4   = self.colors.normal.modtxt1
+    self.colors.normal.vel1      = {186/255, 185/255, 108/255, 1.0}
+    self.colors.normal.vel2      = self.colors.normal.vel1
+    self.colors.normal.delay1    = {123/255, 149/255, 197/255, 1.0}
+    self.colors.normal.delay2    = self.colors.normal.delay1
+    self.colors.normal.fx1       = {183/255, 255/255, 191/255, 1.0}
+    self.colors.normal.fx2       = self.colors.normal.fx1
+    
+    self.colors.bar.mod1         = {255/255, 159/255, 88/255, 1.0}
+    self.colors.bar.mod2         = self.colors.bar.mod1
+    self.colors.bar.mod3         = self.colors.bar.mod1
+    self.colors.bar.mod4         = self.colors.bar.mod1
+    self.colors.bar.modtxt1      = {255/255, 159/255, 88/255, 1.0}
+    self.colors.bar.modtxt2      = self.colors.bar.modtxt1
+    self.colors.bar.modtxt3      = self.colors.bar.modtxt1
+    self.colors.bar.modtxt4      = self.colors.bar.modtxt1
+    self.colors.bar.vel1         = {171/255, 169/255, 77/255, 1.0}
+    self.colors.bar.vel2         = self.colors.bar.vel1
+    self.colors.bar.delay1       = {116/255, 162/255, 255/255, 1.0}
+    self.colors.bar.delay2       = self.colors.bar.delay1    
+    self.colors.bar.fx1          = {146/255, 255/255, 157/255, 1.0}
+    self.colors.bar.fx2          = self.colors.normal.fx1   
+    
+    self.colors.patternFont         = "DejaVu Sans"
+    self.colors.patternFontSize     = 14
+    self.colors.customFontDisplace  = { 8, -3 }
   end
   -- clear colour is in a different format
   gfx.clear = tracker.colors.windowbackground[1]*256+(tracker.colors.windowbackground[2]*256*256)+(tracker.colors.windowbackground[3]*256*256*256)
@@ -774,9 +839,9 @@ function tracker:loadKeys( keySet )
     keys.End            = { 0,    0,  0,    6647396 }       -- End
     keys.enter          = { 0,    0,  0,    13 }            -- Enter        
     keys.toggle         = { 0,    0,  0,    32 }            -- Play/pause (space)
-    keys.playfrom       = { 0,    0,  0,    500000000000000000000000 }  -- Not assigned
+    keys.playfrom       = { 0,    0,  1,    32 }            -- Shift + space
     keys.stop2          = { 0,    0,  0,    500000000000000000000000 }  -- Not assigned
-    keys.harmony        = { 1,    0,  0,    8 }             -- ctrl+h harmony helper
+    keys.harmony        = { 1,    0,  0,    8  }             -- ctrl+h harmony helper
     keys.options        = { 1,    0,  0,    15 }            -- ctrl+o options
     keys.panic          = { 0,    0,  0,    27 }            -- Escape = MIDI Panic!
     keys.insert         = { 0,    0,  0,    6909555 }       -- Insert
@@ -838,7 +903,7 @@ function tracker:loadKeys( keySet )
       { '\\', 'Note OFF' },
       { 'Insert/Backspace', 'Insert/Remove line' },   
       { 'Del/.', 'Delete' }, 
-      { 'Space', 'Play' },
+      { 'Space/Shift+Space', 'Play / Play From' },
       { 'Ctrl + O / Escape', 'Options / Stop all notes' },
       { 'Enter', 'Loop pattern' },
       { 'CTRL + Q/W', 'Loop start/end' },
@@ -1145,6 +1210,7 @@ function tracker:linkData()
   local idx       = {}
   local padsizes  = {}  
   local headers   = {}
+  local headerW   = {}
   local grouplink = {}    -- Stores what other columns are linked to this one (some act as groups)
   local hints     = {}
   local master    = {}
@@ -1158,7 +1224,8 @@ function tracker:linkData()
       colsizes[#colsizes+1]   = 1
       padsizes[#padsizes+1]   = 0
       grouplink[#grouplink+1] = {1, 2, 3}
-      headers[#headers+1]     = ' CC'
+      headers[#headers+1]     = 'CC'
+      headerW[#headerW+1]     = 4
       hints[#hints+1]         = "CC type"
   
       master[#master+1]       = 0
@@ -1168,6 +1235,7 @@ function tracker:linkData()
       padsizes[#padsizes+1]   = 0
       grouplink[#grouplink+1] = {-1, 1, 2}
       headers[#headers+1]     = ''
+      headerW[#headerW+1]     = 0
       hints[#hints+1]         = "CC type"
       
       master[#master+1]       = 0
@@ -1177,6 +1245,7 @@ function tracker:linkData()
       padsizes[#padsizes+1]   = 0
       grouplink[#grouplink+1] = {-2, -1, 1}
       headers[#headers+1]     = ''
+      headerW[#headerW+1]     = 0
       hints[#hints+1]         = "CC value"
       
       master[#master+1]       = 0    
@@ -1186,6 +1255,7 @@ function tracker:linkData()
       padsizes[#padsizes+1]   = 2
       grouplink[#grouplink+1] = {-3, -2, -1}
       headers[#headers+1]     = ''
+      headerW[#headerW+1]     = 0
       hints[#hints+1]         = "CC value"  
     else
       -- Display with CC commands separated per column
@@ -1199,6 +1269,7 @@ function tracker:linkData()
           padsizes[#padsizes+1]   = 0
           grouplink[#grouplink+1] = {1}
           headers[#headers+1]     = string.format('CC')
+          headerW[#headerW+1]     = 2
           if ( CC[modtypes[j]] ) then
             hints[#hints+1]         = string.format('%s (%d)', CC[modtypes[j]], modtypes[j])
           else
@@ -1212,6 +1283,7 @@ function tracker:linkData()
           padsizes[#padsizes+1]   = 1
           grouplink[#grouplink+1] = {-1}
           headers[#headers+1]     = ''
+          headerW[#headerW+1]     = 0
           if ( CC[modtypes[j]] ) then
             hints[#hints+1]         = string.format('%s (%d)', CC[modtypes[j]], modtypes[j])
           else
@@ -1231,6 +1303,7 @@ function tracker:linkData()
       padsizes[#padsizes+1]   = 0
       grouplink[#grouplink+1] = {1}
       headers[#headers+1]     = 'FX'
+      headerW[#headerW+1]     = 2
       hints[#hints+1]         = namerep(fx.names[j])
       
       master[#master+1]       = 0
@@ -1240,6 +1313,7 @@ function tracker:linkData()
       padsizes[#padsizes+1]   = 2
       grouplink[#grouplink+1] = {-1}
       headers[#headers+1]     = ''
+      headerW[#headerW+1]     = 0
       hints[#hints+1]         = namerep(fx.names[j])
     end
   end
@@ -1251,6 +1325,7 @@ function tracker:linkData()
   padsizes[#padsizes+1]   = 1
   grouplink[#grouplink+1] = {0}
   headers[#headers+1]     = string.format( 'L' )
+  headerW[#headerW+1]     = 1
   hints[#hints+1]         = 'Legato toggle'
   
   for j = 1,self.displaychannels do
@@ -1267,10 +1342,11 @@ function tracker:linkData()
     else
       grouplink[#grouplink+1] = {0}    
     end
+    headers[#headers + 1]   = string.format('Ch%2d', j)    
     if ( hasDelay ) then
-      headers[#headers + 1]   = string.format('  Ch.%2d', j)
+      headerW[#headerW+1]     = 9
     else
-      headers[#headers + 1]   = string.format(' Ch%2d', j)
+      headerW[#headerW+1]     = 6
     end
     hints[#hints+1]         = string.format('Note channel %2d', j)
     
@@ -1285,7 +1361,8 @@ function tracker:linkData()
     else
       grouplink[#grouplink+1] = {1}
     end
-    headers[#headers + 1]   = ''    
+    headers[#headers + 1]   = ''
+    headerW[#headerW+1]     = 2
     hints[#hints+1]         = string.format('Velocity channel %2d', j) 
     
     -- Link up the velocity fields
@@ -1300,6 +1377,7 @@ function tracker:linkData()
       grouplink[#grouplink+1] = {-1}    
     end
     headers[#headers + 1]   = ''     
+    headerW[#headerW+1]     = 0
     hints[#hints+1]         = string.format('Velocity channel %2d', j)
     
     -- Link up the delay fields (if active)
@@ -1316,7 +1394,8 @@ function tracker:linkData()
       else
         grouplink[#grouplink+1] = {1}
       end
-      headers[#headers + 1]   = ''    
+      headers[#headers + 1]   = ''
+      headerW[#headerW+1]     = 0 
       hints[#hints+1]         = string.format('Note delay channel %2d', j) 
   
       -- Link up the delay fields
@@ -1330,7 +1409,8 @@ function tracker:linkData()
       else       
         grouplink[#grouplink+1] = {-1}    
       end
-      headers[#headers + 1]   = ''     
+      headers[#headers + 1]   = ''
+      headerW[#headerW+1]     = 0  
       hints[#hints+1]         = string.format('Note delay channel %2d', j)
     end
   end
@@ -1338,6 +1418,7 @@ function tracker:linkData()
   local link = {}
   link.datafields = datafield
   link.headers    = headers
+  link.headerW    = headerW
   link.padsizes   = padsizes
   link.colsizes   = colsizes
   link.idxfields  = idx
@@ -1349,7 +1430,7 @@ end
 
 function tracker:grabLinkage()
   local link = self.link
-  return link.datafields, link.padsizes, link.colsizes, link.idxfields, link.headers, link.grouplink, link.hints, link.master
+  return link.datafields, link.padsizes, link.colsizes, link.idxfields, link.headers, link.headerW, link.grouplink, link.hints, link.master
 end
 
 ------------------------------
@@ -1370,7 +1451,7 @@ function tracker:updatePlotLink()
   plotData.indicatorShiftY = dy + plotData.itempady
 
   self.extracols = {}
-  local datafields, padsizes, colsizes, idxfields, headers, grouplink, hints = self:grabLinkage()
+  local datafields, padsizes, colsizes, idxfields, headers, headerW, grouplink, hints = self:grabLinkage()
   self.max_xpos = #headers
   self.max_ypos = self.rows
   
@@ -1382,6 +1463,7 @@ function tracker:updatePlotLink()
   local dlink = {}
   local glink = {}
   local header = {}
+  local headerWidths = {}
   local description = {}
   local x = originx
 --  for j = fov.scrollx+1,math.min(#colsizes,fov.width+fov.scrollx) do
@@ -1397,6 +1479,7 @@ function tracker:updatePlotLink()
     dlink[#dlink + 1] = datafields[j]
     glink[#glink + 1] = grouplink[j]
     header[#header + 1] = headers[j]
+    headerWidths[#headerWidths + 1] = .5*(headerW[j]-1)*tracker.grid.dx - .25*gfx.measurestr(headers[j])
     description[#hints + 1] = hints[j]
     x = x + colsizes[j] * dx + padsizes[j] * dx
     q = j
@@ -1412,6 +1495,7 @@ function tracker:updatePlotLink()
   plotData.xlink = xlink
   plotData.glink = glink
   plotData.headers = header
+  plotData.headerW = headerWidths
   plotData.description = hints
   
   -- Generate y locations for the columns
@@ -1583,7 +1667,7 @@ function tracker:getSizeIndicatorLocation()
   return xl, yl, xm, ym
 end
 
-function tracker:writeField(cdata, ellipsis, x, y)
+function tracker:writeField(cdata, ellipsis, x, y, customFont)
   if ( type(cdata) == "number" ) then
     if ( cdata == -1 ) then
       if ( ellipsis == 1 ) then
@@ -1611,7 +1695,17 @@ function tracker:writeField(cdata, ellipsis, x, y)
       end
     end
   else
-    gfx.printf("%s", cdata)
+    if ( customFont )  then
+      local cx = x
+      for i=1,#cdata do
+        gfx.x = cx
+        gfx.y = y + customFont[2]
+        gfx.printf("%s", cdata:sub(i,i))
+        cx = cx + customFont[1]
+      end
+    else
+      gfx.printf("%s", cdata)    
+    end
   end
 end
 
@@ -1648,11 +1742,20 @@ function tracker:printGrid()
   local scrolly       = fov.scrolly
   local yshift        = plotData.yshift
   
+  local customFont
+  local extraFontShift  = 0
+  
+  if ( colors.patternFont and colors.patternFontSize and colors.customFontDisplace ) then
+    gfx.setfont(1, colors.patternFont, colors.patternFontSize)
+    customFont = colors.customFontDisplace
+    extraFontShift = customFont[2]
+  else
+    gfx.setfont(0)
+  end
+  
   -- Render in relative FOV coordinates
   local data        = self.data
   for y=1,#yloc do
-    gfx.y = yloc[y]
-    gfx.x = xloc[1] - plotData.indicatorShiftX
     local absy = y + scrolly
     
     local c1, c2, tx
@@ -1673,6 +1776,9 @@ function tracker:printGrid()
       fc = colors.normal      
     end
     
+    gfx.y = yloc[y] + extraFontShift
+    gfx.x = xloc[1] - plotData.indicatorShiftX
+    
     gfx.set(table.unpack(tx))    
     if tracker.zeroindexed == 1 then
       gfx.printf("%3d", absy-1)
@@ -1692,7 +1798,7 @@ function tracker:printGrid()
       gfx.set(table.unpack(fc[thisfield] or tx))
       
       local cdata = data[thisfield][rows*xlink[x]+absy-1]
-      self:writeField( cdata, ellipsis, xloc[x], yloc[y] )
+      self:writeField( cdata, ellipsis, xloc[x], yloc[y], customFont )
     end
   end
   
@@ -1706,12 +1812,12 @@ function tracker:printGrid()
     gfx.set(table.unpack(colors.selecttext or colors.textcolor))
 
     local cdata = data[dlink[relx]][rows*xlink[relx]+absy-1]
-    self:writeField( cdata, ellipsis, xloc[relx], yloc[rely] )
+    self:writeField( cdata, ellipsis, xloc[relx], yloc[rely], customFont )
   end 
   
   -- Pattern Length Indicator
   local xl, yl, xm, ym = self:getSizeIndicatorLocation()
-  gfx.y = yl
+  gfx.y = yl + extraFontShift
   gfx.x = xl
   if ( self.renaming == 3 ) then
     gfx.set(table.unpack(colors.changed))
@@ -1721,7 +1827,7 @@ function tracker:printGrid()
     gfx.printf("%3d", self.max_ypos)
   end 
   
-  gfx.y = yl
+  gfx.y = yl + extraFontShift
   gfx.x = xl
   if ( self.renaming ~= 3 ) then
     gfx.set(table.unpack(colors.linecolor3s))
@@ -1735,10 +1841,11 @@ function tracker:printGrid()
   ------------------------------
   -- Field descriptions
   ------------------------------
+--  gfx.setfont(0)
   local bottom = self:getBottom()
   
   gfx.x = plotData.xstart
-  gfx.y = bottom
+  gfx.y = bottom + extraFontShift
   gfx.set(table.unpack(colors.headercolor))
   if ( tracker.renaming ~= 2 ) then
     gfx.printf("%s", description[relx])
@@ -1753,7 +1860,7 @@ function tracker:printGrid()
   
   local patternName
   gfx.set(table.unpack(colors.headercolor))
-  gfx.y = bottom
+  gfx.y = bottom + extraFontShift
   if ( tracker.renaming == 1 ) then
     gfx.set(table.unpack(colors.changed))
     if ( self.midiName:len() > 0 ) then
@@ -1761,18 +1868,18 @@ function tracker:printGrid()
     else
       patternName = '_'
     end
-    gfx.x = plotData.xstart + tw - 8.2 * string.len(patternName)
+    gfx.x = plotData.xstart + tw - gfx.measurestr(patternName)
     gfx.printf(patternName)
   else
     patternName = self.patternName
-    gfx.x = plotData.xstart + tw - 8.2 * string.len(patternName)
+    gfx.x = plotData.xstart + tw - gfx.measurestr(patternName)
     gfx.printf(patternName)
   end
    
   -- Draw the bottom indicators
   gfx.set(table.unpack(colors.headercolor))
   local strs, locs, yh = tracker:infoString()
-  gfx.y = yh
+  gfx.y = yh + extraFontShift
   
   for i=1,#locs-1 do
     gfx.x = locs[i]
@@ -1785,7 +1892,7 @@ function tracker:printGrid()
     gfx.set(table.unpack(colors.headercolor))
   end
   gfx.x = locs[#locs]
-  gfx.y = bottom + yheight[1]
+  gfx.y = bottom + yheight[1] + extraFontShift
   gfx.printf(strs[#locs])
 
   gfx.set(table.unpack(colors.headercolor))
@@ -1803,27 +1910,30 @@ function tracker:printGrid()
     gfx.printf("[Rec]")
   end
   
+  local recsize = gfx.measurestr( "[Rec]") + 2
   if ( self.cfg.followSong == 1 ) then
     gfx.set(table.unpack(colors.headercolor))
   else
     gfx.set(table.unpack(colors.inactive))  
   end
-  gfx.rect( plotData.xstart + 40, bottom + yheight[1], 3, 3 )
+  gfx.rect( plotData.xstart + recsize, bottom + yheight[1], 3, 3 )
   
   if ( self.cfg.followSelection == 1 ) then
     gfx.set(table.unpack(colors.headercolor))
   else    
     gfx.set(table.unpack(colors.inactive))  
   end
-  gfx.rect( plotData.xstart + 40, bottom + yheight[1] + 4, 3, 3 )
+  gfx.rect( plotData.xstart + recsize, bottom + yheight[1] + 4, 3, 3 )
  
   -- Draw the headers so we don't get lost :)
   gfx.set(table.unpack(colors.headercolor))
   gfx.y = yloc[1] - plotData.indicatorShiftY
 
+  local hws = plotData.headerW
   for x=1,#xloc do
-    gfx.x = xloc[x]
-    gfx.printf("%s", headers[x])
+    gfx.x = xloc[x] + hws[x]
+
+    gfx.drawstr(headers[x])
   end
     
   ------------------------------
@@ -1914,7 +2024,8 @@ function tracker:printGrid()
       gfx.y = ys
       gfx.printf(v[2])
       gfx.set(table.unpack(colors.helpcolor2))
-      gfx.x = xs + helpwidth - 8.2 * string.len(v[1]) - 0.5 * helpwidth + 2*itempadx
+      local lsize = gfx.measurestr( v[1] )
+      gfx.x = xs + helpwidth - lsize - 0.5 * helpwidth + 2*itempadx --8.2 * string.len(v[1])
       gfx.printf(v[1])      
       ys = ys + yheight[1]
     end
@@ -1948,7 +2059,7 @@ function tracker:printGrid()
     end
     
     gfx.x = xs
-    gfx.y = ys
+    gfx.y = ys + extraFontShift
     gfx.printf( "Current scale: " .. scales:getScale() .. " " .. scales:getScaleNote(1) .. " (" .. scales:scaleNotes() .. ")"  )
 
     gfx.y = scaleY
@@ -1975,7 +2086,7 @@ function tracker:printGrid()
     local markings = { 'I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii0', 'VIII' }
     for k = 1,7 do
       gfx.x = curx
-      gfx.y = cury
+      gfx.y = cury+extraFontShift
       gfx.printf( markings[k] )
           
       curx = curx + chordW
@@ -2002,7 +2113,7 @@ function tracker:printGrid()
         local curx = xs + scaleW
         for k = 1,7 do        
           gfx.x = curx
-          gfx.y = cury
+          gfx.y = cury + extraFontShift
           if ( chordmap[k].names[j] ) then
             local score = scales:similarityScore( chordmap[k].notes[j] )
             local ccc = colors.harmonycolor or colors.textcolor
@@ -2079,9 +2190,9 @@ function tracker:printGrid()
     
     for i=1,#self.binaryOptions do
       gfx.set(table.unpack(colors.textcolorbar or colors.helpcolor2))
-      gfx.x = xs
+      gfx.x = xs + 13
       local cys = ys + i * binaryOptionsH
-      gfx.y = cys
+      gfx.y = cys + extraFontShift
       
       gfx.line(xs, cys, xs,  cys+8)
       gfx.line(xs+8, cys, xs+8,  cys+8)
@@ -2093,7 +2204,7 @@ function tracker:printGrid()
         gfx.line(xs+8, cys, xs,  cys+8)        
       end
       
-      gfx.printf( "  %s", self.binaryOptions[i][2] )
+      gfx.printf( "%s", self.binaryOptions[i][2] )
     end
   end
   
@@ -2159,7 +2270,7 @@ function tracker:getBottom()
 
   local bottom
   if ( self.cfg.stickToBottom == 1 ) then
-    bottom = self.windowHeight - yheight[1] * 2
+    bottom = self.windowHeight - yheight * 2
   else
     bottom = yloc[#yloc] + yheight + itempady
   end
@@ -2187,7 +2298,7 @@ function tracker:optionLocations()
   end
   
   local keyMapX = xs + 8.2 * 2
-  local keyMapY = ys + yheight * ( 6 + #keysets )
+  local keyMapY = ys + yheight * ( 7 + #keysets )
   local keyMapH = yheight
   
   local themeMapX = xs + 8.2 * 2
@@ -5906,6 +6017,12 @@ local function updateLoop()
   if ( tracker.printKeys == 1 ) then
     if ( lastChar ~= 0 ) then
       print(lastChar)
+      local control = gfx.mouse_cap & 4
+      if ( control > 0 ) then print("ctrl") end  
+      local shift   = gfx.mouse_cap & 8
+      if ( shift > 0 ) then  print("shift") end
+      local alt     = gfx.mouse_cap & 16
+      if ( alt > 0 ) then  print("alt") end
     end
   end  
 
