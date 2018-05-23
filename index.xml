@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="43b24c823cca11ec5308f9231fd12230e939c701">
+<index version="1" name="Tracker tools" commit="cb22c137dcd6c87b359ed8762580e35bfa496ed6">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -300,6 +300,13 @@ FF = the full length of the last tick.]]></changelog>
         <changelog><![CDATA[+ Bugfix: Fixed delete key not working in renoise theme.]]></changelog>
         <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/43b24c823cca11ec5308f9231fd12230e939c701/Tracker/scales.lua</source>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/43b24c823cca11ec5308f9231fd12230e939c701/Tracker/tracker.lua</source>
+      </version>
+      <version name="1.60" author=": Joep Vanlier" time="2018-05-23T21:53:36Z">
+        <changelog><![CDATA[+ Added some more renoise keybindings (SHIFT + place note and others)
++ Fixed bug related to storage of settings with the bottom bar
++ Make script remember last position and size]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/cb22c137dcd6c87b359ed8762580e35bfa496ed6/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/cb22c137dcd6c87b359ed8762580e35bfa496ed6/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
