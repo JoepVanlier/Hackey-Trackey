@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.60
+@version 1.61
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,9 @@
 
 --[[
  * Changelog:
+ * v1.61 (2018-05-24)
+   + More renoise shortcuts added (see help)
+   + Fix regarding the Play From command
  * v1.60 (2018-05-23)
    + Added some more renoise keybindings (SHIFT + place note and others)
    + Fixed bug related to storage of settings with the bottom bar
@@ -248,7 +251,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.60"
+tracker.name = "Hackey Trackey v1.61"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 -- Map output to specific MIDI channel
@@ -283,7 +286,7 @@ tracker.selectionFollows = 1
 tracker.fov = {}
 
 -- Set this if you want a bigger or smaller maximum number of rows
-tracker.fov.height = 32
+tracker.fov.height = 16
 
 -- Set this if you want a wider or narrower tracker screen
 tracker.fov.abswidth = 450
@@ -705,6 +708,8 @@ function tracker:loadKeys( keySet )
     keys.tab            = { 0,    0,  0,    9 }             -- Tab
     keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
     keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F
+    keys.deleteRow      = { 1,    0,  0,    6579564 }       -- Ctrl + Del
+    
     keys.m0             = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m25            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m50            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
@@ -717,6 +722,22 @@ function tracker:loadKeys( keySet )
     keys.shcolup        = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.shblockdown    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.shblockup      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned    
+    
+    keys.cutPattern     = { 1,    0,  0,    500000000000000000000000 }
+    keys.cutColumn      = { 1,    0,  1,    500000000000000000000000 }
+    keys.cutBlock2      = { 1,    1,  0,    500000000000000000000000 }
+    keys.copyPattern    = { 1,    0,  0,    500000000000000000000000 }
+    keys.copyColumn     = { 1,    0,  1,    500000000000000000000000 }
+    keys.copyBlock2     = { 1,    1,  0,    500000000000000000000000 }
+    keys.pastePattern   = { 1,    0,  0,    500000000000000000000000 }
+    keys.pasteColumn    = { 1,    0,  1,    500000000000000000000000 }
+    keys.pasteBlock2    = { 1,    1,  0,    500000000000000000000000 }
+    keys.patternOctDown = { 1,    0,  0,    500000000000000000000000.0 }
+    keys.patternOctUp   = { 1,    0,  0,    500000000000000000000000.0 }
+    keys.colOctDown     = { 1,    0,  1,    500000000000000000000000.0 }
+    keys.colOctUp       = { 1,    0,  1,    500000000000000000000000.0 }
+    keys.blockOctDown   = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.blockOctUp     = { 1,    1,  0,    500000000000000000000000.0 }
     
     help = {
       { 'Shift + Note', 'Advance column after entry' },
@@ -821,6 +842,8 @@ function tracker:loadKeys( keySet )
     keys.tab            = { 0,    0,  0,    9 }             -- Tab
     keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
     keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F    
+    keys.deleteRow      = { 1,    0,  0,    6579564 }       -- Ctrl + Del
+    
     keys.m0             = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m25            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m50            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
@@ -833,6 +856,22 @@ function tracker:loadKeys( keySet )
     keys.shcolup        = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.shblockdown    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.shblockup      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned    
+    
+    keys.cutPattern     = { 1,    0,  0,    500000000000000000000000 }
+    keys.cutColumn      = { 1,    0,  1,    500000000000000000000000 }
+    keys.cutBlock2      = { 1,    1,  0,    500000000000000000000000 }
+    keys.copyPattern    = { 1,    0,  0,    500000000000000000000000 }
+    keys.copyColumn     = { 1,    0,  1,    500000000000000000000000 }
+    keys.copyBlock2     = { 1,    1,  0,    500000000000000000000000 }
+    keys.pastePattern   = { 1,    0,  0,    500000000000000000000000 }
+    keys.pasteColumn    = { 1,    0,  1,    500000000000000000000000 }
+    keys.pasteBlock2    = { 1,    1,  0,    500000000000000000000000 }
+    keys.patternOctDown = { 1,    0,  0,    500000000000000000000000.0 }
+    keys.patternOctUp   = { 1,    0,  0,    500000000000000000000000.0 }
+    keys.colOctDown     = { 1,    0,  1,    500000000000000000000000.0 }
+    keys.colOctUp       = { 1,    0,  1,    500000000000000000000000.0 }
+    keys.blockOctDown   = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.blockOctUp     = { 1,    1,  0,    500000000000000000000000.0 }
     
     help = {
       { 'Shift + Note', 'Advance column after entry' },
@@ -877,8 +916,8 @@ function tracker:loadKeys( keySet )
     keys.up             = { 0,    0,  0,    30064 }         -- /\
     keys.down           = { 0,    0,  0,    1685026670 }    -- \/
     keys.off            = { 0,    0,  0,    92 }            -- Backslash (\) (temporary)
-    keys.delete         = { 0,    0,  0,    6579564 }        -- Del
-    keys.delete2        = { 0,    0,  0,    500000000000000000000000 }  -- Not assigned
+    keys.delete         = { 0,    0,  0,    500000000000000000000000 }        -- Not assigned
+    keys.delete2        = { 0,    0,  0,    6579564 }       -- Del
     keys.home           = { 0,    0,  0,    1752132965 }    -- Home
     keys.End            = { 0,    0,  0,    6647396 }       -- End
     keys.enter          = { 0,    0,  0,    13 }            -- Enter        
@@ -941,7 +980,9 @@ function tracker:loadKeys( keySet )
     keys.tab            = { 0,    0,  0,    9 }             -- Tab
     keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
     keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F
+    
     keys.off2           = { 0,    0,  0,    97 }            -- A
+    
     keys.shpatdown      = { 1,    0,  0,    26161 }         -- CTRL + F1
     keys.shpatup        = { 1,    0,  0,    26162 }         -- CTRL + F2
     keys.shcoldown      = { 1,    0,  1,    26161 }         -- CTRL + SHIFT + F1
@@ -949,13 +990,36 @@ function tracker:loadKeys( keySet )
     keys.shblockdown    = { 1,    1,  0,    26161 }         -- CTRL + ALT  + F1      same as shiftItemDown
     keys.shblockup      = { 1,    1,  0,    26162 }         -- CTRL + ALT  + F2      same as shiftItemUp
     
+    keys.cutPattern     = { 1,    0,  0,    26163 }         -- CTRL + F3
+    keys.cutColumn      = { 1,    0,  1,    26163 }         -- CTRL + SHIFT + F3
+    keys.cutBlock2      = { 1,    1,  0,    26163 }         -- CTRL + ALT + F3
+    
+    keys.copyPattern    = { 1,    0,  0,    26164 }         -- CTRL + F4
+    keys.copyColumn     = { 1,    0,  1,    26164 }         -- CTRL + SHIFT + F4
+    keys.copyBlock2     = { 1,    1,  0,    26164 }         -- CTRL + ALT + F4
+
+    keys.pastePattern   = { 1,    0,  0,    26165 }         -- CTRL + F5
+    keys.pasteColumn    = { 1,    0,  1,    26165 }         -- CTRL + SHIFT + F5
+    keys.pasteBlock2    = { 1,    1,  0,    26165 }         -- CTRL + ALT + F5
+    
+    keys.patternOctDown = { 1,    0,  0,    6697265.0 }     -- CTRL + F11
+    keys.patternOctUp   = { 1,    0,  0,    6697266.0 }     -- CTRL + F12
+    
+    keys.colOctDown     = { 1,    0,  1,    6697265.0 }     -- CTRL + SHIFT + F11
+    keys.colOctUp       = { 1,    0,  1,    6697266.0 }     -- CTRL + SHIFT + F12
+    
+    keys.blockOctDown   = { 1,    1,  0,    6697265.0 }     -- CTRL + ALT + F11
+    keys.blockOctUp     = { 1,    1,  0,    6697266.0 }     -- CTRL + ALT + F12
+    
+    keys.deleteRow      = { 1,    0,  0,    6579564 }       -- Ctrl + Del
+    
     keys.toggle         = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned    
     
     help = {
       { 'Shift + Note', 'Advance column after entry' },
       { '\\ or A', 'Note OFF' },
       { 'Insert/Backspace', 'Insert/Remove line' },   
-      { 'Del/.', 'Delete' }, 
+      { 'Del/Ctrl+Del', 'Delete/Delete Row' }, 
       { 'Space/Shift+Space', 'Play / Play From' },
       { 'Ctrl + O / Escape', 'Options / Stop all notes' },
       { 'Enter', 'Loop pattern' },
@@ -980,6 +1044,16 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Alt + +/-', 'Advanced col options' },
       { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },
       { 'F9/F10/F11/F12', 'Goto 0, 25, 50 and 75%%' },
+      { '---', '' },
+      { 'CTRL + F1/F2', 'Shift pattern down/up' },
+      { 'CTRL + Shift + F1/F2', 'Shift column down/up' },
+      { 'CTRL + Alt + F1/F2', 'Shift block down/up' },
+      { 'CTRL + F3/F4/F5', 'Cut/Copy/Paste pattern' },
+      { 'CTRL + Shift + F3/F4/F5', 'Cut/Copy/Paste column' },
+      { 'CTRL + Alt + F3/F4/F5', 'Cut/Copy/Paste block' },
+      { 'CTRL + F11/F12', 'Pattern octave up' },
+      { 'CTRL + Shift + F11/F12', 'Column octave up' },      
+      { 'CTRL + Alt + F11/F12', 'Block octave up' },    
       { '---', '' },      
       { 'CTRL + H', 'Toggle harmonizer' },
       { 'CTRL + Click', 'Insert chord' },
@@ -2245,7 +2319,7 @@ function tracker:printGrid()
     for i,v in pairs( tracker.colorschemes ) do
       ys = ys + keyMapH
       gfx.y = ys
-      gfx.x = xs + 8.2*2
+      gfx.x = xs + 8.2
       
       if ( v == tracker.cfg.colorscheme ) then
         gfx.set(table.unpack(colors.harmonyselect or colors.helpcolor2))
@@ -2265,7 +2339,7 @@ function tracker:printGrid()
     for i,v in pairs( keysets ) do
       ys = ys + keyMapH
       gfx.y = ys
-      gfx.x = xs + 8.2*2
+      gfx.x = xs + 8.2
       
       if ( v == tracker.cfg.keyset ) then
         gfx.set(table.unpack(colors.harmonyselect or colors.helpcolor2))
@@ -2377,7 +2451,7 @@ function tracker:optionLocations()
   local itempadx = plotData.itempadx
   local itempady = plotData.itempady
   local yloc     = plotData.yloc
-  local yheight  = (yloc[2]-yloc[1])*.8 --plotData.yheight
+  local yheight  = (yloc[2]-yloc[1])*.8
   
   local xs = plotData.xstart + tw + 4*itempadx
   local ys = plotData.ystart - 1.3*plotData.indicatorShiftY + yheight
@@ -2389,17 +2463,18 @@ function tracker:optionLocations()
     xs = xs + self.scalewidth * 1.1
   end
   
-  local keyMapX = xs + 8.2 * 2
-  local keyMapY = ys + yheight * ( 7 + #keysets )
+  local buttonwidth = gfx.measurestr("______Theme Mapping!")
+  local keyMapX = xs + 8.2 * 2 + buttonwidth
+  local keyMapY = ys + yheight * 2--* ( 7 + #keysets )
   local keyMapH = yheight
   
   local themeMapX = xs + 8.2 * 2
   local themeMapY = ys + yheight * 2
   
   local binaryOptionsX = xs + 8.2 * 2
-  local binaryOptionsY = ys + yheight * ( 6 + #tracker.colorschemes + #keysets )
+  local binaryOptionsY = ys + yheight * ( 1 + #tracker.colorschemes + #keysets )
   
-  return xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, keyMapH
+  return xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, keyMapH, buttonwidth
 end
 
 function tracker:chordLocations()
@@ -2584,34 +2659,34 @@ function tracker:shiftAt( x, y, shift, scale, onlyNotes )
   end
 end
 
-function tracker:shiftup(incp, onlyNotes)
+function tracker:shiftup(incp, onlyNotes, semitones)
   local cp = incp or self.cp
   reaper.Undo_OnStateChange2(0, "Tracker: Shift operation")
   reaper.MarkProjectDirty(0)
   
   if ( cp.ystop == -1 ) then
-    self:shiftAt( tracker.xpos, tracker.ypos, 1, nil, onlyNotes )
+    self:shiftAt( tracker.xpos, tracker.ypos, semitones or 1, nil, onlyNotes )
   else
     for jx = cp.xstart, cp.xstop do
       for jy = cp.ystart, cp.ystop do
-        self:shiftAt( jx, jy, 1, nil, onlyNotes )
+        self:shiftAt( jx, jy, semitones or 1, nil, onlyNotes )
       end
     end
   end
   reaper.MIDI_Sort(self.take)
 end
 
-function tracker:shiftdown(incp, onlyNotes)
+function tracker:shiftdown(incp, onlyNotes, semitones)
   local cp = incp or self.cp
   reaper.Undo_OnStateChange2(0, "Tracker: Shift operation")
   reaper.MarkProjectDirty(0)
   
   if ( cp.ystop == -1 ) then  
-    self:shiftAt( tracker.xpos, tracker.ypos, -1, nil, onlyNotes )
+    self:shiftAt( tracker.xpos, tracker.ypos, -(semitones or 1), nil, onlyNotes )
   else
     for jx = cp.xstart, cp.xstop do
       for jy = cp.ystart, cp.ystop do
-        self:shiftAt( jx, jy, -1, nil, onlyNotes )
+        self:shiftAt( jx, jy, -(semitones or 1), nil, onlyNotes )
       end
     end
   end
@@ -5095,7 +5170,7 @@ end
 ------------------
 -- Mend block (check if notes at top can be extended)
 ------------------
-function tracker:mendBlock()
+function tracker:mendBlock(incp)
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
   local data      = self.data
   local noteGrid  = data.note
@@ -5104,7 +5179,7 @@ function tracker:mendBlock()
   local txtList   = self.txtList
   local rows      = self.rows
   local singlerow = self:rowToPpq(1)
-  local cp        = self.cp 
+  local cp        = incp or self.cp 
   
   local xstart = cp.xstart
   local xstop = cp.xstop  
@@ -5695,14 +5770,14 @@ function tracker:copyBlock()
 end
 
 local function isPlaying()
-  local state = 0
-  local HasState = reaper.HasExtState("PlayPauseToggle", "ToggleValue")
+  --local state = 0
+  --local HasState = reaper.HasExtState("PlayPauseToggle", "ToggleValue")
   
-  if HasState == 1 then
-    state = reaperGetExtState("PlayPauseToggle", "ToggleValue")
-  end
+  --if HasState == 1 then
+  --  state = reaperGetExtState("PlayPauseToggle", "ToggleValue")
+  --end
   
-  return state
+  return reaper.GetPlayState()
 end
 
 local function togglePlayPause()
@@ -6466,12 +6541,12 @@ local function updateLoop()
     -- Mouse in range of options?
     if ( tracker.optionsActive == 1 ) then
       local changedOptions = 0
-      local xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, binaryOptionsH = tracker:optionLocations()    
+      local xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, binaryOptionsH, buttonwidth = tracker:optionLocations()    
       
       -- Color themes
       if ( gfx.mouse_x > themeMapX ) then
-        if ( gfx.mouse_y > themeMapY + keyMapH ) then
-          if ( gfx.mouse_y < keyMapY ) then
+        if ( gfx.mouse_x < themeMapX + buttonwidth ) then
+          if ( gfx.mouse_y > themeMapY + keyMapH ) then
             local sel = math.floor((gfx.mouse_y - themeMapY)/keyMapH)
             if ( tracker.colorschemes[sel] ) then
               if ( tracker.colorschemes[sel] ~= tracker.cfg.colorscheme ) then
@@ -6485,14 +6560,16 @@ local function updateLoop()
       
       -- Key mappings
       if ( gfx.mouse_x > keyMapX ) then
-        if ( gfx.mouse_y > keyMapY + keyMapH ) then
-          local sel = math.floor((gfx.mouse_y - keyMapY)/keyMapH)
-          if ( keysets[sel] ) then
-            if ( keysets[sel] ~= tracker.cfg.keyset ) then
-              changedOptions = 1
+        if ( gfx.mouse_x < keyMapX + buttonwidth ) then
+          if ( gfx.mouse_y > keyMapY + keyMapH ) then
+            local sel = math.floor((gfx.mouse_y - keyMapY)/keyMapH)
+            if ( keysets[sel] ) then
+              if ( keysets[sel] ~= tracker.cfg.keyset ) then
+                changedOptions = 1
+              end
+              tracker.cfg.keyset = keysets[sel]
+              setKeyboard(tracker.cfg.keyset)
             end
-            tracker.cfg.keyset = keysets[sel]
-            setKeyboard(tracker.cfg.keyset)
           end
         end
       end
@@ -6604,6 +6681,15 @@ local function updateLoop()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
       tracker.ypos = tracker.ypos + tracker.advance
+    elseif ( inputs('deleteRow') ) then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Delete row (Del)")
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+      tracker:clearBlock({xstart=1, ystart=tracker.ypos, xstop=#datafields, ystop=tracker.ypos})
+      tracker:mendBlock({xstart=1, ystart=tracker.ypos, xstop=#datafields, ystop=tracker.ypos})      
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+      tracker.ypos = tracker.ypos + tracker.advance
     elseif inputs('home') then
       tracker.ypos = 0
     elseif inputs('End') then
@@ -6625,7 +6711,7 @@ local function updateLoop()
       reaper.DeleteProjectMarker(0, loc, 0)
       togglePlayPause()
     elseif inputs('playfrom') then
-      if ( isPlaying() == 0 ) then
+      if ( isPlaying() > 0 ) then      
         -- Determine where we stopped relative to the current media object
         local playpos = reaper.GetPlayPosition()
         local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
@@ -6674,20 +6760,71 @@ local function updateLoop()
       tracker:beginBlock()
     elseif inputs('endBlock') then
       tracker:endBlock()
-    elseif inputs('cutBlock') then
+    elseif inputs('copyBlock') or inputs('copyBlock2') then
+      tracker:copyBlock()
+    elseif inputs('copyColumn') then
+      local oldcp = tracker.cp
+      tracker.cp = {xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows}
+      tracker:copyBlock()
+      tracker.cp = oldcp
+    elseif inputs('copyPattern') then
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+      local oldcp = tracker.cp
+      tracker.cp = {xstart=1, ystart=1, xstop=#datafields, ystop=tracker.rows}
+      tracker:copyBlock()
+      tracker.cp = oldcp
+    elseif inputs('cutBlock') or inputs('cutBlock2') then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Cut block")
       reaper.MarkProjectDirty(0)
       tracker:cutBlock()
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('pasteBlock') then
+    elseif inputs('cutColumn') then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Cut column")
+      local oldcp = tracker.cp
+      tracker.cp = {xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows}
+      reaper.MarkProjectDirty(0)
+      tracker:cutBlock()
+      tracker.cp = oldcp
+      reaper.MIDI_Sort(tracker.take)
+    elseif inputs('cutPattern') then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Cut pattern")
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+      local oldcp = tracker.cp
+      tracker.cp = {xstart=1, ystart=1, xstop=#datafields, ystop=tracker.rows}     
+      reaper.MarkProjectDirty(0)
+      tracker:cutBlock()
+      tracker.cp = oldcp
+      reaper.MIDI_Sort(tracker.take)      
+    elseif inputs('pasteBlock') or inputs('pasteBlock2') then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Paste block")
       reaper.MarkProjectDirty(0)
       tracker:pasteBlock()
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('copyBlock') then
-      tracker:copyBlock()
+    elseif inputs('pasteColumn') then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Paste column")
+      reaper.MarkProjectDirty(0)
+      local oldpos = tracker.ypos
+      tracker.ypos = 1
+      tracker:pasteBlock()
+      tracker.ypos = oldpos
+      reaper.MIDI_Sort(tracker.take)
+    elseif inputs('pastePattern') then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Paste pattern")
+      reaper.MarkProjectDirty(0)
+      local oldx = tracker.xpos
+      local oldy = tracker.ypos
+      tracker.xpos = 1
+      tracker.ypos = 1
+      tracker:pasteBlock()
+      tracker.xpos = oldx
+      tracker.ypos = oldy
+      reaper.MIDI_Sort(tracker.take)
     elseif inputs('shiftItemUp') or inputs('shblockup') then
       modified = 1
       tracker:shiftup()
@@ -6722,6 +6859,40 @@ local function updateLoop()
         x = x + 1
       end
       tracker:shiftup({xstart=x, ystart=1, xstop=#datafields, ystop=tracker.rows}, 1)      
+    elseif inputs('colOctDown') then
+      modified = 1
+      tracker:shiftdown({xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows}, 1, 12)
+    elseif inputs('colOctUp') then
+      modified = 1
+      tracker:shiftup({xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows}, 1, 12)
+    elseif inputs('patternOctDown') then
+      modified = 1
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+      local x = 1
+      while ( x < #datafields ) do
+        if ( datafields[x] == 'text' ) then
+          break;
+        end
+        x = x + 1
+      end      
+      tracker:shiftdown({xstart=x, ystart=1, xstop=#datafields, ystop=tracker.rows}, 1, 12)
+    elseif inputs('patternOctUp') then
+      modified = 1
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+      local x = 1
+      while ( x < #datafields ) do
+        if ( datafields[x] == 'text' ) then
+          break;
+        end
+        x = x + 1
+      end
+      tracker:shiftup({xstart=x, ystart=1, xstop=#datafields, ystop=tracker.rows}, 1, 12)
+    elseif inputs('blockOctUp') then
+      modified = 1
+      tracker:shiftup(nil, 1, 12)
+    elseif inputs('blockOctDown') then
+      modified = 1
+      tracker:shiftdown(nil, 1, 12)
     elseif inputs('scaleUp') then
       modified = 1
       tracker:shiftScaleUp()
@@ -6957,8 +7128,8 @@ local function updateLoop()
     tracker:stopNote()
     
     local d, x, y, w, h = gfx.dock(nil,1,1,1,1)
-    tracker:saveConfigFile("_wpos.cfg", {d=d, x=x, y=y, w=w, h=h})
-    
+    tracker:saveConfigFile("_wpos.cfg", {d=d, x=x, y=y, w=w, h=h, helpActive = tracker.helpActive, optionsActive = tracker.optionsActive})
+        
     gfx.quit()
   end
 end
@@ -7016,6 +7187,13 @@ function tracker:computeDims(inRows)
   
   local grid = tracker.grid
   height = grid.originy + (rows+1) * grid.dy + 2*grid.itempady  
+  
+  if ( tracker.helpActive == 1 ) then
+    local mhelp = #help * 14 + 10
+    if ( height < mhelp ) then
+      height = mhelp
+    end
+  end
   
   if ( tracker.cfg.autoResize == 0 ) then
     if ( self.lastY ) then
@@ -7165,8 +7343,9 @@ local function Main()
     if ( tracker:grabActiveItem() ) then
 
       local wpos = tracker:loadConfig("_wpos.cfg", {}) 
+      tracker.optionsActive = wpos.optionsActive or tracker.optionsActive
+      tracker.helpActive = wpos.helpActive or tracker.helpActive
       local width, height = tracker:computeDims(48)
-      
       tracker:updateNames()
       
       if ( wpos.w and wpos.w > width ) then
