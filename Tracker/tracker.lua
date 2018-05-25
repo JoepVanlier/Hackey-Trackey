@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.61
+@version 1.62
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,10 @@
 
 --[[
  * Changelog:
+ * v1.62 (2018-05-26)
+   + Fixed play from
+   + Set default FOV back to 32 rows
+   + Added shift pgup, pgdown, home, end
  * v1.61 (2018-05-24)
    + More renoise shortcuts added (see help)
    + Fix regarding the Play From command
@@ -251,7 +255,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.61"
+tracker.name = "Hackey Trackey v1.62"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 -- Map output to specific MIDI channel
@@ -286,7 +290,7 @@ tracker.selectionFollows = 1
 tracker.fov = {}
 
 -- Set this if you want a bigger or smaller maximum number of rows
-tracker.fov.height = 16
+tracker.fov.height = 32
 
 -- Set this if you want a wider or narrower tracker screen
 tracker.fov.abswidth = 450
@@ -388,6 +392,7 @@ tracker.cfg.keyboard = "buzz"
 tracker.cfg.rowPerQn = 4
 tracker.cfg.storedSettings = 1
 tracker.cfg.followSong = 0
+tracker.cfg.page = tracker.page
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -739,6 +744,11 @@ function tracker:loadKeys( keySet )
     keys.blockOctDown   = { 1,    1,  0,    500000000000000000000000.0 }
     keys.blockOctUp     = { 1,    1,  0,    500000000000000000000000.0 }
     
+    keys.shiftpgdn      = { 0,    0,  1,    1885824110 }    -- Shift + PgDn
+    keys.shiftpgup      = { 0,    0,  1,    1885828464 }    -- Shift + PgUp
+    keys.shifthome      = { 0,    0,  1,    1752132965 }    -- Shift + Home
+    keys.shiftend       = { 0,    0,  1,    6647396 }       -- Shift + End
+    
     help = {
       { 'Shift + Note', 'Advance column after entry' },
       { 'Insert/Backspace/-', 'Insert/Remove/Note OFF' },   
@@ -872,6 +882,11 @@ function tracker:loadKeys( keySet )
     keys.colOctUp       = { 1,    0,  1,    500000000000000000000000.0 }
     keys.blockOctDown   = { 1,    1,  0,    500000000000000000000000.0 }
     keys.blockOctUp     = { 1,    1,  0,    500000000000000000000000.0 }
+    
+    keys.shiftpgdn      = { 0,    0,  1,    1885824110 }    -- Shift + PgDn
+    keys.shiftpgup      = { 0,    0,  1,    1885828464 }    -- Shift + PgUp
+    keys.shifthome      = { 0,    0,  1,    1752132965 }    -- Shift + Home
+    keys.shiftend       = { 0,    0,  1,    6647396 }       -- Shift + End
     
     help = {
       { 'Shift + Note', 'Advance column after entry' },
@@ -1014,6 +1029,11 @@ function tracker:loadKeys( keySet )
     keys.deleteRow      = { 1,    0,  0,    6579564 }       -- Ctrl + Del
     
     keys.toggle         = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned    
+    
+    keys.shiftpgdn      = { 0,    0,  1,    1885824110 }    -- Shift + PgDn
+    keys.shiftpgup      = { 0,    0,  1,    1885828464 }    -- Shift + PgUp
+    keys.shifthome      = { 0,    0,  1,    1752132965 }    -- Shift + Home
+    keys.shiftend       = { 0,    0,  1,    6647396 }       -- Shift + End
     
     help = {
       { 'Shift + Note', 'Advance column after entry' },
@@ -5783,11 +5803,12 @@ end
 local function togglePlayPause()
   local reaper = reaper
     
-  if ( isPlaying() == 0 ) then
-    reaper.Main_OnCommand(40044, 0)
-  else
-    reaper.Main_OnCommand(40073, 0)
-  end
+  reaper.Main_OnCommand(40044, 0)
+--  if ( isPlaying() == 0 ) then
+--    
+--  else
+--    reaper.Main_OnCommand(40073, 0)
+--  end
 end
 
 local function inputs( name )
@@ -6648,6 +6669,26 @@ local function updateLoop()
       tracker.ypos = tracker.ypos + 1
       tracker:forceCursorInRange()
       tracker:dragBlock()
+    elseif inputs('shiftpgdn') then
+      tracker:dragBlock()
+      tracker.ypos = tracker.ypos + tracker.cfg.page
+      tracker:forceCursorInRange()
+      tracker:dragBlock()
+    elseif inputs('shiftpgup') then
+      tracker:dragBlock()
+      tracker.ypos = tracker.ypos - tracker.cfg.page
+      tracker:forceCursorInRange()
+      tracker:dragBlock()
+    elseif inputs('shifthome') then
+      tracker:dragBlock()
+      tracker.ypos = 0
+      tracker:forceCursorInRange()
+      tracker:dragBlock()
+    elseif inputs('shiftend') then
+      tracker:dragBlock()
+      tracker.ypos = tracker.rows
+      tracker:forceCursorInRange()
+      tracker:dragBlock()      
     elseif inputs('off') then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Place OFF")
@@ -6741,9 +6782,9 @@ local function updateLoop()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
     elseif inputs('pgup') then
-      tracker.ypos = tracker.ypos - tracker.page
+      tracker.ypos = tracker.ypos - tracker.cfg.page
     elseif inputs('pgdown') then
-      tracker.ypos = tracker.ypos + tracker.page  
+      tracker.ypos = tracker.ypos + tracker.cfg.page  
     elseif inputs('undo') then
       modified = 1
       reaper.Undo_DoUndo2(0) 
