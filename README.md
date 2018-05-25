@@ -5,7 +5,7 @@ tracker for visualizing and editing MIDI data within REAPER. Designed to mimick
 the pattern editor of Jeskola Buzz, this tracker is meant to enable MIDI note 
 entry and effect automation in a tracked manner.
 
-![Using Hackey Trackey](https://i.imgur.com/c68YjMd.png)
+![Using Hackey Trackey](https://i.imgur.com/KzfAm1T.png)
 
 ## What is it not?
 A sampler. Hackey-Trackey does not handle sample playback. For this you would 
