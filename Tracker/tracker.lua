@@ -38,6 +38,9 @@
 
 --[[
  * Changelog:
+ * v1.63 (2018-05-26)
+   + Fixed problems with paste behavior (now mends so that we don't get OFFs at the end of the block (can toggle this behavior in options screen)
+   + Added shortcut for closing hackey trackey
  * v1.62 (2018-05-26)
    + Fixed play from
    + Set default FOV back to 32 rows
@@ -393,6 +396,7 @@ tracker.cfg.rowPerQn = 4
 tracker.cfg.storedSettings = 1
 tracker.cfg.followSong = 0
 tracker.cfg.page = tracker.page
+tracker.cfg.oldBlockBehavior = 0
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -407,7 +411,8 @@ tracker.binaryOptions = {
     { 'stickToBottom', 'Info Sticks to Bottom' },
     { 'colResize', 'Adjust Column Count to Window' },
     { 'alwaysRecord', 'Always Enable Recording' },  
-    { 'CRT', 'CRT mode' }
+    { 'CRT', 'CRT mode' },
+    { 'oldBlockBehavior', 'Do not mend after paste' },
     }
     
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB"}
@@ -714,6 +719,7 @@ function tracker:loadKeys( keySet )
     keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
     keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F
     keys.deleteRow      = { 1,    0,  0,    6579564 }       -- Ctrl + Del
+    keys.closeTracker   = { 1,    0,  0,    6697266 }       -- Ctrl + F12
     
     keys.m0             = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m25            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
@@ -882,6 +888,7 @@ function tracker:loadKeys( keySet )
     keys.colOctUp       = { 1,    0,  1,    500000000000000000000000.0 }
     keys.blockOctDown   = { 1,    1,  0,    500000000000000000000000.0 }
     keys.blockOctUp     = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.closeTracker   = { 0,    0,  0,    500000000000000000000000 }      -- Unassigned
     
     keys.shiftpgdn      = { 0,    0,  1,    1885824110 }    -- Shift + PgDn
     keys.shiftpgup      = { 0,    0,  1,    1885828464 }    -- Shift + PgUp
@@ -1035,6 +1042,8 @@ function tracker:loadKeys( keySet )
     keys.shifthome      = { 0,    0,  1,    1752132965 }    -- Shift + Home
     keys.shiftend       = { 0,    0,  1,    6647396 }       -- Shift + End
     
+    keys.closeTracker   = { 0,    0,  0,    26168 }         -- F8
+    
     help = {
       { 'Shift + Note', 'Advance column after entry' },
       { '\\ or A', 'Note OFF' },
@@ -1064,6 +1073,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Alt + +/-', 'Advanced col options' },
       { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },
       { 'F9/F10/F11/F12', 'Goto 0, 25, 50 and 75%%' },
+      { 'F8', 'Close tracker' },
       { '---', '' },
       { 'CTRL + F1/F2', 'Shift pattern down/up' },
       { 'CTRL + Shift + F1/F2', 'Shift column down/up' },
@@ -3222,10 +3232,10 @@ function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, note
             if ( noteGrid[idx] > -1 ) then
               local pitch = table.unpack( notes[noteGrid[idx]] )
               local pitch2 = table.unpack( notes[noteToResize] )
-              --print( 'I (' .. self.pitchTable[pitch2] .. ') am breaking my elongation on note !' .. self.pitchTable[pitch] )
+              print( 'I (' .. self.pitchTable[pitch2] .. ') am breaking my elongation on note !' .. self.pitchTable[pitch] )
             else
               local pitch2 = table.unpack( notes[noteToResize] )
-              --print( 'I (' .. self.pitchTable[pitch2] .. ') am breaking my elongation on an OFF symbol' )
+              print( 'I (' .. self.pitchTable[pitch2] .. ') am breaking my elongation on an OFF symbol' )
             end
           end
           break;
@@ -5116,7 +5126,7 @@ end
 ------------------
 -- Clear the data in a block
 ------------------
-function tracker:clearBlock(incp)
+function tracker:clearBlock(incp, cleanOffs)
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
   local data      = self.data
   local notes     = self.notes
@@ -5172,19 +5182,19 @@ function tracker:clearBlock(incp)
   
   -- Make sure that there are no spurious note offs in the deleted region afterwards
   -- These are removed so that mendBlock can grow into this region
-  --[[--
-  for jx = cp.xstart, cp.xstop do
-    local chan = idxfields[ jx ]
-    if ( datafields[jx] == 'text' ) then
-      for jy = cp.ystart, cp.ystop do
-        if ( self.debug == 1 ) then
-          self:printNote(chan, jy - 1)
+  if ( cleanOffs ) then
+    for jx = cp.xstart, cp.xstop do
+      local chan = idxfields[ jx ]
+      if ( datafields[jx] == 'text' ) then
+        for jy = cp.ystart, cp.ystop do
+          if ( self.debug == 1 ) then
+            self:printNote(chan, jy - 1)
+          end
+          noteGrid[chan * rows + jy - 1] = nil
         end
-        noteGrid[chan * rows + jy - 1] = nil
       end
     end
   end
-  --]]--
 end
 
 ------------------
@@ -5207,7 +5217,7 @@ function tracker:mendBlock(incp)
     xstart = 1
     xstop = tracker.displaychannels
   end
-  
+
   for jx = xstart, xstop do
     local chan = idxfields[ jx ]
     if ( cp.ystart > 1 ) then
@@ -5386,7 +5396,7 @@ function tracker:pasteClipboard()
   region.xstart = self.xpos + cpShift
   region.ystart = self.ypos
   self:clearBlock(region)
-   
+  
   -- Grab references here, since clearblock calls update and regenerates them
   local data      = self.data
   local noteGrid  = data.note
@@ -5408,10 +5418,12 @@ function tracker:pasteClipboard()
             if ( ( firstNote == 1 ) and ( self.ypos > 0 ) and ( note and ( note > -1 ) ) ) then
               -- If the location where the paste happens started with a note, then shorten it!
               local pitch, vel, startppqpos, endppqpos = table.unpack( notes[ note ] )
-              local resize = self:ppqToRow(data[4]+refppq-endppqpos)
+              
+              local resize = self:ppqToRow(data[4]+refppq-endppqpos+self.magicOverlap)
               if ( resize ~= 0 ) then
                 self:resizeNote(chan, self:ppqToRow(startppqpos), resize )
               end
+
               firstNote = 0
             end
             self:addNotePpq(data[4] + refppq, data[5] + refppq, chan, data[2], data[3])
@@ -5422,7 +5434,7 @@ function tracker:pasteClipboard()
             if ( ( firstNote == 1 ) and ( self.ypos > 0 ) and ( note and ( note > -1 ) ) ) then
               -- If the location where the paste happens started with a note, then shorten it!
               local pitch, vel, startppqpos, endppqpos = table.unpack( notes[ note ] )
-              self:resizeNote(chan, self:ppqToRow(startppqpos), self:ppqToRow(data[2]+refppq-endppqpos) )
+              self:resizeNote(chan, self:ppqToRow(startppqpos), self:ppqToRow(data[2]+refppq-endppqpos+self.magicOverlap) )
               firstNote = 0
             else
               -- Otherwise, make it an explicit off
@@ -5431,7 +5443,8 @@ function tracker:pasteClipboard()
             end
           elseif ( data[1] == 'LEG' ) then
             -- 'LEG', ppqposition
-            self:addLegato( self:ppqToRow(data[2] + refppq) )
+            --self:addLegato( self:ppqToRow(data[2] + refppq) )
+            self:setLegato( self:ppqToRow(data[2] + refppq), true )
           elseif ( data[1] == 'FX' ) then
             -- 'FX', ppqposition   
             self:addEnvPt( chan, self:ppqToSeconds(data[2] + refppq), data[3], data[4] )
@@ -5448,6 +5461,53 @@ function tracker:pasteClipboard()
       end
     end
     jx = jx + self:getAdvance(chtype)
+  end
+  
+  local cp = self.cp
+  local xstop = jx
+  local xstart = self.xpos
+  local ystart = self.ypos
+  local yend = self.ypos + self.clipboard.maxrow
+
+  if ( self.cfg.oldBlockBehavior == 0 ) then
+
+    -- Before updating, take note of true note offs
+    local trueOff = {}
+    for jx = xstart,xstop do
+      local chan = idxfields[ jx ]
+      if ( datafields[jx] == 'text' ) then
+        if ( noteGrid[chan * rows + yend] and noteGrid[chan * rows + yend] < 0 ) then
+          trueOff[jx] = 1
+        end
+      end
+    end
+  
+    -- Now the whole block will end with note offs
+    self:insertNow()
+    self:deleteNow()
+    self:clearDeleteLists()
+    self:clearInsertLists()
+    
+    reaper.MIDI_Sort(self.take)
+    self:forceUpdate()
+    
+    local data      = self.data
+    local noteGrid  = data.note
+    
+    for jx = xstart,xstop do
+      local chan = idxfields[ jx ]
+      
+      if ( datafields[jx] == 'text' ) then
+        -- If the last note is a note and it wasn't covered by a note off at first, then we need to do mending //and noteGrid[chan * rows + yend-1] and noteGrid[chan * rows + yend-1] > 0
+        if ( noteGrid[chan * rows + yend]  ) then
+          -- Only mend if we're dealing with a note off that was just generated, and not with a note
+          if ( not trueOff[jx] and ( noteGrid[chan * rows + yend] ) < 0 ) then
+            noteGrid[chan * rows + yend] = nil
+            self:mendBlock({xstart=jx, xstop=jx, ystart=yend+1, yend=yend+1})
+          end
+        end
+      end
+    end
   end
 end
 
@@ -5469,6 +5529,7 @@ function tracker:copyToClipboard()
   
   newclipboard.refppq = self:rowToPpq( cp.ystart - 1 )
   local maxppq    = self:rowToPpq(cp.ystop)
+  newclipboard.maxrow = cp.ystop - cp.ystart
 
   local xstart = cp.xstart
   local xstop = cp.xstop  
@@ -5581,7 +5642,7 @@ end
 -- Delete block
 ------------------
 function tracker:deleteBlock()
-  self:clearBlock()
+  self:clearBlock(nil, 1)
   self:mendBlock()
 end
 
@@ -7069,6 +7130,8 @@ local function updateLoop()
       tracker:updateMidiName()
     elseif inputs('toggleRec') then
       tracker:toggleRec()
+    elseif( inputs('closeTracker') ) then
+      tracker:terminate()
     elseif inputs('escape') then
       if ( tracker.armed == 1 ) then
         tracker.onlyListen = 1 - tracker.onlyListen
@@ -7149,7 +7212,9 @@ local function updateLoop()
     end
   end
 
-  tracker:printGrid()
+  if ( not self.noDraw or self.noDraw == 0 ) then
+    tracker:printGrid()
+  end
   gfx.update()
   tracker:insertNow()
   
@@ -7160,19 +7225,23 @@ local function updateLoop()
     tracker:deleteNow()
     reaper.MIDI_Sort(tracker.take)
     tracker.hash = math.random()
-  end
+  end  
   
   --lastChar ~= 27 and 
   if lastChar ~= -1 then
     reaper.defer(updateLoop)
   else
-    tracker:stopNote()
-    
-    local d, x, y, w, h = gfx.dock(nil,1,1,1,1)
-    tracker:saveConfigFile("_wpos.cfg", {d=d, x=x, y=y, w=w, h=h, helpActive = tracker.helpActive, optionsActive = tracker.optionsActive})
-        
-    gfx.quit()
+    tracker:terminate()
   end
+end
+
+function tracker:terminate()
+  tracker:stopNote()
+    
+  local d, x, y, w, h = gfx.dock(nil,1,1,1,1)
+  tracker:saveConfigFile("_wpos.cfg", {d=d, x=x, y=y, w=w, h=h, helpActive = tracker.helpActive, optionsActive = tracker.optionsActive})
+        
+  gfx.quit()
 end
 
 function tracker:toggleRec()
