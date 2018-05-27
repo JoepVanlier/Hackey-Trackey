@@ -1,19 +1,24 @@
 # Hackey-Trackey
 ## What is it?
 A lightweight tracker plugin for REAPER 5.x and up. Hackey-Trackey is a small 
-tracker for visualizing and editing MIDI data within REAPER. Designed to mimick 
-the pattern editor of Jeskola Buzz, this tracker is meant to enable MIDI note 
-entry and effect automation in a tracked manner.
+tracker for visualizing and editing MIDI data within REAPER. Originally developed 
+to mimick the pattern editor of Jeskola Buzz, this tracker is meant to enable 
+MIDI note entry and effect automation in a tracked manner.
 
 ![Using Hackey Trackey](https://i.imgur.com/KzfAm1T.png)
 
 ## What is it not?
 A sampler. Hackey-Trackey does not handle sample playback. For this you would 
 need to add an additional VST that handles sample playback. Have a look at 
-ReViSiT or linking Renoise to REAPER if this is what you seek.
+ReViSiT or linking a dedicated tracker program such as Renoise to REAPER if 
+this is what you seek.
 
 ## Small disclaimer
-Hackey Trackey is still actively being developed. Not all planned features are finished yet. Be sure to check back in the future if you want to be kept up to date with the latest features. That said, basic tracking functionality works (note entry, FX sequencing) and directly updates MIDI and automation data.
+Hackey Trackey is still actively being developed. Not all planned features are 
+finished yet and there may stil be bugs. Be sure to check back in the future 
+if you want to be kept up to date with the latest features. Basic tracking 
+functionality works (note entry, FX sequencing) and directly updates MIDI 
+and automation data.
 
 ## Installation
 ### With Reapack
@@ -25,17 +30,45 @@ Eventually, the plan is to make the tracker part of the reapack scripts reposito
 
 ## How do I use it?
 Select a MIDI object and start the script. Note that scripts can be bound to 
-shortcut keys, which I'd recommend if you're going to be using it.
+shortcut keys, which I'd recommend if you're going to be using it. This short 
+tutorial assumes the default keymapping, but others are available in the options 
+menu. In the default layout, options can be brought up with F11 and a small help 
+file indicating all the options with F1 (same in all layouts).
 
-### To what channel is the MIDI data being sent?
+### What MIDI channel is used?
 The plugin remaps your MIDI data to different channels. New MIDI 
-data that was not tracked has to come in on channel 1. Note also that 
-the tracker outputs everything to MIDI channel 1 by default. The output 
-channel (OUT) can be changed with the F1 (down) and F2 (up) keys. Setting 
-the output channel to zero (displays as C) maps each column to a separate 
-MIDI channel. Note that column one goes to MIDI channel 2 and so forth.
+data that was not tracked has to come in on channel 1. Hackey trackey 
+recognises notes which have not yet been assigned to a column by their 
+channel. Note also that by default the tracker remaps everything to MIDI 
+channel 1. The output channel (OUT) can be changed with the F1 (down) 
+and F2 (up) keys in the default layout or by clicking the OUT field  
+and dragging the mouse up or down. Setting the output channel to zero 
+(displays as C) maps each column to a separate MIDI channel. Note that 
+column one goes to MIDI channel 2 and so forth.
 
 ![Pattern info](https://i.imgur.com/bypeHXu.png)
+
+### Important use notes
+It is recommended to change the size of MIDI items from within Hackey-Trackey 
+rather than by dragging them in REAPER's sequencer. You can do this by clicking 
+the pattern length indicator in the bottom left and entering a new length. 
+The reason for this is that HT will create new automation objects if it doesn't 
+find ones of appropriate length that are correctly aligned. If you wish to 
+edit the MIDI items in REAPER, then close the instance of Hackey Trackey, 
+resize the item and glue the item before reopening HT.
+
+#### Mouse operation
+Hackey Trackey is designed to mostly be used via keyboard shortcuts. That said, 
+some mouse interaction has recently been added. You can click and drag 
+Resolution (Res), Octave (Oct), Advance (Adv), Envelope (Env) and Out channel 
+to set these values. Note that since the resolution or ticks per beat can be a 
+destructive operation, this one needs to be confirmed by clicking, dragging and 
+then confirming the new selection with the outer mouse button while still holding 
+the left mouse button.
+
+Recording status can also be toggled by clicking it, and the pattern size can be 
+changed by clicking the pattern size. Removing the current size and confirming with 
+return.
 
 ### Can I automate parameters?
 Yes! Parameters for which envelopes are active (see automation panel in image 
@@ -68,9 +101,15 @@ Yes. They do not and this is considered out of scope for the tracker. If you wis
 to interpolate CC commands, I suggest you use ReaControlMIDI to map the CC commands 
 to an FX envelope. These you can then use in the same way as the parameters.
 
-### I don't hear the notes I play.
-Did you arm the track? Hit CTRL+R to arm hackey trackey for note playback.
-If this does not work, please open an issue as this may be a bug.
+### I do not hear the notes I play? Can I change it such that I do?
+If you want to hear notes you play, remember to arm the tracker by hitting CTRL + R.
+Note however, that this alters the recording status of your project. If you wish to 
+always have HT enable recording, then enable "Always Enable Recording" in the options 
+menu.
+
+### The default theme is butt ugly. Are there any others?
+Yes, there are various themes to choose from. See the options menu (F11).
+![Themes](https://i.imgur.com/wxnbQUV.png)
 
 ### Can I change the pattern length from the tracker?
 Yes. Click the pattern length indicator in the bottom left of the tracker. You can 
@@ -84,10 +123,6 @@ This is implemented by simpliy stretching the previous note. Legato is only appl
 to channel 1 in the tracker. Note that performing a legato from and to the same note 
 will result in the second note not displaying in the tracker. This is not a bug, but a 
 workaround to fix note OFF issues with the resulting MIDI item.
-
-### I do not hear the notes I play? Can I change it such that I do?
-If you want to hear notes you play, remember to arm the tracker by hitting CTRL + R.
-Note however, that this alters the recording status of your project.
 
 ### Can I rename patterns?
 Yes, simply hit CTRL + N and type a new name followed by ENTER.
@@ -109,6 +144,11 @@ You can set these in Options => Preferences => Media/MIDI => Ticks per quarter n
 new MIDI items. The default here is 960, but 1024, 2048 or 4096 is recommended for 
 Hackey Trackey. Once configured correctly, you can open the note delay column for any note 
 by simply hitting CTRL + \+ for that column.
+
+### Can I enter note lengths?
+Yes you can. Hit CTRL \+ \+ twice on a note column to bring up the note length panel. This 
+will allow you to edit the duration of the last tick of the note at a subtick level. The 
+same caveats as with note delay apply.
 
 ### What is this Harmony Helper thing?
 Release 1.30 saw the addition of the Harmony Helper, this is an extension of Hackey Trackey 
@@ -164,6 +204,11 @@ This will automatically add columns to be visible whenever Hackey Trackey is res
 This will make Hackey Trackey always enable recording when opened. Note however that this 
 changes the recording status of your project and is therefore disabled by default.
 
+#### Follow Song
+CTRL + F will toggle Hackey Trackey to follow the song position. It will attempt to find 
+MIDI items at the current position on the current track and update the view so that you 
+see them. Note that the status of this can be seen next to the [Rec] button.
+
 #### CRT mode
 Enable cheesy CRT effect. Works best with Hacker theme.
 
@@ -176,6 +221,8 @@ values.
 
 | Key                   		| Action                                                                |
 |:--------------------------------------|:----------------------------------------------------------------------|
+| Any key on the virtual keyboard 	| Enter a note and advance						|
+| Shift + Key on the virtual keyboard 	| Enter a note go to the next column					|
 | Arrow keys            		| Navigate                                                              |
 | Backspace             		| Delete item and shift rows up                                         |
 | Del                   		| Delete item                                                           |
@@ -294,3 +341,4 @@ so far, but if you have a good idea, please contact me.
 
 ### Features to be investigated whether they are feasible/reasonable
 - Cutting/Copying to MIDI editor clipboard.
+- Adding HT to the MIDI menu via a configuration script.
