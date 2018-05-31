@@ -5,6 +5,7 @@ tracker for visualizing and editing MIDI data within REAPER. Originally develope
 to mimick the pattern editor of Jeskola Buzz, this tracker is meant to enable 
 MIDI note entry and effect automation in a tracked manner.
 
+![Hackey Trackey in Action](https://j.gifs.com/gLyymG.gif)
 ![Using Hackey Trackey](https://i.imgur.com/KzfAm1T.png)
 
 ## What is it not?
@@ -107,7 +108,7 @@ Note however, that this alters the recording status of your project. If you wish
 always have HT enable recording, then enable "Always Enable Recording" in the options 
 menu.
 
-### The default theme is butt ugly. Are there any others?
+### The default theme is not my style. Are there any others?
 Yes, there are various themes to choose from. See the options menu (F11).
 ![Themes](https://i.imgur.com/wxnbQUV.png)
 
