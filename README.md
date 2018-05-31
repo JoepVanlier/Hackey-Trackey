@@ -3,10 +3,9 @@
 A lightweight tracker plugin for REAPER 5.x and up. Hackey-Trackey is a small 
 tracker for visualizing and editing MIDI data within REAPER. Originally developed 
 to mimick the pattern editor of Jeskola Buzz, this tracker is meant to enable 
-MIDI note entry and effect automation in a tracked manner.
-
+MIDI note entry and effect automation in a tracked manner. You can see it in 
+action here:
 ![Hackey Trackey in Action](https://j.gifs.com/gLyymG.gif)
-![Using Hackey Trackey](https://i.imgur.com/KzfAm1T.png)
 
 ## What is it not?
 A sampler. Hackey-Trackey does not handle sample playback. For this you would 
@@ -35,6 +34,8 @@ shortcut keys, which I'd recommend if you're going to be using it. This short
 tutorial assumes the default keymapping, but others are available in the options 
 menu. In the default layout, options can be brought up with F11 and a small help 
 file indicating all the options with F1 (same in all layouts).
+
+![Using Hackey Trackey](https://i.imgur.com/KzfAm1T.png)
 
 ### What MIDI channel is used?
 The plugin remaps your MIDI data to different channels. New MIDI 
