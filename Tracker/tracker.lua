@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.63
+@version 1.64
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,12 @@
 
 --[[
  * Changelog:
+ * v1.64 (2018-06-10)
+   + Added some extra shortcuts
+   + Insert row (default = CTRL + Ins)
+   + Remove row (default = CTRL + Backspace)
+   + Wrap down  (default = CTRL + Shift + Ins)
+   + Wrap up    (default = CTRL + Shift + Backspace)
  * v1.63 (2018-05-26)
    + Fixed problems with paste behavior (now mends so that we don't get OFFs at the end of the block (can toggle this behavior in options screen)
    + Added shortcut for closing hackey trackey
@@ -258,7 +264,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.63"
+tracker.name = "Hackey Trackey v1.64"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 -- Map output to specific MIDI channel
@@ -721,6 +727,11 @@ function tracker:loadKeys( keySet )
     keys.deleteRow      = { 1,    0,  0,    6579564 }       -- Ctrl + Del
     keys.closeTracker   = { 1,    0,  0,    6697266 }       -- Ctrl + F12
     
+    keys.insertRow      = { 1,    0,  0,    6909555 }       -- Insert row CTRL+Ins
+    keys.removeRow      = { 1,    0,  0,    8 }             -- Remove Row CTRL+Backspace
+    keys.wrapDown       = { 1,    0,  1,    6909555 }       -- CTRL + SHIFT + Ins
+    keys.wrapUp         = { 1,    0,  1,    8 }             -- CTRL + SHIFT + Backspace    
+    
     keys.m0             = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m25            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m50            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
@@ -758,6 +769,8 @@ function tracker:loadKeys( keySet )
     help = {
       { 'Shift + Note', 'Advance column after entry' },
       { 'Insert/Backspace/-', 'Insert/Remove/Note OFF' },   
+      { 'CTRL + Insert/Backspace', 'Insert Row/Remove Row' },
+      { 'CTRL + Shift + Insert/Backspace', 'Wrap Forward/Backward' },
       { 'Del/.', 'Delete' }, 
       { 'Space/Return', 'Play/Play From' },
       { 'CTRL + L', 'Loop pattern' },
@@ -860,6 +873,11 @@ function tracker:loadKeys( keySet )
     keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F    
     keys.deleteRow      = { 1,    0,  0,    6579564 }       -- Ctrl + Del
     
+    keys.insertRow      = { 1,    1,  0,    6909555 }       -- Insert row CTRL+Alt+Ins
+    keys.removeRow      = { 1,    1,  0,    8 }             -- Remove Row CTRL+Alt+Backspace
+    keys.wrapDown       = { 1,    0,  1,    6909555 }       -- CTRL + SHIFT + Ins
+    keys.wrapUp         = { 1,    0,  1,    8 }             -- CTRL + SHIFT + Backspace     
+    
     keys.m0             = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m25            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m50            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
@@ -899,6 +917,8 @@ function tracker:loadKeys( keySet )
       { 'Shift + Note', 'Advance column after entry' },
       { '`', 'Note OFF' },
       { 'Insert/Backspace', 'Insert/Remove line' },   
+      { 'CTRL + Alt + Insert/Backspace', 'Insert Row/Remove Row' },
+      { 'CTRL + Shift + Insert/Backspace', 'Wrap Forward/Backward' },      
       { 'Del/.', 'Delete' }, 
       { 'F5/F6', 'Play/Play from here' },
       { 'F8/F11/F12', 'Stop / Options / Panic' },
@@ -1044,11 +1064,18 @@ function tracker:loadKeys( keySet )
     
     keys.closeTracker   = { 0,    0,  0,    26168 }         -- F8
     
+    keys.insertRow      = { 1,    0,  0,    6909555 }       -- Insert row CTRL+Ins
+    keys.removeRow      = { 1,    0,  0,    8 }             -- Remove Row CTRL+Backspace
+    keys.wrapDown       = { 1,    0,  1,    6909555 }       -- CTRL + SHIFT + Ins
+    keys.wrapUp         = { 1,    0,  1,    8 }             -- CTRL + SHIFT + Backspace   
+    
     help = {
       { 'Shift + Note', 'Advance column after entry' },
       { '\\ or A', 'Note OFF' },
-      { 'Insert/Backspace', 'Insert/Remove line' },   
+      { 'Insert/Backspace', 'Insert/Remove line' },
+      { 'CTRL + Insert/Backspace', 'Insert Row/Remove Row' },     
       { 'Del/Ctrl+Del', 'Delete/Delete Row' }, 
+      { 'CTRL + Shift + Insert/Backspace', 'Wrap Forward/Backward' },      
       { 'Space/Shift+Space', 'Play / Play From' },
       { 'Ctrl + O / Escape', 'Options / Stop all notes' },
       { 'Enter', 'Loop pattern' },
@@ -5555,7 +5582,7 @@ function tracker:copyToClipboard()
           -- Store the legato state of the note that we are copying
           if ( chan == 1 ) then
             local lpos = self:ppqToRow(endppqpos)
-            if ( legato[lpos] > -1 ) then
+            if ( legato[lpos] and legato[lpos] > -1 ) then
               if ( noteStart[rows+lpos] ) then
                 -- Undo the legato
                 endppqpos = endppqpos - self.magicOverlap
@@ -6792,6 +6819,121 @@ local function updateLoop()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
       tracker.ypos = tracker.ypos + tracker.advance
+    elseif ( inputs('insertRow') ) then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Insert Row")
+      local cpS = tracker:saveClipboard()
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+      tracker.cp = {xstart=1, ystart=tracker.ypos, xstop=#datafields, ystop=tracker.rows-1}
+      reaper.MarkProjectDirty(0)
+      tracker:cutBlock()
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+      local oldx = tracker.xpos
+      tracker.xpos = 1
+      tracker.ypos = tracker.ypos + 1
+      tracker:pasteBlock()
+      tracker.xpos = oldx
+      tracker.ypos = tracker.ypos - 1
+      tracker:loadClipboard(cpS)
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+    elseif ( inputs('removeRow') ) then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Remove Row")
+      local cpS = tracker:saveClipboard()
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+      tracker.cp = {xstart=1, ystart=tracker.ypos+1, xstop=#datafields, ystop=tracker.rows}
+      reaper.MarkProjectDirty(0)
+      tracker:cutBlock()
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+      local oldx = tracker.xpos
+      tracker.xpos = 1
+      tracker:pasteBlock()
+      tracker.xpos = oldx
+      tracker:loadClipboard(cpS)
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+    elseif ( inputs('wrapDown') ) then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Wrap down")
+      local oldx = tracker.xpos
+      local oldy = tracker.ypos
+      local cpS = tracker:saveClipboard()
+    
+      -- Cut  last line to a special clipboard
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+      tracker.cp = {xstart=1, ystart=tracker.rows, xstop=#datafields, ystop=tracker.rows}
+      reaper.MarkProjectDirty(0)
+      tracker:cutBlock()
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+      local lastLineClipboard = tracker.clipboard
+      
+      -- Shift block
+      tracker.cp = {xstart=1, ystart=1, xstop=#datafields, ystop=tracker.rows-1}
+      reaper.MarkProjectDirty(0)
+      tracker:cutBlock()
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+      
+      -- Paste block one shifted
+      tracker.ypos = 2
+      tracker.xpos = 1
+      tracker:pasteBlock()
+      
+      -- Restore clipboard and paste line that fell off
+      tracker.clipboard = lastLineClipboard
+      tracker.ypos = 1
+      tracker.xpos = 1
+      tracker:pasteBlock()
+      
+      tracker:loadClipboard(cpS)
+      tracker.xpos = oldx
+      tracker.ypos = oldy
+    elseif ( inputs('wrapUp') ) then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Wrap up")    
+      local oldx  = tracker.xpos
+      local oldy  = tracker.ypos
+      local cpS   = tracker:saveClipboard()
+    
+      -- Cut block to special clipboard
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+      tracker.cp = {xstart=1, ystart=2, xstop=#datafields, ystop=tracker.rows}
+      reaper.MarkProjectDirty(0)
+      tracker:cutBlock()
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+      local chunk = tracker.clipboard
+    
+      -- Cut  first line to a special clipboard
+      tracker.cp = {xstart=1, ystart=1, xstop=#datafields, ystop=1}
+      reaper.MarkProjectDirty(0)
+      tracker:cutBlock()
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+     
+      -- Paste line that fell off
+      tracker.xpos = 1
+      tracker.ypos = tracker.rows
+      tracker:pasteBlock()
+      
+      -- Paste block one shifted up
+      tracker.xpos = 1
+      tracker.ypos = 1
+      tracker.clipboard = chunk
+      tracker:pasteBlock()
+      tracker:deleteNow()
+      tracker:insertNow()
+      reaper.MIDI_Sort(tracker.take)
+      
+      
+      tracker:loadClipboard(cpS)
+      tracker.xpos = oldx
+      tracker.ypos = oldy
+      
     elseif inputs('home') then
       tracker.ypos = 0
     elseif inputs('End') then
@@ -7233,6 +7375,18 @@ local function updateLoop()
   else
     tracker:terminate()
   end
+end
+
+function tracker:saveClipboard()
+  local storage = {}
+  storage.oldcp = self.cp
+  storage.oldcpcontent = self.clipboard
+  return storage
+end
+
+function tracker:loadClipboard(storage)
+  self.cp         = storage.oldcp
+  self.clipboard  = storage.oldcpcontent
 end
 
 function tracker:terminate()
