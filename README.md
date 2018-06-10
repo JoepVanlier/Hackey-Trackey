@@ -184,15 +184,20 @@ Yes. Just add: https://raw.githubusercontent.com/joepvanlier/Hackey-Trackey/mast
 ### I'm missing sample offset.
 Sample offsets have to be achieved externally and mapped onto reaper FX. For instance, in Kontakt, you can achieve sample offsets in the following way:
 
-Step one.
+####Step one.
+
 After loading an instrument hit the edit instrument button. If the instrument is locked then I'm afraid you cannot achieve sample offsets with this instrument.
+
 ![Edit Instrument](https://i.imgur.com/tETkZzT.png)
 
-Step 2.
+####Step two.
+
 Switch the sampling mode from DFD to sampler. Note that this will increase memory consumption of the instrument as well, so it's best to only do this when you really need it for an instrument.
+
 ![Switch to sampling mode](https://i.imgur.com/nNGHXpA.png)
 
-Step 3.
+#### Step three.
+
 Go into the scripts editor and find the first empty script. In this script paste the following code:
 ```KSP
 on init
@@ -211,6 +216,7 @@ end on
 ```
 
 Don't forget to hit apply!
+
 ![Insert script](https://i.imgur.com/U5qRxvE.png)
 
 Now offset should be available as an FX in REAPER which you can automate with Hackey Trackey.
