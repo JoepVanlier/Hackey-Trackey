@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="1df3231557fd91290d6ce3a5fbb2f1fe2794efbb">
+<index version="1" name="Tracker tools" commit="279cf923b80276e43afdda546d1154cbb5dbae96">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -326,6 +326,15 @@ FF = the full length of the last tick.]]></changelog>
 + Added shortcut for closing hackey trackey]]></changelog>
         <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/1df3231557fd91290d6ce3a5fbb2f1fe2794efbb/Tracker/scales.lua</source>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/1df3231557fd91290d6ce3a5fbb2f1fe2794efbb/Tracker/tracker.lua</source>
+      </version>
+      <version name="1.64" author=": Joep Vanlier" time="2018-06-10T15:09:50Z">
+        <changelog><![CDATA[+ Added some extra shortcuts
++ Insert row (default = CTRL + Ins)
++ Remove row (default = CTRL + Backspace)
++ Wrap down  (default = CTRL + Shift + Ins)
++ Wrap up    (default = CTRL + Shift + Backspace)]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/279cf923b80276e43afdda546d1154cbb5dbae96/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/279cf923b80276e43afdda546d1154cbb5dbae96/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
