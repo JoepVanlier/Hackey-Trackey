@@ -181,6 +181,40 @@ update the root note in the harmony helper.
 ### Is this repository reapack compatible?
 Yes. Just add: https://raw.githubusercontent.com/joepvanlier/Hackey-Trackey/master/index.xml
 
+### I'm missing sample offset.
+Sample offsets have to be achieved externally and mapped onto reaper FX. For instance, in Kontakt, you can achieve sample offsets in the following way:
+
+Step one.
+After loading an instrument hit the edit instrument button. If the instrument is locked then I'm afraid you cannot achieve sample offsets with this instrument.
+![Edit Instrument](https://i.imgur.com/tETkZzT.png)
+
+Step 2.
+Switch the sampling mode from DFD to sampler. Note that this will increase memory consumption of the instrument as well, so it's best to only do this when you really need it for an instrument.
+![Switch to sampling mode](https://i.imgur.com/nNGHXpA.png)
+
+Step 3.
+Go into the scripts editor and find the first empty script. In this script paste the following code:
+```KSP
+on init
+declare ui_knob $sampleStart (0,1000000,1)
+set_text ($sampleStart, "S. Start")
+set_control_par(get_ui_id($sampleStart),$CONTROL_PAR_AUTOMATION_ID,0) 
+set_control_par_str(get_ui_id($sampleStart),$CONTROL_PAR_AUTOMATION_NAME,"Sample offset")
+end on
+on ui_control ($sampleStart)
+set_knob_label ($sampleStart, $sampleStart/10000)
+end on
+on note
+ignore_event ($EVENT_ID)
+play_note($EVENT_NOTE,$EVENT_VELOCITY,$sampleStart,-1)
+end on
+```
+
+Don't forget to hit apply!
+![Insert script](https://i.imgur.com/U5qRxvE.png)
+
+Now offset should be available as an FX in REAPER which you can automate with Hackey Trackey.
+
 ### Options
 Hackey-Trackey has a few options to allow for some customization in workflow. Pressing F11 
 opens the options dialog, where themes and keymappings can be chosen. Additionally, the following 
