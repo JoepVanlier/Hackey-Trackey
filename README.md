@@ -182,21 +182,23 @@ update the root note in the harmony helper.
 Yes. Just add: https://raw.githubusercontent.com/joepvanlier/Hackey-Trackey/master/index.xml
 
 ### I'm missing sample offset.
-Sample offsets have to be achieved externally and mapped onto reaper FX. For instance, in Kontakt, you can achieve sample offsets in the following way:
+Sample offsets have to be achieved via the VST or JSFX and mapped onto reaper FX.
 
-####Step one.
+#### Kontakt
+
+##### Step one.
 
 After loading an instrument hit the edit instrument button. If the instrument is locked then I'm afraid you cannot achieve sample offsets with this instrument.
 
 ![Edit Instrument](https://i.imgur.com/tETkZzT.png)
 
-####Step two.
+##### Step two.
 
 Switch the sampling mode from DFD to sampler. Note that this will increase memory consumption of the instrument as well, so it's best to only do this when you really need it for an instrument.
 
 ![Switch to sampling mode](https://i.imgur.com/nNGHXpA.png)
 
-#### Step three.
+##### Step three.
 
 Go into the scripts editor and find the first empty script. In this script paste the following code:
 ```KSP
