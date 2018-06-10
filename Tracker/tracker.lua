@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.64
+@version 1.65
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.65 (2018-06-11)
+   + Block interpolation without distance
  * v1.64 (2018-06-10)
    + Added some extra shortcuts
    + Insert row (default = CTRL + Ins)
@@ -264,7 +266,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.64"
+tracker.name = "Hackey Trackey v1.65"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 -- Map output to specific MIDI channel
@@ -4168,6 +4170,11 @@ function tracker:floatToByte( floatval )
 end
 
 function tracker:editEnvField( vel, id, val )
+  -- NaN guard
+  if ( vel ~= vel ) then
+    vel = 0
+  end
+
   -- Convert to Hex first
   local newvel = string.format('%02X', self:floatToByte( vel ) )
   -- Replace the digit in question
@@ -4774,7 +4781,7 @@ function tracker:updateEnvelopes()
       for i=0,rows-1 do
         local atime, value, shape, tension = self:getEnvPt(ch, self:toSeconds(i))       
         
-        if ( value ) then        
+        if ( value and ( value == value ) ) then
           local hexEnv = string.format('%02X', self:floatToByte(value) )          
           data.fx1[rows*ch+i] = hexEnv:sub(1,1)
           data.fx2[rows*ch+i] = hexEnv:sub(2,2)
@@ -5690,6 +5697,10 @@ function tracker:interpolate()
   local txtList   = self.txtList
   local rows      = self.rows
   local cp        = self.cp
+  
+  if ( cp.ystart == cp.ystop ) then
+    return
+  end
   
   if ( cp.xstart == cp.xstop ) then
     local jx = cp.xstart
