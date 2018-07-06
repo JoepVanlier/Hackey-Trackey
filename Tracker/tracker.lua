@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.66
+@version 1.67
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.67 (2018-07-06)
+   + Added option for midi program change column (beta)
  * v1.66 (2018-07-06)
    + Added option for swapping y and z for different keyboard layouts
  * v1.65 (2018-06-11)
@@ -268,7 +270,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.66"
+tracker.name = "Hackey Trackey v1.67"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 -- Map output to specific MIDI channel
@@ -276,6 +278,8 @@ tracker.configFile = "_hackey_trackey_options_.cfg"
 --   one being mapped to MIDI channel 2. Any other value forces the output on 
 --   a specific channel.
 tracker.outChannel = 1
+
+tracker.CCjump = 512
 
 -- MIDI device to play notes over
 -- For me it was 6080 for Virtual MIDI keyboard and 6112 for ALL, but this may
@@ -396,6 +400,7 @@ keyLayouts = {'QWERTY', 'QWERTZ', 'AZERTY'}
 tracker.cfg = {}
 tracker.cfg.colorscheme = "buzz"
 tracker.cfg.keyset = "default"
+tracker.cfg.channelCCs = 0
 tracker.cfg.scaleActive = 0
 tracker.cfg.autoResize = 1
 tracker.cfg.followSelection = 0
@@ -426,6 +431,7 @@ tracker.binaryOptions = {
     { 'alwaysRecord', 'Always Enable Recording' },  
     { 'CRT', 'CRT mode' },
     { 'oldBlockBehavior', 'Do not mend after paste' },
+    { 'channelCCs', 'Enable CCs for channels > 0 (beta)' },
     }
     
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB"}
@@ -730,6 +736,7 @@ function tracker:loadKeys( keySet )
     keys.showLess       = { 1,    0,  0,    13 }            -- CTRL + -
     keys.addCol         = { 1,    0,  1,    11 }            -- CTRL + Shift + +
     keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -
+    keys.addColAll      = { 1,    0,  1,    1 }             -- CTRL + Shift + A
     keys.tab            = { 0,    0,  0,    9 }             -- Tab
     keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
     keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F
@@ -881,6 +888,7 @@ function tracker:loadKeys( keySet )
     keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
     keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F    
     keys.deleteRow      = { 1,    0,  0,    6579564 }       -- Ctrl + Del
+    keys.addColAll      = { 1,    0,  1,    1 }             -- CTRL + Shift + A
     
     keys.insertRow      = { 1,    1,  0,    6909555 }       -- Insert row CTRL+Alt+Ins
     keys.removeRow      = { 1,    1,  0,    8 }             -- Remove Row CTRL+Alt+Backspace
@@ -916,7 +924,7 @@ function tracker:loadKeys( keySet )
     keys.blockOctDown   = { 1,    1,  0,    500000000000000000000000.0 }
     keys.blockOctUp     = { 1,    1,  0,    500000000000000000000000.0 }
     keys.closeTracker   = { 0,    0,  0,    500000000000000000000000 }      -- Unassigned
-    
+    keys.addColAll      = { 1,    0,  1,    1 }             -- CTRL + Shift + A
     keys.shiftpgdn      = { 0,    0,  1,    1885824110 }    -- Shift + PgDn
     keys.shiftpgup      = { 0,    0,  1,    1885828464 }    -- Shift + PgUp
     keys.shifthome      = { 0,    0,  1,    1752132965 }    -- Shift + Home
@@ -1028,6 +1036,7 @@ function tracker:loadKeys( keySet )
     keys.showLess       = { 1,    1,  0,    269 }           -- CTRL + Alt + -
     keys.addCol         = { 1,    0,  1,    11 }            -- CTRL + Shift + +
     keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -
+    keys.addColAll      = { 1,    0,  1,    1 }             -- CTRL + Shift + A
     keys.tab            = { 0,    0,  0,    9 }             -- Tab
     keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
     keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F
@@ -1412,6 +1421,108 @@ function namerep(str)
   return str
 end
 
+function tracker:linkCC_channel(modmode, ch, data, master, datafield, idx, colsizes, padsizes, grouplink, headers, headerW, hints)
+  if ( modmode == 0 ) then 
+    -- Single CC display
+    master[#master+1]       = 1
+    datafield[#datafield+1] = 'mod1'
+    idx[#idx+1]             = 0
+    colsizes[#colsizes+1]   = 1
+    padsizes[#padsizes+1]   = 0
+    grouplink[#grouplink+1] = {1, 2, 3}
+    headers[#headers+1]     = 'CC'
+    headerW[#headerW+1]     = 4
+    hints[#hints+1]         = "CC type"
+  
+    master[#master+1]       = 0
+    datafield[#datafield+1] = 'mod2'
+    idx[#idx+1]             = 0
+    colsizes[#colsizes+1]   = 1
+    padsizes[#padsizes+1]   = 0
+    grouplink[#grouplink+1] = {-1, 1, 2}
+    headers[#headers+1]     = ''
+    headerW[#headerW+1]     = 0
+    hints[#hints+1]         = "CC type"
+      
+    master[#master+1]       = 0
+    datafield[#datafield+1] = 'mod3'
+    idx[#idx+1]             = 0
+    colsizes[#colsizes+1]   = 1
+    padsizes[#padsizes+1]   = 0
+    grouplink[#grouplink+1] = {-2, -1, 1}
+    headers[#headers+1]     = ''
+    headerW[#headerW+1]     = 0
+    hints[#hints+1]         = "CC value"
+      
+    master[#master+1]       = 0    
+    datafield[#datafield+1] = 'mod4'
+    idx[#idx+1]             = 0
+    colsizes[#colsizes+1]   = 1
+    padsizes[#padsizes+1]   = 2
+    grouplink[#grouplink+1] = {-3, -2, -1}
+    headers[#headers+1]     = ''
+    headerW[#headerW+1]     = 0
+    hints[#hints+1]         = "CC value"  
+  else
+    -- Display with CC commands separated per column
+    local allmodtypes = data.modtypes
+    if ( not allmodtypes ) then
+      return
+    end
+    
+    local modtypes = {}
+    local idxes = {}
+    
+    -- Only show for this channel
+    local skip = self.CCjump
+    if ( ch > -1 ) then
+      local k = 1
+      for j = 1,#allmodtypes do
+        if allmodtypes[j] > skip*ch and allmodtypes[j] < skip*(ch+1) then
+          modtypes[k] = allmodtypes[j]
+          idxes[k] = j
+          k = k + 1
+        end
+      end
+    end
+    
+    if ( modtypes ) then
+      for j = 1,#modtypes do
+        master[#master+1]       = 1
+        datafield[#datafield+1] = 'modtxt1'
+        idx[#idx+1]             = idxes[j]
+        colsizes[#colsizes+1]   = 1
+        padsizes[#padsizes+1]   = 0
+        grouplink[#grouplink+1] = {1}
+        headers[#headers+1]     = string.format('CC')
+        headerW[#headerW+1]     = 2
+        
+        local actualCC = modtypes[j] - math.floor(modtypes[j] / self.CCjump) * self.CCjump
+        if ( CC[actualCC] ) then
+          hints[#hints+1]         = string.format('%s (%d)', CC[actualCC], actualCC)
+        else
+          hints[#hints+1]         = string.format('CC command %2d', actualCC)
+        end
+        
+        master[#master+1]       = 0
+        datafield[#datafield+1] = 'modtxt2'
+        idx[#idx+1]             = idxes[j]
+        colsizes[#colsizes+1]   = 1
+        padsizes[#padsizes+1]   = 1
+        grouplink[#grouplink+1] = {-1}
+        headers[#headers+1]     = ''
+        headerW[#headerW+1]     = 0
+        local actualCC = modtypes[j] - math.floor(modtypes[j] / self.CCjump) * self.CCjump
+        if ( CC[actualCC] ) then
+          hints[#hints+1]         = string.format('%s (%d)', CC[actualCC], actualCC)
+        else
+          hints[#hints+1]         = string.format('CC command %2d', actualCC)
+        end
+      end
+    end
+  end
+end
+
 ------------------------------
 -- Link GUI grid to data
 ------------------------------
@@ -1433,82 +1544,7 @@ function tracker:linkData()
   local master    = {}
   
   if ( self.showMod == 1 ) then
-    if ( self.modMode == 0 ) then
-      -- Single CC display
-      master[#master+1]       = 1
-      datafield[#datafield+1] = 'mod1'
-      idx[#idx+1]             = 0
-      colsizes[#colsizes+1]   = 1
-      padsizes[#padsizes+1]   = 0
-      grouplink[#grouplink+1] = {1, 2, 3}
-      headers[#headers+1]     = 'CC'
-      headerW[#headerW+1]     = 4
-      hints[#hints+1]         = "CC type"
-  
-      master[#master+1]       = 0
-      datafield[#datafield+1] = 'mod2'
-      idx[#idx+1]             = 0
-      colsizes[#colsizes+1]   = 1
-      padsizes[#padsizes+1]   = 0
-      grouplink[#grouplink+1] = {-1, 1, 2}
-      headers[#headers+1]     = ''
-      headerW[#headerW+1]     = 0
-      hints[#hints+1]         = "CC type"
-      
-      master[#master+1]       = 0
-      datafield[#datafield+1] = 'mod3'
-      idx[#idx+1]             = 0
-      colsizes[#colsizes+1]   = 1
-      padsizes[#padsizes+1]   = 0
-      grouplink[#grouplink+1] = {-2, -1, 1}
-      headers[#headers+1]     = ''
-      headerW[#headerW+1]     = 0
-      hints[#hints+1]         = "CC value"
-      
-      master[#master+1]       = 0    
-      datafield[#datafield+1] = 'mod4'
-      idx[#idx+1]             = 0
-      colsizes[#colsizes+1]   = 1
-      padsizes[#padsizes+1]   = 2
-      grouplink[#grouplink+1] = {-3, -2, -1}
-      headers[#headers+1]     = ''
-      headerW[#headerW+1]     = 0
-      hints[#hints+1]         = "CC value"  
-    else
-      -- Display with CC commands separated per column
-      local modtypes = data.modtypes
-        if ( modtypes ) then
-        for j = 1,#modtypes do
-          master[#master+1]       = 1
-          datafield[#datafield+1] = 'modtxt1'
-          idx[#idx+1]             = j
-          colsizes[#colsizes+1]   = 1
-          padsizes[#padsizes+1]   = 0
-          grouplink[#grouplink+1] = {1}
-          headers[#headers+1]     = string.format('CC')
-          headerW[#headerW+1]     = 2
-          if ( CC[modtypes[j]] ) then
-            hints[#hints+1]         = string.format('%s (%d)', CC[modtypes[j]], modtypes[j])
-          else
-            hints[#hints+1]         = string.format('CC command %2d', modtypes[j])
-          end
-        
-          master[#master+1]       = 0
-          datafield[#datafield+1] = 'modtxt2'
-          idx[#idx+1]             = j
-          colsizes[#colsizes+1]   = 1
-          padsizes[#padsizes+1]   = 1
-          grouplink[#grouplink+1] = {-1}
-          headers[#headers+1]     = ''
-          headerW[#headerW+1]     = 0
-          if ( CC[modtypes[j]] ) then
-            hints[#hints+1]         = string.format('%s (%d)', CC[modtypes[j]], modtypes[j])
-          else
-            hints[#hints+1]         = string.format('CC command %2d', modtypes[j])
-          end
-        end
-      end
-    end
+    tracker:linkCC_channel(math.max(self.modMode, self.cfg.channelCCs), 0, data, master, datafield, idx, colsizes, padsizes, grouplink, headers, headerW, hints)
   end
   
   if ( fx.names ) then
@@ -1584,7 +1620,7 @@ function tracker:linkData()
     datafield[#datafield+1] = 'vel2'
     idx[#idx+1]             = j
     colsizes[#colsizes + 1] = 1
-    padsizes[#padsizes + 1] = 2
+    padsizes[#padsizes + 1] = 2 - self.cfg.channelCCs
     if ( self.selectionBehavior == 1 ) then
       grouplink[#grouplink+1] = {-2, -1}
     else       
@@ -1592,7 +1628,11 @@ function tracker:linkData()
     end
     headers[#headers + 1]   = ''     
     headerW[#headerW+1]     = 0
-    hints[#hints+1]         = string.format('Velocity channel %2d', j)
+    hints[#hints+1]         = string.format('Velocity channel %2d', j)   
+    
+    if ( self.cfg.channelCCs == 1 ) then
+      tracker:linkCC_channel(1, j, data, master, datafield, idx, colsizes, padsizes, grouplink, headers, headerW, hints)
+    end
     
     -- Link up the delay fields (if active)
     if ( hasDelay == 1 ) then
@@ -2099,8 +2139,8 @@ function tracker:printGrid()
   gfx.x = plotData.xstart
   gfx.y = bottom + extraFontShift
   gfx.set(table.unpack(colors.headercolor))
-  if ( tracker.renaming ~= 2 ) then
-    gfx.printf("%s", description[relx])
+  if ( tracker.renaming ~= 2 and tracker.renaming ~= 4 ) then
+    gfx.printf("%s", description[tracker.xpos])
   else
       gfx.set(table.unpack(colors.changed))
       if ( self.newCol:len() > 0 ) then
@@ -4603,6 +4643,8 @@ end
 -- Insert MIDI CC event
 -----------------------
 function tracker:insertCCPt( row, modtype )
+  local ch = 0
+   
   local rowsize = self:rowToPpq(1)
   local ppqStart = self:rowToPpq(row)
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
@@ -4610,6 +4652,7 @@ function tracker:insertCCPt( row, modtype )
     local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
     if ( ppqpos >= ppqStart ) then
       local moveIt = true
+      msg2 = msg2 + chan * self.CCjump      
       if ( modtype and ( modtype ~= msg2 ) ) then
         moveIt = false
       end
@@ -4619,7 +4662,7 @@ function tracker:insertCCPt( row, modtype )
       end
     end
   end
-  self:deleteCC_range( self.rows )
+  self:deleteCC_range( self.rows, modtype )
 end
 
 -----------------------
@@ -4632,7 +4675,7 @@ function tracker:backspaceCCPt( row, modtype )
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   for i=ccevtcntOut,0,-1 do
     local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)   
-    
+    msg2 = msg2 + chan * self.CCjump
     if ( ppqpos >= ppqStart ) then
       local moveIt = true
       if ( modtype and ( modtype ~= msg2 ) ) then
@@ -4645,7 +4688,6 @@ function tracker:backspaceCCPt( row, modtype )
   end
 end
 
-
 -------------------
 -- Remove MIDI CC range
 -------------------
@@ -4653,12 +4695,24 @@ function tracker:deleteCC_range(rowstart, rowend, modtype)
   local ppqStart = self:rowToPpq(rowstart)
   local ppqEnd = self:rowToPpq( rowend or rowstart + 1 ) - self.eps
   
+  -- Decode the channel from the modtype
+  local ch
+  if ( modtype ) then
+    local ccJump = self.CCjump
+    ch = math.floor(modtype / ccJump)
+    modtype = modtype - ch * ccJump
+  end  
+  
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   for i=ccevtcntOut,0,-1 do
     local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
     if ( ppqpos >= ppqStart and ppqpos < ppqEnd ) then
-      local deleteIt = true
+      local deleteIt = true     
+      
       if ( modtype and ( modtype ~= msg2 ) ) then
+        deleteIt = false
+      end
+      if ( ch and ch ~= chan ) then
         deleteIt = false
       end
     
@@ -4673,17 +4727,29 @@ end
 -- Grab MIDI CC point
 -------------------
 function tracker:getCC( row, modtype )
+  -- Decode the channel from the modtype
+  local ch
+  if ( modtype ) then
+    local ccJump = self.CCjump
+    ch = math.floor(modtype / ccJump)
+  end
+
   local ppqStart = self:rowToPpq(row)
   local ppqEnd = self:rowToPpq( row + 1 ) - self.eps
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   for i=0,ccevtcntOut do
     local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+    if ( ch ) then
+      msg2 = msg2 + chan*self.CCjump
+    end
     if ( ppqpos >= ppqStart and ppqpos < ppqEnd ) then
       local fetchIt = true
       if ( modtype and ( modtype ~= msg2 ) ) then
         fetchIt = false
       end
-      
+      if ( ch and ( ch ~= chan ) ) then
+        fetchIt = false
+      end
       if ( fetchIt == true ) then
         return msg2, msg3, 1
       end
@@ -4698,8 +4764,11 @@ end
 -------------------
 function tracker:addCCPt(row, modtype, value)
   self:deleteCC_range(row)
-  local ppqStart = self:rowToPpq(row)
-  reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 176, 0, modtype, value)
+  local ppqStart = self:rowToPpq(row, row+1, modtype)
+
+  ch = math.floor(modtype / self.CCjump)
+  
+  reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 176, ch, modtype - ch*self.CCjump, value)
 end
 
 -------------------
@@ -4708,7 +4777,9 @@ end
 function tracker:addCCPt_channel(row, modtype, value)
   self:deleteCC_range(row, row + 1, modtype)
   local ppqStart = self:rowToPpq(row)
-  reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 176, 0, modtype, value)
+
+  ch = math.floor(modtype / self.CCjump)    
+  reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 176, ch, modtype - ch*self.CCjump, value)
 end
 
 -------------------
@@ -4859,6 +4930,13 @@ function tracker:addCol()
   end
 end
 
+function tracker:addColAll()
+  if ( self.showMod == 1 ) then
+    tracker.renaming = 4
+    tracker.newCol = ''
+  end
+end
+
 function tracker:createCCCol()
   local data = self.data
   
@@ -4878,9 +4956,30 @@ function tracker:createCCCol()
   end
 end
 
+function tracker:createCCColAll()
+  local data = self.data
+  
+  if ( not data.modtypes ) then
+    data.modtypes = {}
+  end
+  
+  if ( pcall( function () tonumber( tracker.newCol ) end ) ) then
+    local newCol = tonumber( tracker.newCol )
+    if ( newCol and ( newCol > -1 ) ) then
+      for i=1,15 do
+        data.modtypes[#data.modtypes+1] = newCol + self.CCjump * i
+      end
+      self:storeOpenCC()
+    end
+  else
+    print("Passed invalid number")
+  end
+end
+
 function tracker:remCol()
+  local data = self.data
   if ( self.showMod == 1 ) then
-    if ( self.modMode == 1 ) then  
+    if ( data.modtypes ) then  
       local data = self.data
       local modtypes = data.modtypes  
       local ftype, chan, row = self:getLocation()
@@ -4974,12 +5073,14 @@ function tracker:update()
       ---------------------------------------------
       -- CC EVENTS
       ---------------------------------------------
+      local skip = self.CCjump
       if ( self.showMod == 1 ) then
-        if ( self.modMode == 1 ) then
+        local modmode = self.modMode == 1 or self.cfg.channelCCs == 1
+        if ( modmode ) then
           local all = self:getOpenCC()
           for i=0,ccevtcntOut do
             local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
-            all[msg2] = 1
+            all[msg2 + (chan)*skip] = 1
           end
           all[0] = nil
           local indices = {}
@@ -4999,14 +5100,14 @@ function tracker:update()
             tracker:initializeModChannels(modtypes)
             for i=0,ccevtcntOut do
               local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
-              self:assignCC2( ppqpos, msg2, msg3 )
+              self:assignCC2( ppqpos, msg2 + (chan)*skip, msg3 )
             end
             self:storeOpenCC()
           else
             self:storeSettings()
           end
         end
-        if ( self.modMode == 0 ) then
+        if ( modmode == false ) then
           for i=0,ccevtcntOut do
             local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
             self:assignCC( ppqpos, msg2, msg3 )
@@ -6790,6 +6891,7 @@ local function updateLoop()
         tracker:loadColors(cfg.colorscheme)
         tracker:initColors()
         tracker:loadKeys(cfg.keyset)
+        tracker:forceUpdate()
       end
     end
   else
@@ -7347,6 +7449,8 @@ local function updateLoop()
       tracker:shifttab()
     elseif inputs('addCol') then
       tracker:addCol()
+    elseif inputs('addColAll') then
+      tracker:addColAll()
     elseif inputs('remCol') then
       tracker:remCol()            
     elseif inputs('rename') then
@@ -7419,6 +7523,21 @@ local function updateLoop()
         tracker.newLength = string.format( '%s%s', tracker.newLength:sub(1,2), str )
       end
     end
+  elseif ( tracker.renaming == 4 ) then
+    -- Adding column to all patterns
+    if inputs( 'enter' ) then
+      tracker.renaming = 0
+      tracker:createCCColAll()
+    elseif( inputs( 'escape' ) ) then
+      tracker.renaming = 0
+    elseif( inputs( 'remove' ) ) then
+      tracker.newCol = tracker.newCol:sub(1, tracker.newCol:len()-1)
+    elseif ( lastChar > 0 ) then
+      if ( pcall( function () string.char( lastChar ) tonumber(lastChar) end ) ) then
+        local str = string.char( lastChar )
+        tracker.newCol = string.format( '%s%s', tracker.newCol, str )
+      end
+    end    
   end
   
   tracker:forceCursorInRange()
