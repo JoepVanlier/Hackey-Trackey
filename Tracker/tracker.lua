@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.65
+@version 1.66
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.66 (2018-07-06)
+   + Added option for swapping y and z for different keyboard layouts
  * v1.65 (2018-06-11)
    + Block interpolation without distance
  * v1.64 (2018-06-10)
@@ -266,7 +268,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.65"
+tracker.name = "Hackey Trackey v1.66"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 -- Map output to specific MIDI channel
@@ -388,6 +390,8 @@ tracker.lastmodtype = 1
 tracker.selectionBehavior = 0
 tracker.automationBug = 1 -- This fixes a bug in v5.70
 
+keyLayouts = {'QWERTY', 'QWERTZ', 'AZERTY'}
+
 -- Default configuration
 tracker.cfg = {}
 tracker.cfg.colorscheme = "buzz"
@@ -405,6 +409,7 @@ tracker.cfg.storedSettings = 1
 tracker.cfg.followSong = 0
 tracker.cfg.page = tracker.page
 tracker.cfg.oldBlockBehavior = 0
+tracker.cfg.keyLayout = "QWERTY"
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -654,6 +659,8 @@ end
 -- Default when no config file is present
 keysets = { "default", "buzz", "renoise" }
 keys = {}
+
+
 
 -- You can find the keycodes by setting printKeys to 1 and hitting any key.
 function tracker:loadKeys( keySet )
@@ -1145,6 +1152,14 @@ tracker.debug = 0
 
 keys.Cbase = 24-12
 
+local function swap( field, name1, name2 )
+    if ( name2 ) then
+      local t = field[name1]
+      keys.pitches[name1] = keys.pitches[name2]
+      keys.pitches[name2] = t
+    end
+end
+
 --- Base pitches
 --- Can customize the 'keyboard' here, if they aren't working for you
 local function setKeyboard( choice )
@@ -1231,7 +1246,19 @@ local function setKeyboard( choice )
     
     keys.octaves = {}
   end
+  
+  if ( tracker.cfg.keyLayout == "QWERTZ" ) then
+    swap(keys.pitches, "z", "y")
+  end
+  if ( tracker.cfg.keyLayout == "AZERTY" ) then
+    swap(keys.pitches, "a", "q")
+    swap(keys.pitches, "z", "w")
+    swap(keys.pitches, "m", ";")
+    swap(keys.pitches, ",", ";")    
+  end
+  
 end
+
 
 setKeyboard(tracker.cfg.keyboard)
 
@@ -2362,7 +2389,7 @@ function tracker:printGrid()
     local help = help
     local helpwidth = self.helpwidth
     
-    local xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, binaryOptionsH = self:optionLocations()
+    local xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, binaryOptionsH, buttonwidth, layoutX, buttonwidth2 = tracker:optionLocations()    
 
     gfx.set(table.unpack(colors.textcolorbar or colors.helpcolor2))
     gfx.x = xs
@@ -2378,7 +2405,7 @@ function tracker:printGrid()
     for i,v in pairs( tracker.colorschemes ) do
       ys = ys + keyMapH
       gfx.y = ys
-      gfx.x = xs + 8.2
+      gfx.x = xs
       
       if ( v == tracker.cfg.colorscheme ) then
         gfx.set(table.unpack(colors.harmonyselect or colors.helpcolor2))
@@ -2398,7 +2425,7 @@ function tracker:printGrid()
     for i,v in pairs( keysets ) do
       ys = ys + keyMapH
       gfx.y = ys
-      gfx.x = xs + 8.2
+      gfx.x = xs
       
       if ( v == tracker.cfg.keyset ) then
         gfx.set(table.unpack(colors.harmonyselect or colors.helpcolor2))
@@ -2412,6 +2439,33 @@ function tracker:printGrid()
     ys = binaryOptionsY
     gfx.x = xs
     gfx.y = ys
+    
+    gfx.set(table.unpack(colors.textcolorbar or colors.helpcolor2))
+    xs = layoutX
+    ys = keyMapY
+    gfx.y = ys
+    gfx.x = xs
+    gfx.printf( "Layout" )
+    
+    for i,v in pairs( keyLayouts ) do
+      ys = ys + keyMapH
+      gfx.y = ys
+      gfx.x = xs
+      
+      if ( v == tracker.cfg.keyLayout ) then
+        gfx.set(table.unpack(colors.harmonyselect or colors.helpcolor2))
+      else
+        gfx.set(table.unpack(colors.helpcolor))
+      end
+      gfx.printf(v)
+    end
+    
+    xs = binaryOptionsX
+    ys = binaryOptionsY
+    gfx.x = xs
+    gfx.y = ys    
+    
+    
     
     for i=1,#self.binaryOptions do
       gfx.set(table.unpack(colors.textcolorbar or colors.helpcolor2))
@@ -2522,18 +2576,21 @@ function tracker:optionLocations()
     xs = xs + self.scalewidth * 1.1
   end
   
-  local buttonwidth = gfx.measurestr("______Theme Mapping!")
+  local buttonwidth = gfx.measurestr("_Theme Mapping!")
   local keyMapX = xs + 8.2 * 2 + buttonwidth
   local keyMapY = ys + yheight * 2--* ( 7 + #keysets )
   local keyMapH = yheight
   
+  local buttonwidth2 = gfx.measurestr("_Theme Mapping!_______KeyMap")
+  local layoutX = xs + 8.2 * 2 + buttonwidth2
+    
   local themeMapX = xs + 8.2 * 2
   local themeMapY = ys + yheight * 2
   
   local binaryOptionsX = xs + 8.2 * 2
   local binaryOptionsY = ys + yheight * ( 1 + #tracker.colorschemes + #keysets )
   
-  return xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, keyMapH, buttonwidth
+  return xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, keyMapH, buttonwidth, layoutX, buttonwidth2
 end
 
 function tracker:chordLocations()
@@ -6661,7 +6718,7 @@ local function updateLoop()
     -- Mouse in range of options?
     if ( tracker.optionsActive == 1 ) then
       local changedOptions = 0
-      local xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, binaryOptionsH, buttonwidth = tracker:optionLocations()    
+      local xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, binaryOptionsH, buttonwidth, layoutX, buttonwidth2 = tracker:optionLocations()    
       
       -- Color themes
       if ( gfx.mouse_x > themeMapX ) then
@@ -6693,6 +6750,22 @@ local function updateLoop()
           end
         end
       end
+      
+      -- Key Layout
+      if ( gfx.mouse_x > layoutX ) then
+        if ( gfx.mouse_x < layoutX + buttonwidth2 ) then
+          if ( gfx.mouse_y > keyMapY + keyMapH ) then
+            local sel = math.floor((gfx.mouse_y - keyMapY)/keyMapH)
+            if ( keyLayouts[sel] ) then
+              if ( keyLayouts[sel] ~= tracker.cfg.keyLayout ) then
+                changedOptions = 1
+              end
+              tracker.cfg.keyLayout = keyLayouts[sel]
+              setKeyboard(tracker.cfg.keyset)
+            end
+          end
+        end
+      end      
       
       -- Binary options
       if ( gfx.mouse_x > binaryOptionsX ) then
