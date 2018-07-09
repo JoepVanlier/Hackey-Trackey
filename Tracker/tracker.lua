@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.67
+@version 1.68
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.68 (2018-07-09)
+   + Made sure CC0 is possible
  * v1.67 (2018-07-06)
    + Added option for midi program change column (beta)
  * v1.66 (2018-07-06)
@@ -270,7 +272,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.67"
+tracker.name = "Hackey Trackey v1.68"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 -- Map output to specific MIDI channel
@@ -1478,7 +1480,7 @@ function tracker:linkCC_channel(modmode, ch, data, master, datafield, idx, colsi
     if ( ch > -1 ) then
       local k = 1
       for j = 1,#allmodtypes do
-        if allmodtypes[j] > skip*ch and allmodtypes[j] < skip*(ch+1) then
+        if allmodtypes[j] >= skip*ch and allmodtypes[j] < skip*(ch+1) then
           modtypes[k] = allmodtypes[j]
           idxes[k] = j
           k = k + 1
@@ -1503,7 +1505,7 @@ function tracker:linkCC_channel(modmode, ch, data, master, datafield, idx, colsi
         else
           hints[#hints+1]         = string.format('CC command %2d', actualCC)
         end
-        
+
         master[#master+1]       = 0
         datafield[#datafield+1] = 'modtxt2'
         idx[#idx+1]             = idxes[j]
@@ -5092,9 +5094,7 @@ function tracker:update()
           table.sort(indices)
           local modtypes = {}
           for i,v in pairs(indices) do
-            if( i > 0 ) then
-              modtypes[#modtypes+1] = v
-            end
+            modtypes[#modtypes+1] = v
           end
           if ( #modtypes > 0 ) then
             tracker:initializeModChannels(modtypes)
