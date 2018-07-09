@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.68
+@version 1.69
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.69 (2018-07-09)
+   + Added optional per channel program change select
  * v1.68 (2018-07-09)
    + Made sure CC0 is possible
  * v1.67 (2018-07-06)
@@ -272,7 +274,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.68"
+tracker.name = "Hackey Trackey v1.69"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 -- Map output to specific MIDI channel
@@ -282,6 +284,7 @@ tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.outChannel = 1
 
 tracker.CCjump = 512
+tracker.PCloc = 10240
 
 -- MIDI device to play notes over
 -- For me it was 6080 for Virtual MIDI keyboard and 6112 for ALL, but this may
@@ -739,6 +742,7 @@ function tracker:loadKeys( keySet )
     keys.addCol         = { 1,    0,  1,    11 }            -- CTRL + Shift + +
     keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -
     keys.addColAll      = { 1,    0,  1,    1 }             -- CTRL + Shift + A
+    keys.addPatchSelect = { 1,    0,  1,    16 }            -- CTRL + Shift + P
     keys.tab            = { 0,    0,  0,    9 }             -- Tab
     keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
     keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F
@@ -813,6 +817,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + R', 'Play notes' },
       { 'CTRL + +/-', 'Advanced col options' },
       { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },
+      { 'CTRL + Shift + A/P', 'Per channel CC/PC' },
       { '', '' },
       { 'Harmony helper', '' },      
       { 'F9', 'Toggle harmonizer' },
@@ -891,6 +896,7 @@ function tracker:loadKeys( keySet )
     keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F    
     keys.deleteRow      = { 1,    0,  0,    6579564 }       -- Ctrl + Del
     keys.addColAll      = { 1,    0,  1,    1 }             -- CTRL + Shift + A
+    keys.addPatchSelect = { 1,    0,  1,    16 }            -- CTRL + Shift + P    
     
     keys.insertRow      = { 1,    1,  0,    6909555 }       -- Insert row CTRL+Alt+Ins
     keys.removeRow      = { 1,    1,  0,    8 }             -- Remove Row CTRL+Alt+Backspace
@@ -962,6 +968,7 @@ function tracker:loadKeys( keySet )
       { 'F7', 'Toggle note play' },
       { 'CTRL + +/-', 'Advanced col options' },
       { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },
+      { 'CTRL + Shift + A/P', 'Per channel CC/PC' },
       { '', '' },
       { 'Harmony helper', '' },      
       { 'F9', 'Toggle harmonizer' },
@@ -1039,6 +1046,7 @@ function tracker:loadKeys( keySet )
     keys.addCol         = { 1,    0,  1,    11 }            -- CTRL + Shift + +
     keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -
     keys.addColAll      = { 1,    0,  1,    1 }             -- CTRL + Shift + A
+    keys.addPatchSelect = { 1,    0,  1,    16 }            -- CTRL + Shift + P
     keys.tab            = { 0,    0,  0,    9 }             -- Tab
     keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
     keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F
@@ -1355,6 +1363,16 @@ local function get_script_path()
   return script_path
 end
 
+-- Flip channels if we are retrieving a program change
+local function encodeProgramChange( chanmsg, msg2, msg3 )
+  if ( chanmsg == 192 ) then
+    msg3 = msg2              
+    msg2 = tracker.PCloc
+  end
+  
+  return msg2, msg3
+end
+
 -- Print contents of `tbl`, with indentation.
 -- `indent` sets the initial level of indentation.
 function tprint (tbl, indent, maxindent, verbose)
@@ -1472,6 +1490,7 @@ function tracker:linkCC_channel(modmode, ch, data, master, datafield, idx, colsi
       return
     end
     
+    local isProgramChange = {}
     local modtypes = {}
     local idxes = {}
     
@@ -1480,7 +1499,14 @@ function tracker:linkCC_channel(modmode, ch, data, master, datafield, idx, colsi
     if ( ch > -1 ) then
       local k = 1
       for j = 1,#allmodtypes do
-        if allmodtypes[j] >= skip*ch and allmodtypes[j] < skip*(ch+1) then
+        -- Hack to allow mapping Program Changes beyond CC events
+        local isPC = 0
+        if ( allmodtypes[j] > self.PCloc ) then
+          isPC = 1
+        end
+        
+        if allmodtypes[j] >= skip*ch + self.PCloc*isPC and allmodtypes[j] < skip*(ch+1) + self.PCloc*isPC then
+          isProgramChange[k] = isPC
           modtypes[k] = allmodtypes[j]
           idxes[k] = j
           k = k + 1
@@ -1496,14 +1522,19 @@ function tracker:linkCC_channel(modmode, ch, data, master, datafield, idx, colsi
         colsizes[#colsizes+1]   = 1
         padsizes[#padsizes+1]   = 0
         grouplink[#grouplink+1] = {1}
-        headers[#headers+1]     = string.format('CC')
         headerW[#headerW+1]     = 2
         
         local actualCC = modtypes[j] - math.floor(modtypes[j] / self.CCjump) * self.CCjump
-        if ( CC[actualCC] ) then
-          hints[#hints+1]         = string.format('%s (%d)', CC[actualCC], actualCC)
+        if ( isProgramChange[j] == 1 ) then
+          headers[#headers+1]     = string.format('PC')
+          hints[#hints+1]         = string.format('PC')
         else
-          hints[#hints+1]         = string.format('CC command %2d', actualCC)
+          headers[#headers+1]     = string.format('CC')
+          if ( CC[actualCC] ) then
+            hints[#hints+1]         = string.format('%s (%d)', CC[actualCC], actualCC)
+          else
+            hints[#hints+1]         = string.format('CC command %2d', actualCC)
+          end
         end
 
         master[#master+1]       = 0
@@ -1515,10 +1546,14 @@ function tracker:linkCC_channel(modmode, ch, data, master, datafield, idx, colsi
         headers[#headers+1]     = ''
         headerW[#headerW+1]     = 0
         local actualCC = modtypes[j] - math.floor(modtypes[j] / self.CCjump) * self.CCjump
-        if ( CC[actualCC] ) then
-          hints[#hints+1]         = string.format('%s (%d)', CC[actualCC], actualCC)
+        if ( isProgramChange[j] == 1 ) then
+          hints[#hints+1]         = string.format('PC')
         else
-          hints[#hints+1]         = string.format('CC command %2d', actualCC)
+          if ( CC[actualCC] ) then
+            hints[#hints+1]         = string.format('%s (%d)', CC[actualCC], actualCC)
+          else
+            hints[#hints+1]         = string.format('CC command %2d', actualCC)
+          end
         end
       end
     end
@@ -4012,7 +4047,7 @@ function tracker:storeOpenCC( )
     if ( #(self.data.modtypes) > 0 ) then
       local str = 'CCC'
       for i,v in pairs(self.data.modtypes) do
-        str = str .. string.format( '%3d ', v )
+        str = str .. string.format( '%5d ', v )
       end
     
       reaper.MIDI_InsertTextSysexEvt(self.take, false, false, 0, 1, str )
@@ -4652,6 +4687,7 @@ function tracker:insertCCPt( row, modtype )
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   for i=ccevtcntOut,0,-1 do
     local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+    msg2, msg3 = encodeProgramChange( chanmsg, msg2, msg3 )
     if ( ppqpos >= ppqStart ) then
       local moveIt = true
       msg2 = msg2 + chan * self.CCjump      
@@ -4677,6 +4713,7 @@ function tracker:backspaceCCPt( row, modtype )
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   for i=ccevtcntOut,0,-1 do
     local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)   
+    msg2, msg3 = encodeProgramChange( chanmsg, msg2, msg3 )
     msg2 = msg2 + chan * self.CCjump
     if ( ppqpos >= ppqStart ) then
       local moveIt = true
@@ -4696,26 +4733,25 @@ end
 function tracker:deleteCC_range(rowstart, rowend, modtype)
   local ppqStart = self:rowToPpq(rowstart)
   local ppqEnd = self:rowToPpq( rowend or rowstart + 1 ) - self.eps
-  
-  -- Decode the channel from the modtype
-  local ch
-  if ( modtype ) then
-    local ccJump = self.CCjump
-    ch = math.floor(modtype / ccJump)
-    modtype = modtype - ch * ccJump
-  end  
-  
+   
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   for i=ccevtcntOut,0,-1 do
     local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+    msg2, msg3 = encodeProgramChange( chanmsg, msg2, msg3 )
+    msg2 = msg2 + chan * self.CCjump
     if ( ppqpos >= ppqStart and ppqpos < ppqEnd ) then
       local deleteIt = true     
       
-      if ( modtype and ( modtype ~= msg2 ) ) then
-        deleteIt = false
-      end
-      if ( ch and ch ~= chan ) then
-        deleteIt = false
+      if ( modtype ) then
+        -- If a modtype is provided then we know which CC command / channel we are looking to delete
+        if ( modtype ~= msg2 ) then
+          deleteIt = false
+        end
+      else
+        -- If not, then this means that we must be looking at channel 0 (default big first column)
+        if ( chan ~= 0 ) then
+          deleteIt = false
+        end
       end
     
       if ( deleteIt == true ) then
@@ -4729,27 +4765,41 @@ end
 -- Grab MIDI CC point
 -------------------
 function tracker:getCC( row, modtype )
+  local ch = 0
+  local isPC = false
+  
   -- Decode the channel from the modtype
-  local ch
   if ( modtype ) then
     local ccJump = self.CCjump
-    ch = math.floor(modtype / ccJump)
+    -- Is it a program change rather than a regular MIDI event?
+    if ( modtype >= self.PCloc ) then
+      ch = math.floor((modtype- self.PCloc) / ccJump)
+      isPC = true
+    else
+      ch = math.floor(modtype / ccJump)
+    end
   end
 
   local ppqStart = self:rowToPpq(row)
   local ppqEnd = self:rowToPpq( row + 1 ) - self.eps
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
-  for i=0,ccevtcntOut do
+  for i=0,ccevtcntOut do 
     local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+    msg2, msg3 = encodeProgramChange( chanmsg, msg2, msg3 )   
+    
+    -- Regular MIDI CC
     if ( ch ) then
       msg2 = msg2 + chan*self.CCjump
     end
     if ( ppqpos >= ppqStart and ppqpos < ppqEnd ) then
       local fetchIt = true
+      if ( isPC ~= ( chanmsg == 192 ) ) then
+        fetchIt = false
+      end
       if ( modtype and ( modtype ~= msg2 ) ) then
         fetchIt = false
       end
-      if ( ch and ( ch ~= chan ) ) then
+      if ( chan ~= ch ) then
         fetchIt = false
       end
       if ( fetchIt == true ) then
@@ -4766,11 +4816,18 @@ end
 -------------------
 function tracker:addCCPt(row, modtype, value)
   self:deleteCC_range(row)
+  local ch
   local ppqStart = self:rowToPpq(row, row+1, modtype)
 
-  ch = math.floor(modtype / self.CCjump)
-  
-  reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 176, ch, modtype - ch*self.CCjump, value)
+  -- Is it an actual MIDI event or a Program Change?
+  if ( modtype >= self.PCloc ) then
+    modtype = modtype - self.PCloc
+    ch = math.floor(modtype / self.CCjump)
+    reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 192, ch, value, 0)
+  else
+    ch = math.floor(modtype / self.CCjump)  
+    reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 176, ch, modtype - ch*self.CCjump, value)
+  end
 end
 
 -------------------
@@ -4780,8 +4837,15 @@ function tracker:addCCPt_channel(row, modtype, value)
   self:deleteCC_range(row, row + 1, modtype)
   local ppqStart = self:rowToPpq(row)
 
-  ch = math.floor(modtype / self.CCjump)    
-  reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 176, ch, modtype - ch*self.CCjump, value)
+  -- Is it an actual MIDI event or a Program Change?
+  if ( modtype >= self.PCloc ) then
+    modtype = modtype - self.PCloc
+    ch = math.floor(modtype / self.CCjump)
+    reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 192, ch, value, 0)
+  else
+    ch = math.floor(modtype / self.CCjump)    
+    reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 176, ch, modtype - ch*self.CCjump, value)
+  end
 end
 
 -------------------
@@ -4978,6 +5042,20 @@ function tracker:createCCColAll()
   end
 end
 
+function tracker:addPatchSelect()
+  local data = self.data
+  
+  if ( not data.modtypes ) then
+    data.modtypes = {}
+  end
+
+  for i=1,15 do
+    data.modtypes[#data.modtypes+1] = self.PCloc + self.CCjump * i
+  end
+  self:storeOpenCC()
+end
+
+
 function tracker:remCol()
   local data = self.data
   if ( self.showMod == 1 ) then
@@ -5082,6 +5160,8 @@ function tracker:update()
           local all = self:getOpenCC()
           for i=0,ccevtcntOut do
             local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+            msg2, msg3 = encodeProgramChange( chanmsg, msg2, msg3 )
+
             all[msg2 + (chan)*skip] = 1
           end
           all[0] = nil
@@ -5100,6 +5180,7 @@ function tracker:update()
             tracker:initializeModChannels(modtypes)
             for i=0,ccevtcntOut do
               local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+              msg2, msg3 = encodeProgramChange( chanmsg, msg2, msg3 )              
               self:assignCC2( ppqpos, msg2 + (chan)*skip, msg3 )
             end
             self:storeOpenCC()
@@ -5110,7 +5191,10 @@ function tracker:update()
         if ( modmode == false ) then
           for i=0,ccevtcntOut do
             local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
-            self:assignCC( ppqpos, msg2, msg3 )
+            --msg2, msg3 = encodeProgramChange( chanmsg, msg2, msg3 )            
+            if ( chanmsg ~= 192 and chan == 0 ) then
+              self:assignCC( ppqpos, msg2, msg3 )
+            end
           end
         end
       end
@@ -7451,6 +7535,8 @@ local function updateLoop()
       tracker:addCol()
     elseif inputs('addColAll') then
       tracker:addColAll()
+    elseif inputs('addPatchSelect') then
+      tracker:addPatchSelect()
     elseif inputs('remCol') then
       tracker:remCol()            
     elseif inputs('rename') then
