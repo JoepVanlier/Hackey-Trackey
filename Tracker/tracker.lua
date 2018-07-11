@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.71
+@version 1.72
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.72 (2018-07-11)
+   + Added option to switch track
  * v1.71 (2018-07-11)
    + Added option to set loop when tracker is opened
  * v1.70 (2018-07-11)
@@ -278,7 +280,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.71"
+tracker.name = "Hackey Trackey v1.72"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 -- Map output to specific MIDI channel
@@ -380,7 +382,7 @@ tracker.maxRowPerQn = 16
 
 tracker.helpActive = 0
 tracker.optionsActive = 0
-tracker.helpwidth = 380
+tracker.helpwidth = 400
 tracker.optionswidth = 370
 tracker.scalewidth = 520
 tracker.renaming = 0
@@ -756,6 +758,8 @@ function tracker:loadKeys( keySet )
     keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F
     keys.deleteRow      = { 1,    0,  0,    6579564 }       -- Ctrl + Del
     keys.closeTracker   = { 1,    0,  0,    6697266 }       -- Ctrl + F12
+    keys.nextTrack      = { 1,    0,  1,    1919379572.0 }  -- CTRL + Shift + ->
+    keys.prevTrack      = { 1,    0,  1,    1818584692.0 }  -- CTRL + Shift + <-
     
     keys.insertRow      = { 1,    0,  0,    6909555 }       -- Insert row CTRL+Ins
     keys.removeRow      = { 1,    0,  0,    8 }             -- Remove Row CTRL+Backspace
@@ -800,7 +804,7 @@ function tracker:loadKeys( keySet )
       { 'Shift + Note', 'Advance column after entry' },
       { 'Insert/Backspace/-', 'Insert/Remove/Note OFF' },   
       { 'CTRL + Insert/Backspace', 'Insert Row/Remove Row' },
-      { 'CTRL + Shift + Insert/Backspace', 'Wrap Forward/Backward' },
+      { 'CTRL + Shift + Ins/Bksp', 'Wrap Forward/Backward' },
       { 'Del/.', 'Delete' }, 
       { 'Space/Return', 'Play/Play From' },
       { 'CTRL + L', 'Loop pattern' },
@@ -819,7 +823,8 @@ function tracker:loadKeys( keySet )
       { 'F4/F5', '[Adv]ance De/Increase' },
       { 'F2/F3', 'MIDI [out] down/up' },
       { 'F8/F11/F12', 'Stop / Options / Panic' },
-      { 'CTRL + Left/Right', 'Switch MIDI item' },
+      { 'CTRL + Left/Right', 'Switch MIDI item/track' },   
+      { 'CTRL + Shift + Left/Right', 'Switch Track' },         
       { 'CTRL + D', 'Duplicate pattern' },
       { 'CTRL + N', 'Rename pattern' },
       { 'CTRL + R', 'Play notes' },
@@ -905,6 +910,8 @@ function tracker:loadKeys( keySet )
     keys.deleteRow      = { 1,    0,  0,    6579564 }       -- Ctrl + Del
     keys.addColAll      = { 1,    0,  1,    1 }             -- CTRL + Shift + A
     keys.addPatchSelect = { 1,    0,  1,    16 }            -- CTRL + Shift + P    
+    keys.nextTrack      = { 1,    0,  1,    1919379572.0 }  -- CTRL + Shift + ->
+    keys.prevTrack      = { 1,    0,  1,    1818584692.0 }  -- CTRL + Shift + <-
     
     keys.insertRow      = { 1,    1,  0,    6909555 }       -- Insert row CTRL+Alt+Ins
     keys.removeRow      = { 1,    1,  0,    8 }             -- Remove Row CTRL+Alt+Backspace
@@ -971,6 +978,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + F1/F2', '[Adv]ance De/Increase' },
       { 'CTRL + Up/Down', 'MIDI [out] Up/Down' },  
       { '-/+', 'Switch MIDI item' },
+      { 'CTRL + Shift + Left/Right', 'Switch track' },
       { 'CTRL + Shift + Return', 'Duplicate pattern' },
       { 'CTRL + Backspace', 'Rename pattern' },
       { 'F7', 'Toggle note play' },
@@ -1104,6 +1112,9 @@ function tracker:loadKeys( keySet )
     keys.removeRow      = { 1,    0,  0,    8 }             -- Remove Row CTRL+Backspace
     keys.wrapDown       = { 1,    0,  1,    6909555 }       -- CTRL + SHIFT + Ins
     keys.wrapUp         = { 1,    0,  1,    8 }             -- CTRL + SHIFT + Backspace   
+    
+    keys.nextTrack      = { 1,    0,  1,    1919379572.0 }  -- CTRL + Shift + ->
+    keys.prevTrack      = { 1,    0,  1,    1818584692.0 }  -- CTRL + Shift + <-
     
     help = {
       { 'Shift + Note', 'Advance column after entry' },
@@ -6380,7 +6391,7 @@ end
 
 function tracker:setLoopToPattern()
   local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
-  local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")      
+  local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")
   reaper.GetSet_LoopTimeRange2(0, true, true, mpos, mpos+mlen, true)
 end
 
@@ -6555,6 +6566,101 @@ function tracker:seekMIDI( dir )
   else
     print( "Fatal error: Invalid direction given" )
   end  
+end
+
+function tracker:setPos(cpos)
+  local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+  local mlen = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
+  self.ypos = math.floor( ( ( cpos - mpos ) / mlen ) * self.rows )
+  self.fov.scrolly = 0
+  self:forceCursorInRange()
+end
+
+function tracker:seekTrack( dir )
+  local eps = 0.0001
+  local oldtrack = self.track
+
+  -- Find the location of the cursor
+  local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+  local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")
+  local cpos = mpos + mlen * tracker.ypos / tracker.rows
+
+  local trackidx
+  local thisTrack = reaper.GetMediaItem_Track(self.item)
+  for i=0,reaper.GetNumTracks() do
+    if ( thisTrack == reaper.GetTrack(0, i) ) then
+      trackidx = i
+    end
+  end
+  local ntracks = reaper.GetNumTracks()
+
+  -- Try ntracks times to find a new one (skips over empty tracks)
+  local curTrack = trackidx
+  for q = 1,ntracks do
+    curTrack = curTrack + dir
+    local ntracks = reaper.GetNumTracks()
+    if ( curTrack < 0 ) then
+      curTrack = ntracks-1
+    elseif ( curTrack > ntracks-1 ) then
+      curTrack = 0
+    end
+    self.track = reaper.GetTrack(0,curTrack)
+    local nItems = reaper.GetTrackNumMediaItems(self.track)
+      
+    -- Attempt to find one we actually overlap with first
+    local cur
+    for i=0,nItems-1 do
+      local mediaItem = reaper.GetTrackMediaItem(self.track, i)
+      local item = reaper.GetTrackMediaItem(self.track, i)
+      local mpos = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
+      local mlen = reaper.GetMediaItemInfo_Value(item, "D_LENGTH")
+      local mend = mpos + mlen
+      if ( cpos > ( mpos - eps ) ) and ( cpos < ( mend + eps ) ) then
+        if ( self:tryTake(i) ) then
+          if ( self.selectionFollows == 1 ) then
+            self:selectCurrent()
+          end
+          self.track = proposedTrack
+          tracker:setPos(cpos)
+          return
+        end
+      end
+    end
+  
+    -- Loop over all and find the distances to the cursor position
+    local distances = {}
+    for i=0,nItems-1 do
+    
+      local item = reaper.GetTrackMediaItem(self.track, i)
+      local mpos = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
+      local mlen = reaper.GetMediaItemInfo_Value(item, "D_LENGTH")
+      local mend = mpos + mlen
+      local dist
+      
+      -- One we are considering is before the end
+      if ( mend < cpos ) then
+        dist = cpos - mend
+      else
+        dist = mpos - cpos
+      end
+      
+      distances[i+1] = {i, dist}
+    end
+  
+    table.sort(distances, function(a,b) return a[2] < b[2] end)
+    for i,v in ipairs(distances) do
+      if ( self:tryTake(v[1]) ) then
+        if ( self.selectionFollows == 1 ) then
+          self:selectCurrent()
+        end
+        self.track = proposedTrack
+        tracker:setPos(cpos)           
+        return
+      end
+    end
+  end
+
+  self.track = oldtrack
 end
 
 function tracker:resizePattern()
@@ -7517,7 +7623,19 @@ local function updateLoop()
       tracker:resizeWindow()
       if ( tracker.cfg.loopFollow == 1 ) then
         tracker:setLoopToPattern()
-      end      
+      end
+    elseif inputs('nextTrack') then
+      tracker:seekTrack(1)
+      tracker:resizeWindow()
+      if ( tracker.cfg.loopFollow == 1 ) then
+        tracker:setLoopToPattern()
+      end
+    elseif inputs('prevTrack') then  
+      tracker:seekTrack(-1)
+      tracker:resizeWindow()
+      if ( tracker.cfg.loopFollow == 1 ) then
+        tracker:setLoopToPattern()
+      end          
     elseif inputs('duplicate') then
       reaper.Undo_OnStateChange2(0, "Tracker: Duplicate pattern")
       reaper.MarkProjectDirty(0) 
@@ -7760,7 +7878,7 @@ function tracker:computeDims(inRows)
   height = grid.originy + (rows+1) * grid.dy + 2*grid.itempady  
   
   if ( tracker.helpActive == 1 ) then
-    local mhelp = #help * 14 + 10
+    local mhelp = #help * 14 + 12
     if ( height < mhelp ) then
       height = mhelp
     end
