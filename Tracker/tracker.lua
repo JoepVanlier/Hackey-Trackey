@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.70
+@version 1.71
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.71 (2018-07-11)
+   + Added option to set loop when tracker is opened
  * v1.70 (2018-07-11)
    + Added option to make looped section follow pattern that is active
  * v1.69 (2018-07-09)
@@ -276,7 +278,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.70"
+tracker.name = "Hackey Trackey v1.71"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 -- Map output to specific MIDI channel
@@ -411,6 +413,7 @@ tracker.cfg.channelCCs = 0
 tracker.cfg.scaleActive = 0
 tracker.cfg.autoResize = 1
 tracker.cfg.loopFollow = 0
+tracker.cfg.initLoopSet = 0
 tracker.cfg.followSelection = 0
 tracker.cfg.stickToBottom = 0
 tracker.cfg.colResize = 1
@@ -441,6 +444,7 @@ tracker.binaryOptions = {
     { 'oldBlockBehavior', 'Do not mend after paste' },
     { 'channelCCs', 'Enable CCs for channels > 0 (beta)' },
     { 'loopFollow', 'Set loop on pattern switch' },
+    { 'initLoopSet', 'Set loop when tracker is opened' },
     }
     
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB"}
@@ -7929,6 +7933,10 @@ local function Main()
       
       if ( tracker.outChannel ) then
         tracker:setOutChannel( tracker.outChannel )
+      end
+      
+      if ( tracker.cfg.initLoopSet == 1 ) then
+        tracker:setLoopToPattern()
       end
       
       reaper.defer(updateLoop)
