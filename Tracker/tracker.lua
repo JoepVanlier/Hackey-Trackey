@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.69
+@version 1.70
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.70 (2018-07-11)
+   + Added option to make looped section follow pattern that is active
  * v1.69 (2018-07-09)
    + Added optional per channel program change select
  * v1.68 (2018-07-09)
@@ -274,7 +276,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.69"
+tracker.name = "Hackey Trackey v1.70"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 -- Map output to specific MIDI channel
@@ -408,6 +410,7 @@ tracker.cfg.keyset = "default"
 tracker.cfg.channelCCs = 0
 tracker.cfg.scaleActive = 0
 tracker.cfg.autoResize = 1
+tracker.cfg.loopFollow = 0
 tracker.cfg.followSelection = 0
 tracker.cfg.stickToBottom = 0
 tracker.cfg.colResize = 1
@@ -437,6 +440,7 @@ tracker.binaryOptions = {
     { 'CRT', 'CRT mode' },
     { 'oldBlockBehavior', 'Do not mend after paste' },
     { 'channelCCs', 'Enable CCs for channels > 0 (beta)' },
+    { 'loopFollow', 'Set loop on pattern switch' },
     }
     
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB"}
@@ -6370,6 +6374,12 @@ function tracker:stopChord()
   end
 end
 
+function tracker:setLoopToPattern()
+  local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+  local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")      
+  reaper.GetSet_LoopTimeRange2(0, true, true, mpos, mpos+mlen, true)
+end
+
 function tracker:setLoopStart()
     local mPos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
     local lPos, lEnd = reaper.GetSet_LoopTimeRange2(0, false, 1, 0, 0, false)
@@ -7495,9 +7505,15 @@ local function updateLoop()
     elseif inputs('nextMIDI') then
       tracker:seekMIDI(1)
       tracker:resizeWindow()
+      if ( tracker.cfg.loopFollow == 1 ) then
+        tracker:setLoopToPattern()
+      end
     elseif inputs('prevMIDI') then  
       tracker:seekMIDI(-1)
       tracker:resizeWindow()
+      if ( tracker.cfg.loopFollow == 1 ) then
+        tracker:setLoopToPattern()
+      end      
     elseif inputs('duplicate') then
       reaper.Undo_OnStateChange2(0, "Tracker: Duplicate pattern")
       reaper.MarkProjectDirty(0) 
@@ -7507,9 +7523,7 @@ local function updateLoop()
       tracker:saveConfig(tracker.configFile, tracker.cfg)      
       self.hash = math.random()
     elseif inputs('setloop') then
-      local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
-      local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")      
-      reaper.GetSet_LoopTimeRange2(0, true, true, mpos, mpos+mlen, true)
+      tracker:setLoopToPattern()
     elseif inputs('setloopstart') then
       tracker:setLoopStart()  
     elseif inputs('setloopend') then
