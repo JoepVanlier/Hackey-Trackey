@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.72
+@version 1.73
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.73 (2018-08-11)
+   + Bugfix pattern duplication due to incorrect usage of CreateNewMIDIItemInProj (Thanks Meta!)
  * v1.72 (2018-07-11)
    + Added option to switch track
  * v1.71 (2018-07-11)
@@ -280,7 +282,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.72"
+tracker.name = "Hackey Trackey v1.73"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 -- Map output to specific MIDI channel
@@ -6460,12 +6462,9 @@ function tracker:duplicate()
     reaper.Main_OnCommand(40058, 0) -- Paste
   else
     -- Duplicate explicitly (this makes sure that we get a new automation pool for every pattern)
-    local newItem = reaper.CreateNewMIDIItemInProj(self.track, mpos+mlen, mlen, false)
+    local newItem = reaper.CreateNewMIDIItemInProj(self.track, mpos+mlen, mpos+2*mlen, false)
     local newTake = reaper.GetActiveTake(newItem)
     
-    -- For some reason the new midi item doesn't simply accept being created with the length given
-    reaper.SetMediaItemInfo_Value(newItem, "D_LENGTH", mlen)
-
     -- Grab the notes and store them in channels
     local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
     local i
