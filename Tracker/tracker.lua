@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.73
+@version 1.74
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.74 (2018-08-13)
+   + Started work on integration with Hackey Machines (receiving config override info).
  * v1.73 (2018-08-11)
    + Bugfix pattern duplication due to incorrect usage of CreateNewMIDIItemInProj (Thanks Meta!)
  * v1.72 (2018-07-11)
@@ -282,7 +284,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.73"
+tracker.name = "Hackey Trackey v1.74"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 -- Map output to specific MIDI channel
@@ -5099,7 +5101,6 @@ function tracker:remCol()
   end
 end
 
-
 function tracker:findTakeAtSongPos()
   local playPos = reaper.GetPlayPosition()
   local nItems = reaper.GetTrackNumMediaItems(self.track)
@@ -5112,9 +5113,79 @@ function tracker:findTakeAtSongPos()
       if ( self:tryTake(i) == true ) then
         self:update()
         self:resetShiftSelect()
+        return 1
       end
     end
   end
+end
+
+-- Check if a media item has MIDI
+function tracker:hasMIDI(item)
+  if ( item ) then
+    local take = reaper.GetActiveTake(item)
+    if ( take ) then
+      if ( reaper.TakeIsMIDI( take ) == true ) then
+        return true
+      end
+    end
+  end
+end
+
+function tracker:useItem(item)
+  local take = reaper.GetActiveTake(item)
+  if ( take ) then
+    if ( reaper.TakeIsMIDI( take ) == true ) then
+      tracker:setItem( item )
+      tracker:setTake( take )
+      self:update()
+      self:resetShiftSelect()
+      return true
+    end
+  end
+end
+
+function tracker:findTakeClosestToSongPos()
+
+  local playPos
+  if ( reaper.GetPlayState() > 0 ) then
+    playPos = reaper.GetPlayPosition()
+  else
+    playPos = reaper.GetCursorPosition()
+  end
+  
+  local nItems = reaper.GetTrackNumMediaItems  (self.track)
+  local lastItem
+  
+  for i=0,nItems-1 do
+    local item = reaper.GetTrackMediaItem(self.track, i)
+
+    -- Is this a MIDI item that is usable to us?
+    if ( self:hasMIDI(item) ) then
+      local loc = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
+      local loc2 = reaper.GetMediaItemInfo_Value(item, "D_LENGTH")
+
+      -- Does the block we are looking at end beyond the play position?
+      if ( (loc+loc2) > playPos ) then
+
+        -- Did the block start before the play position?
+        if ( loc < playPos ) then
+          self:useItem(item)
+          return 1
+          
+        -- No? then if there is a last one, just take that one
+        elseif (lastItem) then
+          self:useItem(lastItem)
+          return 1
+        else
+          self:useItem(item)
+          return 1
+        end
+      end
+      lastItem = item
+    end
+  end
+  
+  return nil
 end
 
 --------------------------------------------------------------
@@ -6730,6 +6801,20 @@ local function getCapValue( sensitivity )
   return ( ( value - capture.min ) % (capture.max - capture.min + 1) ) + capture.min
 end
 
+function tracker:gotoCurrentPosition()
+  -- Check where we are
+  local playPos = reaper.GetPlayPosition()
+  local loc = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+  local loc2 = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")
+  if ( playPos < loc or playPos > ( loc+loc2 ) ) then
+    if ( tracker.track ) then
+      tracker:findTakeAtSongPos()
+    end
+  end
+  local row = math.floor( ( playPos - loc ) * tracker.rowPerSec)
+  tracker:forceCursorInRange(row)
+end
+
 function tracker:noteEdit()
       reaper.Undo_OnStateChange2(0, "Tracker: Add note / Edit volume")
       reaper.MarkProjectDirty(0)
@@ -7764,17 +7849,7 @@ local function updateLoop()
   tracker:forceCursorInRange()
   if ( tracker.cfg.followSong == 1 ) then
     if ( reaper.GetPlayState() ~= 0 ) then
-      -- Check where we are
-      local playPos = reaper.GetPlayPosition()
-      local loc = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
-      local loc2 = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")
-      if ( playPos < loc or playPos > ( loc+loc2 ) ) then
-        if ( tracker.track ) then
-          tracker:findTakeAtSongPos()
-        end
-      end
-      local row = math.floor( ( playPos - loc ) * tracker.rowPerSec)
-      tracker:forceCursorInRange(row)
+      tracker:gotoCurrentPosition()
     end
   end
 
@@ -7992,14 +8067,28 @@ function tracker:saveConfigFile(fn, cfg)
   end
 end
 
+function tracker:readInt(var)
+  local ok, v = reaper.GetProjExtState(0, "MVJV001", var)
+  if ( ok ) then v = tonumber( v ) end
+  return v
+end
+
 function tracker:grabActiveItem()
-    local item = reaper.GetSelectedMediaItem(0, 0)
-    if ( item ) then
-      local take = reaper.GetActiveTake(item)
-      if ( reaper.TakeIsMIDI( take ) == true ) then
-        tracker:setItem( item )
-        tracker:setTake( take )
-        return 1
+    -- Check if there is an override going on
+    local v = self:readInt("initialiseAtTrack")
+    reaper.SetProjExtState(0, "MVJV001", "initialiseAtTrack", "")
+    if ( v ) then
+      self.track = reaper.GetTrack(0,v)
+      return self:findTakeClosestToSongPos()
+    else
+      local item = reaper.GetSelectedMediaItem(0, 0)
+      if ( item ) then
+        local take = reaper.GetActiveTake(item)
+        if ( reaper.TakeIsMIDI( take ) == true ) then
+          tracker:setItem( item )
+          tracker:setTake( take )
+          return 1
+        end
       end
     end
 end
@@ -8007,7 +8096,7 @@ end
 local function Main()
   local tracker = tracker  
   local reaper = reaper
-  if ( reaper.CountSelectedMediaItems(0) > 0 ) then
+  if ( reaper.CountSelectedMediaItems(0) > 0 or tracker:readInt("initialiseAtTrack") ) then
     tracker.tick = 0
     tracker.scrollbar = scrollbar.create(tracker.scrollbar.size)
     
