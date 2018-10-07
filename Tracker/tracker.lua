@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.74
+@version 1.75
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.75 (2018-09-7)
+   + Made sure the sequencer can pass row info to HT.
  * v1.74 (2018-08-13)
    + Started work on integration with Hackey Machines (receiving config override info).
  * v1.73 (2018-08-11)
@@ -284,7 +286,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.74"
+tracker.name = "Hackey Trackey v1.75"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 -- Map output to specific MIDI channel
