@@ -5144,7 +5144,7 @@ function tracker:useItem(item)
   end
 end
 
-function tracker:findTakeClosestToSongPos()
+function tracker:findTakeClosestToSongPos(overridePos)
 
   local playPos
   if ( reaper.GetPlayState() > 0 ) then
@@ -5152,6 +5152,7 @@ function tracker:findTakeClosestToSongPos()
   else
     playPos = reaper.GetCursorPosition()
   end
+  playPos = overridePos or playPos
   
   local nItems = reaper.GetTrackNumMediaItems  (self.track)
   local lastItem
@@ -8076,10 +8077,12 @@ end
 function tracker:grabActiveItem()
     -- Check if there is an override going on
     local v = self:readInt("initialiseAtTrack")
+    local v2 = self:readInt("initialiseAtTrack")    
     reaper.SetProjExtState(0, "MVJV001", "initialiseAtTrack", "")
+    reaper.SetProjExtState(0, "MVJV001", "initialiseAtRow", "")    
     if ( v ) then
       self.track = reaper.GetTrack(0,v)
-      return self:findTakeClosestToSongPos()
+      return self:findTakeClosestToSongPos(v2)
     else
       local item = reaper.GetSelectedMediaItem(0, 0)
       if ( item ) then
