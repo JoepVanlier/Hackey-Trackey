@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.75
+@version 1.76
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,7 +38,9 @@
 
 --[[
  * Changelog:
- * v1.75 (2018-09-7)
+ * v1.76 (2018-09-07)
+   + Fix typo.
+ * v1.75 (2018-09-07)
    + Made sure the sequencer can pass row info to HT.
  * v1.74 (2018-08-13)
    + Started work on integration with Hackey Machines (receiving config override info).
@@ -286,7 +288,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.75"
+tracker.name = "Hackey Trackey v1.76"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 -- Map output to specific MIDI channel
@@ -8079,7 +8081,7 @@ end
 function tracker:grabActiveItem()
     -- Check if there is an override going on
     local v = self:readInt("initialiseAtTrack")
-    local v2 = self:readInt("initialiseAtTrack")    
+    local v2 = self:readInt("initialiseAtRow")    
     reaper.SetProjExtState(0, "MVJV001", "initialiseAtTrack", "")
     reaper.SetProjExtState(0, "MVJV001", "initialiseAtRow", "")    
     if ( v ) then
