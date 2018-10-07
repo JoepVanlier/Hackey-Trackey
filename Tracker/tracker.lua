@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.76
+@version 1.77
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.77 (2018-09-07)
+   + Minor bugfix.
  * v1.76 (2018-09-07)
    + Fix typo.
  * v1.75 (2018-09-07)
@@ -288,7 +290,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.76"
+tracker.name = "Hackey Trackey v1.77"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 -- Map output to specific MIDI channel
@@ -5157,7 +5159,7 @@ function tracker:findTakeClosestToSongPos(overridePos)
     playPos = reaper.GetCursorPosition()
   end
   playPos = overridePos or playPos
-  
+
   local nItems = reaper.GetTrackNumMediaItems  (self.track)
   local lastItem
   
@@ -5173,7 +5175,7 @@ function tracker:findTakeClosestToSongPos(overridePos)
       if ( (loc+loc2) > playPos ) then
 
         -- Did the block start before the play position?
-        if ( loc < playPos ) then
+        if ( loc <= playPos ) then
           self:useItem(item)
           return 1
           
@@ -8081,7 +8083,7 @@ end
 function tracker:grabActiveItem()
     -- Check if there is an override going on
     local v = self:readInt("initialiseAtTrack")
-    local v2 = self:readInt("initialiseAtRow")    
+    local v2 = self:readInt("initialiseAtRow")
     reaper.SetProjExtState(0, "MVJV001", "initialiseAtTrack", "")
     reaper.SetProjExtState(0, "MVJV001", "initialiseAtRow", "")    
     if ( v ) then
