@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="8963005b407dec02f4d77d994aedd4d7d27b651d">
+<index version="1" name="Tracker tools" commit="c37aa3c2219659474a8bd76b50a774b64cbafad1">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -385,6 +385,11 @@ FF = the full length of the last tick.]]></changelog>
         <changelog><![CDATA[+ Started work on integration with Hackey Machines (receiving config override info).]]></changelog>
         <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/8963005b407dec02f4d77d994aedd4d7d27b651d/Tracker/scales.lua</source>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/8963005b407dec02f4d77d994aedd4d7d27b651d/Tracker/tracker.lua</source>
+      </version>
+      <version name="1.75" author=": Joep Vanlier" time="2018-10-07T00:45:53Z">
+        <changelog><![CDATA[+ Made sure the sequencer can pass row info to HT.]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/c37aa3c2219659474a8bd76b50a774b64cbafad1/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/c37aa3c2219659474a8bd76b50a774b64cbafad1/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
