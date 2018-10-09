@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.77
+@version 1.78
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.78 (2018-09-10)
+   + Fix issue when not using settings stored in pattern
  * v1.77 (2018-09-07)
    + Minor bugfix.
  * v1.76 (2018-09-07)
@@ -290,7 +292,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.77"
+tracker.name = "Hackey Trackey v1.78"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 -- Map output to specific MIDI channel
@@ -443,6 +445,7 @@ tracker.cfg.keyLayout = "QWERTY"
 tracker.cfg.transpose = 3
 tracker.cfg.advance = 1
 tracker.cfg.envShape = 1
+tracker.cfg.modMode = 0
 
 tracker.binaryOptions = { 
     { 'autoResize', 'Auto Resize' }, 
@@ -4038,12 +4041,13 @@ function tracker:getSettings( )
         end
       end
     end
-    
-    self.transpose  = oct or self.transpose or tracker.cfg.transpose
-    self.advance    = adv or self.advance or tracker.cfg.advance
-    self.envShape   = env or self.envShape or tracker.cfg.envShape
-    self.modMode    = modMode or self.modMode
   end
+  
+  self.transpose  = oct     or self.transpose or tracker.cfg.transpose
+  self.advance    = adv     or self.advance   or tracker.cfg.advance
+  self.envShape   = env     or self.envShape  or tracker.cfg.envShape
+  self.modMode    = modMode or self.modMode   or tracker.cfg.modMode
+  
   self:deleteNow()
 end
 
