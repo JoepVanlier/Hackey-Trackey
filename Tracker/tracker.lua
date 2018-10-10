@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.78
+@version 1.79
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,9 @@
 
 --[[
  * Changelog:
+ * v1.79 (2018-09-10)
+   + Added option for custom key layouts in external file (userkeys.lua, should be created on script startup).
+   + Added option to remove minimum size constraint
  * v1.78 (2018-09-10)
    + Fix issue when not using settings stored in pattern
  * v1.77 (2018-09-07)
@@ -292,9 +295,11 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.78"
+tracker.name = "Hackey Trackey v1.79"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
+tracker.keyFile = "userkeys.lua"
+
 -- Map output to specific MIDI channel
 --   Zero makes the tracker use a separate channel for each column. Column 
 --   one being mapped to MIDI channel 2. Any other value forces the output on 
@@ -334,6 +339,7 @@ tracker.fov.height = 32
 
 -- Set this if you want a wider or narrower tracker screen
 tracker.fov.abswidth = 450
+tracker.toosmall = 0
 
 -- Remember settings associated with a specific pattern? (octave, envelope and advance)
 tracker.rememberSettings = 1
@@ -432,6 +438,7 @@ tracker.cfg.followSelection = 0
 tracker.cfg.stickToBottom = 0
 tracker.cfg.colResize = 1
 tracker.cfg.alwaysRecord = 0
+tracker.cfg.minimumSize = 1
 tracker.cfg.CRT = 0
 tracker.cfg.keyboard = "buzz"
 tracker.cfg.rowPerQn = 4
@@ -460,6 +467,7 @@ tracker.binaryOptions = {
     { 'channelCCs', 'Enable CCs for channels > 0 (beta)' },
     { 'loopFollow', 'Set loop on pattern switch' },
     { 'initLoopSet', 'Set loop when tracker is opened' },
+    { 'minimumSize', 'Force minimum size'},
     }
     
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB"}
@@ -694,12 +702,19 @@ end
 keysets = { "default", "buzz", "renoise" }
 keys = {}
 
-
+local function print(...)
+  if ( not ... ) then
+    reaper.ShowConsoleMsg("nil value\n")
+    return
+  end
+  reaper.ShowConsoleMsg(...)
+  reaper.ShowConsoleMsg("\n")
+end
 
 -- You can find the keycodes by setting printKeys to 1 and hitting any key.
 function tracker:loadKeys( keySet )
   local keyset = keySet or tracker.cfg.keyset
-  
+
   if keyset == "default" then
     --                    CTRL    ALT SHIFT Keycode
     keys.left           = { 0,    0,  0,    1818584692 }    -- <-
@@ -1177,8 +1192,13 @@ function tracker:loadKeys( keySet )
       { 'Alt', 'Invert first note' },
       { 'Shift', 'Invert second note' },   
       { 'CTRL + Shift + Alt + +/-', 'Shift root note' },
-    }    
-  end
+    }
+    elseif ( self.loadCustomKeys ) then
+      self:loadKeys( "default" )
+      self.loadCustomKeys(keyset)
+    else
+      reaper.ShowMessageBox("FATAL ERROR: Something went wrong with loading key layout. Please fix or delete userkeys.lua.", "FATAL ERROR", 0)
+    end
 end
 
 tracker.hash = 0
@@ -1296,6 +1316,10 @@ local function setKeyboard( choice )
     keys.pitches['='] = 54-c
     
     keys.octaves = {}
+  elseif ( tracker.loadCustomKeyboard ) then
+    tracker.loadCustomKeyboard(choice)
+  else
+    reaper.ShowMessageBox("FATAL ERROR: Something went wrong with loading keyboard layout. Please fix or delete userkeys.lua.", "FATAL ERROR", 0)
   end
   
   if ( tracker.cfg.keyLayout == "QWERTZ" ) then
@@ -1309,7 +1333,6 @@ local function setKeyboard( choice )
   end
   
 end
-
 
 setKeyboard(tracker.cfg.keyboard)
 
@@ -1368,15 +1391,6 @@ CC[124] = "Omni off"
 CC[125] = "Omni on"
 CC[126] = "Mono on (Poly off)"
 CC[127] = "Poly on (Mono off)"
-
-local function print(...)
-  if ( not ... ) then
-    reaper.ShowConsoleMsg("nil value\n")
-    return
-  end
-  reaper.ShowConsoleMsg(...)
-  reaper.ShowConsoleMsg("\n")
-end
 
 function alpha(color, a)
   return { color[1], color[2], color[3], color[4] * a }
@@ -2231,7 +2245,7 @@ function tracker:printGrid()
     end
     gfx.x = plotData.xstart + tw - gfx.measurestr(patternName)
     gfx.printf(patternName)
-  else
+  elseif ( self.toosmall == 0 ) then  
     patternName = self.patternName
     gfx.x = plotData.xstart + tw - gfx.measurestr(patternName)
     gfx.printf(patternName)
@@ -2639,7 +2653,14 @@ function tracker:infoString()
 
   local locs = {}
   local xs = plotData.xstart + tw - 5
-  for i=1,#str do
+  local maxi
+  if ( self.toosmall == 0 ) then
+    maxi = #str
+  else
+    maxi = 1
+  end
+  
+  for i=1,maxi do
     xs = xs - gfx.measurestr(str[i])
     locs[i] = xs
     xs = xs - gfx.measurestr("p")
@@ -6861,11 +6882,7 @@ local function updateLoop()
     tracker:autoResize()
     tracker:computeDims(tracker.rows)
     
-    if ( tracker.fov.abswidth ~= tracker.fov.lastabswidth ) then
-      if ( tracker.fov.abswidth < 450 ) then
-        tracker.fov.abswidth = 450
-      end
-    
+    if ( tracker.fov.abswidth ~= tracker.fov.lastabswidth ) then   
       tracker.fov.lastabswidth = tracker.fov.abswidth
       tracker:update()
     end
@@ -7928,6 +7945,29 @@ function tracker:autoResize()
   if ( tracker.cfg.scaleActive == 1 ) then
     siz = siz - self.scalewidth
   end
+  
+  gfx.setfont(1, self.colors.patternFont, self.colors.patternFontSize)
+  local minsize = gfx.measurestr("Res [88] Oct [88] Adv [88] Env [Fst] Out [88] [Rec] 8888888888 ")
+  self.toosmall = 0
+  if ( tracker.cfg.minimumSize == 1) then
+    if ( siz < minsize ) then
+      siz = minsize
+      local v, wx, wy, ww, wh
+      local d, wx, wh = gfx.dock(-1, 1, 1, nil, nil)
+      gfx.quit()
+      gfx.init( self.windowTitle, width, height, d, wx, wh)
+    end
+  elseif ( siz < 130 ) then
+    siz = 130
+    self.toosmall = 1
+    local v, wx, wy, ww, wh
+    local d, wx, wh = gfx.dock(-1, 1, 1, nil, nil)
+    gfx.quit()
+    gfx.init( self.windowTitle, width, height, d, wx, wh)
+  elseif ( siz < minsize ) then
+    self.toosmall = 1
+  end
+
   tracker.fov.abswidth = siz
 end
 
@@ -8106,9 +8146,40 @@ function tracker:grabActiveItem()
     end
 end
 
+local function file_exists(name)
+   local f=io.open(name,"r")
+   if f~=nil then io.close(f) return true else return false end
+end
+
 local function Main()
   local tracker = tracker  
-  local reaper = reaper
+  local reaper = reaper  
+  
+  local kfn = get_script_path()..tracker.keyFile
+  if ( not file_exists(kfn) ) then
+    local fhandle = io.open(kfn, "w")
+    io.output(fhandle)
+    io.write( "  -- This file can be used to define own custom keysets. Every keyset needs to be declared in \r\n  -- extrakeysets. The actual keyset can then be defined in an if-statement in loadCustomKeys().\r\n  -- This file will not be overwritten when hackey trackey updates, so your keysets are safe.\r\n  -- Note that if new keys get added in the future, that you will have to update this file manually \r\n  -- or else the new keys will revert to their defaults.\r\n  --\r\n  -- Missing keys will be taken from the default set.\r\n  \r\n  extrakeysets = { \"custom\" }\r\n  \r\n  function loadCustomKeys(keyset)\r\n    if keyset == \"custom\" then\r\n    --                    CTRL    ALT SHIFT Keycode\r\n    keys.left           = { 0,    0,  0,    1818584692 }    -- <-\r\n    keys.right          = { 0,    0,  0,    1919379572 }    -- ->\r\n    keys.up             = { 0,    0,  0,    30064 }         -- /\\\r\n    keys.down           = { 0,    0,  0,    1685026670 }    -- \\/\r\n    keys.off            = { 0,    0,  0,    45 }            -- -\r\n    keys.delete         = { 0,    0,  0,    6579564 }       -- Del\r\n    keys.delete2        = { 0,    0,  0,    46 }            -- .\r\n    keys.home           = { 0,    0,  0,    1752132965 }    -- Home\r\n    keys.End            = { 0,    0,  0,    6647396 }       -- End\r\n    keys.toggle         = { 0,    0,  0,    32 }            -- Space\r\n    keys.playfrom       = { 0,    0,  0,    13 }            -- Enter\r\n    keys.enter          = { 0,    0,  0,    13 }            -- Enter        \r\n    keys.insert         = { 0,    0,  0,    6909555 }       -- Insert\r\n    keys.remove         = { 0,    0,  0,    8 }             -- Backspace\r\n    keys.pgup           = { 0,    0,  0,    1885828464 }    -- Page up\r\n    keys.pgdown         = { 0,    0,  0,    1885824110 }    -- Page down\r\n    keys.undo           = { 1,    0,  0,    26 }            -- CTRL + Z\r\n    keys.redo           = { 1,    0,  1,    26 }            -- CTRL + SHIFT + Z\r\n    keys.beginBlock     = { 1,    0,  0,    2 }             -- CTRL + B\r\n    keys.endBlock       = { 1,    0,  0,    5 }             -- CTRL + E\r\n    keys.cutBlock       = { 1,    0,  0,    24 }            -- CTRL + X\r\n    keys.pasteBlock     = { 1,    0,  0,    22 }            -- CTRL + V\r\n    keys.copyBlock      = { 1,    0,  0,    3 }             -- CTRL + C\r\n    keys.shiftItemUp    = { 0,    0,  1,    43 }            -- SHIFT + Num pad +\r\n    keys.shiftItemDown  = { 0,    0,  1,    45 }            -- SHIFT + Num pad -\r\n    keys.scaleUp        = { 1,    1,  1,    267 }           -- CTRL + SHIFT + ALT + Num pad +\r\n    keys.scaleDown      = { 1,    1,  1,    269 }           -- CTRL + SHIFT + ALT + Num pad -   \r\n    keys.octaveup       = { 1,    0,  0,    30064 }         -- CTRL + /\\\r\n    keys.octavedown     = { 1,    0,  0,    1685026670 }    -- CTRL + \\/\r\n    keys.envshapeup     = { 1,    0,  1,    30064 }         -- CTRL + SHIFT + /\\\r\n    keys.envshapedown   = { 1,    0,  1,    1685026670 }    -- CTRL + SHIFT + /\\\r\n    keys.help           = { 0,    0,  0,    26161 }         -- F1\r\n    keys.outchandown    = { 0,    0,  0,    26162 }         -- F2\r\n    keys.outchanup      = { 0,    0,  0,    26163 }         -- F3\r\n    keys.advancedown    = { 0,    0,  0,    26164 }         -- F4\r\n    keys.advanceup      = { 0,    0,  0,    26165 }         -- F5\r\n    keys.stop2          = { 0,    0,  0,    26168 }         -- F8\r\n    keys.harmony        = { 0,    0,  0,    26169 }         -- F9\r\n    keys.options        = { 0,    0,  0,    6697265 }       -- F11    \r\n    keys.panic          = { 0,    0,  0,    6697266 }       -- F12\r\n    keys.setloop        = { 1,    0,  0,    12 }            -- CTRL + L\r\n    keys.setloopstart   = { 1,    0,  0,    17 }            -- CTRL + Q\r\n    keys.setloopend     = { 1,    0,  0,    23 }            -- CTRL + W\r\n    keys.interpolate    = { 1,    0,  0,    9 }             -- CTRL + I\r\n    keys.shiftleft      = { 0,    0,  1,    1818584692 }    -- Shift + <-\r\n    keys.shiftright     = { 0,    0,  1,    1919379572 }    -- Shift + ->\r\n    keys.shiftup        = { 0,    0,  1,    30064 }         -- Shift + /\\\r\n    keys.shiftdown      = { 0,    0,  1,    1685026670 }    -- Shift + \\/\r\n    keys.deleteBlock    = { 0,    0,  1,    6579564 }       -- Shift + Del\r\n    keys.resolutionUp   = { 0,    1,  1,    30064 }         -- SHIFT + Alt + Up\r\n    keys.resolutionDown = { 0,    1,  1,    1685026670 }    -- SHIFT + Alt + Down\r\n    keys.commit         = { 0,    1,  1,    13 }            -- SHIFT + Alt + Enter\r\n    keys.nextMIDI       = { 1,    0,  0,    1919379572.0 }  -- CTRL + ->\r\n    keys.prevMIDI       = { 1,    0,  0,    1818584692.0 }  -- CTRL + <-\r\n    keys.duplicate      = { 1,    0,  0,    4 }             -- CTRL + D\r\n    keys.rename         = { 1,    0,  0,    14 }            -- CTRL + N\r\n    keys.escape         = { 0,    0,  0,    27 }            -- Escape\r\n    keys.toggleRec      = { 1,    0,  0,    18 }            -- CTRL + R\r\n    keys.showMore       = { 1,    0,  0,    11 }            -- CTRL + +\r\n    keys.showLess       = { 1,    0,  0,    13 }            -- CTRL + -\r\n    keys.addCol         = { 1,    0,  1,    11 }            -- CTRL + Shift + +\r\n    keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -\r\n    keys.addColAll      = { 1,    0,  1,    1 }             -- CTRL + Shift + A\r\n    keys.addPatchSelect = { 1,    0,  1,    16 }            -- CTRL + Shift + P\r\n    keys.tab            = { 0,    0,  0,    9 }             -- Tab\r\n    keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab\r\n    keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F\r\n    keys.deleteRow      = { 1,    0,  0,    6579564 }       -- Ctrl + Del\r\n    keys.closeTracker   = { 1,    0,  0,    6697266 }       -- Ctrl + F12\r\n    keys.nextTrack      = { 1,    0,  1,    1919379572.0 }  -- CTRL + Shift + ->\r\n    keys.prevTrack      = { 1,    0,  1,    1818584692.0 }  -- CTRL + Shift + <-\r\n    \r\n    keys.insertRow      = { 1,    0,  0,    6909555 }       -- Insert row CTRL+Ins\r\n    keys.removeRow      = { 1,    0,  0,    8 }             -- Remove Row CTRL+Backspace\r\n    keys.wrapDown       = { 1,    0,  1,    6909555 }       -- CTRL + SHIFT + Ins\r\n    keys.wrapUp         = { 1,    0,  1,    8 }             -- CTRL + SHIFT + Backspace    \r\n    \r\n    keys.m0             = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\r\n    keys.m25            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\r\n    keys.m50            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\r\n    keys.m75            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\r\n    keys.off2           = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned    \r\n    keys.renoiseplay    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\r\n    keys.shpatdown      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\r\n    keys.shpatup        = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\r\n    keys.shcoldown      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\r\n    keys.shcolup        = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\r\n    keys.shblockdown    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\r\n    keys.shblockup      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned    \r\n    \r\n    keys.cutPattern     = { 1,    0,  0,    500000000000000000000000 }\r\n    keys.cutColumn      = { 1,    0,  1,    500000000000000000000000 }\r\n    keys.cutBlock2      = { 1,    1,  0,    500000000000000000000000 }\r\n    keys.copyPattern    = { 1,    0,  0,    500000000000000000000000 }\r\n    keys.copyColumn     = { 1,    0,  1,    500000000000000000000000 }\r\n    keys.copyBlock2     = { 1,    1,  0,    500000000000000000000000 }\r\n    keys.pastePattern   = { 1,    0,  0,    500000000000000000000000 }\r\n    keys.pasteColumn    = { 1,    0,  1,    500000000000000000000000 }\r\n    keys.pasteBlock2    = { 1,    1,  0,    500000000000000000000000 }\r\n    keys.patternOctDown = { 1,    0,  0,    500000000000000000000000.0 }\r\n    keys.patternOctUp   = { 1,    0,  0,    500000000000000000000000.0 }\r\n    keys.colOctDown     = { 1,    0,  1,    500000000000000000000000.0 }\r\n    keys.colOctUp       = { 1,    0,  1,    500000000000000000000000.0 }\r\n    keys.blockOctDown   = { 1,    1,  0,    500000000000000000000000.0 }\r\n    keys.blockOctUp     = { 1,    1,  0,    500000000000000000000000.0 }\r\n    \r\n    keys.shiftpgdn      = { 0,    0,  1,    1885824110 }    -- Shift + PgDn\r\n    keys.shiftpgup      = { 0,    0,  1,    1885828464 }    -- Shift + PgUp\r\n    keys.shifthome      = { 0,    0,  1,    1752132965 }    -- Shift + Home\r\n    keys.shiftend       = { 0,    0,  1,    6647396 }       -- Shift + End\r\n    \r\n    help = {\r\n      { \'Shift + Note\', \'Advance column after entry\' },\r\n      { \'Insert/Backspace/-\', \'Insert/Remove/Note OFF\' },   \r\n      { \'CTRL + Insert/Backspace\', \'Insert Row/Remove Row\' },\r\n      { \'CTRL + Shift + Ins/Bksp\', \'Wrap Forward/Backward\' },\r\n      { \'Del/.\', \'Delete\' }, \r\n      { \'Space/Return\', \'Play/Play From\' },\r\n      { \'CTRL + L\', \'Loop pattern\' },\r\n      { \'CTRL + Q/W\', \'Loop start/end\' },\r\n      { \'Shift + +/-\', \'Transpose selection\' },\r\n      { \'CTRL + B/E\', \'Selection begin/End\' },\r\n      { \'SHIFT + Arrow Keys\', \'Block selection\' },\r\n      { \'CTRL + C/X/V\', \'Copy / Cut / Paste\' },\r\n      { \'CTRL + I\', \'Interpolate\' },\r\n      { \'Shift + Del\', \'Delete block\' },\r\n      { \'CTRL + (SHIFT) + Z\', \'Undo / Redo\' }, \r\n      { \'SHIFT + Alt + Up/Down\', \'[Res]olution Up/Down\' },\r\n      { \'SHIFT + Alt + Enter\', \'[Res]olution Commit\' },  \r\n      { \'CTRL + Up/Down\', \'[Oct]ave up/down\' },\r\n      { \'CTRL + Shift + Up/Down\', \'[Env]elope change\' },\r\n      { \'F4/F5\', \'[Adv]ance De/Increase\' },\r\n      { \'F2/F3\', \'MIDI [out] down/up\' },\r\n      { \'F8/F11/F12\', \'Stop / Options / Panic\' },\r\n      { \'CTRL + Left/Right\', \'Switch MIDI item/track\' },   \r\n      { \'CTRL + Shift + Left/Right\', \'Switch Track\' },         \r\n      { \'CTRL + D\', \'Duplicate pattern\' },\r\n      { \'CTRL + N\', \'Rename pattern\' },\r\n      { \'CTRL + R\', \'Play notes\' },\r\n      { \'CTRL + +/-\', \'Advanced col options\' },\r\n      { \'CTRL + Shift + +/-\', \'Add CC (adv mode)\' },\r\n      { \'CTRL + Shift + A/P\', \'Per channel CC/PC\' },\r\n      { \'\', \'\' },\r\n      { \'Harmony helper\', \'\' },      \r\n      { \'F9\', \'Toggle harmonizer\' },\r\n      { \'CTRL + Click\', \'Insert chord\' },\r\n      { \'Alt\', \'Invert first note\' },\r\n      { \'Shift\', \'Invert second note\' },\r\n      { \'CTRL + Shift + Alt + +/-\', \'Shift root note\' },\r\n    }\r\n  end\r\nend\r\n\r\n-- Defines where the notes are on the virtual keyboard\r\nfunction loadCustomKeyboard(choice)\r\n  if ( choice == \"custom\" ) then\r\n    local c = 12\r\n    keys.pitches = {}\r\n    keys.pitches.z = 24-c\r\n    keys.pitches.x = 26-c\r\n    keys.pitches.c = 28-c\r\n    keys.pitches.v = 29-c\r\n    keys.pitches.b = 31-c\r\n    keys.pitches.n = 33-c\r\n    keys.pitches.m = 35-c\r\n    keys.pitches.s = 25-c\r\n    keys.pitches.d = 27-c\r\n    keys.pitches.g = 30-c\r\n    keys.pitches.h = 32-c\r\n    keys.pitches.j = 34-c\r\n    keys.pitches.q = 36-c\r\n    keys.pitches.w = 38-c\r\n    keys.pitches.e = 40-c\r\n    keys.pitches.r = 41-c\r\n    keys.pitches.t = 43-c\r\n    keys.pitches.y = 45-c\r\n    keys.pitches.u = 47-c\r\n    keys.pitches.i = 48-c\r\n    keys.pitches.o = 50-c\r\n    keys.pitches.p = 52-c\r\n    \r\n    keys.octaves = {}\r\n    keys.octaves[\'0\'] = 0\r\n    keys.octaves[\'1\'] = 1\r\n    keys.octaves[\'2\'] = 2\r\n    keys.octaves[\'3\'] = 3\r\n    keys.octaves[\'4\'] = 4\r\n    keys.octaves[\'5\'] = 5\r\n    keys.octaves[\'6\'] = 6\r\n    keys.octaves[\'7\'] = 7\r\n    keys.octaves[\'8\'] = 8\r\n    keys.octaves[\'9\'] = 9\r\n  end\r\nend\r\n")
+    io.close(fhandle)
+  end
+  
+  local ret, str = pcall(function() dofile(kfn) end)
+  if ( not ret ) then
+    reaper.ShowMessageBox("Error parsing " .. tracker.keyFile .. "\nError: " .. str .. "\nTerminating.", "FATAL ERROR", 0)  
+    return;
+  else
+    if ( not extrakeysets ) then
+      reaper.ShowMessageBox("Error parsing " .. tracker.keyFile .. "\nDid not find variable extrakeysets. Please delete userkeys.lua.\nTerminating.", "FATAL ERROR", 0)  
+      return;
+    end
+  
+    for i,v in pairs( extrakeysets ) do
+      table.insert(keysets, v)
+    end
+    tracker.loadCustomKeys      = loadCustomKeys
+    tracker.loadCustomKeyboard  = loadCustomKeyboard
+  end
+  
   if ( reaper.CountSelectedMediaItems(0) > 0 or tracker:readInt("initialiseAtTrack") ) then
     tracker.tick = 0
     tracker.scrollbar = scrollbar.create(tracker.scrollbar.size)
@@ -8117,9 +8188,21 @@ local function Main()
     local cfg = tracker:loadConfig(tracker.configFile, tracker.cfg)
     tracker:loadColors(cfg.colorscheme)
     tracker:initColors()
+    
+    -- Revert to default if selected keyset does not exist
+    local found = 0
+    for i,v in pairs( keysets ) do
+      if ( cfg.keyset == v ) then
+        found = 1
+      end
+    end
+    if ( found == 0 ) then
+      cfg.keyset = "default"
+    end
+    
     tracker:loadKeys(cfg.keyset)
-    setKeyboard(cfg.keyset)    
-    tracker.cfg = cfg   
+    setKeyboard(cfg.keyset)
+    tracker.cfg = cfg
     
     if ( cfg.root and ( scales.root ~= cfg.root ) ) then
       scales:switchRoot( cfg.root )
@@ -8133,16 +8216,17 @@ local function Main()
     if ( tracker:grabActiveItem() ) then
 
       local wpos = tracker:loadConfig("_wpos.cfg", {}) 
+
       tracker.optionsActive = wpos.optionsActive or tracker.optionsActive
       tracker.helpActive = wpos.helpActive or tracker.helpActive
       local width, height = tracker:computeDims(48)
       tracker:updateNames()
       
-      if ( wpos.w and wpos.w > width ) then
-        width = wpos.w
-      end
+      --if ( wpos.w and wpos.w > width ) then
+        width = wpos.w or width
+      --end
       if ( wpos.h and wpos.h > width ) then
-        height = wpos.h
+        height = wpos.h or height
       end
       local xpos = wpos.x or 200
       local ypos = wpos.y or 200
