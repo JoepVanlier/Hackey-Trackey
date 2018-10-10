@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="8c356b6740121a8b946ec9b6fff7d8a35b64ecb6">
+<index version="1" name="Tracker tools" commit="ab1abfa1ae4fbadbbe6f3e231f5fed0c344005fa">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -405,6 +405,12 @@ FF = the full length of the last tick.]]></changelog>
         <changelog><![CDATA[+ Fix issue when not using settings stored in pattern]]></changelog>
         <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/8c356b6740121a8b946ec9b6fff7d8a35b64ecb6/Tracker/scales.lua</source>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/8c356b6740121a8b946ec9b6fff7d8a35b64ecb6/Tracker/tracker.lua</source>
+      </version>
+      <version name="1.79" author=": Joep Vanlier" time="2018-10-10T21:27:37Z">
+        <changelog><![CDATA[+ Added option for custom key layouts in external file (userkeys.lua, should be created on script startup).
++ Added option to remove minimum size constraint]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/ab1abfa1ae4fbadbbe6f3e231f5fed0c344005fa/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/ab1abfa1ae4fbadbbe6f3e231f5fed0c344005fa/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
