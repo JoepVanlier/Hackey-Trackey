@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.81
+@version 1.82
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.82 (2018-10-19)
+   + Added passthrough of commands which are configurable as custom keys.
  * v1.81 (2018-10-19)
    + Added option to suppress all automatic resizing of the tracker.
  * v1.80 (2018-10-13)
@@ -300,7 +302,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.81"
+tracker.name = "Hackey Trackey v1.82"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -736,7 +738,7 @@ function tracker:loadKeys( keySet )
     keys.home           = { 0,    0,  0,    1752132965 }    -- Home
     keys.End            = { 0,    0,  0,    6647396 }       -- End
     keys.toggle         = { 0,    0,  0,    32 }            -- Space
-    keys.playfrom       = { 0,    0,  0,    13 }            -- Enter
+    keys.playfrom       = { 1,    0,  0,    13 }            -- Enter
     keys.enter          = { 0,    0,  0,    13 }            -- Enter        
     keys.insert         = { 0,    0,  0,    6909555 }       -- Insert
     keys.remove         = { 0,    0,  0,    8 }             -- Backspace
@@ -837,13 +839,15 @@ function tracker:loadKeys( keySet )
     keys.shifthome      = { 0,    0,  1,    1752132965 }    -- Shift + Home
     keys.shiftend       = { 0,    0,  1,    6647396 }       -- Shift + End
     
+    keys.startPat       = { 0,    0,  0,    13,  "Hackey Sequencer/Sequencer/HackeyPatterns_exec.lua" }
+    
     help = {
       { 'Shift + Note', 'Advance column after entry' },
       { 'Insert/Backspace/-', 'Insert/Remove/Note OFF' },   
       { 'CTRL + Insert/Backspace', 'Insert Row/Remove Row' },
       { 'CTRL + Shift + Ins/Bksp', 'Wrap Forward/Backward' },
       { 'Del/.', 'Delete' }, 
-      { 'Space/Return', 'Play/Play From' },
+      { 'Space/CTRL + Return', 'Play/Play From' },
       { 'CTRL + L', 'Loop pattern' },
       { 'CTRL + Q/W', 'Loop start/end' },
       { 'Shift + +/-', 'Transpose selection' },
@@ -990,6 +994,8 @@ function tracker:loadKeys( keySet )
     keys.shifthome      = { 0,    0,  1,    1752132965 }    -- Shift + Home
     keys.shiftend       = { 0,    0,  1,    6647396 }       -- Shift + End
     
+    keys.startPat       = { 0,    0,  0,    13,  "Hackey Sequencer/Sequencer/HackeyPatterns_exec.lua" }
+    
     help = {
       { 'Shift + Note', 'Advance column after entry' },
       { '`', 'Note OFF' },
@@ -1028,7 +1034,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Click', 'Insert chord' },
       { 'Alt', 'Invert first note' },
       { 'Shift', 'Invert second note' },   
-      { 'CTRL + Shift + Alt + +/-', 'Shift root note' },
+      { 'CTRL + Shift + Alt + +/-', 'Shift root note' },      
     }
   elseif keyset == "renoise" then
     --                    CTRL    ALT SHIFT Keycode
@@ -1208,6 +1214,13 @@ function tracker:loadKeys( keySet )
     else
       reaper.ShowMessageBox("FATAL ERROR: Something went wrong with loading key layout. Please fix or delete userkeys.lua.", "FATAL ERROR", 0)
     end
+    
+  commandKeys = {}
+  for i,v in pairs( keys ) do
+    if ( ( type(v) == "table" ) and ( #v > 4 ) ) then
+      commandKeys[i] = v
+    end
+  end
 end
 
 tracker.hash = 0
@@ -1416,6 +1429,45 @@ local function get_script_path()
   local info = debug.getinfo(1,'S');
   local script_path = info.source:match[[^@?(.*[\/])[^\/]-$]]
   return script_path
+end
+
+local function findCommandID(name)
+  local commandID
+  local lines = {}
+  local fn = reaper.GetResourcePath() .. '//' .. "Reaper-kb.ini"
+  for line in io.lines(fn) do
+    lines[#lines + 1] = line
+  end
+  
+  for i,v in pairs(lines) do
+    if ( v:find(name, 1, true) ) then
+      local startidx = v:find("RS", 1, true)
+      local endidx = v:find(" ", startidx, true)
+      commandID = (v:sub(startidx,endidx-1))
+    end
+  end
+  
+  if ( commandID ) then
+    return "_" .. commandID
+  end
+end
+
+function tracker:callScript(scriptName)
+  if ( not scriptName ) then
+    reaper.ShowMessageBox("Error callScript called without specifying a script", "Error", 0)
+    return
+  end
+
+  local cmdID = findCommandID( scriptName )
+  
+  if ( cmdID ) then
+    local cmd = reaper.NamedCommandLookup( cmdID )
+    if ( cmd ) then
+      reaper.Main_OnCommand(cmd, 0)
+    else
+      reaper.ShowMessageBox("Failed to load script "..cmd, "Error", 0)
+    end
+  end
 end
 
 -- Flip channels if we are retrieving a program change
@@ -7819,6 +7871,17 @@ local function updateLoop()
     elseif ( lastChar == -1 ) then      
       -- Closed window
     else
+      for i,v in pairs( commandKeys ) do
+        if ( inputs(i) ) then
+          local cmd = reaper.NamedCommandLookup( v[5] )
+          if ( cmd and ( cmd > 0 ) ) then
+            reaper.Main_OnCommand(cmd, 0)
+          else
+            tracker.callScript( tracker, v[5] )
+          end
+        end
+      end
+    
       -- Notes here
       modified = 1
       tracker:noteEdit()
