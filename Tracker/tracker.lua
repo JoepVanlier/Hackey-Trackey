@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.80
+@version 1.81
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.81 (2018-10-19)
+   + Added option to suppress all automatic resizing of the tracker.
  * v1.80 (2018-10-13)
    + Ignore OFF MIDI items when browsing. Do not allow browser to be opened on OFF MIDI Items.
    + Cleaned up automatic file write.
@@ -298,7 +300,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.80"
+tracker.name = "Hackey Trackey v1.81"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -452,6 +454,7 @@ tracker.cfg.followSong = 0
 tracker.cfg.page = tracker.page
 tracker.cfg.oldBlockBehavior = 0
 tracker.cfg.keyLayout = "QWERTY"
+tracker.cfg.noResize = 0
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -473,6 +476,7 @@ tracker.binaryOptions = {
     { 'loopFollow', 'Set loop on pattern switch' },
     { 'initLoopSet', 'Set loop when tracker is opened' },
     { 'minimumSize', 'Force minimum size'},
+    { 'noResize', 'Fix plugin size'},
     }
     
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB"}
@@ -7964,16 +7968,20 @@ function tracker:autoResize()
       siz = minsize
       local v, wx, wy, ww, wh
       local d, wx, wh = gfx.dock(-1, 1, 1, nil, nil)
-      gfx.quit()
-      gfx.init( self.windowTitle, width, height, d, wx, wh)
+      if ( tracker.cfg.noResize == 0 ) then
+        gfx.quit()
+        gfx.init( self.windowTitle, width, height, d, wx, wh)
+      end
     end
   elseif ( siz < 130 ) then
     siz = 130
     self.toosmall = 1
     local v, wx, wy, ww, wh
     local d, wx, wh = gfx.dock(-1, 1, 1, nil, nil)
-    gfx.quit()
-    gfx.init( self.windowTitle, width, height, d, wx, wh)
+    if ( tracker.cfg.noResize == 0 ) then
+      gfx.quit()
+      gfx.init( self.windowTitle, width, height, d, wx, wh)
+    end
   elseif ( siz < minsize ) then
     self.toosmall = 1
   end
@@ -8048,8 +8056,10 @@ function tracker:resizeWindow()
   if ( ( changed == 1 and ( tracker.cfg.autoResize == 1 ) ) or ( changed == 2 ) ) then
     local v, wx, wy, ww, wh
     local d, wx, wh = gfx.dock(-1, 1, 1, nil, nil)
-    gfx.quit()
-    gfx.init( self.windowTitle, width, height, d, wx, wh)
+    if ( tracker.cfg.noResize == 0 ) then
+      gfx.quit()
+      gfx.init( self.windowTitle, width, height, d, wx, wh)
+    end
     self.windowHeight = height
   end
 end
