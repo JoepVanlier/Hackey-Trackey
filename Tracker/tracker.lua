@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.82
+@version 1.83
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.83 (2018-10-20)
+   + Add maxwidth parameter to config file.
  * v1.82 (2018-10-19)
    + Added passthrough of commands which are configurable as custom keys.
  * v1.81 (2018-10-19)
@@ -302,7 +304,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.82"
+tracker.name = "Hackey Trackey v1.83"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -457,6 +459,7 @@ tracker.cfg.page = tracker.page
 tracker.cfg.oldBlockBehavior = 0
 tracker.cfg.keyLayout = "QWERTY"
 tracker.cfg.noResize = 0
+tracker.cfg.maxWidth = 50000
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -720,6 +723,22 @@ local function print(...)
   end
   reaper.ShowConsoleMsg(...)
   reaper.ShowConsoleMsg("\n")
+end
+
+local function reinitializeWindow(title, iwidth, iheight, id, iwx, iwh)
+  local v, wx, wy, ww, wh
+  local d, wx, wh, ww, wh = gfx.dock(-1, 1, 1, 1, 1)
+  
+  if ( iwidth > tracker.cfg.maxWidth ) then
+    iwidth = tracker.cfg.maxWidth
+  end
+  
+  if ( tracker.cfg.noResize == 0 ) then
+    if ( ww ~= iwidth or wh ~= iheight ) then
+      gfx.quit()
+      gfx.init( title, iwidth, iheight, id, iwx, iwh)
+    end
+  end
 end
 
 -- You can find the keycodes by setting printKeys to 1 and hitting any key.
@@ -8031,20 +8050,14 @@ function tracker:autoResize()
       siz = minsize
       local v, wx, wy, ww, wh
       local d, wx, wh = gfx.dock(-1, 1, 1, nil, nil)
-      if ( tracker.cfg.noResize == 0 ) then
-        gfx.quit()
-        gfx.init( self.windowTitle, width, height, d, wx, wh)
-      end
+      reinitializeWindow(self.windowTitle, width, height, d, wx, wh)
     end
   elseif ( siz < 130 ) then
     siz = 130
     self.toosmall = 1
     local v, wx, wy, ww, wh
     local d, wx, wh = gfx.dock(-1, 1, 1, nil, nil)
-    if ( tracker.cfg.noResize == 0 ) then
-      gfx.quit()
-      gfx.init( self.windowTitle, width, height, d, wx, wh)
-    end
+    reinitializeWindow(self.windowTitle, width, height, d, wx, wh)
   elseif ( siz < minsize ) then
     self.toosmall = 1
   end
@@ -8109,7 +8122,7 @@ function tracker:computeDims(inRows)
     self.lastX = width
   else
     changed = 0
-  end
+  end  
   
   return width, height, changed
 end
@@ -8119,10 +8132,7 @@ function tracker:resizeWindow()
   if ( ( changed == 1 and ( tracker.cfg.autoResize == 1 ) ) or ( changed == 2 ) ) then
     local v, wx, wy, ww, wh
     local d, wx, wh = gfx.dock(-1, 1, 1, nil, nil)
-    if ( tracker.cfg.noResize == 0 ) then
-      gfx.quit()
-      gfx.init( self.windowTitle, width, height, d, wx, wh)
-    end
+    reinitializeWindow( self.windowTitle, width, height, d, wx, wh )
     self.windowHeight = height
   end
 end
@@ -8521,6 +8531,9 @@ local function Main()
       local xpos = wpos.x or 200
       local ypos = wpos.y or 200
       
+      if ( width > tracker.cfg.maxWidth ) then
+        width = tracker.cfg.maxWidth
+      end
       gfx.init(tracker.windowTitle, width, height, 0, xpos, ypos)
       tracker.windowHeight = height
       
