@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.83
+@version 1.84
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,9 @@
 
 --[[
  * Changelog:
+ * v1.84 (2018-10-21)
+   + Add maximum height to config file.
+   + Added automatic rescaling of number of rows.
  * v1.83 (2018-10-20)
    + Add maxwidth parameter to config file.
  * v1.82 (2018-10-19)
@@ -304,7 +307,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.83"
+tracker.name = "Hackey Trackey v1.84"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -460,6 +463,7 @@ tracker.cfg.oldBlockBehavior = 0
 tracker.cfg.keyLayout = "QWERTY"
 tracker.cfg.noResize = 0
 tracker.cfg.maxWidth = 50000
+tracker.cfg.maxHeight = 50000
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -731,6 +735,9 @@ local function reinitializeWindow(title, iwidth, iheight, id, iwx, iwh)
   
   if ( iwidth > tracker.cfg.maxWidth ) then
     iwidth = tracker.cfg.maxWidth
+  end
+  if ( iheight > tracker.cfg.maxHeight ) then
+    iheight = tracker.cfg.maxHeight
   end
   
   if ( tracker.cfg.noResize == 0 ) then
@@ -6963,6 +6970,18 @@ local function updateLoop()
     return
   end
 
+  -- Auto resize y
+  if ( gfx.h > 1 ) then
+    local grid = tracker.grid
+    local newRows = math.floor(gfx.h / grid.dy)-3
+    if ( newRows ~= self.rows and newRows > 2) then
+      self.rows = newRows;
+      tracker.fov.height = newRows;
+      tracker:resetBlock()
+      tracker:update()
+    end
+  end
+
   if ( tracker.cfg.colResize == 1 ) then
     tracker:autoResize()
     tracker:computeDims(tracker.rows)
@@ -8014,10 +8033,11 @@ end
 
 function tracker:terminate()
   tracker:stopNote()
-    
+  
   local d, x, y, w, h = gfx.dock(nil,1,1,1,1)
   tracker:saveConfigFile("_wpos.cfg", {d=d, x=x, y=y, w=w, h=h, helpActive = tracker.helpActive, optionsActive = tracker.optionsActive})
-        
+  tracker:saveConfig(tracker.configFile, tracker.cfg)
+  
   gfx.quit()
 end
 
@@ -8067,11 +8087,11 @@ end
 
 -- To do: Automatic width estimation
 function tracker:computeDims(inRows)
-  local rows = inRows
+  local rows = inRows  
   
   if ( rows > tracker.fov.height ) then
     rows = tracker.fov.height
-  end  
+  end
   
   width = self.fov.abswidth
   if ( tracker.helpActive == 1 ) then
@@ -8110,7 +8130,7 @@ function tracker:computeDims(inRows)
   end
   
   local changed
-  if ( not self.lastY or ( self.lastY ~= height) or not self.lastX or ( self.lastX ~= width ) ) then    
+  if ( not self.lastY or ( self.lastY ~= height ) or not self.lastX or ( self.lastX ~= width ) ) then    
     self:resetBlock()
     
     changed = 1
@@ -8533,6 +8553,9 @@ local function Main()
       
       if ( width > tracker.cfg.maxWidth ) then
         width = tracker.cfg.maxWidth
+      end
+      if ( height > tracker.cfg.maxHeight ) then
+        height = tracker.cfg.maxHeight
       end
       gfx.init(tracker.windowTitle, width, height, 0, xpos, ypos)
       tracker.windowHeight = height
