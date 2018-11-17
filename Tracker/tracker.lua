@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.84
+@version 1.85
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,9 @@
 
 --[[
  * Changelog:
+ * v1.85 (2018-11-17)
+   + Made sure ticks per beat also highlights beats correctly.
+   + Fetch channel output settings from track.
  * v1.84 (2018-10-21)
    + Add maximum height to config file.
    + Added automatic rescaling of number of rows.
@@ -307,7 +310,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.84"
+tracker.name = "Hackey Trackey v1.85"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -408,7 +411,7 @@ tracker.xint = 0
 tracker.page = 4
 tracker.lastVel = 96
 tracker.lastEnv = 1
-tracker.rowPerQn = 4
+tracker.rowPerQn = 4 -- The default
 tracker.newRowPerQn = 4
 tracker.maxRowPerQn = 16
 
@@ -2220,13 +2223,14 @@ function tracker:printGrid()
   for y=1,#yloc do
     local absy = y + scrolly
     
+    local sig = self.rowPerQn
     local c1, c2, tx
-    if ( (((absy-1)/16) - math.floor((absy-1)/16)) == 0 ) then -- TODO This should depend on current time signature
+    if ( (((absy-1)/sig) - math.floor((absy-1)/sig)) == 0 ) then
       c1 = colors.linecolor5
       c2 = colors.linecolor5s
       tx = colors.textcolorbar or colors.textcolor
       fc = colors.bar
-    elseif ( (((absy-1)/4) - math.floor((absy-1)/4)) == 0 ) then
+    elseif false and( (((absy-1)/(sig/4)) - math.floor((absy-1)/(sig/4))) == 0 ) then
       c1 = colors.linecolor2
       c2 = colors.linecolor2s
       tx = colors.textcolorbar or colors.textcolor
@@ -5513,6 +5517,7 @@ function tracker:setTake( take )
       -- Store note hash (second arg = notes only)
       self.hash = reaper.MIDI_GetHash( self.take, false, "?" )
       self.newRowPerQn = self:getResolution()
+      self.outChannel = self:getOutChannel()
       self:update()
       
       if ( self.cfg.alwaysRecord == 1 ) then
@@ -6419,6 +6424,22 @@ function tracker:setOutChannel( ch )
       end
     end
   end
+end
+
+function tracker:getOutChannel( ch )
+  if not pcall( self.testGetTake ) then
+    return false
+  end
+  
+  local chOut
+  local retval, str = reaper.GetItemStateChunk( self.item, "")
+  if ( not str:find("OUTCH") ) then
+    chOut = 0
+  else
+    chOut = tonumber(str:match("\nOUTCH ([-]*%d+)", 1))
+  end
+  
+  return chOut
 end
 
 function tracker:arm()
