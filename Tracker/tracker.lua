@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.85
+@version 1.86
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.86 (2018-11-17)
+   + Added option to override row highlighting.
  * v1.85 (2018-11-17)
    + Made sure ticks per beat also highlights beats correctly.
    + Fetch channel output settings from track.
@@ -310,7 +312,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.85"
+tracker.name = "Hackey Trackey v1.86"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -467,6 +469,7 @@ tracker.cfg.keyLayout = "QWERTY"
 tracker.cfg.noResize = 0
 tracker.cfg.maxWidth = 50000
 tracker.cfg.maxHeight = 50000
+tracker.cfg.rowOverride = 0
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -901,6 +904,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + +/-', 'Advanced col options' },
       { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },
       { 'CTRL + Shift + A/P', 'Per channel CC/PC' },
+      { 'CTRL + Shift + Click row indicator', 'Change highlighting (RMB resets)' },
       { '', '' },
       { 'Harmony helper', '' },      
       { 'F9', 'Toggle harmonizer' },
@@ -1057,6 +1061,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + +/-', 'Advanced col options' },
       { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },
       { 'CTRL + Shift + A/P', 'Per channel CC/PC' },
+      { 'CTRL + Shift + Click row indicator', 'Change highlighting (RMB resets)' },      
       { '', '' },
       { 'Harmony helper', '' },      
       { 'F9', 'Toggle harmonizer' },
@@ -1220,6 +1225,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },
       { 'F9/F10/F11/F12', 'Goto 0, 25, 50 and 75%%' },
       { 'F8', 'Close tracker' },
+      { 'CTRL + Shift + Click row indicator', 'Change highlighting (RMB resets)' },      
       { '---', '' },
       { 'CTRL + F1/F2', 'Shift pattern down/up' },
       { 'CTRL + Shift + F1/F2', 'Shift column down/up' },
@@ -2219,11 +2225,16 @@ function tracker:printGrid()
   end
   
   -- Render in relative FOV coordinates
-  local data        = self.data
+  local data  = self.data
+  local sig   = self.rowPerQn
+  if ( self.cfg.rowOverride > 0  ) then
+    sig = self.cfg.rowOverride
+  end
+  
   for y=1,#yloc do
     local absy = y + scrolly
     
-    local sig = self.rowPerQn
+    
     local c1, c2, tx
     if ( (((absy-1)/sig) - math.floor((absy-1)/sig)) == 0 ) then
       c1 = colors.linecolor5
@@ -4116,7 +4127,6 @@ function tracker:toQn(seconds)
 end
 
 function tracker:getResolution( reso )
-
   -- Determine Row per Qn for this MIDI item
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   for i=0,textsyxevtcntOut do
@@ -4352,7 +4362,7 @@ function tracker:assignFromMIDI(channel, idx)
     end
   end
   local yend = math.floor( endppqpos * self.rowPerPpq - self.eps )
-  
+
   -- This note is not actually present
   if ( ystart > self.rows-1 ) then
     return true
@@ -7087,6 +7097,17 @@ local function updateLoop()
     mouse_cap = 0
   end
   
+  if ( right == 1 ) then
+    local plotData  = tracker.plotData
+    local xloc      = plotData.xloc
+    local yloc      = plotData.yloc  
+    if ( ( ( gfx.mouse_cap & 4 ) > 0 ) and ( ( gfx.mouse_cap & 8 ) > 0 ) ) then
+      if ( gfx.mouse_x < xloc[1] ) then
+        tracker.cfg.rowOverride = 0
+      end
+    end  
+  end
+  
   if ( left == 1 and mouse_cap == 0 ) then
     local Inew
     local Jnew
@@ -7127,6 +7148,12 @@ local function updateLoop()
         if ( tracker.lastleft ~= 1 ) then
           tracker:toggleRec()
         end
+      end
+    end
+    
+    if ( ( ( gfx.mouse_cap & 4 ) > 0 ) and ( ( gfx.mouse_cap & 8 ) > 0 ) ) then
+      if ( gfx.mouse_x < xloc[1] ) then
+        tracker.cfg.rowOverride = math.floor((gfx.mouse_y - yloc[1])/(yloc[2]-yloc[1]))
       end
     end
     
