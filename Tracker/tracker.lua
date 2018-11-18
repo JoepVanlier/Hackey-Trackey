@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.86
+@version 1.87
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.87 (2018-11-18)
+   + Added optional mode to store row highlighting override in pattern.
  * v1.86 (2018-11-17)
    + Added option to override row highlighting.
  * v1.85 (2018-11-17)
@@ -312,7 +314,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.86"
+tracker.name = "Hackey Trackey v1.87"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -470,6 +472,7 @@ tracker.cfg.noResize = 0
 tracker.cfg.maxWidth = 50000
 tracker.cfg.maxHeight = 50000
 tracker.cfg.rowOverride = 0
+tracker.cfg.overridePerPattern = 1
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -492,6 +495,7 @@ tracker.binaryOptions = {
     { 'initLoopSet', 'Set loop when tracker is opened' },
     { 'minimumSize', 'Force minimum size'},
     { 'noResize', 'Fix plugin size'},
+    { 'overridePerPattern', 'Override per pattern'},
     }
     
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB"}
@@ -4144,7 +4148,7 @@ function tracker:getResolution( reso )
 end
 
 function tracker:getSettings( )
-  local oct, adv, env, modMode
+  local oct, adv, env, modMode, rowOverride
   local foundOpt = 0
   if ( tracker.cfg.storedSettings == 1 ) then
     local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
@@ -4157,6 +4161,7 @@ function tracker:getSettings( )
           adv = tonumber( string.sub(msg,6,7) )
           env = tonumber( string.sub(msg,8,9) )
           modMode = tonumber( string.sub(msg,10,10) )
+          rowOverride = tonumber( string.sub(msg,11,12) )
           foundOpt = 1
         else
           self:SAFE_DeleteText(self.take, i)
@@ -4164,11 +4169,14 @@ function tracker:getSettings( )
       end
     end
   end
-  
-  self.transpose  = oct     or self.transpose or tracker.cfg.transpose
-  self.advance    = adv     or self.advance   or tracker.cfg.advance
-  self.envShape   = env     or self.envShape  or tracker.cfg.envShape
-  self.modMode    = modMode or self.modMode   or tracker.cfg.modMode
+
+  self.transpose          = oct         or self.transpose       or tracker.cfg.transpose
+  self.advance            = adv         or self.advance         or tracker.cfg.advance
+  self.envShape           = env         or self.envShape        or tracker.cfg.envShape
+  self.modMode            = modMode     or self.modMode         or tracker.cfg.modMode
+  if ( self.cfg.overridePerPattern == 1 ) then
+    self.cfg.rowOverride    = rowOverride or self.cfg.rowOverride
+  end
   
   self:deleteNow()
 end
@@ -4184,7 +4192,7 @@ function tracker:storeSettings( )
       end
     end
     
-    reaper.MIDI_InsertTextSysexEvt(self.take, false, false, 0, 1, string.format( 'OPT%2d%2d%2d%d', self.transpose, self.advance, self.envShape, self.modMode ) )
+    reaper.MIDI_InsertTextSysexEvt(self.take, false, false, 0, 1, string.format( 'OPT%2d%2d%2d%d%2d', self.transpose, self.advance, self.envShape, self.modMode, self.cfg.rowOverride ) )
   end
 end
 
@@ -7104,6 +7112,7 @@ local function updateLoop()
     if ( ( ( gfx.mouse_cap & 4 ) > 0 ) and ( ( gfx.mouse_cap & 8 ) > 0 ) ) then
       if ( gfx.mouse_x < xloc[1] ) then
         tracker.cfg.rowOverride = 0
+        tracker:storeSettings()
       end
     end  
   end
@@ -7154,6 +7163,7 @@ local function updateLoop()
     if ( ( ( gfx.mouse_cap & 4 ) > 0 ) and ( ( gfx.mouse_cap & 8 ) > 0 ) ) then
       if ( gfx.mouse_x < xloc[1] ) then
         tracker.cfg.rowOverride = math.floor((gfx.mouse_y - yloc[1])/(yloc[2]-yloc[1]))
+        tracker:storeSettings()
       end
     end
     
