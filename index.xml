@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="757ac8ba61f0421229b3ff309e4c1d0b734624fe">
+<index version="1" name="Tracker tools" commit="bc606586ca248a48d62318dc0776e222c9abf80f">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -449,6 +449,11 @@ FF = the full length of the last tick.]]></changelog>
         <changelog><![CDATA[+ Added option to override row highlighting.]]></changelog>
         <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/757ac8ba61f0421229b3ff309e4c1d0b734624fe/Tracker/scales.lua</source>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/757ac8ba61f0421229b3ff309e4c1d0b734624fe/Tracker/tracker.lua</source>
+      </version>
+      <version name="1.87" author=": Joep Vanlier" time="2018-11-18T01:41:36Z">
+        <changelog><![CDATA[+ Added optional mode to store row highlighting override in pattern.]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/bc606586ca248a48d62318dc0776e222c9abf80f/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/bc606586ca248a48d62318dc0776e222c9abf80f/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
