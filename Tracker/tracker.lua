@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.87
+@version 1.88
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.88 (2018-12-05)
+   + Rename reaper-kb.
  * v1.87 (2018-11-18)
    + Added optional mode to store row highlighting override in pattern.
  * v1.86 (2018-11-17)
@@ -314,7 +316,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.87"
+tracker.name = "Hackey Trackey v1.88"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -1473,7 +1475,7 @@ end
 local function findCommandID(name)
   local commandID
   local lines = {}
-  local fn = reaper.GetResourcePath() .. '//' .. "Reaper-kb.ini"
+  local fn = reaper.GetResourcePath() .. "/reaper-kb.ini"
   for line in io.lines(fn) do
     lines[#lines + 1] = line
   end
