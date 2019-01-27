@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.88
+@version 1.89
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.89 (2019-01-27)
+   + Copy target channel when duplicating pattern.
  * v1.88 (2018-12-05)
    + Rename reaper-kb.
  * v1.87 (2018-11-18)
@@ -316,7 +318,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.88"
+tracker.name = "Hackey Trackey v1.89"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -6697,10 +6699,11 @@ function tracker:duplicate()
     reaper.SetEditCurPos2(0, mpos+mlen, false, false)
     reaper.Main_OnCommand(40058, 0) -- Paste
   else
+  
     -- Duplicate explicitly (this makes sure that we get a new automation pool for every pattern)
     local newItem = reaper.CreateNewMIDIItemInProj(self.track, mpos+mlen, mpos+2*mlen, false)
     local newTake = reaper.GetActiveTake(newItem)
-    
+ 
     -- Grab the notes and store them in channels
     local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
     local i
@@ -6763,7 +6766,9 @@ function tracker:duplicate()
     end    
   end
   
+  local targetChannel = tracker.outChannel;
   tracker:seekMIDI(1)
+  tracker.outChannel = targetChannel
   tracker:setOutChannel( tracker.outChannel )
 end
 
