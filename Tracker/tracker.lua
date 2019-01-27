@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.89
+@version 1.90
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,9 @@
 
 --[[
  * Changelog:
+ * v1.90 (2019-01-27)
+   + Add flag for custom parameter to kill hackey trackey (set the last one to 1)
+   + Make open patterns close HT.
  * v1.89 (2019-01-27)
    + Copy target channel when duplicating pattern.
  * v1.88 (2018-12-05)
@@ -318,7 +321,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.89"
+tracker.name = "Hackey Trackey v1.90"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -477,6 +480,7 @@ tracker.cfg.maxWidth = 50000
 tracker.cfg.maxHeight = 50000
 tracker.cfg.rowOverride = 0
 tracker.cfg.overridePerPattern = 1
+tracker.cfg.closeWhenSwitchingToHP = 1
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -500,6 +504,7 @@ tracker.binaryOptions = {
     { 'minimumSize', 'Force minimum size'},
     { 'noResize', 'Fix plugin size'},
     { 'overridePerPattern', 'Override per pattern'},
+    { 'closeWhenSwitchingToHP', 'Allow commands to close HT'},
     }
     
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB"}
@@ -879,7 +884,7 @@ function tracker:loadKeys( keySet )
     keys.shifthome      = { 0,    0,  1,    1752132965 }    -- Shift + Home
     keys.shiftend       = { 0,    0,  1,    6647396 }       -- Shift + End
     
-    keys.startPat       = { 0,    0,  0,    13,  "Hackey Sequencer/Sequencer/HackeyPatterns_exec.lua" }
+    keys.startPat       = { 0,    0,  0,    13,  "Hackey Sequencer/Sequencer/HackeyPatterns_exec.lua", 1 }
     
     help = {
       { 'Shift + Note', 'Advance column after entry' },
@@ -1035,7 +1040,7 @@ function tracker:loadKeys( keySet )
     keys.shifthome      = { 0,    0,  1,    1752132965 }    -- Shift + Home
     keys.shiftend       = { 0,    0,  1,    6647396 }       -- Shift + End
     
-    keys.startPat       = { 0,    0,  0,    13,  "Hackey Sequencer/Sequencer/HackeyPatterns_exec.lua" }
+    keys.startPat       = { 0,    0,  0,    13,  "Hackey Sequencer/Sequencer/HackeyPatterns_exec.lua", 1 }
     
     help = {
       { 'Shift + Note', 'Advance column after entry' },
@@ -7981,6 +7986,9 @@ local function updateLoop()
             reaper.Main_OnCommand(cmd, 0)
           else
             tracker.callScript( tracker, v[5] )
+            if ( v[6] and v[6] == 1 and tracker.cfg.closeWhenSwitchingToHP == 1 ) then
+              tracker:terminate()
+            end
           end
         end
       end
