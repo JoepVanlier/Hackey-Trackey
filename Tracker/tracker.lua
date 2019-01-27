@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.90
+@version 1.91
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.91 (2019-01-27)
+   + Added option to follow location in arrange.
  * v1.90 (2019-01-27)
    + Add flag for custom parameter to kill hackey trackey (set the last one to 1)
    + Make open patterns close HT.
@@ -321,7 +323,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.90"
+tracker.name = "Hackey Trackey v1.91"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -481,6 +483,7 @@ tracker.cfg.maxHeight = 50000
 tracker.cfg.rowOverride = 0
 tracker.cfg.overridePerPattern = 1
 tracker.cfg.closeWhenSwitchingToHP = 1
+tracker.cfg.followRow = 0
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -505,6 +508,7 @@ tracker.binaryOptions = {
     { 'noResize', 'Fix plugin size'},
     { 'overridePerPattern', 'Override per pattern'},
     { 'closeWhenSwitchingToHP', 'Allow commands to close HT'},
+    { 'followRow', 'Follow row in arrange view' },
     }
     
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB"}
@@ -4099,12 +4103,17 @@ function tracker:forceCursorInRange(forceY)
   if ( ( yTarget - fov.scrolly ) < 1 ) then
     self.fov.scrolly = yTarget - 1
   end
+  
+  if ( self.cfg.followRow == 1 ) then
+    local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+    reaper.SetEditCurPos2(0, mpos + (self.ypos-1) / self.rowPerSec, true, false)
+  end
     
   -- Is the cursor off fov?
   if ( ( self.xpos - fov.scrollx ) > self.fov.width ) then
     self.fov.scrollx = self.xpos - self.fov.width
     self:updatePlotLink()
-  end
+  end 
   if ( ( self.xpos - fov.scrollx ) < 1 ) then
     self.fov.scrollx = self.xpos - 1
     self:updatePlotLink()
