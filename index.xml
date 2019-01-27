@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="6122706f2b7e479735e9d05e3cd2b6c983168d84">
+<index version="1" name="Tracker tools" commit="091e3ff8fab50901c095ab08b755180cc20c48df">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -470,6 +470,11 @@ FF = the full length of the last tick.]]></changelog>
 + Make open patterns close HT.]]></changelog>
         <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/6122706f2b7e479735e9d05e3cd2b6c983168d84/Tracker/scales.lua</source>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/6122706f2b7e479735e9d05e3cd2b6c983168d84/Tracker/tracker.lua</source>
+      </version>
+      <version name="1.91" author=": Joep Vanlier" time="2019-01-27T22:51:26Z">
+        <changelog><![CDATA[+ Added option to follow location in arrange.]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/091e3ff8fab50901c095ab08b755180cc20c48df/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/091e3ff8fab50901c095ab08b755180cc20c48df/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
