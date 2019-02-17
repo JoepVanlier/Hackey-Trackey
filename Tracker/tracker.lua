@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.92
+@version 1.93
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.93 (2019-02-17)
+   + Prevent shift from modifying pitch keys that aren't letters (thanks hangnef).
  * v1.92 (2019-02-17)
    + Fix exception when MIDI item is removed by CTRL+Z.
  * v1.91 (2019-01-27)
@@ -325,7 +327,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.92"
+tracker.name = "Hackey Trackey v1.93"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -7035,7 +7037,7 @@ function tracker:noteEdit()
       reaper.MarkProjectDirty(0)
       local shift = gfx.mouse_cap & 8
       
-      if ( shift > 0 ) then
+      if ( shift > 0 and string.match(lastChar,"[^%w]") == nil ) then
         local oldAdvance = tracker.advance
         tracker.advance = 0
         tracker:createNote(lastChar+32)
