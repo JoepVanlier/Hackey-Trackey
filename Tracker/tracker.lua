@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.91
+@version 1.92
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.92 (2019-02-17)
+   + Fix exception when MIDI item is removed by CTRL+Z.
  * v1.91 (2019-01-27)
    + Added option to follow location in arrange.
  * v1.90 (2019-01-27)
@@ -323,7 +325,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.91"
+tracker.name = "Hackey Trackey v1.92"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -2007,13 +2009,32 @@ end
 -- Cursor and play position
 ------------------------------
 function tracker:normalizePositionToSelf(cpos)
-  local loc = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
-  local loc2 = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH") 
-  local row = ( cpos - loc ) * self.rowPerSec
-  row = row - self.fov.scrolly
-  local norm =  row / math.min(self.rows, self.fov.height)
+  local norm = 0;
+  if ( reaper.ValidatePtr2(0, self.item, "MediaItem*") ) then
+    local loc = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+    local loc2 = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH") 
+    local row = ( cpos - loc ) * self.rowPerSec
+    row = row - self.fov.scrolly
+    norm =  row / math.min(self.rows, self.fov.height)
+  else
+    self:tryPreviousItem();
+  end
   
   return norm
+end
+
+function tracker:tryPreviousItem()
+  if ( self.lastItem and #self.lastItem > 0 ) then
+    local tryItem = self.lastItem[#self.lastItem]
+    self.lastItem[#self.lastItem] = nil
+    if ( reaper.ValidatePtr2(0, tryItem, "MediaItem*") ) then
+      self:useItem(tryItem)
+    else
+      self:tryPreviousItem()
+    end
+  else
+    self:terminate()
+  end
 end
 
 function tracker:getLoopLocations()
@@ -4690,28 +4711,34 @@ end
 -- Merge problematic overlaps
 -----------------------------
 function tracker:mergeOverlaps()
-  -- Grab the notes and store them in channels
-  local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+  if ( not reaper.ValidatePtr2(0, self.take, "MediaItem_Take*") ) then
+    self:tryPreviousItem();
+  end
 
-  lastpitch = -1;
+  if ( reaper.ValidatePtr2(0, self.take, "MediaItem_Take*") ) then
+    -- Grab the notes and store them in channels
+    local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   
-  -- Fetch the notes
-  -- We only have potential mergers in channel 1 (the legato channel) and at most one.
-  -- Only adjacent notes will be merged.
-  local ch1notes = {}
-  for i=0,notecntOut do
-    local retval, selected, muted, startppqpos, endppqpos, chan, pitch, vel = reaper.MIDI_GetNote(self.take, i)
-    if ( retval == true ) then
-      if ( chan == 1 ) then
-        if ( lastpitch == pitch ) then
-          if ( startppqpos < lastend ) then
-            -- Kill this one
-            reaper.MIDI_SetNote(self.take, i-1, nil, nil, nil, endppqpos, nil, nil, nil, true)
-            tracker:SAFE_DeleteNote( self.take, i )
+    lastpitch = -1;
+    
+    -- Fetch the notes
+    -- We only have potential mergers in channel 1 (the legato channel) and at most one.
+    -- Only adjacent notes will be merged.
+    local ch1notes = {}
+    for i=0,notecntOut do
+      local retval, selected, muted, startppqpos, endppqpos, chan, pitch, vel = reaper.MIDI_GetNote(self.take, i)
+      if ( retval == true ) then
+        if ( chan == 1 ) then
+          if ( lastpitch == pitch ) then
+            if ( startppqpos < lastend ) then
+              -- Kill this one
+              reaper.MIDI_SetNote(self.take, i-1, nil, nil, nil, endppqpos, nil, nil, nil, true)
+              tracker:SAFE_DeleteNote( self.take, i )
+            end
           end
+          lastpitch = pitch;
+          lastend = endppqpos;
         end
-        lastpitch = pitch;
-        lastend = endppqpos;
       end
     end
   end
@@ -5364,7 +5391,7 @@ function tracker:update()
     self:getTakeEnvelopes()
     self:initializeGrid()
     self:updateEnvelopes()
-    self:updateNames()
+    self:updateNames()    
     
     -- Remove duplicates potentially caused by legato system
     self:clearDeleteLists()
@@ -5535,6 +5562,10 @@ end
 -- Selection management
 -----------------------------
 function tracker:setItem( item )
+  if not self.lastItem then
+    self.lastItem = {}
+  end
+  self.lastItem[#self.lastItem + 1] = self.item
   self.item = item
 end
 
@@ -8085,7 +8116,7 @@ local function updateLoop()
   tracker:insertNow()
   
   -- Remove duplicates potentially caused by legato system
-  if ( modified == 1 ) then
+  if ( modified == 1 and not tracker.terminated ) then
     tracker:clearDeleteLists()
     tracker:mergeOverlaps()
     tracker:deleteNow()
@@ -8115,6 +8146,7 @@ end
 
 function tracker:terminate()
   tracker:stopNote()
+  self.terminated = 1;
   
   local d, x, y, w, h = gfx.dock(nil,1,1,1,1)
   tracker:saveConfigFile("_wpos.cfg", {d=d, x=x, y=y, w=w, h=h, helpActive = tracker.helpActive, optionsActive = tracker.optionsActive})
