@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.93
+@version 1.94
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,11 @@
 
 --[[
  * Changelog:
+ * v1.94 (2019-02-17)
+   + Added check whether a new FX column was added and make it trigger an auto-refresh.
+   + Added support for using track colors.
+   + Added mechanism that allows fallback on nearest track when track is deleted.
+   + Added mechanism that attempts waiting a few cycles when item goes missing (for glueing from arrange).
  * v1.93 (2019-02-17)
    + Prevent shift from modifying pitch keys that aren't letters (thanks hangnef).
  * v1.92 (2019-02-17)
@@ -327,7 +332,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.93"
+tracker.name = "Hackey Trackey v1.94"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -488,6 +493,7 @@ tracker.cfg.rowOverride = 0
 tracker.cfg.overridePerPattern = 1
 tracker.cfg.closeWhenSwitchingToHP = 1
 tracker.cfg.followRow = 0
+tracker.cfg.useTrackColors = 0
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -513,6 +519,7 @@ tracker.binaryOptions = {
     { 'overridePerPattern', 'Override per pattern'},
     { 'closeWhenSwitchingToHP', 'Allow commands to close HT'},
     { 'followRow', 'Follow row in arrange view' },
+    { 'useTrackColors', 'Use track colors in headers' },
     }
     
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB"}
@@ -2015,6 +2022,7 @@ function tracker:normalizePositionToSelf(cpos)
   if ( reaper.ValidatePtr2(0, self.item, "MediaItem*") ) then
     local loc = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
     local loc2 = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH") 
+    self.itemStart = loc
     local row = ( cpos - loc ) * self.rowPerSec
     row = row - self.fov.scrolly
     norm =  row / math.min(self.rows, self.fov.height)
@@ -2025,18 +2033,34 @@ function tracker:normalizePositionToSelf(cpos)
   return norm
 end
 
+-- This function is called whenever our item goes missing. It has a few heuristics for
+-- finding a new item to focus on. First, see if anything is at the position our last 
+-- item just started at. If not, see if our buffer of previous items contains a usable 
+-- item (the case which triggers after CTRL+Z), then just find the nearest item on this 
+-- track. If even that fails, terminate HT.
 function tracker:tryPreviousItem()
-  if ( self.lastItem and #self.lastItem > 0 ) then
-    local tryItem = self.lastItem[#self.lastItem]
-    self.lastItem[#self.lastItem] = nil
-    if ( reaper.ValidatePtr2(0, tryItem, "MediaItem*") ) then
-      self:useItem(tryItem)
+  if ( reaper.ValidatePtr2(0, self.track, "MediaTrack*") ) then
+    if ( self.itemStart and self:findTakeStartingAtSongPos(self.itemStart) ) then
+      -- This was probably a replacement event.
+      return;
+    elseif ( self.lastItem and #self.lastItem > 0 ) then
+      local tryItem = self.lastItem[#self.lastItem]
+      self.lastItem[#self.lastItem] = nil
+      if ( reaper.ValidatePtr2(0, tryItem, "MediaItem*") ) then
+        self:useItem(tryItem)
+      else
+        self:tryPreviousItem()
+      end
+    elseif ( self.itemStart and self:findTakeClosestToSongPos(self.itemStart) ) then
+      -- We switched to a different MIDI item
+      return;
     else
-      self:tryPreviousItem()
+      self:terminate()
     end
+    self.itemStart = nil;
   else
-    self:terminate()
-  end
+    self:terminate();
+  end  
 end
 
 function tracker:getLoopLocations()
@@ -2442,6 +2466,16 @@ function tracker:printGrid()
   end
   gfx.rect( plotData.xstart + recsize, bottom + yheight[1] + 4, 3, 3 )
  
+  -- Color header with track color
+  if ( (self.cfg.useTrackColors == 1) and self.track ) then
+    --gfx.rect( xloc[x], yloc[1] - plotData.indicatorShiftY, 3, 3 )
+    local r, g, b = reaper.ColorFromNative( reaper.GetTrackColor(self.track) );
+    if ( math.max(r,math.max(g,b)) > 0 ) then
+      gfx.set(r/255,g/255,b/255,1);
+      gfx.rect(xloc[1] - itempadx, yloc[1] - plotData.indicatorShiftY, tw, yheight[1] + itempady)
+    end
+  end
+  
   -- Draw the headers so we don't get lost :)
   gfx.set(table.unpack(colors.headercolor))
   gfx.y = yloc[1] - plotData.indicatorShiftY
@@ -5288,6 +5322,25 @@ function tracker:remCol()
   end
 end
 
+-- Seek tracker view to take starting at song position
+function tracker:findTakeStartingAtSongPos(overridePosition)
+  local playPos = overridePosition or reaper.GetPlayPosition()
+  local nItems = reaper.GetTrackNumMediaItems(self.track)
+  for i=0,nItems-1 do
+    local item = reaper.GetTrackMediaItem(self.track, i)
+    local loc = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
+
+    if ( playPos == loc ) then
+      if ( self:tryTake(i) == true ) then
+        self:update()
+        self:resetShiftSelect()
+        return 1
+      end
+    end
+  end
+end
+
+-- Seek tracker view to take that contains song position
 function tracker:findTakeAtSongPos()
   local playPos = reaper.GetPlayPosition()
   local nItems = reaper.GetTrackNumMediaItems(self.track)
@@ -5567,8 +5620,9 @@ function tracker:setItem( item )
   if not self.lastItem then
     self.lastItem = {}
   end
-  self.lastItem[#self.lastItem + 1] = self.item
+  self.lastItem[#self.lastItem + 1] = self.item  
   self.item = item
+  self.itemStart = reaper.GetMediaItemInfo_Value( self.item, "D_POSITION" )
 end
 
 function tracker:setTake( take )
@@ -5583,6 +5637,7 @@ function tracker:setTake( take )
     
       self.take = take
       self.track = reaper.GetMediaItem_Track(self.item)
+      
       -- Store note hash (second arg = notes only)
       self.hash = reaper.MIDI_GetHash( self.take, false, "?" )
       self.newRowPerQn = self:getResolution()
@@ -5612,8 +5667,33 @@ end
 -----------------------------
 function tracker:checkChange()
   local take
+  
+  -- Did our take disappear?
+  -- This can have many causes.
   if not pcall( self.testGetTake ) then
-    return false
+
+    -- Defer to the next update cycle (we may be glueing an object right now)
+    -- When glueing from the arrange view, the item disappears and it takes a 
+    -- short while before the item is back.
+    if ( not self.itemMissingDelay or self.itemMissingDelay < 10 ) then
+      reaper.defer(self.updateLoop)
+      self.itemMissingDelay = (self.itemMissingDelay or 0) + 1
+      return false
+    else
+      -- Try to find a new take
+      self:tryPreviousItem()
+    
+      -- Try if we have a take now, if not, terminate...
+      if not pcall( self.testGetTake ) then
+        -- If it fails, we can't recover from the situation
+        gfx.quit()
+        return false
+      else
+        -- If we do, make sure we reset the flag in case we glue more in the future
+        self.itemMissingDelay = nil
+        return true
+      end
+    end
   end
   
   if ( self.cfg.followSelection == 1 ) then
@@ -5631,9 +5711,11 @@ function tracker:checkChange()
       -- Take did not change, but did the note data?
       local retval, currentHash = reaper.MIDI_GetHash( self.take, false, "?" )
       if ( retval == true ) then
-        if ( ( currentHash ~= self.hash ) or ( self.modified == 1 ) ) then
+        local envelopeCount = reaper.CountTrackEnvelopes(self.track)
+        if ( ( currentHash ~= self.hash ) or ( self.modified == 1 ) or ( self.lastEnvelopeCount ~= envelopeCount ) ) then
           self.hash = currentHash
           self:update()
+          self.lastEnvelopeCount = envelopeCount;
         end
       end
     end
@@ -7056,10 +7138,10 @@ end
 -----------------------------
 local function updateLoop()
   local tracker = tracker
+  tracker.updateLoop = updateLoop
 
   -- Check if the note data or take changed, if so, update the note contents
   if ( not tracker:checkChange() ) then
-    gfx.quit()
     return
   end
 
@@ -8282,7 +8364,7 @@ function tracker:updateNames()
   local maxsize = self.maxPatternNameSize
   if ( self.track ) then
     local retval, trackName = reaper.GetTrackName(self.track, stringbuffer)  
-    self.trackName = trackName
+    self.trackName = trackName    
   end
   if ( self.take ) then    
     self.midiName = reaper.GetTakeName(self.take)
