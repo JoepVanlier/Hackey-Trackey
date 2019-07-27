@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.97
+@version 1.98
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,11 @@
 
 --[[
  * Changelog:
+ * v1.98 (2019-07-27)
+   + Add config option for item color instead of track color (thanks hangnef!).
+   + Invert header color if luminance is too close to item color.
+   + Minor tweaks.
+   + Fix issue with overhanging text fields.
  * v1.97 (2019-07-27)
    + Start tracker on first note column properly.
  * v1.96 (2019-07-27)
@@ -339,7 +344,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.97"
+tracker.name = "Hackey Trackey v1.98"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -500,7 +505,7 @@ tracker.cfg.rowOverride = 0
 tracker.cfg.overridePerPattern = 1
 tracker.cfg.closeWhenSwitchingToHP = 1
 tracker.cfg.followRow = 0
-tracker.cfg.useTrackColors = 0
+tracker.cfg.useItemColors = 0
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -526,10 +531,10 @@ tracker.binaryOptions = {
     { 'overridePerPattern', 'Override per pattern'},
     { 'closeWhenSwitchingToHP', 'Allow commands to close HT'},
     { 'followRow', 'Follow row in arrange view' },
-    { 'useTrackColors', 'Use track colors in headers' },
+    { 'useItemColors', 'Use item colors in headers' },
     }
     
-tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB"}
+tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2"}
 
 function tracker:loadColors(colorScheme)
   -- If you come up with a cool alternative color scheme, let me know
@@ -539,6 +544,7 @@ function tracker:loadColors(colorScheme)
   self.colors.patternFont = nil
   self.colors.patternFontSize = nil
   local colorScheme = colorScheme or tracker.cfg.colorscheme
+
   if colorScheme == "default" then
   -- default
     self.colors.helpcolor    = {.8, .8, .9, 1}
@@ -743,6 +749,32 @@ function tracker:loadColors(colorScheme)
     self.colors.bar.fx2          = self.colors.normal.fx1   
     self.colors.bar.end1         = {136/255, 80/255, 178/255, 1.0}
     self.colors.bar.end2         = self.colors.bar.end1
+    
+    self.colors.patternFont         = "DejaVu Sans"
+    self.colors.patternFontSize     = 14
+    self.colors.customFontDisplace  = { 8, -3 }
+  elseif colorScheme == "buzz2" then
+    -- Buzz
+    self.colors.helpcolor        = {1/256*159, 1/256*147, 1/256*115, 1} -- the functions
+    self.colors.helpcolor2       = {1/256*48, 1/256*48, 1/256*33, 1} -- the keys
+    self.colors.selectcolor      = {37/256, 41/256, 54/256, 1} -- the cursor
+    self.colors.selecttext       = {207/256, 207/256, 222/256, 1} -- the cursor
+    self.colors.textcolor        = {1/256*48, 1/256*48, 1/256*33, 1} -- main pattern data
+    self.colors.headercolor      = {1/256*48, 1/256*48, 1/256*33, 1} -- column headers, statusbar etc
+    self.colors.inactive         = {1/256*178, 1/256*174, 1/256*161, 1} -- column headers, statusbar etc    
+    self.colors.linecolor        = {1/256*218, 1/256*214, 1/256*201, 0} -- normal row
+    self.colors.linecolor2       = {1/256*181, 1/256*189, 1/256*158, 0.4} -- beats (must not have 100% alpha as it's drawn over the cursor(!))
+    self.colors.linecolor3       = {1/256*159, 1/256*147, 1/256*115, 1} -- scroll indicating trangle thingy
+    self.colors.linecolor4       = {1, 1, 0, 1} -- Reaper edit cursor
+    self.colors.linecolor5       = {1/256*159, 1/256*147, 1/256*115, 0.4} -- Bar start
+    self.colors.loopcolor        = {1/256*48, 1/256*48, 1/256*33, 1} -- lines surrounding loop
+    self.colors.copypaste        = {1/256*247, 1/256*247, 1/256*244, 0.66}  -- the selection (should be lighter(not alpha blanded) but is drawn over the data)
+    self.colors.scrollbar1       = {1/256*48, 1/256*48, 1/256*33, 1} -- scrollbar handle & outline
+    self.colors.scrollbar2       = {1/256*218, 1/256*214, 1/256*201, 1} -- scrollbar background
+    self.colors.changed          = {1, 1, 0, 1} -- Uncommited resolution changes
+    self.colors.changed2         = {0, .5, 1, .5} -- Only listening
+    self.colors.windowbackground = {1/256*218, 1/256*214, 1/256*201, 1}
+    self.crtStrength             = 0
     
     self.colors.patternFont         = "DejaVu Sans"
     self.colors.patternFontSize     = 14
@@ -1945,6 +1977,12 @@ end
 -- Establish what is plotted
 ------------------------------
 function tracker:updatePlotLink()
+  if ( self.colors.patternFont and self.colors.patternFontSize ) then
+    gfx.setfont(1, self.colors.patternFont, self.colors.patternFontSize)
+  else
+    gfx.setfont(0)
+  end
+
   local plotData = {}
   local grid = tracker.grid
   local originx = grid.originx
@@ -1975,22 +2013,22 @@ function tracker:updatePlotLink()
   local description = {}
   local x = originx
 --  for j = fov.scrollx+1,math.min(#colsizes,fov.width+fov.scrollx) do
-  local q
+  local q = 0
   for j = fov.scrollx+1,#colsizes do
-    xpred = x + colsizes[j] * dx + padsizes[j] * dx
-    if ( xpred > fov.abswidth-dx ) then
-      break;
-    end
     xloc[#xloc + 1] = x
     xwidth[#xwidth + 1] = colsizes[j] * dx + padsizes[j]
     xlink[#xlink + 1] = idxfields[j]
     dlink[#dlink + 1] = datafields[j]
     glink[#glink + 1] = grouplink[j]
     header[#header + 1] = headers[j]
-    headerWidths[#headerWidths + 1] = .5*(headerW[j]-1)*tracker.grid.dx - .25*gfx.measurestr(headers[j])
+    headerWidths[#headerWidths + 1] = math.ceil( .5*headerW[j]*tracker.grid.dx - .5*gfx.measurestr(headers[j]) )
     description[#hints + 1] = hints[j]
     x = x + colsizes[j] * dx + padsizes[j] * dx
     q = j
+    
+    if ( (x-2*grid.itempadx) > (fov.abswidth-1.5*originx) ) then
+      break;
+    end
   end
   fov.width = q-fov.scrollx
   plotData.xloc = xloc
@@ -2300,6 +2338,7 @@ function tracker:printGrid()
   local itempady      = plotData.itempady
   local scrolly       = fov.scrolly
   local yshift        = plotData.yshift
+  local headerShift   = 0
   
   local customFont
   local extraFontShift  = 0
@@ -2310,6 +2349,7 @@ function tracker:printGrid()
     extraFontShift = customFont[2]
   else
     gfx.setfont(0)
+    headerShift = 4;
   end
   
   -- Render in relative FOV coordinates
@@ -2500,24 +2540,40 @@ function tracker:printGrid()
  end
  
   -- Color header with track color
-  if ( (self.cfg.useTrackColors == 1) and self.track ) then
-    --gfx.rect( xloc[x], yloc[1] - plotData.indicatorShiftY, 3, 3 )
-    local r, g, b = reaper.ColorFromNative( reaper.GetTrackColor(self.track) );
+  if ( (self.cfg.useItemColors == 1) and self.item and self.take ) then
+    local r, g, b = reaper.ColorFromNative( reaper.GetDisplayedMediaItemColor2(self.item, self.take))
     if ( math.max(r,math.max(g,b)) > 0 ) then
       gfx.set(r/255,g/255,b/255,1);
       gfx.rect(xloc[1] - itempadx, yloc[1] - plotData.indicatorShiftY, tw, yheight[1] + itempady)
     end
+    
+    local function lumi(r, g, b)
+      return .2126 * r + .7152 * g + .0722 * b;
+    end
+    
+    -- Check how far the luminance is from the header color
+    local lum = lumi(gfx.r, gfx.g, gfx.b);
+    local headlum = lumi(colors.headercolor[1], colors.headercolor[2], colors.headercolor[3]);
+     
+    -- Draw the headers so we don't get lost :)
+    if ( math.abs(lum - headlum) > .25 ) then
+      gfx.set(table.unpack(colors.headercolor))
+    else
+      gfx.set(1-colors.headercolor[1], 1-colors.headercolor[2], 1-colors.headercolor[3], colors.headercolor[4])
+    end
+  else
+    gfx.set(table.unpack(colors.headercolor))
   end
   
-  -- Draw the headers so we don't get lost :)
-  gfx.set(table.unpack(colors.headercolor))
-  gfx.y = yloc[1] - plotData.indicatorShiftY
+  gfx.y = yloc[1] - plotData.indicatorShiftY + headerShift
 
   local hws = plotData.headerW
   for x=1,#xloc do
-    gfx.x = xloc[x] + hws[x]
-
-    gfx.drawstr(headers[x])
+    local xc = xloc[x] + hws[x]
+    gfx.x = xc
+    if ( (xc + (hws[x+1] or 0)) < tw ) then
+      gfx.drawstr(headers[x])
+    end
   end
     
   ------------------------------
@@ -2833,11 +2889,11 @@ function tracker:printGrid()
       gfx.line(0, c+1, gfx.w,  c+1)
     end
     for c = 0,gfx.w,4 do
-      gfx.set(1.0, 0, 0, 0.02 * ( 1 + 0.1 * str ) )
+      gfx.set(1.0, 0, 0, 0.01 * str * ( 1 + 0.1 * str ) )
       gfx.line(c, 0, c, gfx.h)
     end
     for c = 3,gfx.w,4 do
-      gfx.set(0, 1.0, 0, 0.02 * ( 1 + 0.1 * str ) )
+      gfx.set(0, 1.0, 0, 0.01 * str * ( 1 + 0.1 * str ) )
       gfx.line(c, 0, c, gfx.h)
     end    
   end
@@ -8791,7 +8847,7 @@ local function Main()
     end
     
     tracker:generatePitches()
-    tracker:initColors()
+    tracker:initColors()    
     tracker:grabActiveItem()
     local wpos = tracker:loadConfig("_wpos.cfg", {}) 
 
@@ -8825,7 +8881,7 @@ local function Main()
     if ( tracker.cfg.initLoopSet == 1 ) then
       tracker:setLoopToPattern()
     end
-      
+   
     reaper.defer(updateLoop)
 
   --else
