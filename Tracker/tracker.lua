@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.98
+@version 1.99
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.99 (2019-07-27)
+   + Minor tweak header renderposition.
  * v1.98 (2019-07-27)
    + Add config option for item color instead of track color (thanks hangnef!).
    + Invert header color if luminance is too close to item color.
@@ -2021,7 +2023,7 @@ function tracker:updatePlotLink()
     dlink[#dlink + 1] = datafields[j]
     glink[#glink + 1] = grouplink[j]
     header[#header + 1] = headers[j]
-    headerWidths[#headerWidths + 1] = math.ceil( .5*headerW[j]*tracker.grid.dx - .5*gfx.measurestr(headers[j]) )
+    headerWidths[#headerWidths + 1] = math.ceil( .5*(headerW[j])*dx - .5*gfx.measurestr(headers[j].." ") )
     description[#hints + 1] = hints[j]
     x = x + colsizes[j] * dx + padsizes[j] * dx
     q = j
