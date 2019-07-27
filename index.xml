@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="e1f4c5f1faf4454bbe166242adbc6e9517881c91">
+<index version="1" name="Tracker tools" commit="870ff56be466deb9c808748b6ad88307a789027a">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -517,6 +517,11 @@ FF = the full length of the last tick.]]></changelog>
 + Fix issue with overhanging text fields.]]></changelog>
         <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/e1f4c5f1faf4454bbe166242adbc6e9517881c91/Tracker/scales.lua</source>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/e1f4c5f1faf4454bbe166242adbc6e9517881c91/Tracker/tracker.lua</source>
+      </version>
+      <version name="1.99" author=": Joep Vanlier" time="2019-07-27T13:59:24Z">
+        <changelog><![CDATA[+ Minor tweak header renderposition.]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/870ff56be466deb9c808748b6ad88307a789027a/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/870ff56be466deb9c808748b6ad88307a789027a/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
