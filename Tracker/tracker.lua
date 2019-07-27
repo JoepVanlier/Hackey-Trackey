@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.94
+@version 1.95
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,9 @@
 
 --[[
  * Changelog:
+ * v1.95 (2019-07-26)
+   + Add ability to start HT without MIDI item selected.
+   + Store whether HT is docked or not.
  * v1.94 (2019-02-17)
    + Added check whether a new FX column was added and make it trigger an auto-refresh.
    + Added support for using track colors.
@@ -332,7 +335,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.94"
+tracker.name = "Hackey Trackey v1.95"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -1997,7 +2000,7 @@ function tracker:updatePlotLink()
   local yloc = {}
   local yheight = {}
   local y = originy
-  for j = 0,math.min(self.rows-1, fov.height-1) do
+  for j = 0,math.max(1,math.min(self.rows-1, fov.height-1)) do
     yloc[#yloc + 1] = y
     yheight[#yheight + 1] = 0.7 * dy
     y = y + dy
@@ -2010,8 +2013,8 @@ function tracker:updatePlotLink()
   plotData.textSize = dx
   
   self.plotData = plotData
-  
-  self.scrollbar:setPos( plotData.xstart + plotData.totalwidth, yloc[1]-plotData.yshift, plotData.totalheight - plotData.itempady )
+   
+  self.scrollbar:setPos( plotData.xstart + plotData.totalwidth, yloc[1] - plotData.yshift, plotData.totalheight - plotData.itempady )
 end
 
 ------------------------------
@@ -2031,6 +2034,17 @@ function tracker:normalizePositionToSelf(cpos)
   end
   
   return norm
+end
+
+-- Used to be self:terminate();
+function tracker:lostItem()
+  tracker.track     = nil;
+  tracker.take      = nil;
+  tracker.rows      = 0;
+  tracker.max_xpos  = 8;
+  tracker.max_ypos  = 1;
+  tracker.renaming  = 0;
+  tracker.fov.scrolly = 0;
 end
 
 -- This function is called whenever our item goes missing. It has a few heuristics for
@@ -2055,11 +2069,11 @@ function tracker:tryPreviousItem()
       -- We switched to a different MIDI item
       return;
     else
-      self:terminate()
+      self:lostItem()
     end
     self.itemStart = nil;
   else
-    self:terminate();
+    self:lostItem()
   end  
 end
 
@@ -2295,101 +2309,103 @@ function tracker:printGrid()
     sig = self.cfg.rowOverride
   end
   
-  for y=1,#yloc do
-    local absy = y + scrolly
-    
-    
-    local c1, c2, tx
-    if ( (((absy-1)/sig) - math.floor((absy-1)/sig)) == 0 ) then
-      c1 = colors.linecolor5
-      c2 = colors.linecolor5s
-      tx = colors.textcolorbar or colors.textcolor
-      fc = colors.bar
-    elseif false and( (((absy-1)/(sig/4)) - math.floor((absy-1)/(sig/4))) == 0 ) then
-      c1 = colors.linecolor2
-      c2 = colors.linecolor2s
-      tx = colors.textcolorbar or colors.textcolor
-      fc = colors.bar      
-    else
-      c1 = colors.linecolor
-      c2 = colors.linecolors
-      tx = colors.textcolor
-      fc = colors.normal      
-    end
-    
-    gfx.y = yloc[y] + extraFontShift
-    gfx.x = xloc[1] - plotData.indicatorShiftX
-    
-    gfx.set(table.unpack(tx))    
-    if tracker.zeroindexed == 1 then
-      gfx.printf("%3d", absy-1)
-    else
-      gfx.printf("%3d", absy)
-    end
-    gfx.set(table.unpack(c1))
-    gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, yheight[1] + itempady)
-    gfx.set(table.unpack(c2))
-    gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, 1)
-    gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, 1, yheight[y])
-    gfx.rect(xloc[1] - itempadx + tw + 0, yloc[y] - yshift, 1, yheight[y] + itempady)    
-    
-    for x=1,#xloc do
-      local thisfield = dlink[x]
-      gfx.x = xloc[x]
-      gfx.set(table.unpack(fc[thisfield] or tx))
+  if ( self.take ) then
+    for y=1,#yloc do
+      local absy = y + scrolly
       
-      local cdata = data[thisfield][rows*xlink[x]+absy-1]
-      self:writeField( cdata, ellipsis, xloc[x], yloc[y], customFont )
+      local c1, c2, tx
+      if ( (((absy-1)/sig) - math.floor((absy-1)/sig)) == 0 ) then
+        c1 = colors.linecolor5
+        c2 = colors.linecolor5s
+        tx = colors.textcolorbar or colors.textcolor
+        fc = colors.bar
+      elseif false and( (((absy-1)/(sig/4)) - math.floor((absy-1)/(sig/4))) == 0 ) then
+        c1 = colors.linecolor2
+        c2 = colors.linecolor2s
+        tx = colors.textcolorbar or colors.textcolor
+        fc = colors.bar      
+      else
+        c1 = colors.linecolor
+        c2 = colors.linecolors
+        tx = colors.textcolor
+        fc = colors.normal      
+      end
+      
+      gfx.y = yloc[y] + extraFontShift
+      gfx.x = xloc[1] - plotData.indicatorShiftX
+      
+      gfx.set(table.unpack(tx))    
+      if tracker.zeroindexed == 1 then
+        gfx.printf("%3d", absy-1)
+      else
+        gfx.printf("%3d", absy)
+      end
+      gfx.set(table.unpack(c1))
+      gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, yheight[1] + itempady)
+      gfx.set(table.unpack(c2))
+      gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, 1)
+      gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, 1, yheight[y])
+      gfx.rect(xloc[1] - itempadx + tw + 0, yloc[y] - yshift, 1, yheight[y] + itempady)    
+      
+      for x=1,#xloc do
+        local thisfield = dlink[x]
+        gfx.x = xloc[x]
+        gfx.set(table.unpack(fc[thisfield] or tx))
+        
+        local cdata = data[thisfield][rows*xlink[x]+absy-1]
+        self:writeField( cdata, ellipsis, xloc[x], yloc[y], customFont )
+      end
     end
-  end
-  
-  if ( xloc[relx] and yloc[rely] ) then
-    local absy = rely + scrolly 
-    gfx.set(table.unpack(colors.selectcolor))
-    gfx.rect(xloc[relx]-1, yloc[rely]-plotData.yshift, xwidth[relx], yheight[rely])
     
-    gfx.x = xloc[relx]
-    gfx.y = yloc[rely]
-    gfx.set(table.unpack(colors.selecttext or colors.textcolor))
-
-    local cdata = data[dlink[relx]][rows*xlink[relx]+absy-1]
-    self:writeField( cdata, ellipsis, xloc[relx], yloc[rely], customFont )
-  end 
+    if ( xloc[relx] and yloc[rely] ) then
+      local absy = rely + scrolly 
+      gfx.set(table.unpack(colors.selectcolor))
+      gfx.rect(xloc[relx]-1, yloc[rely]-plotData.yshift, xwidth[relx], yheight[rely])
+      
+      gfx.x = xloc[relx]
+      gfx.y = yloc[rely]
+      gfx.set(table.unpack(colors.selecttext or colors.textcolor))
   
-  -- Pattern Length Indicator
-  local xl, yl, xm, ym = self:getSizeIndicatorLocation()
-  gfx.y = yl + extraFontShift
-  gfx.x = xl
-  if ( self.renaming == 3 ) then
-    gfx.set(table.unpack(colors.changed))
-    gfx.printf("%3s", tracker.newLength)
-  else
-    gfx.set(table.unpack(colors.textcolor))
-    gfx.printf("%3d", self.max_ypos)
-  end 
+      local cdata = data[dlink[relx]][rows*xlink[relx]+absy-1]
+      self:writeField( cdata, ellipsis, xloc[relx], yloc[rely], customFont )
+    end 
   
-  gfx.y = yl + extraFontShift
-  gfx.x = xl
-  if ( self.renaming ~= 3 ) then
-    gfx.set(table.unpack(colors.linecolor3s))
-    gfx.printf("%3d", self.max_ypos)
+    -- Pattern Length Indicator
+    local xl, yl, xm, ym = self:getSizeIndicatorLocation()
+    gfx.y = yl + extraFontShift
+    gfx.x = xl
+    if ( self.renaming == 3 ) then
+      gfx.set(table.unpack(colors.changed))
+      gfx.printf("%3s", tracker.newLength)
+    else
+      gfx.set(table.unpack(colors.textcolor))
+      gfx.printf("%3d", self.max_ypos)
+    end 
+    
+    gfx.y = yl + extraFontShift
+    gfx.x = xl
+    if ( self.renaming ~= 3 ) then
+      gfx.set(table.unpack(colors.linecolor3s))
+      gfx.printf("%3d", self.max_ypos)
+    end
+    
+    gfx.line(xl, yl-2, xm,  yl-2)
+    gfx.line(xl, ym,   xm,  ym)
+    gfx.line(xm, ym,   xm,  yl-2)
   end
   
-  gfx.line(xl, yl-2, xm,  yl-2)
-  gfx.line(xl, ym,   xm,  ym)
-  gfx.line(xm, ym,   xm,  yl-2)
-
   ------------------------------
   -- Field descriptions
   ------------------------------
---  gfx.setfont(0)
   local bottom = self:getBottom()
   
   gfx.x = plotData.xstart
   gfx.y = bottom + extraFontShift
   gfx.set(table.unpack(colors.headercolor))
   if ( tracker.renaming ~= 2 and tracker.renaming ~= 4 ) then
-    gfx.printf("%s", description[tracker.xpos])
+    if ( self.take ) then
+      gfx.printf("%s", description[tracker.xpos])
+    end
   else
       gfx.set(table.unpack(colors.changed))
       if ( self.newCol:len() > 0 ) then
@@ -2411,7 +2427,7 @@ function tracker:printGrid()
     end
     gfx.x = plotData.xstart + tw - gfx.measurestr(patternName)
     gfx.printf(patternName)
-  elseif ( self.toosmall == 0 ) then  
+  elseif ( self.toosmall == 0 and self.take ) then
     patternName = self.patternName
     gfx.x = plotData.xstart + tw - gfx.measurestr(patternName)
     gfx.printf(patternName)
@@ -2422,49 +2438,56 @@ function tracker:printGrid()
   local strs, locs, yh = tracker:infoString()
   gfx.y = yh + extraFontShift
   
-  for i=1,#locs-1 do
-    gfx.x = locs[i]
-    gfx.printf(strs[i])
+  if ( self.take ) then
+    for i=1,#locs-1 do
+      gfx.x = locs[i]
+      gfx.printf(strs[i])
+    end  
+
+    if ( tracker.newRowPerQn ~= tracker.rowPerQn ) then
+      gfx.set(table.unpack(colors.changed))
+    else
+      gfx.set(table.unpack(colors.headercolor))
+    end
+    gfx.x = locs[#locs]
+    gfx.y = bottom + yheight[1] + extraFontShift
+    gfx.printf(strs[#locs])
   end
-  
-  if ( tracker.newRowPerQn ~= tracker.rowPerQn ) then
-    gfx.set(table.unpack(colors.changed))
-  else
-    gfx.set(table.unpack(colors.headercolor))
-  end
-  gfx.x = locs[#locs]
-  gfx.y = bottom + yheight[1] + extraFontShift
-  gfx.printf(strs[#locs])
 
   gfx.set(table.unpack(colors.headercolor))
 
   gfx.x = plotData.xstart
-  if ( self.armed == 1) then
-    if ( self.onlyListen == 1 ) then
-      gfx.set(table.unpack(colors.changed2))    
+  if ( self.take ) then
+    if ( self.armed == 1) then
+      if ( self.onlyListen == 1 ) then
+        gfx.set(table.unpack(colors.changed2))    
+      else
+        gfx.set(table.unpack(colors.changed))
+      end
+      gfx.printf("[Rec]")
+      gfx.set(table.unpack(colors.headercolor))
     else
-      gfx.set(table.unpack(colors.changed))
+      gfx.printf("[Rec]")
     end
-    gfx.printf("[Rec]")
-    gfx.set(table.unpack(colors.headercolor))
-  else
-    gfx.printf("[Rec]")
-  end
   
-  local recsize = gfx.measurestr( "[Rec]") + 2
-  if ( self.cfg.followSong == 1 ) then
-    gfx.set(table.unpack(colors.headercolor))
-  else
-    gfx.set(table.unpack(colors.inactive))  
-  end
-  gfx.rect( plotData.xstart + recsize, bottom + yheight[1], 3, 3 )
-  
-  if ( self.cfg.followSelection == 1 ) then
-    gfx.set(table.unpack(colors.headercolor))
-  else    
-    gfx.set(table.unpack(colors.inactive))  
-  end
-  gfx.rect( plotData.xstart + recsize, bottom + yheight[1] + 4, 3, 3 )
+    local recsize = gfx.measurestr( "[Rec]") + 2
+    if ( self.cfg.followSong == 1 ) then
+      gfx.set(table.unpack(colors.headercolor))
+    else
+      gfx.set(table.unpack(colors.inactive))  
+    end
+    gfx.rect( plotData.xstart + recsize, bottom + yheight[1], 3, 3 )
+    
+    if ( self.cfg.followSelection == 1 ) then
+      gfx.set(table.unpack(colors.headercolor))
+    else    
+      gfx.set(table.unpack(colors.inactive))  
+    end
+    gfx.rect( plotData.xstart + recsize, bottom + yheight[1] + 4, 3, 3 )
+ else
+    gfx.y = yloc[1];
+    gfx.printf( "No MIDI item selected..." );
+ end
  
   -- Color header with track color
   if ( (self.cfg.useTrackColors == 1) and self.track ) then
@@ -3169,16 +3192,18 @@ function tracker:addNotePpq(startppqpos, endppqpos, chan, pitch, velocity)
 end
 
 function tracker:addNote(startrow, endrow, chan, pitch, velocity)
-  local startppqpos = self:rowToPpq(startrow)
-  local endppqpos   = self:rowToPpq(endrow)
-
-  if ( chan == 1 ) then
-    if ( self.legato[endrow] > -1 ) then
-      endppqpos = endppqpos + tracker.magicOverlap
+  if ( self.take ) then
+    local startppqpos = self:rowToPpq(startrow)
+    local endppqpos   = self:rowToPpq(endrow)
+  
+    if ( chan == 1 ) then
+      if ( self.legato[endrow] > -1 ) then
+        endppqpos = endppqpos + tracker.magicOverlap
+      end
     end
+  
+    reaper.MIDI_InsertNote( self.take, false, false, startppqpos, endppqpos, chan, pitch, velocity, true )
   end
-
-  reaper.MIDI_InsertNote( self.take, false, false, startppqpos, endppqpos, chan, pitch, velocity, true )
 end
 
 ----------------------------
@@ -4021,9 +4046,7 @@ function tracker:shiftNote(chan, row, shift)
     -- Is it the last note with an open end, then stay that way.
     -- There is nothingness outside our pattern! :)
     if ( endppqpos > self:rowToPpq( self.rows-1 ) ) then
---      if ( shift < 0 ) then
-        newEnd = endppqpos
---      end
+      newEnd = endppqpos
     else
       -- Is it a legato note?
       if ( chan == 1 ) then     
@@ -4167,8 +4190,8 @@ function tracker:forceCursorInRange(forceY)
   end
     
   -- Is the cursor off fov?
-  if ( ( self.xpos - fov.scrollx ) > self.fov.width ) then
-    self.fov.scrollx = self.xpos - self.fov.width
+  if ( ( self.xpos - fov.scrollx ) > fov.width ) then
+    self.fov.scrollx = self.xpos - fov.width
     self:updatePlotLink()
   end 
   if ( ( self.xpos - fov.scrollx ) < 1 ) then
@@ -4226,20 +4249,22 @@ function tracker:getSettings( )
   local oct, adv, env, modMode, rowOverride
   local foundOpt = 0
   if ( tracker.cfg.storedSettings == 1 ) then
-    local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
-    for i=0,textsyxevtcntOut do
-      local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
-      
-      if ( string.sub(msg,1,3) == 'OPT' ) then
-        if ( foundOpt == 0 ) then
-          oct = tonumber( string.sub(msg,4,5) )
-          adv = tonumber( string.sub(msg,6,7) )
-          env = tonumber( string.sub(msg,8,9) )
-          modMode = tonumber( string.sub(msg,10,10) )
-          rowOverride = tonumber( string.sub(msg,11,12) )
-          foundOpt = 1
-        else
-          self:SAFE_DeleteText(self.take, i)
+    if ( self.take ) then   
+      local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+      for i=0,textsyxevtcntOut do
+        local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
+        
+        if ( string.sub(msg,1,3) == 'OPT' ) then
+          if ( foundOpt == 0 ) then
+            oct = tonumber( string.sub(msg,4,5) )
+            adv = tonumber( string.sub(msg,6,7) )
+            env = tonumber( string.sub(msg,8,9) )
+            modMode = tonumber( string.sub(msg,10,10) )
+            rowOverride = tonumber( string.sub(msg,11,12) )
+            foundOpt = 1
+          else
+            self:SAFE_DeleteText(self.take, i)
+          end
         end
       end
     end
@@ -4336,26 +4361,26 @@ end
 -- returns true if something changed
 ------------------------------
 function tracker:getRowInfo()
-
+  if ( self.take and self.item ) then
     self.rowPerQn = self:getResolution()
 
     -- How many rows do we need?
-    local ppqPerQn = reaper.MIDI_GetPPQPosFromProjQN(self.take, 1) - reaper.MIDI_GetPPQPosFromProjQN(self.take, 0)
-    local ppqPerSec = 1.0 / ( reaper.MIDI_GetProjTimeFromPPQPos(self.take, 1) - reaper.MIDI_GetProjTimeFromPPQPos(self.take, 0) )
+    local ppqPerQn    = reaper.MIDI_GetPPQPosFromProjQN(self.take, 1) - reaper.MIDI_GetPPQPosFromProjQN(self.take, 0)
+    local ppqPerSec   = 1.0 / ( reaper.MIDI_GetProjTimeFromPPQPos(self.take, 1) - reaper.MIDI_GetProjTimeFromPPQPos(self.take, 0) )
     local mediaLength = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
     
-    self.length   = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
-    self.position = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+    self.length       = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
+    self.position     = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
     
-    self.maxppq   = ppqPerSec * self.length
-    self.minppq   = ppqPerSec * self.position
+    self.maxppq       = ppqPerSec * self.length
+    self.minppq       = ppqPerSec * self.position
     
-    self.qnCount = mediaLength * ppqPerSec / ppqPerQn
-    self.rowPerPpq = self.rowPerQn / ppqPerQn
-    self.ppqPerRow = 1 / self.rowPerPpq
-    self.rowPerSec = ppqPerSec * self.rowPerQn / ppqPerQn
-    self.ppqPerSec = ppqPerSec
-    local rows = math.floor( self.rowPerQn * self.qnCount + 0.5 )
+    local qnCount      = mediaLength * ppqPerSec / ppqPerQn
+    self.rowPerPpq    = self.rowPerQn / ppqPerQn
+    self.ppqPerRow    = 1 / self.rowPerPpq
+    self.rowPerSec    = ppqPerSec * self.rowPerQn / ppqPerQn
+    self.ppqPerSec    = ppqPerSec
+    local rows        = math.floor( self.rowPerQn * qnCount + 0.5 )
     
     -- Do not allow zero rows in the tracker!
     if ( rows < self.eps ) then
@@ -4371,6 +4396,16 @@ function tracker:getRowInfo()
     else
       return false
     end
+  else
+    self.length     = 0;
+    self.position   = 0;
+    self.maxppq     = 0;
+    self.minppq     = 0;
+    self.rowPerPpq  = 0;
+    self.ppqPerRow  = 0;
+    self.rowPerSec  = 0;
+    self.ppqPerSec  = 0;
+  end
 end
 
 ------------------------------
@@ -5167,42 +5202,44 @@ function tracker:getTakeEnvelopes()
 
   self.fx = {}
   if ( self.trackFX == 1 ) then
-    local autoidxs = {}
-    local envelopeidxs = {}
-    local signed = {}
-    local names = {}
-  
-    local cnt = reaper.CountTrackEnvelopes(self.track)
-    local autoidx = nil
-    for i = 0,cnt-1 do;
-      local envelope = reaper.GetTrackEnvelope(self.track, i)
-      local retval, name = reaper.GetEnvelopeName(envelope, '')
-      
-      autoidx = self:findMyAutomation( envelope )
-      if ( not autoidx ) then
-        autoidx = reaper.InsertAutomationItem(envelope, -1, self.position, self.length)
+    if ( self.track ) then
+      local autoidxs = {}
+      local envelopeidxs = {}
+      local signed = {}
+      local names = {}
+    
+      local cnt = reaper.CountTrackEnvelopes(self.track)
+      local autoidx = nil
+      for i = 0,cnt-1 do;
+        local envelope = reaper.GetTrackEnvelope(self.track, i)
+        local retval, name = reaper.GetEnvelopeName(envelope, '')
         
-        -- Consolidate all automation curves into this one and clean up
-      end     
-      
-      -- Check the scaling of the envelope
-      --number reaper.ScaleFromEnvelopeMode(integer scaling_mode, number val)
-      local retval, str = reaper.GetEnvelopeName(envelope, ' ')
-      if ( tracker.signed[str] ) then
-        signed[#signed + 1] = 1
-      else
-        signed[#signed + 1] = 0
+        autoidx = self:findMyAutomation( envelope )
+        if ( not autoidx ) then
+          autoidx = reaper.InsertAutomationItem(envelope, -1, self.position, self.length)
+          
+          -- Consolidate all automation curves into this one and clean up
+        end     
+        
+        -- Check the scaling of the envelope
+        --number reaper.ScaleFromEnvelopeMode(integer scaling_mode, number val)
+        local retval, str = reaper.GetEnvelopeName(envelope, ' ')
+        if ( tracker.signed[str] ) then
+          signed[#signed + 1] = 1
+        else
+          signed[#signed + 1] = 0
+        end
+        
+        envelopeidxs[#envelopeidxs + 1] = envelope
+        autoidxs[#autoidxs + 1] = autoidx
+        names[#names + 1] = name
       end
       
-      envelopeidxs[#envelopeidxs + 1] = envelope
-      autoidxs[#autoidxs + 1] = autoidx
-      names[#names + 1] = name
+      self.fx.envelopeidx = envelopeidxs
+      self.fx.autoidx     = autoidxs
+      self.fx.names       = names
+      self.fx.signed      = signed
     end
-    
-    self.fx.envelopeidx = envelopeidxs
-    self.fx.autoidx     = autoidxs
-    self.fx.names       = names
-    self.fx.signed      = signed
   end 
 end
 
@@ -5436,24 +5473,25 @@ end
 function tracker:update()
   local reaper = reaper
   
-  if ( self.take and self.item ) then 
-    if ( self.debug == 1 ) then
-      print( "Updating the grid ..." )
-    end
+  if ( self.debug == 1 ) then
+    print( "Updating the grid ..." )
+  end
 
-    self:getRowInfo()
-    self:getSettings()
-    self:getTakeEnvelopes()
-    self:initializeGrid()
-    self:updateEnvelopes()
-    self:updateNames()    
+  self:getRowInfo()
+  self:getSettings()
+  self:getTakeEnvelopes()
+  self:initializeGrid()
+  self:updateEnvelopes()
+  self:updateNames()    
+    
+  if ( self.take and self.item ) then
     
     -- Remove duplicates potentially caused by legato system
     self:clearDeleteLists()
     self:mergeOverlaps()
     self:deleteNow()
     reaper.MIDI_Sort(self.take)
-    
+
     -- Grab the notes and store them in channels
     local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
     local i
@@ -5668,6 +5706,12 @@ end
 function tracker:checkChange()
   local take
   
+  -- If we have no take active at the moment, any take is better, so switch even when
+  -- follow selection is off.
+  if ( self.cfg.followSelection == 1 or not self.take ) then
+    tracker:grabActiveItem()
+  end
+  
   -- Did our take disappear?
   -- This can have many causes.
   if not pcall( self.testGetTake ) then
@@ -5686,7 +5730,6 @@ function tracker:checkChange()
       -- Try if we have a take now, if not, terminate...
       if not pcall( self.testGetTake ) then
         -- If it fails, we can't recover from the situation
-        gfx.quit()
         return false
       else
         -- If we do, make sure we reset the flag in case we glue more in the future
@@ -5694,11 +5737,7 @@ function tracker:checkChange()
         return true
       end
     end
-  end
-  
-  if ( self.cfg.followSelection == 1 ) then
-    tracker:grabActiveItem()
-  end
+  end  
   
   take = reaper.GetActiveTake(self.item)
   self.track = reaper.GetMediaItem_Track(self.item)
@@ -7115,22 +7154,24 @@ function tracker:gotoCurrentPosition()
 end
 
 function tracker:noteEdit()
-      reaper.Undo_OnStateChange2(0, "Tracker: Add note / Edit volume")
-      reaper.MarkProjectDirty(0)
-      local shift = gfx.mouse_cap & 8
-      
-      if ( shift > 0 and string.match(lastChar,"[^%w]") == nil ) then
-        local oldAdvance = tracker.advance
-        tracker.advance = 0
-        tracker:createNote(lastChar+32)
-        tracker:tab()
-        tracker.advance = oldAdvance
-      else
-        tracker:createNote(lastChar)
-      end
-      
-      tracker:deleteNow()
-      reaper.MIDI_Sort(tracker.take)
+  if ( self.take ) then
+    reaper.Undo_OnStateChange2(0, "Tracker: Add note / Edit volume")
+    reaper.MarkProjectDirty(0)
+    local shift = gfx.mouse_cap & 8
+        
+    if ( shift > 0 and string.match(lastChar,"[^%w]") == nil ) then
+      local oldAdvance = tracker.advance
+      tracker.advance = 0
+      tracker:createNote(lastChar+32)
+      tracker:tab()
+      tracker.advance = oldAdvance
+    else
+      tracker:createNote(lastChar)
+    end
+        
+    tracker:deleteNow()
+    reaper.MIDI_Sort(tracker.take)
+  end
 end
 
 ------------------------------
@@ -7142,7 +7183,7 @@ local function updateLoop()
 
   -- Check if the note data or take changed, if so, update the note contents
   if ( not tracker:checkChange() ) then
-    return
+    tracker:lostItem();
   end
 
   -- Auto resize y
@@ -7156,7 +7197,7 @@ local function updateLoop()
       tracker:update()
     end
   end
-
+  
   if ( tracker.cfg.colResize == 1 ) then
     tracker:autoResize()
     tracker:computeDims(tracker.rows)
@@ -7169,14 +7210,14 @@ local function updateLoop()
 
   tracker:clearDeleteLists()
   tracker:clearInsertLists()
-
+  
   tracker:resizeWindow()
   tracker:checkArmed()
-
+  
   -- Maintain the loop until the window is closed or escape is pressed
   prevChar = lastChar
   lastChar = gfx.getchar()
-  
+    
   -- Check if the length changed, if so, update the time data
   if ( tracker:getRowInfo() == true ) then
     tracker:update()
@@ -7275,23 +7316,25 @@ local function updateLoop()
     end
     
     -- Mouse in range of bottom fields?
-    local strs, locs, yh = tracker:infoString()
-    if ( gfx.mouse_y > yh and gfx.mouse_y < yh + 10 and gfx.mouse_x < xloc[#xloc] ) then
-      -- Calculate the positions
+    if ( tracker.take ) then
       local strs, locs, yh = tracker:infoString()
-      if ( gfx.mouse_x > locs[1] ) then
-        setCapMode(1, tracker.outChannel, 0, 16) -- Out
-      elseif ( gfx.mouse_x > locs[2] ) then
-        setCapMode(2, tracker.envShape, 0, #tracker.envShapes ) -- Env     
-      elseif ( gfx.mouse_x > locs[3] ) then
-        setCapMode(3, tracker.advance, -99, 99) -- Adv   
-      elseif ( gfx.mouse_x > locs[4] ) then
-        setCapMode(4, tracker.transpose, tracker.minoct, tracker.maxoct) -- Oct             
-      elseif ( gfx.mouse_x > locs[5] ) then
-        setCapMode(5, tracker.newRowPerQn, 1, tracker.maxRowPerQn) -- Res
-      elseif ( gfx.mouse_x < plotData.xstart + gfx.measurestr("[Rec]") ) and ( gfx.mouse_x > plotData.xstart ) then
-        if ( tracker.lastleft ~= 1 ) then
-          tracker:toggleRec()
+      if ( gfx.mouse_y > yh and gfx.mouse_y < yh + 10 and gfx.mouse_x < xloc[#xloc] ) then
+        -- Calculate the positions
+        local strs, locs, yh = tracker:infoString()
+        if ( gfx.mouse_x > locs[1] ) then
+          setCapMode(1, tracker.outChannel, 0, 16) -- Out
+        elseif ( gfx.mouse_x > locs[2] ) then
+          setCapMode(2, tracker.envShape, 0, #tracker.envShapes ) -- Env     
+        elseif ( gfx.mouse_x > locs[3] ) then
+          setCapMode(3, tracker.advance, -99, 99) -- Adv   
+        elseif ( gfx.mouse_x > locs[4] ) then
+          setCapMode(4, tracker.transpose, tracker.minoct, tracker.maxoct) -- Oct             
+        elseif ( gfx.mouse_x > locs[5] ) then
+          setCapMode(5, tracker.newRowPerQn, 1, tracker.maxRowPerQn) -- Res
+        elseif ( gfx.mouse_x < plotData.xstart + gfx.measurestr("[Rec]") ) and ( gfx.mouse_x > plotData.xstart ) then
+          if ( tracker.lastleft ~= 1 ) then
+            tracker:toggleRec()
+          end
         end
       end
     end
@@ -7304,14 +7347,16 @@ local function updateLoop()
     end
     
     -- Mouse in range of pattern data?
-    for i=1,#xloc-1 do
-      if ( ( gfx.mouse_x > xloc[i] ) and ( gfx.mouse_x < xloc[i+1] ) ) then
-        Inew = i
+    if ( tracker.take ) then
+      for i=1,#xloc-1 do
+        if ( ( gfx.mouse_x > xloc[i] ) and ( gfx.mouse_x < xloc[i+1] ) ) then
+          Inew = i
+        end
       end
-    end
-    for i=1,#yloc-1 do
-      if ( ( gfx.mouse_y > yloc[i] ) and ( gfx.mouse_y < yloc[i+1] ) ) then
-        Jnew = i
+      for i=1,#yloc-1 do
+        if ( ( gfx.mouse_y > yloc[i] ) and ( gfx.mouse_y < yloc[i+1] ) ) then
+          Jnew = i
+        end
       end
     end
     
@@ -7525,66 +7570,66 @@ local function updateLoop()
   
   local modified = 0
   if ( tracker.renaming == 0 ) then
-    if inputs('left') then
+    if inputs('left') and tracker.take then
       tracker.xpos = tracker.xpos - 1
       tracker:resetShiftSelect()
-    elseif inputs('right') then
+    elseif inputs('right') and tracker.take then
       tracker.xpos = tracker.xpos + 1
       tracker:resetShiftSelect()
-    elseif inputs('up') then
+    elseif inputs('up') and tracker.take then
       tracker.ypos = tracker.ypos - 1
       tracker:resetShiftSelect()
-    elseif inputs('down') then
+    elseif inputs('down') and tracker.take then
       tracker.ypos = tracker.ypos + 1
       tracker:resetShiftSelect()
-    elseif inputs('shiftleft') then
+    elseif inputs('shiftleft') and tracker.take then
       tracker:dragBlock()
       tracker.xpos = tracker.xpos - 1
       tracker:forceCursorInRange()
       tracker:dragBlock()
-    elseif inputs('shiftright') then
+    elseif inputs('shiftright') and tracker.take then
       tracker:dragBlock()
       tracker.xpos = tracker.xpos + 1
       tracker:forceCursorInRange()
       tracker:dragBlock()
-    elseif inputs('shiftup') then
+    elseif inputs('shiftup') and tracker.take then
       tracker:dragBlock()
       tracker.ypos = tracker.ypos - 1
       tracker:forceCursorInRange()
       tracker:dragBlock()
-    elseif inputs('shiftdown') then
+    elseif inputs('shiftdown') and tracker.take then
       tracker:dragBlock()
       tracker.ypos = tracker.ypos + 1
       tracker:forceCursorInRange()
       tracker:dragBlock()
-    elseif inputs('shiftpgdn') then
+    elseif inputs('shiftpgdn') and tracker.take then
       tracker:dragBlock()
       tracker.ypos = tracker.ypos + tracker.cfg.page
       tracker:forceCursorInRange()
       tracker:dragBlock()
-    elseif inputs('shiftpgup') then
+    elseif inputs('shiftpgup') and tracker.take then
       tracker:dragBlock()
       tracker.ypos = tracker.ypos - tracker.cfg.page
       tracker:forceCursorInRange()
       tracker:dragBlock()
-    elseif inputs('shifthome') then
+    elseif inputs('shifthome') and tracker.take then
       tracker:dragBlock()
       tracker.ypos = 0
       tracker:forceCursorInRange()
       tracker:dragBlock()
-    elseif inputs('shiftend') then
+    elseif inputs('shiftend') and tracker.take then
       tracker:dragBlock()
       tracker.ypos = tracker.rows
       tracker:forceCursorInRange()
       tracker:dragBlock()      
-    elseif inputs('off') then
+    elseif inputs('off') and tracker.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Place OFF")
       reaper.MarkProjectDirty(0)    
       tracker:placeOff()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('off2') then
+    elseif inputs('off2') and tracker.take then
       local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
       
       if ( datafields[tracker.xpos] == "text" ) then
@@ -7597,20 +7642,20 @@ local function updateLoop()
       else
         tracker:noteEdit()
       end
-    elseif ( inputs('delete') ) then
+    elseif ( inputs('delete') and tracker.take ) then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Delete (Del)")
       tracker:delete()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
-    elseif ( inputs('delete2') ) then
+    elseif ( inputs('delete2') and tracker.take ) then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Delete (Del)")
       tracker:delete()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
       tracker.ypos = tracker.ypos + tracker.advance
-    elseif ( inputs('deleteRow') ) then
+    elseif ( inputs('deleteRow') and tracker.take ) then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Delete row (Del)")
       local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
@@ -7619,7 +7664,7 @@ local function updateLoop()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
       tracker.ypos = tracker.ypos + tracker.advance
-    elseif ( inputs('insertRow') ) then
+    elseif ( inputs('insertRow') and tracker.take ) then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Insert Row")
       local cpS = tracker:saveClipboard()
@@ -7638,7 +7683,7 @@ local function updateLoop()
       tracker:loadClipboard(cpS)
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
-    elseif ( inputs('removeRow') ) then
+    elseif ( inputs('removeRow') and tracker.take ) then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Remove Row")
       local cpS = tracker:saveClipboard()
@@ -7655,7 +7700,7 @@ local function updateLoop()
       tracker:loadClipboard(cpS)
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
-    elseif ( inputs('wrapDown') ) then
+    elseif ( inputs('wrapDown') and tracker.take ) then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Wrap down")
       local oldx = tracker.xpos
@@ -7692,7 +7737,7 @@ local function updateLoop()
       tracker:loadClipboard(cpS)
       tracker.xpos = oldx
       tracker.ypos = oldy
-    elseif ( inputs('wrapUp') ) then
+    elseif ( inputs('wrapUp') and tracker.take ) then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Wrap up")    
       local oldx  = tracker.xpos
@@ -7734,27 +7779,27 @@ local function updateLoop()
       tracker.xpos = oldx
       tracker.ypos = oldy
       
-    elseif inputs('home') then
+    elseif inputs('home') and tracker.take then
       tracker.ypos = 0
-    elseif inputs('End') then
+    elseif inputs('End') and tracker.take then
       tracker.ypos = tracker.rows
-    elseif inputs('m0') then
+    elseif inputs('m0') and tracker.take then
       tracker.ypos = 0
-    elseif inputs('m25') then
+    elseif inputs('m25') and tracker.take then
       tracker.ypos = math.ceil(tracker.rows * 0.25)+1
-    elseif inputs('m50') then
+    elseif inputs('m50') and tracker.take then
       tracker.ypos = math.ceil(tracker.rows * 0.5)+1
-    elseif inputs('m75') then
+    elseif inputs('m75') and tracker.take then
       tracker.ypos = math.ceil(tracker.rows * 0.75)+1
     elseif inputs('toggle') then
       togglePlayPause()
-    elseif inputs('renoiseplay') then
+    elseif inputs('renoiseplay') and tracker.take then
       local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
       local loc = reaper.AddProjectMarker(0, 0, mpos + tracker:toSeconds(0), 0, "", -1)
       reaper.GoToMarker(0, loc, 0)
       reaper.DeleteProjectMarker(0, loc, 0)
       togglePlayPause()
-    elseif inputs('playfrom') then
+    elseif inputs('playfrom') and tracker.take then
       if ( isPlaying() > 0 ) then      
         -- Determine where we stopped relative to the current media object
         local playpos = reaper.GetPlayPosition()
@@ -7770,60 +7815,60 @@ local function updateLoop()
       reaper.GoToMarker(0, loc, 0)
       reaper.DeleteProjectMarker(0, loc, 0)
       togglePlayPause()
-    elseif inputs('insert') then
+    elseif inputs('insert') and tracker.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Insert")
       reaper.MarkProjectDirty(0)
       tracker:insert()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('remove') then
+    elseif inputs('remove') and tracker.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Backspace")
       reaper.MarkProjectDirty(0)  
       tracker:backspace()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('pgup') then
+    elseif inputs('pgup') and tracker.take then
       tracker.ypos = tracker.ypos - tracker.cfg.page
-    elseif inputs('pgdown') then
+    elseif inputs('pgdown') and tracker.take then
       tracker.ypos = tracker.ypos + tracker.cfg.page  
-    elseif inputs('undo') then
+    elseif inputs('undo') and tracker.take then
       modified = 1
       reaper.Undo_DoUndo2(0) 
-    elseif inputs('redo') then
+    elseif inputs('redo') and tracker.take then
       modified = 1  
       reaper.Undo_DoRedo2(0)
-    elseif inputs('deleteBlock') then
+    elseif inputs('deleteBlock') and tracker.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Delete block")
       reaper.MarkProjectDirty(0)
       tracker:deleteBlock()
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('beginBlock') then
+    elseif inputs('beginBlock') and tracker.take then
       tracker:beginBlock()
-    elseif inputs('endBlock') then
+    elseif inputs('endBlock') and tracker.take then
       tracker:endBlock()
-    elseif inputs('copyBlock') or inputs('copyBlock2') then
+    elseif ( inputs('copyBlock') or inputs('copyBlock2') ) and tracker.take then
       tracker:copyBlock()
-    elseif inputs('copyColumn') then
+    elseif inputs('copyColumn') and tracker.take then
       local oldcp = tracker.cp
       tracker.cp = {xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows}
       tracker:copyBlock()
       tracker.cp = oldcp
-    elseif inputs('copyPattern') then
+    elseif inputs('copyPattern') and tracker.take then
       local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
       local oldcp = tracker.cp
       tracker.cp = {xstart=1, ystart=1, xstop=#datafields, ystop=tracker.rows}
       tracker:copyBlock()
       tracker.cp = oldcp
-    elseif inputs('cutBlock') or inputs('cutBlock2') then
+    elseif ( inputs('cutBlock') or inputs('cutBlock2') ) and tracker.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Cut block")
       reaper.MarkProjectDirty(0)
       tracker:cutBlock()
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('cutColumn') then
+    elseif inputs('cutColumn') and tracker.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Cut column")
       local oldcp = tracker.cp
@@ -7832,7 +7877,7 @@ local function updateLoop()
       tracker:cutBlock()
       tracker.cp = oldcp
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('cutPattern') then
+    elseif inputs('cutPattern') and tracker.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Cut pattern")
       local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
@@ -7842,13 +7887,13 @@ local function updateLoop()
       tracker:cutBlock()
       tracker.cp = oldcp
       reaper.MIDI_Sort(tracker.take)      
-    elseif inputs('pasteBlock') or inputs('pasteBlock2') then
+    elseif ( inputs('pasteBlock') or inputs('pasteBlock2') ) and tracker.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Paste block")
       reaper.MarkProjectDirty(0)
       tracker:pasteBlock()
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('pasteColumn') then
+    elseif inputs('pasteColumn') and tracker.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Paste column")
       reaper.MarkProjectDirty(0)
@@ -7857,7 +7902,7 @@ local function updateLoop()
       tracker:pasteBlock()
       tracker.ypos = oldpos
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('pastePattern') then
+    elseif inputs('pastePattern') and tracker.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Paste pattern")
       reaper.MarkProjectDirty(0)
@@ -7869,19 +7914,19 @@ local function updateLoop()
       tracker.xpos = oldx
       tracker.ypos = oldy
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('shiftItemUp') or inputs('shblockup') then
+    elseif ( inputs('shiftItemUp') or inputs('shblockup') ) and tracker.take then
       modified = 1
       tracker:shiftup()
-    elseif inputs('shiftItemDown') or inputs('shblockdown') then
+    elseif ( inputs('shiftItemDown') or inputs('shblockdown') ) and tracker.take then
       modified = 1
       tracker:shiftdown()
-    elseif inputs('shcoldown') then
+    elseif inputs('shcoldown') and tracker.take then
       modified = 1
       tracker:shiftdown({xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows})
-    elseif inputs('shcolup') then
+    elseif inputs('shcolup') and tracker.take then
       modified = 1
       tracker:shiftup({xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows})
-    elseif inputs('shpatdown') then
+    elseif inputs('shpatdown') and tracker.take then
       modified = 1
       local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
       local x = 1
@@ -7892,7 +7937,7 @@ local function updateLoop()
         x = x + 1
       end      
       tracker:shiftdown({xstart=x, ystart=1, xstop=#datafields, ystop=tracker.rows}, 1)   
-    elseif inputs('shpatup') then
+    elseif inputs('shpatup') and tracker.take then
       modified = 1
       local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
       local x = 1
@@ -7903,13 +7948,13 @@ local function updateLoop()
         x = x + 1
       end
       tracker:shiftup({xstart=x, ystart=1, xstop=#datafields, ystop=tracker.rows}, 1)      
-    elseif inputs('colOctDown') then
+    elseif inputs('colOctDown') and tracker.take then
       modified = 1
       tracker:shiftdown({xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows}, 1, 12)
-    elseif inputs('colOctUp') then
+    elseif inputs('colOctUp') and tracker.take then
       modified = 1
       tracker:shiftup({xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows}, 1, 12)
-    elseif inputs('patternOctDown') then
+    elseif inputs('patternOctDown') and tracker.take then
       modified = 1
       local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
       local x = 1
@@ -7920,7 +7965,7 @@ local function updateLoop()
         x = x + 1
       end      
       tracker:shiftdown({xstart=x, ystart=1, xstop=#datafields, ystop=tracker.rows}, 1, 12)
-    elseif inputs('patternOctUp') then
+    elseif inputs('patternOctUp') and tracker.take then
       modified = 1
       local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
       local x = 1
@@ -7931,77 +7976,77 @@ local function updateLoop()
         x = x + 1
       end
       tracker:shiftup({xstart=x, ystart=1, xstop=#datafields, ystop=tracker.rows}, 1, 12)
-    elseif inputs('blockOctUp') then
+    elseif inputs('blockOctUp') and tracker.take then
       modified = 1
       tracker:shiftup(nil, 1, 12)
-    elseif inputs('blockOctDown') then
+    elseif inputs('blockOctDown') and tracker.take then
       modified = 1
       tracker:shiftdown(nil, 1, 12)
-    elseif inputs('scaleUp') then
+    elseif inputs('scaleUp') and tracker.take then
       modified = 1
       tracker:shiftScaleUp()
-    elseif inputs('scaleDown') then
+    elseif inputs('scaleDown') and tracker.take then
       modified = 1
       tracker:shiftScaleDown()
-    elseif inputs('octaveup') then
+    elseif inputs('octaveup') and tracker.take then
       tracker.transpose = tracker.transpose + 1
       if ( tracker.transpose > tracker.maxoct ) then
         tracker.transpose = tracker.maxoct
       end      
       tracker:storeSettings()
       tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('octavedown') then
+    elseif inputs('octavedown') and tracker.take then
       tracker.transpose = tracker.transpose - 1
       if ( tracker.transpose < tracker.minoct ) then
         tracker.transpose = tracker.minoct
       end
       tracker:storeSettings()
       tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('envshapeup') then
+    elseif inputs('envshapeup') and tracker.take then
       tracker.envShape = tracker.envShape + 1
       if ( tracker.envShape > #tracker.envShapes ) then
         tracker.envShape = 0
       end
       tracker:storeSettings()
       tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('envshapedown') then
+    elseif inputs('envshapedown') and tracker.take then
       tracker.envShape = tracker.envShape - 1
       if ( tracker.envShape < 0 ) then
         tracker.envShape = #tracker.envShapes
       end
       tracker:storeSettings()
       tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('outchanup') then
+    elseif inputs('outchanup') and tracker.take then
       tracker.outChannel = tracker.outChannel + 1
       if ( tracker.outChannel > 16 ) then
         tracker.outChannel = 0
       end
       tracker:setOutChannel( tracker.outChannel )
-    elseif inputs('outchandown') then
+    elseif inputs('outchandown') and tracker.take then
       tracker.outChannel = tracker.outChannel - 1
       if ( tracker.outChannel < 0) then
         tracker.outChannel = 16
       end
       tracker:setOutChannel( tracker.outChannel )
-    elseif inputs('advanceup') then
+    elseif inputs('advanceup') and tracker.take then
       tracker.advance = tracker.advance + 1
       tracker:storeSettings()
       tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('advancedown') then
+    elseif inputs('advancedown') and tracker.take then
       tracker.advance = tracker.advance - 1
       if ( tracker.advance < 0 ) then
         tracker.advance = 0
       end
       tracker:storeSettings()
       tracker:saveConfig(tracker.configFile, tracker.cfg)      
-    elseif inputs('resolutionUp') then
+    elseif inputs('resolutionUp') and tracker.take then
       if ( prevChar ~= lastChar ) then
         tracker.newRowPerQn = tracker.newRowPerQn + 1
         if ( tracker.newRowPerQn > tracker.maxRowPerQn ) then
           tracker.newRowPerQn = 1
         end
       end
-    elseif inputs('resolutionDown') then  
+    elseif inputs('resolutionDown') and tracker.take then  
       if ( prevChar ~= lastChar ) then
         tracker.newRowPerQn = tracker.newRowPerQn - 1
         if ( tracker.newRowPerQn < 1 ) then
@@ -8046,46 +8091,46 @@ local function updateLoop()
       if ( tracker.cfg.loopFollow == 1 ) then
         tracker:setLoopToPattern()
       end          
-    elseif inputs('duplicate') then
+    elseif inputs('duplicate') and tracker.take then
       reaper.Undo_OnStateChange2(0, "Tracker: Duplicate pattern")
       reaper.MarkProjectDirty(0) 
       tracker:duplicate()
-    elseif inputs('commit') then
+    elseif inputs('commit') and tracker.take then
       tracker:setResolution( tracker.newRowPerQn )
       tracker:saveConfig(tracker.configFile, tracker.cfg)      
       self.hash = math.random()
-    elseif inputs('setloop') then
+    elseif inputs('setloop') and tracker.take then
       tracker:setLoopToPattern()
-    elseif inputs('setloopstart') then
+    elseif inputs('setloopstart') and tracker.take then
       tracker:setLoopStart()  
-    elseif inputs('setloopend') then
+    elseif inputs('setloopend') and tracker.take then
       tracker:setLoopEnd()
-    elseif inputs('follow') then
+    elseif inputs('follow') and tracker.take then
       tracker.cfg.followSong = 1 - tracker.cfg.followSong
       tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('interpolate') then
+    elseif inputs('interpolate') and tracker.take then
       reaper.Undo_OnStateChange2(0, "Tracker: Interpolate")
       reaper.MarkProjectDirty(0)  
       tracker:interpolate()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('showMore') then
+    elseif inputs('showMore') and tracker.take then
       tracker:showMore()
-    elseif inputs('showLess') then
+    elseif inputs('showLess') and tracker.take then
       tracker:showLess()
-    elseif inputs('tab') then
+    elseif inputs('tab') and tracker.take then
       tracker:tab()
-    elseif inputs('shifttab') then
+    elseif inputs('shifttab') and tracker.take then
       tracker:shifttab()
-    elseif inputs('addCol') then
+    elseif inputs('addCol') and tracker.take then
       tracker:addCol()
-    elseif inputs('addColAll') then
+    elseif inputs('addColAll') and tracker.take then
       tracker:addColAll()
-    elseif inputs('addPatchSelect') then
+    elseif inputs('addPatchSelect') and tracker.take then
       tracker:addPatchSelect()
-    elseif inputs('remCol') then
+    elseif inputs('remCol') and tracker.take then
       tracker:remCol()            
-    elseif inputs('rename') then
+    elseif inputs('rename') and tracker.take then
       tracker.oldMidiName = tracker.midiName
       tracker.midiName = ''
       tracker.renaming = 1
@@ -8200,7 +8245,7 @@ local function updateLoop()
   tracker:insertNow()
   
   -- Remove duplicates potentially caused by legato system
-  if ( modified == 1 and not tracker.terminated ) then
+  if ( modified == 1 and tracker.take and not tracker.terminated ) then
     tracker:clearDeleteLists()
     tracker:mergeOverlaps()
     tracker:deleteNow()
@@ -8232,7 +8277,7 @@ function tracker:terminate()
   tracker:stopNote()
   self.terminated = 1;
   
-  local d, x, y, w, h = gfx.dock(nil,1,1,1,1)
+  local d, x, y, w, h = gfx.dock(-1,1,1,1,1)
   tracker:saveConfigFile("_wpos.cfg", {d=d, x=x, y=y, w=w, h=h, helpActive = tracker.helpActive, optionsActive = tracker.optionsActive})
   tracker:saveConfig(tracker.configFile, tracker.cfg)
   
@@ -8372,7 +8417,11 @@ function tracker:updateNames()
     self.midiName = ''
   end
   
-  self.windowTitle = string.format('%s [%s], ', self.name, self.trackName)
+  if ( self.trackName ) then
+    self.windowTitle = string.format('%s [%s], ', self.name, self.trackName)
+  else
+    self.windowTitle = string.format('%s', self.name)
+  end
   if ( self.midiName:len() > maxsize ) then
     self.patternName = string.format('%s/%s>', self.trackName, self.midiName:sub(1,maxsize))
   else
@@ -8698,7 +8747,8 @@ local function Main()
     tracker.loadCustomKeyboard  = loadCustomKeyboard
   end
   
-  if ( reaper.CountSelectedMediaItems(0) > 0 or tracker:readInt("initialiseAtTrack") ) then
+  
+  --if ( reaper.CountSelectedMediaItems(0) > 0 or tracker:readInt("initialiseAtTrack") ) then
     tracker.tick = 0
     tracker.scrollbar = scrollbar.create(tracker.scrollbar.size)
     
@@ -8731,46 +8781,45 @@ local function Main()
     
     tracker:generatePitches()
     tracker:initColors()
-    if ( tracker:grabActiveItem() ) then
+    tracker:grabActiveItem()
+    local wpos = tracker:loadConfig("_wpos.cfg", {}) 
 
-      local wpos = tracker:loadConfig("_wpos.cfg", {}) 
-
-      tracker.optionsActive = wpos.optionsActive or tracker.optionsActive
-      tracker.helpActive = wpos.helpActive or tracker.helpActive
-      local width, height = tracker:computeDims(48)
-      tracker:updateNames()
-      
-      --if ( wpos.w and wpos.w > width ) then
-        width = wpos.w or width
-      --end
-      if ( wpos.h and wpos.h > width ) then
-        height = wpos.h or height
-      end
-      local xpos = wpos.x or 200
-      local ypos = wpos.y or 200
-      
-      if ( width > tracker.cfg.maxWidth ) then
-        width = tracker.cfg.maxWidth
-      end
-      if ( height > tracker.cfg.maxHeight ) then
-        height = tracker.cfg.maxHeight
-      end
-      gfx.init(tracker.windowTitle, width, height, 0, xpos, ypos)
-      tracker.windowHeight = height
-      
-      if ( tracker.outChannel ) then
-        tracker:setOutChannel( tracker.outChannel )
-      end
-      
-      if ( tracker.cfg.initLoopSet == 1 ) then
-        tracker:setLoopToPattern()
-      end
-      
-      reaper.defer(updateLoop)
+    tracker.optionsActive = wpos.optionsActive or tracker.optionsActive
+    tracker.helpActive = wpos.helpActive or tracker.helpActive
+    local width, height = tracker:computeDims(48)
+    tracker:updateNames()
+    
+    --if ( wpos.w and wpos.w > width ) then
+      width = wpos.w or width
+    --end
+    if ( wpos.h and wpos.h > width ) then
+      height = wpos.h or height
     end
-  else
-    reaper.ShowMessageBox("Please select a MIDI item before starting the tracker", "No MIDI item selected", 0)
-  end
+    local xpos = wpos.x or 200
+    local ypos = wpos.y or 200
+      
+    if ( width > tracker.cfg.maxWidth ) then
+      width = tracker.cfg.maxWidth
+    end
+    if ( height > tracker.cfg.maxHeight ) then
+      height = tracker.cfg.maxHeight
+    end
+    gfx.init(tracker.windowTitle, width, height, wpos.d, xpos, ypos)
+    tracker.windowHeight = height
+      
+    if ( tracker.outChannel ) then
+      tracker:setOutChannel( tracker.outChannel )
+    end
+      
+    if ( tracker.cfg.initLoopSet == 1 ) then
+      tracker:setLoopToPattern()
+    end
+      
+    reaper.defer(updateLoop)
+
+  --else
+  --  reaper.ShowMessageBox("Please select a MIDI item before starting the tracker", "No MIDI item selected", 0)
+  --end
 end
 
 Main()
