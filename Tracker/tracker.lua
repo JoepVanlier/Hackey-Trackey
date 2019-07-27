@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.96
+@version 1.97
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.97 (2019-07-27)
+   + Start tracker on first note column properly.
  * v1.96 (2019-07-27)
    + Start tracker on first note column.
  * v1.95 (2019-07-26)
@@ -337,7 +339,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.96"
+tracker.name = "Hackey Trackey v1.97"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -1792,6 +1794,12 @@ function tracker:linkData()
   headers[#headers+1]     = string.format( 'L' )
   headerW[#headerW+1]     = 1
   hints[#hints+1]         = 'Legato toggle'
+  
+  -- If we are opening the tracker without an xpos, then set it to the first note field
+  if self.xposunset then
+    self.xpos = #idx+1
+    self.xposunset = nil
+  end
   
   for j = 1,self.displaychannels do
     local hasDelay = self.showDelays[j] or 0
@@ -8752,7 +8760,7 @@ local function Main()
   
   --if ( reaper.CountSelectedMediaItems(0) > 0 or tracker:readInt("initialiseAtTrack") ) then
     tracker.tick = 0
-    tracker.xpos = 2
+    tracker.xposunset = 1
     tracker.scrollbar = scrollbar.create(tracker.scrollbar.size)
     
     -- Load user options
