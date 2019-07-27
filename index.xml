@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="2385e2be58d22504932dddaa608ecaf02881d6e2">
+<index version="1" name="Tracker tools" commit="7acc46c50f824af9057091cfd8851dd49c90ee15">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -493,6 +493,12 @@ FF = the full length of the last tick.]]></changelog>
 + Added mechanism that attempts waiting a few cycles when item goes missing (for glueing from arrange).]]></changelog>
         <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/2385e2be58d22504932dddaa608ecaf02881d6e2/Tracker/scales.lua</source>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/2385e2be58d22504932dddaa608ecaf02881d6e2/Tracker/tracker.lua</source>
+      </version>
+      <version name="1.95" author=": Joep Vanlier" time="2019-07-27T00:05:15Z">
+        <changelog><![CDATA[+ Add ability to start HT without MIDI item selected.
++ Store whether HT is docked or not.]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/7acc46c50f824af9057091cfd8851dd49c90ee15/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/7acc46c50f824af9057091cfd8851dd49c90ee15/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
