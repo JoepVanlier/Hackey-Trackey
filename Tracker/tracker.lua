@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.95
+@version 1.96
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v1.96 (2019-07-27)
+   + Start tracker on first note column.
  * v1.95 (2019-07-26)
    + Add ability to start HT without MIDI item selected.
    + Store whether HT is docked or not.
@@ -335,7 +337,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.95"
+tracker.name = "Hackey Trackey v1.96"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -8750,6 +8752,7 @@ local function Main()
   
   --if ( reaper.CountSelectedMediaItems(0) > 0 or tracker:readInt("initialiseAtTrack") ) then
     tracker.tick = 0
+    tracker.xpos = 2
     tracker.scrollbar = scrollbar.create(tracker.scrollbar.size)
     
     -- Load user options
