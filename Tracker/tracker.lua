@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.99
+@version 2.00
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v2.00 (2019-07-27)
+   + Bugfix column header colors.
  * v1.99 (2019-07-27)
    + Minor tweak header renderposition.
  * v1.98 (2019-07-27)
@@ -346,7 +348,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.98"
+tracker.name = "Hackey Trackey v2.00"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -2543,25 +2545,30 @@ function tracker:printGrid()
  
   -- Color header with track color
   if ( (self.cfg.useItemColors == 1) and self.item and self.take ) then
-    local r, g, b = reaper.ColorFromNative( reaper.GetDisplayedMediaItemColor2(self.item, self.take))
-    if ( math.max(r,math.max(g,b)) > 0 ) then
-      gfx.set(r/255,g/255,b/255,1);
-      gfx.rect(xloc[1] - itempadx, yloc[1] - plotData.indicatorShiftY, tw, yheight[1] + itempady)
-    end
-    
-    local function lumi(r, g, b)
-      return .2126 * r + .7152 * g + .0722 * b;
-    end
-    
-    -- Check how far the luminance is from the header color
-    local lum = lumi(gfx.r, gfx.g, gfx.b);
-    local headlum = lumi(colors.headercolor[1], colors.headercolor[2], colors.headercolor[3]);
-     
-    -- Draw the headers so we don't get lost :)
-    if ( math.abs(lum - headlum) > .25 ) then
-      gfx.set(table.unpack(colors.headercolor))
+    local cColor = reaper.GetDisplayedMediaItemColor2(self.item, self.take);
+    if ( cColor ~= 0 ) then
+      local r, g, b = reaper.ColorFromNative( cColor )
+      if ( math.max(r,math.max(g,b)) > 0 ) then
+        gfx.set(r/255,g/255,b/255,1);
+        gfx.rect(xloc[1] - itempadx, yloc[1] - plotData.indicatorShiftY, tw, yheight[1] + itempady)
+      end
+      
+      local function lumi(r, g, b)
+        return .2126 * r + .7152 * g + .0722 * b;
+      end
+      
+      -- Check how far the luminance is from the header color
+      local lum = lumi(gfx.r, gfx.g, gfx.b);
+      local headlum = lumi(colors.headercolor[1], colors.headercolor[2], colors.headercolor[3]);
+       
+      -- Draw the headers so we don't get lost :)
+      if ( math.abs(lum - headlum) > .25 ) then
+        gfx.set(table.unpack(colors.headercolor))
+      else
+        gfx.set(1-colors.headercolor[1], 1-colors.headercolor[2], 1-colors.headercolor[3], colors.headercolor[4])
+      end
     else
-      gfx.set(1-colors.headercolor[1], 1-colors.headercolor[2], 1-colors.headercolor[3], colors.headercolor[4])
+      gfx.set(table.unpack(colors.headercolor))
     end
   else
     gfx.set(table.unpack(colors.headercolor))
