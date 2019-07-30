@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v2.02 (2019-07-30)
+   + Bugfix pattern deletion.
  * v2.01 (2019-07-30)
    + Bugfix item deletion.
  * v2.00 (2019-07-27)
@@ -350,7 +352,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.01"
+tracker.name = "Hackey Trackey v2.02"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -6721,7 +6723,7 @@ function tracker:arm()
 end
 
 function tracker:checkArmed()
-  if ( self.armed == 1 and self.take ) then
+  if ( self.armed == 1 and self.track ) then
     local recinput = reaper.GetMediaTrackInfo_Value(self.track, "I_RECINPUT")
     local recarm = reaper.GetMediaTrackInfo_Value(self.track, "I_RECARM")
     local recmonitor = reaper.GetMediaTrackInfo_Value(self.track, "I_RECMON")
@@ -6733,7 +6735,7 @@ function tracker:checkArmed()
 end
 
 function tracker:disarm()
-  if ( self.take ) then
+  if ( self.track ) then
     reaper.SetMediaTrackInfo_Value(self.track, "I_RECARM",   self.oldarm)
     reaper.SetMediaTrackInfo_Value(self.track, "I_RECINPUT", self.oldinput)
     reaper.SetMediaTrackInfo_Value(self.track, "I_RECMON",   self.oldmonitor)
@@ -7262,7 +7264,7 @@ local function updateLoop()
 
   -- Check if the note data or take changed, if so, update the note contents
   if ( not tracker:checkChange() ) then
-    tracker:lostItem();
+    tracker:lostItem()
   end
 
   -- Auto resize y
