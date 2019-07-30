@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.00
+@version 2.01
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v2.01 (2019-07-30)
+   + Bugfix item deletion.
  * v2.00 (2019-07-27)
    + Bugfix column header colors.
  * v1.99 (2019-07-27)
@@ -6719,7 +6721,7 @@ function tracker:arm()
 end
 
 function tracker:checkArmed()
-  if ( self.armed == 1 ) then
+  if ( self.armed == 1 and self.take ) then
     local recinput = reaper.GetMediaTrackInfo_Value(self.track, "I_RECINPUT")
     local recarm = reaper.GetMediaTrackInfo_Value(self.track, "I_RECARM")
     local recmonitor = reaper.GetMediaTrackInfo_Value(self.track, "I_RECMON")
@@ -6731,12 +6733,14 @@ function tracker:checkArmed()
 end
 
 function tracker:disarm()
-  reaper.SetMediaTrackInfo_Value(self.track, "I_RECARM",   self.oldarm)
-  reaper.SetMediaTrackInfo_Value(self.track, "I_RECINPUT", self.oldinput)
-  reaper.SetMediaTrackInfo_Value(self.track, "I_RECMON",   self.oldmonitor)
-  self.armed = 0
-  self.hash = 0
-  self:update()
+  if ( self.take ) then
+    reaper.SetMediaTrackInfo_Value(self.track, "I_RECARM",   self.oldarm)
+    reaper.SetMediaTrackInfo_Value(self.track, "I_RECINPUT", self.oldinput)
+    reaper.SetMediaTrackInfo_Value(self.track, "I_RECMON",   self.oldmonitor)
+    self.armed = 0
+    self.hash = 0
+    self:update()
+  end
 end
 
 function tracker:playNote(chan, pitch, vel)
