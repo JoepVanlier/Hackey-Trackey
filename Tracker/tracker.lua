@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.02
+@version 2.03
 @screenshot https://i.imgur.com/c68YjMd.png
 @about 
   ### Hackey-Trackey
@@ -38,6 +38,9 @@
 
 --[[
  * Changelog:
+ * v2.03 (2019-10-28)
+   + Minor bugfix shift + note = next column (thanks dri_ft!).
+   + Remove default enter = close.
  * v2.02 (2019-07-30)
    + Bugfix pattern deletion.
  * v2.01 (2019-07-30)
@@ -511,7 +514,7 @@ tracker.cfg.maxWidth = 50000
 tracker.cfg.maxHeight = 50000
 tracker.cfg.rowOverride = 0
 tracker.cfg.overridePerPattern = 1
-tracker.cfg.closeWhenSwitchingToHP = 1
+tracker.cfg.closeWhenSwitchingToHP = 0
 tracker.cfg.followRow = 0
 tracker.cfg.useItemColors = 0
 
@@ -7239,8 +7242,8 @@ function tracker:noteEdit()
     reaper.Undo_OnStateChange2(0, "Tracker: Add note / Edit volume")
     reaper.MarkProjectDirty(0)
     local shift = gfx.mouse_cap & 8
-        
-    if ( shift > 0 and string.match(lastChar,"[^%w]") == nil ) then
+    
+    if ( shift > 0 and string.match(string.char(lastChar),"[^%w]") == nil ) then
       local oldAdvance = tracker.advance
       tracker.advance = 0
       tracker:createNote(lastChar+32)
