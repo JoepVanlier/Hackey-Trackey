@@ -927,6 +927,8 @@ function tracker:loadKeys( keySet )
     keys.shcolup        = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.shblockdown    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.shblockup      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.upByAdvance    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.downByAdvance  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
 
     keys.cutPattern     = { 1,    0,  0,    500000000000000000000000 }
     keys.cutColumn      = { 1,    0,  1,    500000000000000000000000 }
@@ -1082,6 +1084,8 @@ function tracker:loadKeys( keySet )
     keys.shcolup        = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.shblockdown    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.shblockup      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.upByAdvance    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.downByAdvance  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
 
     keys.cutPattern     = { 1,    0,  0,    500000000000000000000000 }
     keys.cutColumn      = { 1,    0,  1,    500000000000000000000000 }
@@ -1255,6 +1259,8 @@ function tracker:loadKeys( keySet )
     keys.deleteRow      = { 1,    0,  0,    6579564 }       -- Ctrl + Del
 
     keys.toggle         = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.upByAdvance    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.downByAdvance  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
 
     keys.shiftpgdn      = { 0,    0,  1,    1885824110 }    -- Shift + PgDn
     keys.shiftpgup      = { 0,    0,  1,    1885828464 }    -- Shift + PgUp
@@ -7666,6 +7672,12 @@ local function updateLoop()
     elseif inputs('down') and tracker.take then
       tracker.ypos = tracker.ypos + 1
       tracker:resetShiftSelect()
+    elseif inputs('upByAdvance') and tracker.take then
+      tracker.ypos = tracker.ypos - tracker.advance
+      tracker:resetShiftSelect()
+    elseif inputs('downByAdvance') and tracker.take then
+      tracker.ypos = tracker.ypos + tracker.advance
+      tracker:resetShiftSelect()
     elseif inputs('shiftleft') and tracker.take then
       tracker:dragBlock()
       tracker.xpos = tracker.xpos - 1
@@ -8705,6 +8717,8 @@ local function Main()
     io.write("    keys.shcolup        = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
     io.write("    keys.shblockdown    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
     io.write("    keys.shblockup      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
+    io.write("    keys.upByAdvance    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
+    io.write("    keys.downByAdvance  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
     io.write("\n")
     io.write("    keys.cutPattern     = { 1,    0,  0,    500000000000000000000000 }\n")
     io.write("    keys.cutColumn      = { 1,    0,  1,    500000000000000000000000 }\n")
