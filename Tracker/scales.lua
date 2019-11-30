@@ -25,7 +25,7 @@ scales.intervals = {
   Phrygian      = {1, 2, 2, 2, 1, 2, 2},
   Lydian        = {2, 2, 2, 1, 2, 2, 1},
   Mixolydian    = {2, 2, 1, 2, 2, 1, 2},
---  Locrian    = {1, 2, 2, 1, 2, 2, 2} -- Too esoteric  
+--  Locrian    = {1, 2, 2, 1, 2, 2, 2} -- Too esoteric
 }
 
 -- Scales for which to include 11th and 13th chords
@@ -34,7 +34,7 @@ scales.inc13th = { ['Major']=1, ['Minor']=1, ['HarmMinor']=1 }
 scales.names = {
   [1] = 'Major',
   [2] = 'Minor',
-  [3] = 'HarmMinor',  
+  [3] = 'HarmMinor',
   [4] = 'Dorian',
   [5] = 'Phrygian',
   [6] = 'Lydian',
@@ -50,17 +50,17 @@ local min7b5    = 'HDim7th'
 --prog.MelMinor   = { {'Min', 'Maj7th'},   {'Min', 'Min7th'},  {'Aug7th5'},       {'Maj', 'Dom7th'}, {'Maj', 'Dom7th'},   {'Dim', min7b5},      {'Dim', min7b5} }
 
 -- Structure
-scales.chordTree = { 
+scales.chordTree = {
   ['Major'] = {
     ['Major'] = {
       { 'Maj',    '' },
     },
     ['7th'] = {
       { 'Maj7th',   'Maj7' },
-      { 'Aug7th5',  'Aug7th5' },      
-      { '7th9',     '7th9' },    
+      { 'Aug7th5',  'Aug7th5' },
+      { '7th9',     '7th9' },
       { '7th11',    '7th11' },
-      { 'Maj7th11', 'Maj7th11' },    
+      { 'Maj7th11', 'Maj7th11' },
     },
     ['Aug'] = {
       { 'Aug',      'aug' },
@@ -68,7 +68,7 @@ scales.chordTree = {
     ['9th'] = {
       { '9th',      '9th' },
       { 'Maj9th',   'Maj9th' },
-      { 'Add9th',   'Add9th' },            
+      { 'Add9th',   'Add9th' },
     },
     ['6th'] = {
       { 'Dom6th',   'Dom6th' },
@@ -84,7 +84,7 @@ scales.chordTree = {
   ['Minor'] = {
       ['Min'] = {
         { 'Min',      'm' },
-      },  
+      },
       ['Dim'] = {
         { 'Dim',      'dim' },
       },
@@ -137,7 +137,7 @@ scales.chordDisplay = {
   ['Dom7th']     = '7',
   ['Maj7th']     = 'M7',
   ['Aug7th']     = 'aug7',
-  ['Aug6th']     = 'aug6',  
+  ['Aug6th']     = 'aug6',
   ['Aug7th5']    = 'aug7b5', -- ??
   ['7th9']       = '7#9', --Hendrix chord
   ['7th11']      = '7#11',
@@ -153,10 +153,10 @@ scales.chordDisplay = {
   ['Maj13th']    = 'M13',
 
   ['MinMaj7th']     = 'mM7',
-  ['MinMaj7thAdd9'] = 'mM7+9',  
+  ['MinMaj7thAdd9'] = 'mM7+9',
   ['Min7th']        = 'm7',
   ['Dim7th']        = 'dim7',
-  ['Dim9th']        = 'dim7add9',  
+  ['Dim9th']        = 'dim7add9',
   ['HDim7th']       = 'm7b5', -- Half diminished
   ['Min6th']        = 'm6',
   ['Min9th']        = 'm9',
@@ -164,10 +164,10 @@ scales.chordDisplay = {
   ['Min11th']       = 'mAdd11',
   ['Min13th']       = 'mAdd13',
   ['Dim7thAdd9']    = 'dim7add9',
-  
+
   ['M7Sus4']        = 'sus4?',
   ['7Sus4']         = '7sus4',
-  ['dim7Sus4']      = 'd7s4',  
+  ['dim7Sus4']      = 'd7s4',
 }
 
 -- Basic chords expressed relative to a major scale.
@@ -187,12 +187,12 @@ scales.chords = {
 -- Suspended chord
   ['M7Sus4']       = { {1, 0}, {4, 0}, {5, 0}, {7, 0} },
   ['7Sus4']      = { {1, 0}, {4, 0}, {5, 0}, {7, -1} },
-  ['dim7Sus4']      = { {1, 0}, {4, 0}, {5, -1}, {7, -1} },  
+  ['dim7Sus4']      = { {1, 0}, {4, 0}, {5, -1}, {7, -1} },
 
 -- Chords for heightened interest
   ['Dom7th']     = { {1, 0}, {3, 0}, {5, 0}, {7,-1} },
   ['Maj7th']     = { {1, 0}, {3, 0}, {5, 0}, {7, 0} },
-  ['Aug7th']     = { {1, 0}, {3, 0}, {5, 1}, {7, 0} }, 
+  ['Aug7th']     = { {1, 0}, {3, 0}, {5, 1}, {7, 0} },
   ['Aug6th']     = { {1, 0}, {3, 0}, {5, 1}, {6, 0} },
   ['Aug7th5']    = { {1, 0}, {3, 0}, {5, 1}, {7,-1} },
   ['7th9']       = { {1, 0}, {3, 0}, {5, 0}, {7,-1}, {9, 1} }, --Hendrix chord
@@ -200,9 +200,9 @@ scales.chords = {
   ['Maj7th11']   = { {1, 0}, {3, 0}, {5, 0}, {7, 0}, {9, 0}, {11, 1} },
   ['9th']        = { {1, 0}, {3, 0}, {5, 0}, {7,-1}, {9, 0} },
   ['Maj9th']     = { {1, 0}, {3, 0}, {5, 0}, {7, 0}, {9, 0} },
-  ['Maj9th#5']   = { {1, 0}, {3, 0}, {5, 1}, {7, 0}, {9, 0} },  
+  ['Maj9th#5']   = { {1, 0}, {3, 0}, {5, 1}, {7, 0}, {9, 0} },
 
-  
+
   ['Add9th']     = { {1, 0}, {3, 0}, {5, 0}, {9, 0} },
   ['Dom6th']     = { {1, 0}, {3, 0}, {5, 0}, {6, 0} },
   ['11th']       = { {1, 0}, {5, 0}, {7,-1}, {9, 0}, {11, 0} },
@@ -213,13 +213,13 @@ scales.chords = {
 
   -- Relevant for harmonic minor
   ['MinMaj7th']  = { {1, 0}, {3,-1}, {5, 0}, {7, 0} },
-  
+
   ['MinMaj7thAdd9'] = { {1, 0}, {3,-1}, {5, 0}, {7, 0}, {9, 0} },
   ['Min7th']     = { {1, 0}, {3,-1}, {5, 0}, {7,-1} },
   ['Dim7th']     = { {1, 0}, {3,-1}, {5,-1}, {7,-2} },
-  ['Dim7thAdd9'] = { {1, 0}, {3,-1}, {5,-1}, {7,-2}, {9, 0} },  
+  ['Dim7thAdd9'] = { {1, 0}, {3,-1}, {5,-1}, {7,-2}, {9, 0} },
   ['HDim7th']    = { {1, 0}, {3,-1}, {5,-1}, {7,-1} },
-  ['Minb6th']    = { {1, 0}, {3,-1}, {5, 0}, {6, -1} },  
+  ['Minb6th']    = { {1, 0}, {3,-1}, {5, 0}, {6, -1} },
   ['Min6th']     = { {1, 0}, {3,-1}, {5, 0}, {6, 0} },
   ['Min9th']     = { {1, 0}, {3,-1}, {5, 0}, {7,-1}, {9, 0} },
   ['MinAdd9th']  = { {1, 0}, {3,-1}, {5, 0}, {9, 0} },
@@ -235,7 +235,7 @@ scales.chords = {
 function scales:absChords( )
   local chords = self.chords
   local absChords = {}
-  
+
   -- Convert chords relative to major scale to absolute pitches
   -- 1 2 3 4 5 6 7 8 9 10 11 12
   -- 1   2   3 4   5    6     7
@@ -246,8 +246,8 @@ function scales:absChords( )
   LUT[4] = 6
   LUT[5] = 8
   LUT[6] = 10
-  LUT[7] = 12 
-  
+  LUT[7] = 12
+
   for i,v in pairs( chords ) do
     local nNotes = 0
     local curAbsChord = {}
@@ -257,7 +257,7 @@ function scales:absChords( )
     end
     absChords[nNotes][#absChords[nNotes] + 1] = curAbsChord
   end
-    
+
   self.absChords = absChords
 end
 
@@ -295,8 +295,8 @@ scales.noteLUT = {
   [31] = 'F#',
   [32] = 'G',
   [33] = 'G#',
-  
-  
+
+
   ['C']  = 1,
   ['C#'] = 2,
   ['D']  = 3,
@@ -322,7 +322,7 @@ function scales:generateChord(root, chordtype)
     pitches[#pitches+1] = cPitch
     notes[#notes+1] = LUT[cPitch]
   end
-  
+
   return notes, pitches
 end
 
@@ -332,11 +332,11 @@ end
 function scales:identifyChord(pitches, root)
   local shifted = {}
   local chords = self.absChords
-  local noteCount = #pitches  
+  local noteCount = #pitches
   for i=1,noteCount do
     shifted[i] = pitches[i] - root + 1
   end
-    
+
   -- Identify the chord
   for i,v in pairs(chords[noteCount]) do
     local isMatch = 1
@@ -372,7 +372,7 @@ function scales:generateScale(root, selectScale)
       c = c + curScale[j]
     end
   end
-  
+
   return scale, allowedNotes
 end
 
@@ -398,9 +398,9 @@ function scales:generateAbsChords( )
     [12] = 20,
     [13] = 22,
     [14] = 24,
-    [15] = 25,    
+    [15] = 25,
   }
-  
+
   for i,v in pairs( chords ) do
     local nNotes = 0
     local curAbsChord = {}
@@ -413,7 +413,7 @@ function scales:generateAbsChords( )
     end
     absChords[nNotes][i] = curAbsChord
   end
-    
+
   self.absChords = absChords
 end
 
@@ -421,7 +421,7 @@ function scales:generateProgression( root, scale )
   local intervals  = scales.intervals
   local scaleNotes = scales.scales[scale]
   local progression = {}
-  
+
   for i=1,7 do
     local base = i-1
     progression[i] = {}
@@ -433,25 +433,25 @@ function scales:generateProgression( root, scale )
     progression[i].names[2] = self:identifyChord(progression[i].notes[2], progression[i].notes[2][1])
 
     -- More specialized chords
-    local n = 2      
+    local n = 2
     -- Add 11th and 13th chords for special ones
     if ( scales.inc13th[scale] ) then
       n = n + 1
       -- Suspended chords
       progression[i].notes[n] = { scaleNotes[1+base], scaleNotes[1+base] + 5, scaleNotes[5+base], scaleNotes[1+base]+10 }
-      progression[i].names[n] = self:identifyChord(progression[i].notes[n], progression[i].notes[n][1])    
+      progression[i].names[n] = self:identifyChord(progression[i].notes[n], progression[i].notes[n][1])
 
       -- add6
       n = n + 1
       progression[i].notes[n] = { scaleNotes[1+base], scaleNotes[3+base], scaleNotes[5+base], scaleNotes[6+base] }
-      progression[i].names[n] = self:identifyChord(progression[i].notes[n], progression[i].notes[n][1])   
+      progression[i].names[n] = self:identifyChord(progression[i].notes[n], progression[i].notes[n][1])
 
       -- add9
       n = n + 1
       progression[i].notes[n] = { scaleNotes[1+base], scaleNotes[3+base], scaleNotes[5+base], scaleNotes[7+base], scaleNotes[9+base] }
-      progression[i].names[n] = self:identifyChord(progression[i].notes[n], progression[i].notes[n][1])        
+      progression[i].names[n] = self:identifyChord(progression[i].notes[n], progression[i].notes[n][1])
     end
-    
+
     n = n + 1
     -- Secondary dominant
     -- Get the scale for this one and determine the fifth of that scale
@@ -459,9 +459,9 @@ function scales:generateProgression( root, scale )
     local shift = 4
 
     progression[i].notes[n] = { domScale[1+shift], domScale[3+shift], domScale[5+shift], domScale[7+shift] }
-    progression[i].names[n] = self:identifyChord(progression[i].notes[n], progression[i].notes[n][1])    
+    progression[i].names[n] = self:identifyChord(progression[i].notes[n], progression[i].notes[n][1])
   end
-  
+
   return progression
 end
 
@@ -489,7 +489,7 @@ function scales:scaleNotes()
   local curSc = self.scales[self.names[self.curScale]]
   local notes = ''
   for a = 1,7 do
-    notes = notes .. self.noteLUT[curSc[a]] 
+    notes = notes .. self.noteLUT[curSc[a]]
     if ( a < 7 ) then
       notes = notes .. ","
     end
@@ -524,7 +524,7 @@ end
 
 function scales:switchRoot( root )
   self.root = self:wrapPitch(root-1)+1
-  
+
   scales.scales = {}
   for i,v in pairs( scales.intervals ) do
     scales.scales[i] = scales:generateScale(self.root, i)
@@ -551,12 +551,12 @@ function scales:pickChord( scaleName, tone, row )
       end
     end
   end
-  
+
   -- This chord slot is blank
   if ( not self.picked.name ) then
     return nil
   end
-  
+
   local change = 0
   if ( self.picked.name ~= oldName ) then
     change = 1
@@ -579,7 +579,7 @@ function scales:shiftPitch(pitch, shift)
   while( i < 24 ) do
     i = i + 1
     local D = self.scales[self.names[self.curScale]][i] - wPitch
-    
+
     -- We found the pitch exactly
     if ( self.scales[self.names[self.curScale]][i] == wPitch ) then
       break
@@ -591,7 +591,7 @@ function scales:shiftPitch(pitch, shift)
       break
     end
   end
-  
+
   local newLoc = i+shift
   if ( newLoc < 1 ) then
     return self.scales[self.names[self.curScale]][newLoc+7] + base + sharp - 12
@@ -610,7 +610,7 @@ function scales:shiftRoot(pitch, shift)
   while( i < 24 ) do
     i = i + 1
     local D = self.scales[self.names[self.curScale]][i] - wPitch
-    
+
     -- We found the pitch exactly
     if ( self.scales[self.names[self.curScale]][i] == wPitch ) then
       break
@@ -645,10 +645,10 @@ function scales:similarityScore( notes )
         end
       end
     end
-  else 
+  else
     return 1
   end
-  
+
   return nonSimilarity
 end
 
@@ -656,6 +656,6 @@ function scales.initialize( )
   scales:generateAbsChords()
   scales:setScale(1)
   scales:switchRoot(1)
-  
+
   return scales
 end
