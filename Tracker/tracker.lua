@@ -929,6 +929,8 @@ function tracker:loadKeys( keySet )
     keys.shblockup      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.upByAdvance    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.downByAdvance  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.advanceDouble  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.advanceHalve   = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
 
     keys.cutPattern     = { 1,    0,  0,    500000000000000000000000 }
     keys.cutColumn      = { 1,    0,  1,    500000000000000000000000 }
@@ -1086,6 +1088,8 @@ function tracker:loadKeys( keySet )
     keys.shblockup      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.upByAdvance    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.downByAdvance  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.advanceDouble  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.advanceHalve   = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
 
     keys.cutPattern     = { 1,    0,  0,    500000000000000000000000 }
     keys.cutColumn      = { 1,    0,  1,    500000000000000000000000 }
@@ -1261,6 +1265,8 @@ function tracker:loadKeys( keySet )
     keys.toggle         = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.upByAdvance    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.downByAdvance  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.advanceDouble  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.advanceHalve   = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
 
     keys.shiftpgdn      = { 0,    0,  1,    1885824110 }    -- Shift + PgDn
     keys.shiftpgup      = { 0,    0,  1,    1885828464 }    -- Shift + PgUp
@@ -8129,10 +8135,17 @@ local function updateLoop()
       tracker:storeSettings()
       tracker:saveConfig(tracker.configFile, tracker.cfg)
     elseif inputs('advancedown') and tracker.take then
-      tracker.advance = tracker.advance - 1
-      if ( tracker.advance < 0 ) then
-        tracker.advance = 0
-      end
+      tracker.advance = math.max(tracker.advance - 1, 0)
+      tracker:storeSettings()
+      tracker:saveConfig(tracker.configFile, tracker.cfg)
+    elseif inputs('advanceDouble') and tracker.take then
+      -- max() with 1 because if they are doubling from 0 they probably
+      -- want it to actually increase and not just stay there
+      tracker.advance = math.max(tracker.advance * 2, 1)
+      tracker:storeSettings()
+      tracker:saveConfig(tracker.configFile, tracker.cfg)
+    elseif inputs('advanceHalve') and tracker.take then
+      tracker.advance = math.ceil(tracker.advance / 2)
       tracker:storeSettings()
       tracker:saveConfig(tracker.configFile, tracker.cfg)
     elseif inputs('resolutionUp') and tracker.take then
@@ -8719,6 +8732,8 @@ local function Main()
     io.write("    keys.shblockup      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
     io.write("    keys.upByAdvance    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
     io.write("    keys.downByAdvance  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
+    io.write("    keys.advanceDouble  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
+    io.write("    keys.advanceHalve   = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
     io.write("\n")
     io.write("    keys.cutPattern     = { 1,    0,  0,    500000000000000000000000 }\n")
     io.write("    keys.cutColumn      = { 1,    0,  1,    500000000000000000000000 }\n")
