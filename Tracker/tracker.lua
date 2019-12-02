@@ -1352,7 +1352,7 @@ tracker.signed["Width"] = 1
 tracker.armed = 0
 tracker.maxPatternNameSize = 13
 
-tracker.hint = '';
+tracker.hint = ''
 
 tracker.debug = 0
 
@@ -1539,7 +1539,7 @@ function tracker:initColors()
 end
 
 local function get_script_path()
-  local info = debug.getinfo(1,'S');
+  local info = debug.getinfo(1,'S')
   local script_path = info.source:match[[^@?(.*[\/])[^\/]-$]]
   return script_path
 end
@@ -2038,7 +2038,7 @@ function tracker:updatePlotLink()
     q = j
 
     if ( (x-2*grid.itempadx) > (fov.abswidth-1.5*originx) ) then
-      break;
+      break
     end
   end
   fov.width = q-fov.scrollx
@@ -2080,7 +2080,7 @@ end
 -- Cursor and play position
 ------------------------------
 function tracker:normalizePositionToSelf(cpos)
-  local norm = 0;
+  local norm = 0
   if ( reaper.ValidatePtr2(0, self.item, "MediaItem*") ) then
     local loc = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
     local loc2 = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
@@ -2089,21 +2089,21 @@ function tracker:normalizePositionToSelf(cpos)
     row = row - self.fov.scrolly
     norm =  row / math.min(self.rows, self.fov.height)
   else
-    self:tryPreviousItem();
+    self:tryPreviousItem()
   end
 
   return norm
 end
 
--- Used to be self:terminate();
+-- Used to be self:terminate()
 function tracker:lostItem()
-  tracker.track     = nil;
-  tracker.take      = nil;
-  tracker.rows      = 0;
-  tracker.max_xpos  = 8;
-  tracker.max_ypos  = 1;
-  tracker.renaming  = 0;
-  tracker.fov.scrolly = 0;
+  tracker.track     = nil
+  tracker.take      = nil
+  tracker.rows      = 0
+  tracker.max_xpos  = 8
+  tracker.max_ypos  = 1
+  tracker.renaming  = 0
+  tracker.fov.scrolly = 0
 end
 
 -- This function is called whenever our item goes missing. It has a few heuristics for
@@ -2115,7 +2115,7 @@ function tracker:tryPreviousItem()
   if ( reaper.ValidatePtr2(0, self.track, "MediaTrack*") ) then
     if ( self.itemStart and self:findTakeStartingAtSongPos(self.itemStart) ) then
       -- This was probably a replacement event.
-      return;
+      return
     elseif ( self.lastItem and #self.lastItem > 0 ) then
       local tryItem = self.lastItem[#self.lastItem]
       self.lastItem[#self.lastItem] = nil
@@ -2126,11 +2126,11 @@ function tracker:tryPreviousItem()
       end
     elseif ( self.itemStart and self:findTakeClosestToSongPos(self.itemStart) ) then
       -- We switched to a different MIDI item
-      return;
+      return
     else
       self:lostItem()
     end
-    self.itemStart = nil;
+    self.itemStart = nil
   else
     self:lostItem()
   end
@@ -2360,7 +2360,7 @@ function tracker:printGrid()
     extraFontShift = customFont[2]
   else
     gfx.setfont(0)
-    headerShift = 4;
+    headerShift = 4
   end
 
   -- Render in relative FOV coordinates
@@ -2546,27 +2546,27 @@ function tracker:printGrid()
     end
     gfx.rect( plotData.xstart + recsize, bottom + yheight[1] + 4, 3, 3 )
  else
-    gfx.y = yloc[1];
-    gfx.printf( "No MIDI item selected..." );
+    gfx.y = yloc[1]
+    gfx.printf( "No MIDI item selected..." )
  end
 
   -- Color header with track color
   if ( (self.cfg.useItemColors == 1) and self.item and self.take ) then
-    local cColor = reaper.GetDisplayedMediaItemColor2(self.item, self.take);
+    local cColor = reaper.GetDisplayedMediaItemColor2(self.item, self.take)
     if ( cColor ~= 0 ) then
       local r, g, b = reaper.ColorFromNative( cColor )
       if ( math.max(r,math.max(g,b)) > 0 ) then
-        gfx.set(r/255,g/255,b/255,1);
+        gfx.set(r/255,g/255,b/255,1)
         gfx.rect(xloc[1] - itempadx, yloc[1] - plotData.indicatorShiftY, tw, yheight[1] + itempady)
       end
 
       local function lumi(r, g, b)
-        return .2126 * r + .7152 * g + .0722 * b;
+        return .2126 * r + .7152 * g + .0722 * b
       end
 
       -- Check how far the luminance is from the header color
-      local lum = lumi(gfx.r, gfx.g, gfx.b);
-      local headlum = lumi(colors.headercolor[1], colors.headercolor[2], colors.headercolor[3]);
+      local lum = lumi(gfx.r, gfx.g, gfx.b)
+      local headlum = lumi(colors.headercolor[1], colors.headercolor[2], colors.headercolor[3])
 
       -- Draw the headers so we don't get lost :)
       if ( math.abs(lum - headlum) > .25 ) then
@@ -3352,7 +3352,7 @@ function tracker:endToPpq( ppq, enddiff )
   local ppq = self:rowToPpq( self:ppqToRow(ppq - eps) )
 
   if ( enddiff > 250 ) then
-    enddiff = 255;
+    enddiff = 255
   end
   return ppq + singlerow * ( enddiff / 255.0 )
 end
@@ -3462,7 +3462,7 @@ function tracker:createNote( inChar )
         local k = row+1
         while( k < rows ) do
           if ( noteGrid[rows*chan+k] and not ( noteGrid[rows*chan+k] == noteToInterrupt ) ) then
-            break;
+            break
           end
           k = k + 1
         end
@@ -3737,7 +3737,7 @@ function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, note
               print( 'I (' .. self.pitchTable[pitch2] .. ') am breaking my elongation on an OFF symbol' )
             end
           end
-          break;
+          break
         end
         k = k + 1
       end
@@ -4479,14 +4479,14 @@ function tracker:getRowInfo()
       return false
     end
   else
-    self.length     = 0;
-    self.position   = 0;
-    self.maxppq     = 0;
-    self.minppq     = 0;
-    self.rowPerPpq  = 0;
-    self.ppqPerRow  = 0;
-    self.rowPerSec  = 0;
-    self.ppqPerSec  = 0;
+    self.length     = 0
+    self.position   = 0
+    self.maxppq     = 0
+    self.minppq     = 0
+    self.rowPerPpq  = 0
+    self.ppqPerRow  = 0
+    self.rowPerSec  = 0
+    self.ppqPerSec  = 0
   end
 end
 
@@ -4865,14 +4865,14 @@ end
 -----------------------------
 function tracker:mergeOverlaps()
   if ( not reaper.ValidatePtr2(0, self.take, "MediaItem_Take*") ) then
-    self:tryPreviousItem();
+    self:tryPreviousItem()
   end
 
   if ( reaper.ValidatePtr2(0, self.take, "MediaItem_Take*") ) then
     -- Grab the notes and store them in channels
     local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
 
-    lastpitch = -1;
+    lastpitch = -1
 
     -- Fetch the notes
     -- We only have potential mergers in channel 1 (the legato channel) and at most one.
@@ -4889,8 +4889,8 @@ function tracker:mergeOverlaps()
               tracker:SAFE_DeleteNote( self.take, i )
             end
           end
-          lastpitch = pitch;
-          lastend = endppqpos;
+          lastpitch = pitch
+          lastend = endppqpos
         end
       end
     end
@@ -5292,7 +5292,7 @@ function tracker:getTakeEnvelopes()
 
       local cnt = reaper.CountTrackEnvelopes(self.track)
       local autoidx = nil
-      for i = 0,cnt-1 do;
+      for i = 0,cnt-1 do
         local envelope = reaper.GetTrackEnvelope(self.track, i)
         local retval, name = reaper.GetEnvelopeName(envelope, '')
 
@@ -5836,7 +5836,7 @@ function tracker:checkChange()
         if ( ( currentHash ~= self.hash ) or ( self.modified == 1 ) or ( self.lastEnvelopeCount ~= envelopeCount ) ) then
           self.hash = currentHash
           self:update()
-          self.lastEnvelopeCount = envelopeCount;
+          self.lastEnvelopeCount = envelopeCount
         end
       end
     end
@@ -5901,7 +5901,7 @@ function tracker:clearBlock(incp, cleanOffs)
   local cp        = incp or self.cp
 
   if ( self.debug == 1 ) then
-    print( "Clearing block [" .. cp.xstart .. ", " .. cp.xstop .. "] [" .. cp.ystart .. ", " .. cp.ystop .. "]" );
+    print( "Clearing block [" .. cp.xstart .. ", " .. cp.xstop .. "] [" .. cp.ystart .. ", " .. cp.ystop .. "]" )
   end
 
   local xstart = cp.xstart
@@ -6837,7 +6837,7 @@ function tracker:insertChord(chord)
         local k = row+1
         while( k < rows ) do
           if ( noteGrid[rows*chan+k] and not ( noteGrid[rows*chan+k] == noteToInterrupt ) ) then
-            break;
+            break
           end
           k = k + 1
         end
@@ -7018,7 +7018,7 @@ function tracker:duplicate()
     end
   end
 
-  local targetChannel = tracker.outChannel;
+  local targetChannel = tracker.outChannel
   tracker:seekMIDI(1)
   tracker.outChannel = targetChannel
   tracker:setOutChannel( tracker.outChannel )
@@ -7210,15 +7210,15 @@ mouse_cap = 0
 capture = {}
 local function setCapMode( mode, ref, min, max )
   mouse_cap = mode
-  capture.lastY = gfx.mouse_y;
-  capture.ref = ref;
-  capture.min = min;
-  capture.max = max;
+  capture.lastY = gfx.mouse_y
+  capture.ref = ref
+  capture.min = min
+  capture.max = max
 end
 
 local function getCapValue( sensitivity )
   local movement = math.floor( sensitivity * ( capture.lastY - gfx.mouse_y ) )
-  local value = capture.ref + movement;
+  local value = capture.ref + movement
 
   return ( ( value - capture.min ) % (capture.max - capture.min + 1) ) + capture.min
 end
@@ -7275,8 +7275,8 @@ local function updateLoop()
     local grid = tracker.grid
     local newRows = math.floor(gfx.h / grid.dy)-3
     if ( newRows ~= self.rows and newRows > 2) then
-      self.rows = newRows;
-      tracker.fov.height = newRows;
+      self.rows = newRows
+      tracker.fov.height = newRows
       tracker:resetBlock()
       tracker:update()
     end
@@ -8016,7 +8016,7 @@ local function updateLoop()
       local x = 1
       while ( x < #datafields ) do
         if ( datafields[x] == 'text' ) then
-          break;
+          break
         end
         x = x + 1
       end
@@ -8027,7 +8027,7 @@ local function updateLoop()
       local x = 1
       while ( x < #datafields ) do
         if ( datafields[x] == 'text' ) then
-          break;
+          break
         end
         x = x + 1
       end
@@ -8044,7 +8044,7 @@ local function updateLoop()
       local x = 1
       while ( x < #datafields ) do
         if ( datafields[x] == 'text' ) then
-          break;
+          break
         end
         x = x + 1
       end
@@ -8055,7 +8055,7 @@ local function updateLoop()
       local x = 1
       while ( x < #datafields ) do
         if ( datafields[x] == 'text' ) then
-          break;
+          break
         end
         x = x + 1
       end
@@ -8359,7 +8359,7 @@ end
 
 function tracker:terminate()
   tracker:stopNote()
-  self.terminated = 1;
+  self.terminated = 1
 
   local d, x, y, w, h = gfx.dock(-1,1,1,1,1)
   tracker:saveConfigFile("_wpos.cfg", {d=d, x=x, y=y, w=w, h=h, helpActive = tracker.helpActive, optionsActive = tracker.optionsActive})
@@ -8817,11 +8817,11 @@ local function Main()
   local ret, str = pcall(function() dofile(kfn) end)
   if ( not ret ) then
     reaper.ShowMessageBox("Error parsing " .. tracker.keyFile .. "\nError: " .. str .. "\nTerminating.", "FATAL ERROR", 0)
-    return;
+    return
   else
     if ( not extrakeysets ) then
       reaper.ShowMessageBox("Error parsing " .. tracker.keyFile .. "\nDid not find variable extrakeysets. Please delete userkeys.lua.\nTerminating.", "FATAL ERROR", 0)
-      return;
+      return
     end
 
     for i,v in pairs( extrakeysets ) do
