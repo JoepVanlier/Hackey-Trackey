@@ -485,6 +485,9 @@ tracker.lastmodtype = 1
 tracker.selectionBehavior = 0
 tracker.automationBug = 1 -- This fixes a bug in v5.70
 
+tracker.shiftChordInProgress = false -- is the user currently inputting a chord with the shift key?
+tracker.shiftChordStartXpos = nil -- what column should we return cursor to when shift is released? only set while shiftChordInProgress
+
 keyLayouts = {'QWERTY', 'QWERTZ', 'AZERTY'}
 
 -- Default configuration
@@ -3420,7 +3423,7 @@ end
 ---------------------
 -- Add note
 ---------------------
-function tracker:createNote( inChar )
+function tracker:createNote(inChar, advance)
 
   if ( not inChar or ( inChar > 256 ) ) then
     return
@@ -3518,7 +3521,9 @@ function tracker:createNote( inChar )
           self:deleteNote(chan, row)
         end
       end
-      self.ypos = self.ypos + self.advance
+      if advance then
+        self.ypos = self.ypos + self.advance
+      end
     else
       local octave = keys.octaves[char]
       if ( octave ) then
@@ -3528,7 +3533,9 @@ function tracker:createNote( inChar )
           reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, pitch, nil, true)
           self:playNote(chan, pitch, vel)
         end
-        self.ypos = self.ypos + self.advance
+        if advance then
+          self.ypos = self.ypos + self.advance
+        end
       end
     end
   elseif ( ( ftype == 'vel1' ) and validHex( char ) ) then
@@ -3538,95 +3545,123 @@ function tracker:createNote( inChar )
       self.lastVel = newvel
       reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, nil, newvel, true)
     end
-    self.ypos = self.ypos + self.advance
+    if advance then
+      self.ypos = self.ypos + self.advance
+    end
   elseif ( ( ftype == 'vel2' ) and validHex( char ) ) then
     if ( noteToEdit ) then
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToEdit] )
       local newvel = tracker:editVelField( vel, 2, char )
       self.lastVel = newvel
       reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, nil, newvel, true)
-      self.ypos = self.ypos + self.advance
+      if advance then
+        self.ypos = self.ypos + self.advance
+      end
     end
   elseif ( ( ftype == 'fx1' ) and validHex( char ) ) then
     local atime, env, shape, tension = tracker:getEnvPt(chan, self:toSeconds(self.ypos-1))
     env = env or self.lastEnv
     local newEnv = tracker:editEnvField( env, 1, char )
     self:addEnvPt(chan, self:toSeconds(self.ypos-1), newEnv, self.envShape)
-    self.ypos = self.ypos + self.advance
+    if advance then
+      self.ypos = self.ypos + self.advance
+    end
     self.lastEnv = newEnv
   elseif ( ( ftype == 'fx2' ) and validHex( char ) ) then
     local atime, env, shape, tension = tracker:getEnvPt(chan, self:toSeconds(self.ypos-1))
     env = env or self.lastEnv
     local newEnv = tracker:editEnvField( env, 2, char )
     self:addEnvPt(chan, self:toSeconds(self.ypos-1), newEnv, self.envShape)
-    self.ypos = self.ypos + self.advance
+    if advance then
+      self.ypos = self.ypos + self.advance
+    end
     self.lastEnv = newEnv
   elseif ( ( ftype == 'delay1' ) and validHex( char ) ) then
     if ( noteToEdit ) then
       local delay = self:getNoteDelay( noteToEdit )
       local newDelay = self:editCCField( delay, 1, char )
       self:setNoteDelay( noteToEdit, newDelay )
-      self.ypos = self.ypos + self.advance
+      if advance then
+        self.ypos = self.ypos + self.advance
+      end
     end
   elseif ( ( ftype == 'delay2' ) and validHex( char ) ) then
     if ( noteToEdit ) then
       local delay = self:getNoteDelay( noteToEdit )
       local newDelay = self:editCCField( delay, 2, char )
       self:setNoteDelay( noteToEdit, newDelay )
-      self.ypos = self.ypos + self.advance
+      if advance then
+        self.ypos = self.ypos + self.advance
+      end
     end
   elseif ( ( ftype == 'end1' ) and validHex( char ) ) then
     if ( noteToEdit ) then
       local oldEnd = self:getNoteEnd( noteToEdit )
       local newEnd = self:editCCField( oldEnd, 1, char )
       self:setNoteEnd( noteToEdit, newEnd )
-      self.ypos = self.ypos + self.advance
+      if advance then
+        self.ypos = self.ypos + self.advance
+      end
     end
   elseif ( ( ftype == 'end2' ) and validHex( char ) ) then
     if ( noteToEdit ) then
       local oldEnd = self:getNoteEnd( noteToEdit )
       local newEnd = self:editCCField( oldEnd, 2, char )
       self:setNoteEnd( noteToEdit, newEnd )
-      self.ypos = self.ypos + self.advance
+      if advance then
+        self.ypos = self.ypos + self.advance
+      end
     end
   elseif ( ( ftype == 'mod1' ) and validHex( char ) ) then
     local modtype, val = self:getCC( self.ypos - 1 )
     local newtype = self:editCCField( modtype, 1, char )
     self:addCCPt( self.ypos-1, newtype, val )
     self.lastmodtype = newtype
-    self.ypos = self.ypos + self.advance
+    if advance then
+      self.ypos = self.ypos + self.advance
+    end
   elseif ( ( ftype == 'mod2' ) and validHex( char ) ) then
     local modtype, val = self:getCC( self.ypos - 1 )
     local newtype = self:editCCField( modtype, 2, char )
     self:addCCPt( self.ypos-1, newtype, val )
     self.lastmodtype = newtype
-    self.ypos = self.ypos + self.advance
+    if advance then
+      self.ypos = self.ypos + self.advance
+    end
   elseif ( ( ftype == 'mod3' ) and validHex( char ) ) then
     local modtype, val = self:getCC( self.ypos - 1 )
     local newval = self:editCCField( val, 1, char )
     self:addCCPt( self.ypos-1, modtype, newval )
     self.lastmodval = newval
-    self.ypos = self.ypos + self.advance
+    if advance then
+      self.ypos = self.ypos + self.advance
+    end
   elseif ( ( ftype == 'mod4' ) and validHex( char ) ) then
     local modtype, val = self:getCC( self.ypos - 1 )
     local newval = self:editCCField( val, 2, char )
     self:addCCPt( self.ypos-1, modtype, newval )
     self.lastmodval = newval
-    self.ypos = self.ypos + self.advance
+    if advance then
+      self.ypos = self.ypos + self.advance
+    end
   elseif ( ( ftype == 'modtxt1' ) and validHex( char ) ) then
     local modtypes = data.modtypes
     local modtype, val = self:getCC( self.ypos - 1, modtypes[chan] )
     local newval = self:editCCField( val, 1, char )
     self:addCCPt_channel( self.ypos-1, modtype, newval )
     self.lastmodval = newval
-    self.ypos = self.ypos + self.advance
+    if advance then
+      self.ypos = self.ypos + self.advance
+    end
   elseif ( ( ftype == 'modtxt2' ) and validHex( char ) ) then
     local modtypes = data.modtypes
     local modtype, val = self:getCC( self.ypos - 1, modtypes[chan] )
     local newval = self:editCCField( val, 2, char )
     self:addCCPt_channel( self.ypos-1, modtype, newval )
     self.lastmodval = newval
-    self.ypos = self.ypos + self.advance
+    if advance then
+      self.ypos = self.ypos + self.advance
+    end
   elseif ( ftype == 'legato' ) then
     if ( char == '1' ) then
       self:addLegato( row )
@@ -3635,7 +3670,9 @@ function tracker:createNote( inChar )
     elseif ( char == '.' ) then
       self:deleteLegato( row )
     end
-    self.ypos = self.ypos + self.advance
+    if advance then
+      self.ypos = self.ypos + self.advance
+    end
   end
 end
 
@@ -7250,19 +7287,21 @@ function tracker:gotoCurrentPosition()
 end
 
 function tracker:noteEdit()
-  if ( self.take ) then
+  if self.take then
     reaper.Undo_OnStateChange2(0, "Tracker: Add note / Edit volume")
     reaper.MarkProjectDirty(0)
     local shift = gfx.mouse_cap & 8
 
-    if ( shift > 0 and string.match(string.char(lastChar),"[^%w]") == nil ) then
-      local oldAdvance = tracker.advance
-      tracker.advance = 0
-      tracker:createNote(lastChar+32)
+    if shift > 0 and string.match(string.char(lastChar),"[^%w]") == nil then
+      if not tracker.shiftChordInProgress then
+        tracker.shiftChordInProgress = true
+        tracker.shiftChordStartXpos = tracker.xpos
+      end
+      tracker:createNote(lastChar + 32, false)
       tracker:tab()
-      tracker.advance = oldAdvance
     else
-      tracker:createNote(lastChar)
+      tracker.shiftChordInProgress = false
+      tracker:createNote(lastChar, true)
     end
 
     tracker:deleteNow()
@@ -7329,6 +7368,14 @@ local function updateLoop()
       local alt     = gfx.mouse_cap & 16
       if ( alt > 0 ) then  print("alt") end
     end
+  end
+
+  -- if they were inputting a chord with shift but have just released it:
+  if tracker.shiftChordInProgress and gfx.mouse_cap & 8 == 0 then
+    tracker.xpos = tracker.shiftChordStartXpos
+    tracker.ypos = tracker.ypos + tracker.advance
+    tracker.shiftChordInProgress = false
+    tracker.shiftChordStartXpos = nil
   end
 
   -- Mouse
