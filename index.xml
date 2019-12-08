@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="6b92efa3d9211497ecec1b88b303d5ec9c5de483">
+<index version="1" name="Tracker tools" commit="08c7736097279392063765098afc3bb37d59ab3d">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -543,6 +543,13 @@ FF = the full length of the last tick.]]></changelog>
 + Remove default enter = close.]]></changelog>
         <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/6b92efa3d9211497ecec1b88b303d5ec9c5de483/Tracker/scales.lua</source>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/6b92efa3d9211497ecec1b88b303d5ec9c5de483/Tracker/tracker.lua</source>
+      </version>
+      <version name="2.04" author=": Joep Vanlier" time="2019-12-08T12:08:24Z">
+        <changelog><![CDATA[+ make shift + chord behaviour more like renoise: return to first column and advance when shift is released
++ add advanceDouble and advanceHalve commands
++ add upByAdvance and downByAdvance commands]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/9f196e6288eb620ae38b5e0a0949ff574528e575/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/9f196e6288eb620ae38b5e0a0949ff574528e575/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
