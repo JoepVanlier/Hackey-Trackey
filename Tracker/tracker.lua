@@ -3431,13 +3431,13 @@ function tracker:createNote(inChar, shift)
     return
   end
 
-  local char          = string.lower(string.char(inChar))
-  local data          = self.data
-  local notes         = self.notes
-  local noteGrid      = data.note
-  local noteStart     = data.noteStart
-  local rows          = self.rows
-  local singlerow     = self:rowToPpq(1)
+  local char       = string.lower(string.char(inChar))
+  local data       = self.data
+  local notes      = self.notes
+  local noteGrid   = data.note
+  local noteStart  = data.noteStart
+  local rows       = self.rows
+  local singlerow  = self:rowToPpq(1)
   local shouldMove = false
 
   -- Determine fieldtype, channel and row
