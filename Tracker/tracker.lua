@@ -3423,19 +3423,20 @@ end
 ---------------------
 -- Add note
 ---------------------
-function tracker:createNote(inChar, advance)
+function tracker:createNote(inChar, shift)
 
   if ( not inChar or ( inChar > 256 ) ) then
     return
   end
 
-  local char      = string.lower(string.char(inChar))
-  local data      = self.data
-  local notes     = self.notes
-  local noteGrid  = data.note
-  local noteStart = data.noteStart
-  local rows      = self.rows
-  local singlerow = self:rowToPpq(1)
+  local char          = string.lower(string.char(inChar))
+  local data          = self.data
+  local notes         = self.notes
+  local noteGrid      = data.note
+  local noteStart     = data.noteStart
+  local rows          = self.rows
+  local singlerow     = self:rowToPpq(1)
+  local shouldMove = false
 
   -- Determine fieldtype, channel and row
   local ftype, chan, row = self:getLocation()
@@ -3521,9 +3522,7 @@ function tracker:createNote(inChar, advance)
           self:deleteNote(chan, row)
         end
       end
-      if advance then
-        self.ypos = self.ypos + self.advance
-      end
+      shouldMove = true
     else
       local octave = keys.octaves[char]
       if ( octave ) then
@@ -3533,9 +3532,7 @@ function tracker:createNote(inChar, advance)
           reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, pitch, nil, true)
           self:playNote(chan, pitch, vel)
         end
-        if advance then
-          self.ypos = self.ypos + self.advance
-        end
+        shouldMove = true
       end
     end
   elseif ( ( ftype == 'vel1' ) and validHex( char ) ) then
@@ -3545,123 +3542,95 @@ function tracker:createNote(inChar, advance)
       self.lastVel = newvel
       reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, nil, newvel, true)
     end
-    if advance then
-      self.ypos = self.ypos + self.advance
-    end
+    shouldMove = true
   elseif ( ( ftype == 'vel2' ) and validHex( char ) ) then
     if ( noteToEdit ) then
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToEdit] )
       local newvel = tracker:editVelField( vel, 2, char )
       self.lastVel = newvel
       reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, nil, newvel, true)
-      if advance then
-        self.ypos = self.ypos + self.advance
-      end
+      shouldMove = true
     end
   elseif ( ( ftype == 'fx1' ) and validHex( char ) ) then
     local atime, env, shape, tension = tracker:getEnvPt(chan, self:toSeconds(self.ypos-1))
     env = env or self.lastEnv
     local newEnv = tracker:editEnvField( env, 1, char )
     self:addEnvPt(chan, self:toSeconds(self.ypos-1), newEnv, self.envShape)
-    if advance then
-      self.ypos = self.ypos + self.advance
-    end
+    shouldMove = true
     self.lastEnv = newEnv
   elseif ( ( ftype == 'fx2' ) and validHex( char ) ) then
     local atime, env, shape, tension = tracker:getEnvPt(chan, self:toSeconds(self.ypos-1))
     env = env or self.lastEnv
     local newEnv = tracker:editEnvField( env, 2, char )
     self:addEnvPt(chan, self:toSeconds(self.ypos-1), newEnv, self.envShape)
-    if advance then
-      self.ypos = self.ypos + self.advance
-    end
+    shouldMove = true
     self.lastEnv = newEnv
   elseif ( ( ftype == 'delay1' ) and validHex( char ) ) then
     if ( noteToEdit ) then
       local delay = self:getNoteDelay( noteToEdit )
       local newDelay = self:editCCField( delay, 1, char )
       self:setNoteDelay( noteToEdit, newDelay )
-      if advance then
-        self.ypos = self.ypos + self.advance
-      end
+      shouldMove = true
     end
   elseif ( ( ftype == 'delay2' ) and validHex( char ) ) then
     if ( noteToEdit ) then
       local delay = self:getNoteDelay( noteToEdit )
       local newDelay = self:editCCField( delay, 2, char )
       self:setNoteDelay( noteToEdit, newDelay )
-      if advance then
-        self.ypos = self.ypos + self.advance
-      end
+      shouldMove = true
     end
   elseif ( ( ftype == 'end1' ) and validHex( char ) ) then
     if ( noteToEdit ) then
       local oldEnd = self:getNoteEnd( noteToEdit )
       local newEnd = self:editCCField( oldEnd, 1, char )
       self:setNoteEnd( noteToEdit, newEnd )
-      if advance then
-        self.ypos = self.ypos + self.advance
-      end
+      shouldMove = true
     end
   elseif ( ( ftype == 'end2' ) and validHex( char ) ) then
     if ( noteToEdit ) then
       local oldEnd = self:getNoteEnd( noteToEdit )
       local newEnd = self:editCCField( oldEnd, 2, char )
       self:setNoteEnd( noteToEdit, newEnd )
-      if advance then
-        self.ypos = self.ypos + self.advance
-      end
+      shouldMove = true
     end
   elseif ( ( ftype == 'mod1' ) and validHex( char ) ) then
     local modtype, val = self:getCC( self.ypos - 1 )
     local newtype = self:editCCField( modtype, 1, char )
     self:addCCPt( self.ypos-1, newtype, val )
     self.lastmodtype = newtype
-    if advance then
-      self.ypos = self.ypos + self.advance
-    end
+    shouldMove = true
   elseif ( ( ftype == 'mod2' ) and validHex( char ) ) then
     local modtype, val = self:getCC( self.ypos - 1 )
     local newtype = self:editCCField( modtype, 2, char )
     self:addCCPt( self.ypos-1, newtype, val )
     self.lastmodtype = newtype
-    if advance then
-      self.ypos = self.ypos + self.advance
-    end
+    shouldMove = true
   elseif ( ( ftype == 'mod3' ) and validHex( char ) ) then
     local modtype, val = self:getCC( self.ypos - 1 )
     local newval = self:editCCField( val, 1, char )
     self:addCCPt( self.ypos-1, modtype, newval )
     self.lastmodval = newval
-    if advance then
-      self.ypos = self.ypos + self.advance
-    end
+    shouldMove = true
   elseif ( ( ftype == 'mod4' ) and validHex( char ) ) then
     local modtype, val = self:getCC( self.ypos - 1 )
     local newval = self:editCCField( val, 2, char )
     self:addCCPt( self.ypos-1, modtype, newval )
     self.lastmodval = newval
-    if advance then
-      self.ypos = self.ypos + self.advance
-    end
+    shouldMove = true
   elseif ( ( ftype == 'modtxt1' ) and validHex( char ) ) then
     local modtypes = data.modtypes
     local modtype, val = self:getCC( self.ypos - 1, modtypes[chan] )
     local newval = self:editCCField( val, 1, char )
     self:addCCPt_channel( self.ypos-1, modtype, newval )
     self.lastmodval = newval
-    if advance then
-      self.ypos = self.ypos + self.advance
-    end
+    shouldMove = true
   elseif ( ( ftype == 'modtxt2' ) and validHex( char ) ) then
     local modtypes = data.modtypes
     local modtype, val = self:getCC( self.ypos - 1, modtypes[chan] )
     local newval = self:editCCField( val, 2, char )
     self:addCCPt_channel( self.ypos-1, modtype, newval )
     self.lastmodval = newval
-    if advance then
-      self.ypos = self.ypos + self.advance
-    end
+    shouldMove = true
   elseif ( ftype == 'legato' ) then
     if ( char == '1' ) then
       self:addLegato( row )
@@ -3670,10 +3639,17 @@ function tracker:createNote(inChar, advance)
     elseif ( char == '.' ) then
       self:deleteLegato( row )
     end
-    if advance then
+    shouldMove = true
+  end
+
+  if shouldMove then
+    if shift then
+      self:tab()
+    else
       self.ypos = self.ypos + self.advance
     end
   end
+
 end
 
 --------------------------
@@ -7290,18 +7266,16 @@ function tracker:noteEdit()
   if self.take then
     reaper.Undo_OnStateChange2(0, "Tracker: Add note / Edit volume")
     reaper.MarkProjectDirty(0)
-    local shift = gfx.mouse_cap & 8
+    local shift = gfx.mouse_cap & 8 > 0
 
-    if shift > 0 and string.match(string.char(lastChar),"[^%w]") == nil then
+    if shift and string.match(string.char(lastChar),"[^%w]") == nil then
       if not tracker.shiftChordInProgress then
         tracker.shiftChordInProgress = true
         tracker.shiftChordStartXpos = tracker.xpos
       end
-      tracker:createNote(lastChar + 32, false)
-      tracker:tab()
+      tracker:createNote(lastChar + 32, true)
     else
-      tracker.shiftChordInProgress = false
-      tracker:createNote(lastChar, true)
+      tracker:createNote(lastChar, false)
     end
 
     tracker:deleteNow()
