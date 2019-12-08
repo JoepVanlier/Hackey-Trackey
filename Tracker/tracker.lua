@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.03
+@version 2.04
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -38,6 +38,10 @@
 
 --[[
  * Changelog:
+ * v2.04 (2019-12-08)
+   + make shift + chord behaviour more like renoise: return to first column and advance when shift is released
+   + add advanceDouble and advanceHalve commands
+   + add upByAdvance and downByAdvance commands
  * v2.03 (2019-10-28)
    + Minor bugfix shift + note = next column (thanks dri_ft!).
    + Remove default enter = close.
