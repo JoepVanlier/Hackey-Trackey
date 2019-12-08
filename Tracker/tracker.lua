@@ -520,6 +520,7 @@ tracker.cfg.overridePerPattern = 1
 tracker.cfg.closeWhenSwitchingToHP = 0
 tracker.cfg.followRow = 0
 tracker.cfg.useItemColors = 0
+tracker.cfg.returnAfterChord = 1
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -546,6 +547,7 @@ tracker.binaryOptions = {
     { 'closeWhenSwitchingToHP', 'Allow commands to close HT'},
     { 'followRow', 'Follow row in arrange view' },
     { 'useItemColors', 'Use item colors in headers' },
+    { 'returnAfterChord', 'Return to first column after chords' },
     }
 
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2"}
@@ -7346,10 +7348,12 @@ local function updateLoop()
 
   -- if they were inputting a chord with shift but have just released it:
   if tracker.shiftChordInProgress and gfx.mouse_cap & 8 == 0 then
-    tracker.xpos = tracker.shiftChordStartXpos
-    tracker.ypos = tracker.ypos + tracker.advance
     tracker.shiftChordInProgress = false
-    tracker.shiftChordStartXpos = nil
+    if tracker.cfg.returnAfterChord == 1 then
+      tracker.xpos = tracker.shiftChordStartXpos
+      tracker.ypos = tracker.ypos + tracker.advance
+      tracker.shiftChordStartXpos = nil
+    end
   end
 
   -- Mouse
