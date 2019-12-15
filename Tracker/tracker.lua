@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.04
+@version 2.05
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v2.05 (2019-12-15)
+   + add note names panel
  * v2.04 (2019-12-08)
    + make shift + chord behaviour more like renoise: return to first column and advance when shift is released
    + add advanceDouble and advanceHalve commands
@@ -359,7 +361,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.02"
+tracker.name = "Hackey Trackey v2.05"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -464,11 +466,14 @@ tracker.rowPerQn = 4 -- The default
 tracker.newRowPerQn = 4
 tracker.maxRowPerQn = 16
 
+tracker.harmonyActive = 0
+tracker.noteNamesActive = 0
 tracker.helpActive = 0
 tracker.optionsActive = 0
+tracker.harmonyWidth = 520
+tracker.noteNamesWidth = 250
 tracker.helpwidth = 400
 tracker.optionswidth = 370
-tracker.scalewidth = 520
 tracker.renaming = 0
 tracker.minoct = 0
 tracker.maxoct = 12
@@ -499,7 +504,6 @@ tracker.cfg = {}
 tracker.cfg.colorscheme = "buzz"
 tracker.cfg.keyset = "default"
 tracker.cfg.channelCCs = 0
-tracker.cfg.scaleActive = 0
 tracker.cfg.autoResize = 1
 tracker.cfg.loopFollow = 0
 tracker.cfg.initLoopSet = 0
@@ -555,6 +559,8 @@ tracker.binaryOptions = {
     }
 
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2"}
+
+noteNames = {}
 
 function tracker:loadColors(colorScheme)
   -- If you come up with a cool alternative color scheme, let me know
@@ -885,6 +891,7 @@ function tracker:loadKeys( keySet )
     keys.advanceup      = { 0,    0,  0,    26165 }         -- F5
     keys.stop2          = { 0,    0,  0,    26168 }         -- F8
     keys.harmony        = { 0,    0,  0,    26169 }         -- F9
+    keys.noteNames      = { 0,    0,  0,    6697264 }       -- F10
     keys.options        = { 0,    0,  0,    6697265 }       -- F11
     keys.panic          = { 0,    0,  0,    6697266 }       -- F12
     keys.setloop        = { 1,    0,  0,    12 }            -- CTRL + L
@@ -986,7 +993,8 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Shift + Up/Down', '[Env]elope change' },
       { 'F4/F5', '[Adv]ance De/Increase' },
       { 'F2/F3', 'MIDI [out] down/up' },
-      { 'F8/F11/F12', 'Stop / Options / Panic' },
+      { 'F8/F12', 'Stop / Panic' },
+      { 'F10/F11', 'Note Names / Options' },
       { 'CTRL + Left/Right', 'Switch MIDI item/track' },
       { 'CTRL + Shift + Left/Right', 'Switch Track' },
       { 'CTRL + D', 'Duplicate pattern' },
@@ -1021,6 +1029,7 @@ function tracker:loadKeys( keySet )
     keys.playfrom       = { 0,    0,  0,    26166 }         -- f6 = play here
     keys.stop2          = { 0,    0,  0,    26168 }         -- f8 = Stop
     keys.harmony        = { 0,    0,  0,    26169 }         -- f9 = Harmony helper
+    keys.noteNames      = { 0,    0,  0,    6697264 }       -- F10
     keys.options        = { 0,    0,  0,    6697265 }       -- f11 = Options
     keys.panic          = { 0,    0,  0,    6697266 }       -- f12 = MIDI Panic!
     keys.insert         = { 0,    0,  0,    6909555 }       -- Insert
@@ -1132,7 +1141,8 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Shift + Insert/Backspace', 'Wrap Forward/Backward' },
       { 'Del/.', 'Delete' },
       { 'F5/F6', 'Play/Play from here' },
-      { 'F8/F11/F12', 'Stop / Options / Panic' },
+      { 'F8/F12', 'Stop / Panic' },
+      { 'F10/F11', 'Note Names / Options' },
       { 'CTRL + L', 'Loop pattern' },
       { 'CTRL + Q/W', 'Loop start/end' },
       { 'Shift + +/-', 'Transpose selection' },
@@ -1181,6 +1191,7 @@ function tracker:loadKeys( keySet )
     keys.playfrom       = { 0,    0,  1,    32 }            -- Shift + space
     keys.stop2          = { 0,    0,  0,    500000000000000000000000 }  -- Not assigned
     keys.harmony        = { 1,    0,  0,    8  }             -- ctrl+h harmony helper
+    keys.noteNames      = { 1,    0,  0,    13 }            -- CTRL + m
     keys.options        = { 1,    0,  0,    15 }            -- ctrl+o options
     keys.panic          = { 0,    0,  0,    27 }            -- Escape = MIDI Panic!
     keys.insert         = { 0,    0,  0,    6909555 }       -- Insert
@@ -2682,43 +2693,17 @@ function tracker:printGrid()
     gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * self:getCursorLocation() - itempady - 1, tw, 1)
   end
 
-  ----------------------------------
-  -- Help
-  ----------------------------------
-
-  if ( tracker.helpActive == 1 ) then
-    local scales = scales
-    local help = help
-    local helpwidth = self.helpwidth
-    local ys = plotData.ystart - 1.3*plotData.indicatorShiftY
-    local xs = plotData.xstart + tw
-    if ( self.cfg.scaleActive == 1 ) then
-      xs = xs + self.scalewidth * 1
-    end
-    for i,v in pairs( help ) do
-      gfx.set(table.unpack(colors.helpcolor))
-      gfx.x = xs + 0.5*helpwidth + 4*itempadx
-      gfx.y = ys
-      gfx.printf(v[2])
-      gfx.set(table.unpack(colors.helpcolor2))
-      local lsize = gfx.measurestr( v[1] )
-      gfx.x = xs + helpwidth - lsize - 0.5 * helpwidth + 2*itempadx --8.2 * string.len(v[1])
-      gfx.printf(v[1])
-      ys = ys + yheight[1]
-    end
-  end
-
   ------------------------------
-  -- Chorder
+  -- Harmony Helper
   ------------------------------
-  if ( tracker.cfg.scaleActive == 1 ) then
+  if ( tracker.harmonyActive == 1 ) then
     local xs, ys, scaleY, keyMapH, scaleW, chordW, noteW, chordAreaY, charW = self:chordLocations()
     local xwidth       = plotData.xwidth
     local names        = scales.names
     local progressions = scales.progressions
 
     gfx.set(table.unpack(colors.textcolorbar or colors.textcolor))
-    gfx.x = xs + self.scalewidth - 4 * noteW - 5
+    gfx.x = xs + self.harmonyWidth - 4 * noteW - 5
     gfx.y = ys
     gfx.printf( "Harmony helper" )
 
@@ -2728,10 +2713,10 @@ function tracker:printGrid()
       for i,v in pairs( scales.picked.notes ) do
         s = s .. scales:pitchToNote(v) .. ","
       end
-      gfx.x = xs + self.scalewidth - (4 + s:len() ) * charW
+      gfx.x = xs + self.harmonyWidth - (4 + s:len() ) * charW
       gfx.printf( "["..s:sub(1,-2).."]" )
     else
-      gfx.x = xs + self.scalewidth - 4 * charW - 5
+      gfx.x = xs + self.harmonyWidth - 4 * charW - 5
       gfx.printf( "[]" )
     end
 
@@ -2770,7 +2755,7 @@ function tracker:printGrid()
     end
     cury = cury + keyMapH
     gfx.set(table.unpack(colors.helpcolor))
-    gfx.line(xs-5, cury-4, xs+self.scalewidth*0.94, cury-5)
+    gfx.line(xs-5, cury-4, xs+self.harmonyWidth*0.94, cury-5)
     gfx.set(table.unpack(colors.textcolor))
     local selectedScale = scales:getScaleValue()
     for i = 1,#names do
@@ -2805,15 +2790,90 @@ function tracker:printGrid()
         cury = cury + keyMapH
       end
       gfx.set(table.unpack(colors.helpcolor))
-      gfx.line(xs-5, cury-4, xs+self.scalewidth*0.94, cury-5)
+      gfx.line(xs-5, cury-4, xs+self.harmonyWidth*0.94, cury-5)
       gfx.set(table.unpack(colors.textcolor))
     end
   end
 
-  if ( tracker.optionsActive == 1 ) then
+  ----------------------------------
+  -- note names
+  ----------------------------------
+  if tracker.noteNamesActive == 1 then
+    local width = self.noteNamesWidth - 2 * itempadx
+    local ys = plotData.ystart - 1.3 * plotData.indicatorShiftY + yheight[1]
+    local xs = plotData.xstart + tw + 4 * itempadx
+    if self.harmonyActive == 1 then
+      xs = xs + self.harmonyWidth * 1
+    end
+    local noteNamesFound = false;
+
+    gfx.set(table.unpack(colors.textcolorbar or colors.helpcolor2))
+    gfx.x = xs
+    gfx.y = ys
+    gfx.printf('Note Names')
+    ys = ys + yheight[1] + 4 * itempady
+
+    -- start at 12 because notes 0-11 are octave -1, which isn't in pitchTable
+    for note = 12, 127 do
+      noteName = noteNames[note]
+      if noteName then
+        noteNamesFound = true;
+        pitch = self.pitchTable[note]
+        gfx.set(table.unpack(colors.helpcolor))
+        gfx.x = xs + 0.1 * width + 4 * itempadx
+        gfx.y = ys
+        gfx.printf(noteName)
+        gfx.set(table.unpack(colors.helpcolor2))
+        local lsize = gfx.measurestr(pitch) -- align right
+        gfx.x = xs + 0.1 * width - lsize + 2 * itempadx
+        gfx.printf(pitch)
+        ys = ys + yheight[1]
+      end
+    end
+
+    if not noteNamesFound then
+      local a = 'No note names found'
+      local b = 'for this track'
+      gfx.set(table.unpack(colors.helpcolor))
+      gfx.y = ys
+      gfx.x = xs + 0.5 * width - gfx.measurestr(a) / 2 -- align centre
+      gfx.printf(a)
+      ys = ys + yheight[1]
+      gfx.x = xs + 0.5 * width - gfx.measurestr(b) / 2 --align centre
+      gfx.y = ys
+      gfx.printf(b)
+    end
+
+  end
+
+  ----------------------------------
+  -- Help
+  ----------------------------------
+  if ( tracker.helpActive == 1 ) then
     local help = help
     local helpwidth = self.helpwidth
+    local ys = plotData.ystart - 1.3*plotData.indicatorShiftY
+    local xs = plotData.xstart + tw
+    if self.harmonyActive == 1 then
+      xs = xs + self.harmonyWidth * 1
+    end
+    if self.noteNamesActive == 1 then
+      xs = xs + self.noteNamesWidth * 1
+    end
+    for i,v in pairs( help ) do
+      gfx.set(table.unpack(colors.helpcolor))
+      gfx.x = xs + 0.5*helpwidth + 4*itempadx
+      gfx.y = ys
+      gfx.printf(v[2])
+      gfx.set(table.unpack(colors.helpcolor2))
+      local lsize = gfx.measurestr( v[1] ) -- align right
+      gfx.x = xs + helpwidth - lsize - 0.5 * helpwidth + 2*itempadx --8.2 * string.len(v[1])
+      gfx.printf(v[1])
+      ys = ys + yheight[1]
+    end
+  end
 
+  if ( tracker.optionsActive == 1 ) then
     local xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, binaryOptionsH, buttonwidth, layoutX, buttonwidth2 = tracker:optionLocations()
 
     gfx.set(table.unpack(colors.textcolorbar or colors.helpcolor2))
@@ -3001,11 +3061,14 @@ function tracker:optionLocations()
   local xs = plotData.xstart + tw + 4*itempadx
   local ys = plotData.ystart - 1.3*plotData.indicatorShiftY + yheight
 
-  if ( self.helpActive == 1 ) then
-    xs = xs + self.helpwidth * 1.1
+  if self.harmonyActive == 1 then
+    xs = xs + self.harmonyWidth * 1.1
   end
-  if ( self.cfg.scaleActive == 1 ) then
-    xs = xs + self.scalewidth * 1.1
+  if self.noteNamesActive == 1 then
+    xs = xs + self.noteNamesWidth * 1.1
+  end
+  if self.helpActive == 1 then
+    xs = xs + self.helpwidth * 1.1
   end
 
   local buttonwidth = gfx.measurestr("_Theme Mapping!")
@@ -3155,7 +3218,7 @@ function tracker:shiftAt( x, y, shift, scale, onlyNotes )
       local pitch, vel, startppqpos, endppqpos = table.unpack( note )
 
       local newPitch = 0
-      if ( self.cfg.scaleActive == 1 ) then
+      if ( self.harmonyActive == 1 ) then
         if ( scale and scale == 1 ) then
           newPitch = scales:shiftRoot(pitch, shift)
         else
@@ -5799,6 +5862,10 @@ function tracker:setTake( take )
         tracker:arm()
       end
 
+      if tracker.noteNamesActive == 1 then
+        tracker:getNoteNames()
+      end
+
       return true
     end
   end
@@ -7498,7 +7565,7 @@ local function updateLoop()
       end
     end
 
-    if ( tracker.cfg.scaleActive == 1 ) then
+    if ( tracker.harmonyActive == 1 ) then
       local xs, ys, scaleY, keyMapH, scaleW, chordW, noteW, chordAreaY = tracker:chordLocations()
       local scales = scales
       local progressions = scales.progressions
@@ -8195,16 +8262,24 @@ local function updateLoop()
       reaper.Main_OnCommand(1016, 0)
     elseif inputs('panic') then
       reaper.Main_OnCommand(40345, 0)
+    elseif inputs('harmony') then
+      tracker.harmonyActive = 1-(tracker.harmonyActive or 0)
+      tracker:resizeWindow()
+      tracker:saveConfig(tracker.configFile, tracker.cfg)
+    elseif inputs('noteNames') then
+      if tracker.noteNamesActive == 0 then
+        tracker:getNoteNames()
+        tracker.noteNamesActive = 1
+      else
+        tracker.noteNamesActive = 0
+      end
+      tracker:resizeWindow()
     elseif inputs('help') then
       tracker.helpActive = 1-tracker.helpActive
       tracker:resizeWindow()
     elseif inputs('options') then
       tracker.optionsActive = 1-tracker.optionsActive
       tracker:resizeWindow()
-    elseif inputs('harmony') then
-      tracker.cfg.scaleActive = 1-(tracker.cfg.scaleActive or 0)
-      tracker:resizeWindow()
-      tracker:saveConfig(tracker.configFile, tracker.cfg)
     elseif inputs('nextMIDI') then
       tracker:seekMIDI(1)
       tracker:resizeWindow()
@@ -8416,7 +8491,17 @@ function tracker:terminate()
   self.terminated = 1
 
   local d, x, y, w, h = gfx.dock(-1,1,1,1,1)
-  tracker:saveConfigFile("_wpos.cfg", {d=d, x=x, y=y, w=w, h=h, helpActive = tracker.helpActive, optionsActive = tracker.optionsActive})
+  tracker:saveConfigFile("_wpos.cfg", {
+    d=d,
+    x=x,
+    y=y,
+    w=w,
+    h=h,
+    harmonyActive=tracker.harmonyActive,
+    noteNamesActive=tracker.noteNamesActive,
+    helpActive=tracker.helpActive,
+    optionsActive=tracker.optionsActive,
+  })
   tracker:saveConfig(tracker.configFile, tracker.cfg)
 
   gfx.quit()
@@ -8433,14 +8518,17 @@ end
 
 function tracker:autoResize()
   local siz = gfx.w
+  if ( tracker.harmonyActive == 1 ) then
+    siz = siz - self.harmonyWidth
+  end
+  if ( tracker.noteNamesActive == 1 ) then
+    siz = siz - self.noteNamesWidth
+  end
   if ( tracker.helpActive == 1 ) then
     siz = siz - self.helpwidth
   end
   if ( tracker.optionsActive == 1 ) then
     siz = siz - self.optionswidth
-  end
-  if ( tracker.cfg.scaleActive == 1 ) then
-    siz = siz - self.scalewidth
   end
 
   gfx.setfont(1, self.colors.patternFont, self.colors.patternFontSize)
@@ -8475,22 +8563,28 @@ function tracker:computeDims(inRows)
   end
 
   width = self.fov.abswidth
-  if ( tracker.helpActive == 1 ) then
-    width = width + self.helpwidth
-    if ( rows < 16 ) then
-      rows = 16
-    end
-  end
-  if ( tracker.optionsActive == 1 ) then
-    width = width + self.optionswidth
-    if ( rows < 16 ) then
-      rows = 16
-    end
-  end
-  if ( tracker.cfg.scaleActive == 1 ) then
-    width = width + self.scalewidth
-    if ( rows < 26 ) then
+  if tracker.harmonyActive == 1 then
+    width = width + self.harmonyWidth
+    if rows < 26 then
       rows = 26
+    end
+  end
+  if tracker.noteNamesActive == 1 then
+    width = width + self.noteNamesWidth
+    if rows < 16 then
+      rows = 16
+    end
+  end
+  if tracker.helpActive == 1 then
+    width = width + self.helpwidth
+    if rows < 16 then
+      rows = 16
+    end
+  end
+  if tracker.optionsActive == 1 then
+    width = width + self.optionswidth
+    if rows < 16 then
+      rows = 16
     end
   end
 
@@ -8564,6 +8658,26 @@ function tracker:updateNames()
     self.patternName = string.format('%s/%s>', self.trackName, self.midiName:sub(1,maxsize))
   else
     self.patternName = string.format('%s/%s', self.trackName, self.midiName:sub(1,maxsize))
+  end
+end
+
+function tracker:getNoteNames()
+  if tracker.track then
+    -- track_num as returned here is one-indexed, but as used by GetTrackMIDINoteName, it's zero-indexed (christ)
+    local track_num = reaper.GetMediaTrackInfo_Value(tracker.track, 'IP_TRACKNUMBER') - 1
+
+    -- can't actually tell whether channel makes a difference here?
+    -- sorta seems like it does not, but whatever
+
+    -- GetTrackMIDINoteName takes a channel to query, and note names can be set for a particular channel, at least in theory
+    -- but it seems that in practice they're generally just set for all channels, so here we just query channel zero instead of bothering to query the tracker's specific channel
+    -- if it turns out to matter, we can get the channel from tracker.outChannel
+    local channel = 0
+
+    -- start at 12 because notes 0-11 are octave -1, which isn't in pitchTable
+    for note = 12, 127 do
+      noteNames[note] = reaper.GetTrackMIDINoteName(track_num, note, channel)
+    end
   end
 end
 
@@ -8708,6 +8822,7 @@ local function Main()
     io.write("    keys.advanceup      = { 0,    0,  0,    26165 }         -- F5\n")
     io.write("    keys.stop2          = { 0,    0,  0,    26168 }         -- F8\n")
     io.write("    keys.harmony        = { 0,    0,  0,    26169 }         -- F9\n")
+    io.write("    keys.noteNames      = { 0,    0,  0,    6697264 }       -- F10\n")
     io.write("    keys.options        = { 0,    0,  0,    6697265 }       -- F11\n")
     io.write("    keys.panic          = { 0,    0,  0,    6697266 }       -- F12\n")
     io.write("    keys.setloop        = { 1,    0,  0,    12 }            -- CTRL + L\n")
@@ -8807,7 +8922,8 @@ local function Main()
     io.write("      { 'CTRL + Shift + Up/Down', '[Env]elope change' },\n")
     io.write("      { 'F4/F5', '[Adv]ance De/Increase' },\n")
     io.write("      { 'F2/F3', 'MIDI [out] down/up' },\n")
-    io.write("      { 'F8/F11/F12', 'Stop / Options / Panic' },\n")
+    io.write("      { 'F8/F12', 'Stop / Panic' },\n")
+    io.write("      { 'F10/F11', 'Note Names / Options' },\n")
     io.write("      { 'CTRL + Left/Right', 'Switch MIDI item/track' },\n")
     io.write("      { 'CTRL + Shift + Left/Right', 'Switch Track' },\n")
     io.write("      { 'CTRL + D', 'Duplicate pattern' },\n")
@@ -8927,8 +9043,10 @@ local function Main()
     tracker:grabActiveItem()
     local wpos = tracker:loadConfig("_wpos.cfg", {})
 
-    tracker.optionsActive = wpos.optionsActive or tracker.optionsActive
+    tracker.harmonyActive = wpos.harmonyActive or tracker.harmonyActive
+    tracker.noteNamesActive = wpos.noteNamesActive or tracker.noteNamesActive
     tracker.helpActive = wpos.helpActive or tracker.helpActive
+    tracker.optionsActive = wpos.optionsActive or tracker.optionsActive
     local width, height = tracker:computeDims(48)
     tracker:updateNames()
 
