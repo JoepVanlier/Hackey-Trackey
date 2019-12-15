@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="08c7736097279392063765098afc3bb37d59ab3d">
+<index version="1" name="Tracker tools" commit="9d8bd15bbb06f6976b4b86109d2400ad95eb284e">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -550,6 +550,11 @@ FF = the full length of the last tick.]]></changelog>
 + add upByAdvance and downByAdvance commands]]></changelog>
         <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/9f196e6288eb620ae38b5e0a0949ff574528e575/Tracker/scales.lua</source>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/9f196e6288eb620ae38b5e0a0949ff574528e575/Tracker/tracker.lua</source>
+      </version>
+      <version name="2.05" author=": Joep Vanlier" time="2019-12-15T08:41:01Z">
+        <changelog><![CDATA[+ add note names panel]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/0c203f4f8bf249e295d6041f4628185434a181ff/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/0c203f4f8bf249e295d6041f4628185434a181ff/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
