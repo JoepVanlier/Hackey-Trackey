@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.04
+@version 2.05
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v2.05 (2019-12-15)
+   + add note names panel
  * v2.04 (2019-12-08)
    + make shift + chord behaviour more like renoise: return to first column and advance when shift is released
    + add advanceDouble and advanceHalve commands
@@ -359,7 +361,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.02"
+tracker.name = "Hackey Trackey v2.05"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -991,7 +993,8 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Shift + Up/Down', '[Env]elope change' },
       { 'F4/F5', '[Adv]ance De/Increase' },
       { 'F2/F3', 'MIDI [out] down/up' },
-      { 'F8/F11/F12', 'Stop / Options / Panic' },
+      { 'F8/F12', 'Stop / Panic' },
+      { 'F10/F11', 'Note Names / Options' },
       { 'CTRL + Left/Right', 'Switch MIDI item/track' },
       { 'CTRL + Shift + Left/Right', 'Switch Track' },
       { 'CTRL + D', 'Duplicate pattern' },
@@ -1138,7 +1141,8 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Shift + Insert/Backspace', 'Wrap Forward/Backward' },
       { 'Del/.', 'Delete' },
       { 'F5/F6', 'Play/Play from here' },
-      { 'F8/F11/F12', 'Stop / Options / Panic' },
+      { 'F8/F12', 'Stop / Panic' },
+      { 'F10/F11', 'Note Names / Options' },
       { 'CTRL + L', 'Loop pattern' },
       { 'CTRL + Q/W', 'Loop start/end' },
       { 'Shift + +/-', 'Transpose selection' },
@@ -5858,6 +5862,10 @@ function tracker:setTake( take )
         tracker:arm()
       end
 
+      if tracker.noteNamesActive == 1 then
+        tracker:getNoteNames()
+      end
+
       return true
     end
   end
@@ -8654,21 +8662,22 @@ function tracker:updateNames()
 end
 
 function tracker:getNoteNames()
-  -- track_num as returned here is one-indexed, but as used by GetTrackMIDINoteName, it's zero-indexed (christ)
-  local track_num = reaper.GetMediaTrackInfo_Value(tracker.track, 'IP_TRACKNUMBER') - 1
+  if tracker.track then
+    -- track_num as returned here is one-indexed, but as used by GetTrackMIDINoteName, it's zero-indexed (christ)
+    local track_num = reaper.GetMediaTrackInfo_Value(tracker.track, 'IP_TRACKNUMBER') - 1
 
-  -- can't actually tell whether channel makes a difference here?
-  -- sorta seems like it does not, but whatever
-  local channel
-  if tracker.outChannel >= 1 then
-    channel = tracker.outChannel - 1
-  else
-    channel = 0
-  end
+    -- can't actually tell whether channel makes a difference here?
+    -- sorta seems like it does not, but whatever
 
-  -- start at 12 because notes 0-11 are octave -1, which isn't in pitchTable
-  for note = 12, 127 do
-    noteNames[note] = reaper.GetTrackMIDINoteName(track_num, note, channel)
+    -- GetTrackMIDINoteName takes a channel to query, and note names can be set for a particular channel, at least in theory
+    -- but it seems that in practice they're generally just set for all channels, so here we just query channel zero instead of bothering to query the tracker's specific channel
+    -- if it turns out to matter, we can get the channel from tracker.outChannel
+    local channel = 0
+
+    -- start at 12 because notes 0-11 are octave -1, which isn't in pitchTable
+    for note = 12, 127 do
+      noteNames[note] = reaper.GetTrackMIDINoteName(track_num, note, channel)
+    end
   end
 end
 
@@ -8913,7 +8922,8 @@ local function Main()
     io.write("      { 'CTRL + Shift + Up/Down', '[Env]elope change' },\n")
     io.write("      { 'F4/F5', '[Adv]ance De/Increase' },\n")
     io.write("      { 'F2/F3', 'MIDI [out] down/up' },\n")
-    io.write("      { 'F8/F11/F12', 'Stop / Options / Panic' },\n")
+    io.write("      { 'F8/F12', 'Stop / Panic' },\n")
+    io.write("      { 'F10/F11', 'Note Names / Options' },\n")
     io.write("      { 'CTRL + Left/Right', 'Switch MIDI item/track' },\n")
     io.write("      { 'CTRL + Shift + Left/Right', 'Switch Track' },\n")
     io.write("      { 'CTRL + D', 'Duplicate pattern' },\n")
@@ -9064,10 +9074,6 @@ local function Main()
 
     if ( tracker.cfg.initLoopSet == 1 ) then
       tracker:setLoopToPattern()
-    end
-
-    if tracker.noteNamesActive == 1 then
-      tracker:getNoteNames()
     end
 
     reaper.defer(updateLoop)
