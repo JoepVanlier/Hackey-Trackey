@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.05
+@version 2.06
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v2.06 (2020-01-5)
+   + Bugfix shift functionality. Catch keystrokes that cannot be converted to valid characters.
  * v2.05 (2019-12-15)
    + add note names panel
  * v2.04 (2019-12-08)
@@ -361,7 +363,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.05"
+tracker.name = "Hackey Trackey v2.06"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -7340,8 +7342,9 @@ function tracker:noteEdit()
     reaper.Undo_OnStateChange2(0, "Tracker: Add note / Edit volume")
     reaper.MarkProjectDirty(0)
     local shift = gfx.mouse_cap & 8 > 0
-
-    if shift and string.match(string.char(lastChar),"[^%w]") == nil then
+    
+    local ok, char = pcall(function () return string.char(lastChar) end)
+    if shift and string.match(char,"[^%w]") == nil then
       if not tracker.shiftChordInProgress then
         tracker.shiftChordInProgress = true
         tracker.shiftChordStartXpos = tracker.xpos
