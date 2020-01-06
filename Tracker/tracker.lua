@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.06
+@version 2.07
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -38,7 +38,11 @@
 
 --[[
  * Changelog:
- * v2.06 (2020-01-5)
+ * v2.07 (2020-01-06)
+   + Allow different font sizes.
+   + Refactor menu handling to make it a little less horrible.
+   + Bugfix: Make sure key mapping isn't clicked when layout is changed.
+ * v2.06 (2020-01-05)
    + Bugfix shift functionality. Catch keystrokes that cannot be converted to valid characters.
  * v2.05 (2019-12-15)
    + add note names panel
@@ -363,7 +367,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.06"
+tracker.name = "Hackey Trackey v2.07"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -443,14 +447,27 @@ tracker.channels = 16 -- Max channel (0 is not shown)
 tracker.displaychannels = 15
 
 -- Plotting
-tracker.grid = {}
-tracker.grid.originx   = 35
-tracker.grid.originy   = 35
-tracker.grid.dx        = 8
-tracker.grid.dy        = 20
-tracker.grid.barpad    = 10
-tracker.grid.itempadx  = 5
-tracker.grid.itempady  = 3
+function updateFontScale()
+  local fontScaler = 1
+  if ( tracker.colors.patternFont and tracker.colors.patternFontSize ) then
+    fontScaler = tracker.colors.patternFontSize/14
+  end
+  
+  tracker.grid = {}
+  tracker.grid.fontScaler = fontScaler
+  tracker.grid.originx   = 35
+  tracker.grid.originy   = 35
+  tracker.grid.dx        = 8 * fontScaler
+  tracker.grid.dy        = 20 * fontScaler
+  tracker.grid.barpad    = 10 * fontScaler
+  tracker.grid.itempadx  = 5
+  tracker.grid.itempady  = 3
+  
+  tracker.harmonyWidth    = 520 * fontScaler
+  tracker.noteNamesWidth  = 250 * fontScaler
+  tracker.helpwidth       = 400 * fontScaler
+  tracker.optionswidth    = 370 * fontScaler
+end
 
 tracker.scrollbar = {}
 tracker.scrollbar.size = 10
@@ -472,10 +489,6 @@ tracker.harmonyActive = 0
 tracker.noteNamesActive = 0
 tracker.helpActive = 0
 tracker.optionsActive = 0
-tracker.harmonyWidth = 520
-tracker.noteNamesWidth = 250
-tracker.helpwidth = 400
-tracker.optionswidth = 370
 tracker.renaming = 0
 tracker.minoct = 0
 tracker.maxoct = 12
@@ -500,11 +513,13 @@ tracker.shiftChordInProgress = false -- is the user currently inputting a chord 
 tracker.shiftChordStartXpos = nil -- what column should we return cursor to when shift is released? only set while shiftChordInProgress
 
 keyLayouts = {'QWERTY', 'QWERTZ', 'AZERTY'}
+fontSizes = {12, 14, 16, 18, 20, 22}
 
 -- Default configuration
 tracker.cfg = {}
 tracker.cfg.colorscheme = "buzz"
 tracker.cfg.keyset = "default"
+tracker.cfg.fontSize = 14
 tracker.cfg.channelCCs = 0
 tracker.cfg.autoResize = 1
 tracker.cfg.loopFollow = 0
@@ -779,8 +794,8 @@ function tracker:loadColors(colorScheme)
     self.colors.bar.end2         = self.colors.bar.end1
 
     self.colors.patternFont         = "DejaVu Sans"
-    self.colors.patternFontSize     = 14
-    self.colors.customFontDisplace  = { 8, -3 }
+    self.colors.patternFontSize     = tracker.cfg.fontSize or 14
+    self.colors.customFontDisplace  = { self.colors.patternFontSize-6, -3 }
   elseif colorScheme == "buzz2" then
     -- Buzz
     self.colors.helpcolor        = {1/256*159, 1/256*147, 1/256*115, 1} -- the functions
@@ -805,8 +820,8 @@ function tracker:loadColors(colorScheme)
     self.crtStrength             = 0
 
     self.colors.patternFont         = "DejaVu Sans"
-    self.colors.patternFontSize     = 14
-    self.colors.customFontDisplace  = { 8, -3 }
+    self.colors.patternFontSize     = tracker.cfg.fontSize or 14
+    self.colors.customFontDisplace  = { self.colors.patternFontSize-6, -3 }
   end
   -- clear colour is in a different format
   gfx.clear = tracker.colors.windowbackground[1]*256+(tracker.colors.windowbackground[2]*256*256)+(tracker.colors.windowbackground[3]*256*256*256)
@@ -841,10 +856,11 @@ local function reinitializeWindow(title, iwidth, iheight, id, iwx, iwh)
     iheight = tracker.cfg.maxHeight
   end
 
-  if ( tracker.cfg.noResize == 0 ) then
+  if ( tracker.cfg.noResize == 0 and not tracker.attemptedReset ) then
     if ( ww ~= iwidth or wh ~= iheight ) then
       gfx.quit()
       gfx.init( title, iwidth, iheight, id, iwx, iwh)
+      tracker.attemptedReset = 1
     end
   end
 end
@@ -1886,7 +1902,7 @@ function tracker:linkData()
     master[#master+1]       = 1
     datafield[#datafield+1] = 'text'
     idx[#idx+1]             = j
-    colsizes[#colsizes + 1] = 3
+    colsizes[#colsizes + 1] = 3 * tracker.grid.fontScaler
     padsizes[#padsizes + 1] = 1
     if ( self.selectionBehavior == 1 ) then
       grouplink[#grouplink+1] = {1, 2}
@@ -2876,88 +2892,28 @@ function tracker:printGrid()
   end
 
   if ( tracker.optionsActive == 1 ) then
-    local xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, binaryOptionsH, buttonwidth, layoutX, buttonwidth2 = tracker:optionLocations()
+    local themeMenu, keymapMenu, layoutMenu, fontsizeMenu, binaryOptions, labelLocation = tracker:optionLocations()
 
     gfx.set(table.unpack(colors.textcolorbar or colors.helpcolor2))
-    gfx.x = xs
-    gfx.y = ys
+    gfx.x = labelLocation.x
+    gfx.y = labelLocation.y
     gfx.printf( "Options" )
 
-    xs = themeMapX
-    ys = themeMapY
-    gfx.y = ys
-    gfx.x = xs
-    gfx.printf( "Theme mapping" )
+    local selectedColor = colors.harmonyselect or colors.helpcolor2
+    local normalColor = colors.helpcolor
+    local titleColor = colors.textcolorbar or colors.helpcolor2
 
-    for i,v in pairs( tracker.colorschemes ) do
-      ys = ys + keyMapH
-      gfx.y = ys
-      gfx.x = xs
+    themeMenu:drawMenu("Theme", tracker.colorschemes, tracker.cfg.colorscheme, titleColor, selectedColor, normalColor)
+    keymapMenu:drawMenu("Map", keysets, tracker.cfg.keyset, titleColor, selectedColor, normalColor)    
+    layoutMenu:drawMenu("Layout", keyLayouts, tracker.cfg.keyLayout, titleColor, selectedColor, normalColor)
+    fontsizeMenu:drawMenu("Fontsize", fontSizes, tracker.cfg.fontSize, titleColor, selectedColor, normalColor)
 
-      if ( v == tracker.cfg.colorscheme ) then
-        gfx.set(table.unpack(colors.harmonyselect or colors.helpcolor2))
-      else
-        gfx.set(table.unpack(colors.helpcolor))
-      end
-      gfx.printf(v)
-    end
-
-    gfx.set(table.unpack(colors.textcolorbar or colors.helpcolor2))
-    xs = keyMapX
-    ys = keyMapY
-    gfx.y = ys
-    gfx.x = xs
-    gfx.printf( "Key mapping" )
-
-    for i,v in pairs( keysets ) do
-      ys = ys + keyMapH
-      gfx.y = ys
-      gfx.x = xs
-
-      if ( v == tracker.cfg.keyset ) then
-        gfx.set(table.unpack(colors.harmonyselect or colors.helpcolor2))
-      else
-        gfx.set(table.unpack(colors.helpcolor))
-      end
-      gfx.printf(v)
-    end
-
-    xs = binaryOptionsX
-    ys = binaryOptionsY
-    gfx.x = xs
-    gfx.y = ys
-
-    gfx.set(table.unpack(colors.textcolorbar or colors.helpcolor2))
-    xs = layoutX
-    ys = keyMapY
-    gfx.y = ys
-    gfx.x = xs
-    gfx.printf( "Layout" )
-
-    for i,v in pairs( keyLayouts ) do
-      ys = ys + keyMapH
-      gfx.y = ys
-      gfx.x = xs
-
-      if ( v == tracker.cfg.keyLayout ) then
-        gfx.set(table.unpack(colors.harmonyselect or colors.helpcolor2))
-      else
-        gfx.set(table.unpack(colors.helpcolor))
-      end
-      gfx.printf(v)
-    end
-
-    xs = binaryOptionsX
-    ys = binaryOptionsY
-    gfx.x = xs
-    gfx.y = ys
-
-
-
+    xs = binaryOptions.x
+    ys = binaryOptions.y
     for i=1,#self.binaryOptions do
       gfx.set(table.unpack(colors.textcolorbar or colors.helpcolor2))
       gfx.x = xs + 13
-      local cys = ys + i * binaryOptionsH
+      local cys = ys + i * binaryOptions.h
       gfx.y = cys + extraFontShift
 
       gfx.line(xs, cys, xs,  cys+8)
@@ -2965,7 +2921,7 @@ function tracker:printGrid()
       gfx.line(xs, cys, xs+8,  cys)
       gfx.line(xs, cys+8, xs+8,  cys+8)
 
-      if ( self.cfg[self.binaryOptions[i][1]] == 1 ) then
+      if (self.cfg[self.binaryOptions[i][1]] == 1) then
         gfx.line(xs, cys, xs+8,  cys+8)
         gfx.line(xs+8, cys, xs,  cys+8)
       end
@@ -3051,6 +3007,43 @@ function tracker:getBottom()
   return bottom, yheight
 end
 
+function CreateMenu(_x, _y, _w, _h)
+  return {
+    x=_x, 
+    y=_y, 
+    w=_w, 
+    h=_h,
+    processMouseMenu = function(self)
+      if ( gfx.mouse_x > self.x ) then
+        if ( gfx.mouse_x < self.x+self.w ) then
+          if ( gfx.mouse_y > self.y ) then
+            return math.floor((gfx.mouse_y - self.y)/self.h)
+          end
+        end
+      end
+    end,
+    
+    drawMenu = function(self, title, labels, selection, titleColor, selectedColor, normalColor)
+      gfx.x = self.x
+      gfx.y = self.y
+      
+      gfx.set(table.unpack(titleColor))
+      gfx.printf(title)
+    
+      for i,v in pairs(labels) do
+        gfx.x = self.x
+        gfx.y = gfx.y + self.h
+        if ( v == selection ) then
+          gfx.set(table.unpack(selectedColor))
+        else
+          gfx.set(table.unpack(normalColor))
+        end
+        gfx.printf(v)
+      end
+    end
+  }
+end
+
 function tracker:optionLocations()
   local plotData = self.plotData
   local tw       = plotData.totalwidth
@@ -3072,22 +3065,31 @@ function tracker:optionLocations()
   if self.helpActive == 1 then
     xs = xs + self.helpwidth * 1.1
   end
+  
+  if ( self.colors.patternFont and self.colors.patternFontSize ) then
+    gfx.setfont(1, self.colors.patternFont, self.colors.patternFontSize)
+  else
+    gfx.setfont(0)
+  end
+  local xloc = xs + 8.2 * 2
+  local w = gfx.measurestr("Theme!____")
+  local themeMenu = CreateMenu(xloc, ys + yheight * 2, w, yheight)
 
-  local buttonwidth = gfx.measurestr("_Theme Mapping!")
-  local keyMapX = xs + 8.2 * 2 + buttonwidth
-  local keyMapY = ys + yheight * 2--* ( 7 + #keysets )
-  local keyMapH = yheight
+  xloc = xloc + w;
+  w = gfx.measurestr('Map______')
+  local keymapMenu = CreateMenu(xloc, ys + yheight * 2, w, yheight)
 
-  local buttonwidth2 = gfx.measurestr("_Theme Mapping!_______KeyMap")
-  local layoutX = xs + 8.2 * 2 + buttonwidth2
+  xloc = xloc + w;
+  w = gfx.measurestr('Layout____')
+  local layoutMenu = CreateMenu(xloc, ys + yheight * 2, w, yheight)
 
-  local themeMapX = xs + 8.2 * 2
-  local themeMapY = ys + yheight * 2
+  xloc = xloc + w;
+  w = gfx.measurestr('fontsize')
+  local fontsizeMenu = CreateMenu(xloc, ys + yheight * 2, w, yheight)
 
-  local binaryOptionsX = xs + 8.2 * 2
-  local binaryOptionsY = ys + yheight * ( 1 + #tracker.colorschemes + #keysets )
+  local binaryOptions = CreateMenu(xs + 8.2 * 2, ys + yheight * ( 1 + #tracker.colorschemes + #keysets ), w, yheight)
 
-  return xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, keyMapH, buttonwidth, layoutX, buttonwidth2
+  return themeMenu, keymapMenu, layoutMenu, fontsizeMenu, binaryOptions, {x=xs, y=ys}
 end
 
 function tracker:chordLocations()
@@ -7363,6 +7365,8 @@ end
 -- Main update loop
 -----------------------------
 local function updateLoop()
+  updateFontScale();
+  
   local tracker = tracker
   tracker.updateLoop = updateLoop
 
@@ -7673,73 +7677,69 @@ local function updateLoop()
     -- Mouse in range of options?
     if ( tracker.optionsActive == 1 ) then
       local changedOptions = 0
-      local xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, binaryOptionsH, buttonwidth, layoutX, buttonwidth2 = tracker:optionLocations()
+      local themeMenu, keymapMenu, layoutMenu, fontsizeMenu, binaryOptions = tracker:optionLocations()
 
-      -- Color themes
-      if ( gfx.mouse_x > themeMapX ) then
-        if ( gfx.mouse_x < themeMapX + buttonwidth ) then
-          if ( gfx.mouse_y > themeMapY + keyMapH ) then
-            local sel = math.floor((gfx.mouse_y - themeMapY)/keyMapH)
-            if ( tracker.colorschemes[sel] ) then
-              if ( tracker.colorschemes[sel] ~= tracker.cfg.colorscheme ) then
+      if not tracker.holding then
+        local sel
+        -- Color schemes
+        sel = themeMenu:processMouseMenu()
+        if ( tracker.colorschemes[sel] ) then
+          if ( tracker.colorschemes[sel] ~= tracker.cfg.colorscheme ) then
+            changedOptions = 1
+          end
+          tracker.cfg.colorscheme = tracker.colorschemes[sel]
+        end
+  
+        -- Key mappings
+        sel = keymapMenu:processMouseMenu()
+        if ( keysets[sel] ) then
+          if ( keysets[sel] ~= tracker.cfg.keyset ) then
+            changedOptions = 1
+          end
+          tracker.cfg.keyset = keysets[sel]
+          setKeyboard(tracker.cfg.keyset)
+        end
+  
+        -- Key Layout
+        sel = layoutMenu:processMouseMenu()
+        if ( keyLayouts[sel] ) then
+          if ( keyLayouts[sel] ~= tracker.cfg.keyLayout ) then
+            changedOptions = 1
+          end
+          tracker.cfg.keyLayout = keyLayouts[sel]
+          setKeyboard(tracker.cfg.keyset)
+        end
+        
+        --Font sizes
+        sel = fontsizeMenu:processMouseMenu()
+        if ( fontSizes[sel] ) then
+          if ( fontSizes[sel] ~= tracker.cfg.fontSize ) then
+            changedOptions = 1
+             
+          end
+          tracker.cfg.fontSize = fontSizes[sel]
+        end
+        
+        -- Binary options
+        if ( gfx.mouse_x > binaryOptions.x ) then
+          if ( gfx.mouse_y > binaryOptions.y ) then
+            for i=1,#tracker.binaryOptions do
+              local xs = binaryOptions.x
+              local ys = binaryOptions.y + i * binaryOptions.h
+              local xm = xs + 8
+              local ym = ys + 8
+              if ( ( gfx.mouse_x > xs ) and  ( gfx.mouse_x < xm ) and ( gfx.mouse_y > ys ) and ( gfx.mouse_y < ym ) ) then
+                tracker.cfg[tracker.binaryOptions[i][1]] = 1 - tracker.cfg[tracker.binaryOptions[i][1]]
                 changedOptions = 1
+                tracker.holding = 1
               end
-              tracker.cfg.colorscheme = tracker.colorschemes[sel]
             end
           end
         end
-      end
-
-      -- Key mappings
-      if ( gfx.mouse_x > keyMapX ) then
-        if ( gfx.mouse_x < keyMapX + buttonwidth ) then
-          if ( gfx.mouse_y > keyMapY + keyMapH ) then
-            local sel = math.floor((gfx.mouse_y - keyMapY)/keyMapH)
-            if ( keysets[sel] ) then
-              if ( keysets[sel] ~= tracker.cfg.keyset ) then
-                changedOptions = 1
-              end
-              tracker.cfg.keyset = keysets[sel]
-              setKeyboard(tracker.cfg.keyset)
-            end
-          end
-        end
-      end
-
-      -- Key Layout
-      if ( gfx.mouse_x > layoutX ) then
-        if ( gfx.mouse_x < layoutX + buttonwidth2 ) then
-          if ( gfx.mouse_y > keyMapY + keyMapH ) then
-            local sel = math.floor((gfx.mouse_y - keyMapY)/keyMapH)
-            if ( keyLayouts[sel] ) then
-              if ( keyLayouts[sel] ~= tracker.cfg.keyLayout ) then
-                changedOptions = 1
-              end
-              tracker.cfg.keyLayout = keyLayouts[sel]
-              setKeyboard(tracker.cfg.keyset)
-            end
-          end
-        end
-      end
-
-      -- Binary options
-      if ( gfx.mouse_x > binaryOptionsX ) then
-        if ( gfx.mouse_y > binaryOptionsY ) then
-          for i=1,#tracker.binaryOptions do
-            local xs = binaryOptionsX
-            local ys = binaryOptionsY + i * binaryOptionsH
-            local xm = xs + 8
-            local ym = ys + 8
-            if ( ( gfx.mouse_x > xs ) and  ( gfx.mouse_x < xm ) and ( gfx.mouse_y > ys ) and ( gfx.mouse_y < ym ) and not tracker.holding ) then
-              tracker.cfg[tracker.binaryOptions[i][1]] = 1 - tracker.cfg[tracker.binaryOptions[i][1]]
-              changedOptions = 1
-              tracker.holding = 1
-            end
-          end
-        end
-      end
+      end  
 
       if ( changedOptions == 1 ) then
+        tracker.holding = 1
         local cfg = tracker.cfg
         tracker:saveConfig(tracker.configFile, cfg)
         tracker:loadColors(cfg.colorscheme)
@@ -9033,6 +9033,8 @@ local function Main()
     tracker:loadKeys(cfg.keyset)
     setKeyboard(cfg.keyset)
     tracker.cfg = cfg
+    
+    updateFontScale()
 
     if ( cfg.root and ( scales.root ~= cfg.root ) ) then
       scales:switchRoot( cfg.root )
