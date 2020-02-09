@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.09
+@version 2.10
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v2.10 (2020-02-09)
+   + Disable printkeys
  * v2.09 (2020-02-09)
    + Add ctrl + o as secondary key for options.
  * v2.08 (2020-01-09)
@@ -371,7 +373,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.09"
+tracker.name = "Hackey Trackey v2.10"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -402,7 +404,7 @@ tracker.trackFX = 1
 tracker.showloop = 1
 
 -- Set this to one if you want to see what keystrokes correspond to which keys
-tracker.printKeys = 1
+tracker.printKeys = 0
 
 -- Set this to 1 if you want the selected MIDI item in the sequencer view to change
 -- when you change the selected pattern with CTRL + -> or CTRL + <-. This makes it
