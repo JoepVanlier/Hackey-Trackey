@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.07
+@version 2.09
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -38,6 +38,10 @@
 
 --[[
  * Changelog:
+ * v2.09 (2020-02-09)
+   + Add ctrl + o as secondary key for options.
+ * v2.08 (2020-01-09)
+   + Minor tweaks for larger fonts.
  * v2.07 (2020-01-06)
    + Allow different font sizes.
    + Refactor menu handling to make it a little less horrible.
@@ -367,7 +371,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.07"
+tracker.name = "Hackey Trackey v2.09"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -398,7 +402,7 @@ tracker.trackFX = 1
 tracker.showloop = 1
 
 -- Set this to one if you want to see what keystrokes correspond to which keys
-tracker.printKeys = 0
+tracker.printKeys = 1
 
 -- Set this to 1 if you want the selected MIDI item in the sequencer view to change
 -- when you change the selected pattern with CTRL + -> or CTRL + <-. This makes it
@@ -869,6 +873,7 @@ end
 function tracker:loadKeys( keySet )
   local keyset = keySet or tracker.cfg.keyset
 
+  keys.options2 = { 1, 0, 0, 15 } -- ctrl + o
   if keyset == "default" then
     --                    CTRL    ALT SHIFT Keycode
     keys.left           = { 0,    0,  0,    1818584692 }    -- <-
@@ -2447,9 +2452,9 @@ function tracker:printGrid()
 
       gfx.set(table.unpack(tx))
       if tracker.zeroindexed == 1 then
-        gfx.printf("%3d", absy-1)
+        gfx.printf("%03d", absy-1)
       else
-        gfx.printf("%3d", absy)
+        gfx.printf("%03d", absy)
       end
       gfx.set(table.unpack(c1))
       gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, yheight[1] + itempady)
@@ -8280,7 +8285,7 @@ local function updateLoop()
     elseif inputs('help') then
       tracker.helpActive = 1-tracker.helpActive
       tracker:resizeWindow()
-    elseif inputs('options') then
+    elseif inputs('options') or inputs('options2') then
       tracker.optionsActive = 1-tracker.optionsActive
       tracker:resizeWindow()
     elseif inputs('nextMIDI') then
