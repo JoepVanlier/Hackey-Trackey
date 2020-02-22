@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.10
+@version 2.11
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v2.11 (2020-02-20)
+   + Add default channel = 1 option.
  * v2.10 (2020-02-09)
    + Disable printkeys
  * v2.09 (2020-02-09)
@@ -373,7 +375,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.10"
+tracker.name = "Hackey Trackey v2.11"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -6801,11 +6803,29 @@ function tracker:setOutChannel( ch )
     else
       if ( string.find( str, "OUTCH" ) ) then
         local strOut = string.gsub(str, "\nOUTCH [-]*%d+", "")
+        
         reaper.SetItemStateChunk( self.item, strOut )
+        self:seen_item()
       end
     end
   end
 end
+
+function tracker:seen_item(ch)
+  local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+  for i=0,textsyxevtcntOut do
+    local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
+
+    if ( string.sub(msg,1,7) == 'HT_SEEN' ) then
+      return true
+    end
+  end
+  
+  reaper.MIDI_InsertTextSysexEvt(self.take, false, false, 0, 1, 'HT_SEEN' )
+  return false
+end
+
+
 
 function tracker:getOutChannel( ch )
   if not pcall( self.testGetTake ) then
@@ -6815,7 +6835,11 @@ function tracker:getOutChannel( ch )
   local chOut
   local retval, str = reaper.GetItemStateChunk( self.item, "")
   if ( not str:find("OUTCH") ) then
-    chOut = 0
+    if ( self:seen_item() ) then
+      chOut = 0
+    else
+      chOut = tracker.outChannel
+    end
   else
     chOut = tonumber(str:match("\nOUTCH ([-]*%d+)", 1))
   end
