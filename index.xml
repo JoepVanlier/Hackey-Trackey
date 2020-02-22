@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="1a48a22945c4cf35e47ea1a2b0a9f8912a9ed832">
+<index version="1" name="Tracker tools" commit="d0ddb6a12542be15febad40492dd09bee84761ac">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -577,6 +577,16 @@ FF = the full length of the last tick.]]></changelog>
         <changelog><![CDATA[+ Disable printkeys]]></changelog>
         <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/1a48a22945c4cf35e47ea1a2b0a9f8912a9ed832/Tracker/scales.lua</source>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/1a48a22945c4cf35e47ea1a2b0a9f8912a9ed832/Tracker/tracker.lua</source>
+      </version>
+      <version name="2.11" author=": Joep Vanlier" time="2020-02-22T12:48:10Z">
+        <changelog><![CDATA[+ Add default channel = 1 option.]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/f406c3010121a54c1a188ecaecbe3fa7dc0d6ede/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/f406c3010121a54c1a188ecaecbe3fa7dc0d6ede/Tracker/tracker.lua</source>
+      </version>
+      <version name="2.12" author=": Joep Vanlier" time="2020-02-22T13:05:43Z">
+        <changelog><![CDATA[+ Update loop when following selection.]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/d0ddb6a12542be15febad40492dd09bee84761ac/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/d0ddb6a12542be15febad40492dd09bee84761ac/Tracker/tracker.lua</source>
       </version>
     </reapack>
   </category>
