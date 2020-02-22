@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.12
+@version 2.13
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -38,6 +38,11 @@
 
 --[[
  * Changelog:
+ * v2.13 (2020-02-22)
+   + Added clicking on left column to set position.
+   + Added optional graphical effects.
+   + Added extra validation of item and take.
+   + Fixed issue with duplicate defer loop.
  * v2.12 (2020-02-22)
    + Update loop when following selection.
  * v2.11 (2020-02-20)
@@ -377,7 +382,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.12"
+tracker.name = "Hackey Trackey v2.13"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -524,6 +529,8 @@ tracker.shiftChordStartXpos = nil -- what column should we return cursor to when
 
 keyLayouts = {'QWERTY', 'QWERTZ', 'AZERTY'}
 fontSizes = {12, 14, 16, 18, 20, 22}
+fx1Options = {0, 1, 2, 3}
+fx2Options = {0, 1, 2, 3, 4, 5, 6}
 
 -- Default configuration
 tracker.cfg = {}
@@ -556,6 +563,8 @@ tracker.cfg.closeWhenSwitchingToHP = 0
 tracker.cfg.followRow = 0
 tracker.cfg.useItemColors = 0
 tracker.cfg.returnAfterChord = 1
+tracker.cfg.fx1 = 0
+tracker.cfg.fx2 = 0
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -589,6 +598,15 @@ tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB"
 
 noteNames = {}
 
+local function print(...)
+  if ( not ... ) then
+    reaper.ShowConsoleMsg("nil value\n")
+    return
+  end
+  reaper.ShowConsoleMsg(...)
+  reaper.ShowConsoleMsg("\n")
+end
+
 function tracker:loadColors(colorScheme)
   -- If you come up with a cool alternative color scheme, let me know
   self.colors = {}
@@ -600,6 +618,7 @@ function tracker:loadColors(colorScheme)
 
   if colorScheme == "default" then
   -- default
+    self.colors.shadercolor  = {.8, .0, .5}
     self.colors.helpcolor    = {.8, .8, .9, 1}
     self.colors.helpcolor2   = {.7, .7, .9, 1}
     self.colors.selectcolor  = {.6, 0, .6, 1}
@@ -620,6 +639,7 @@ function tracker:loadColors(colorScheme)
     self.colors.windowbackground = {0, 0, 0, 1}
     self.crtStrength         = 2
   elseif colorScheme == "hacker" then
+    self.colors.shadercolor  = {.3, .7, .6}
     self.colors.helpcolor    = {0, .4, .2, 1}
     self.colors.helpcolor2   = {0, .7, .3, 1}
     self.colors.selectcolor  = {0, .3, 0, 1}
@@ -643,6 +663,7 @@ function tracker:loadColors(colorScheme)
     self.colors.ellipsis     = 1
   elseif colorScheme == "buzz" then
     -- Buzz
+    self.colors.shadercolor      = {.55, .55, .54}
     self.colors.helpcolor        = {1/256*159, 1/256*147, 1/256*115, 1} -- the functions
     self.colors.helpcolor2       = {1/256*48, 1/256*48, 1/256*33, 1} -- the keys
     self.colors.selectcolor      = {37/256, 41/256, 54/256, 1} -- the cursor
@@ -665,6 +686,7 @@ function tracker:loadColors(colorScheme)
     self.crtStrength             = .3
   elseif colorScheme == "it" then
     -- Reapulse Tracker (Impulse Tracker)
+    self.colors.shadercolor      = {1/256*88, 1/256*64, 1/256*60}
     self.colors.helpcolor        = {0, 0, 0, 1} -- the functions
     self.colors.helpcolor2       = {1/256*124, 1/256*88, 1/256*68, 1} -- the keys
     self.colors.selectcolor      = {1, 1, 1, 1} -- the cursor
@@ -686,6 +708,7 @@ function tracker:loadColors(colorScheme)
     self.crtStrength             = .5
   elseif colorScheme == "renoise" then
     self.colors.ellipsis         = 1
+    self.colors.shadercolor      = {177/255, 171/255, 116/255, 1.0}
     self.colors.harmonycolor     = {177/255, 171/255, 116/255, 1.0}
     self.colors.harmonyselect    = {183/255, 255/255, 191/255, 1.0}
     self.colors.helpcolor        = {243/255, 171/255, 116/255, 1.0} -- the functions
@@ -745,6 +768,7 @@ function tracker:loadColors(colorScheme)
     self.colors.bar.end2         = self.colors.bar.end1
   elseif colorScheme == "renoiseB" then
     self.colors.ellipsis         = 1
+    self.colors.shadercolor      = {177/255, 171/255, 116/255, 1.0}    
     self.colors.harmonycolor     = {177/255, 171/255, 116/255, 1.0}
     self.colors.harmonyselect    = {183/255, 255/255, 191/255, 1.0}
     self.colors.helpcolor        = {243/255, 171/255, 116/255, 1.0} -- the functions
@@ -808,6 +832,7 @@ function tracker:loadColors(colorScheme)
     self.colors.customFontDisplace  = { self.colors.patternFontSize-6, -3 }
   elseif colorScheme == "buzz2" then
     -- Buzz
+    self.colors.shadercolor      = {.55, .55, .54}
     self.colors.helpcolor        = {1/256*159, 1/256*147, 1/256*115, 1} -- the functions
     self.colors.helpcolor2       = {1/256*48, 1/256*48, 1/256*33, 1} -- the keys
     self.colors.selectcolor      = {37/256, 41/256, 54/256, 1} -- the cursor
@@ -846,15 +871,6 @@ end
 keysets = { "default", "buzz", "renoise" }
 keys = {}
 
-local function print(...)
-  if ( not ... ) then
-    reaper.ShowConsoleMsg("nil value\n")
-    return
-  end
-  reaper.ShowConsoleMsg(...)
-  reaper.ShowConsoleMsg("\n")
-end
-
 local function reinitializeWindow(title, iwidth, iheight, id, iwx, iwh)
   local v, wx, wy, ww, wh
   local d, wx, wh, ww, wh = gfx.dock(-1, 1, 1, 1, 1)
@@ -892,8 +908,9 @@ function tracker:loadKeys( keySet )
     keys.home           = { 0,    0,  0,    1752132965 }    -- Home
     keys.End            = { 0,    0,  0,    6647396 }       -- End
     keys.toggle         = { 0,    0,  0,    32 }            -- Space
-    keys.playfrom       = { 1,    0,  0,    13 }            -- Enter
+    keys.playfrom       = { 1,    0,  0,    13 }            -- Ctrl + Enter
     keys.enter          = { 0,    0,  0,    13 }            -- Enter
+    keys.playline       = { 0,    0,  1,    32 }            -- Ctrl + Space
     keys.insert         = { 0,    0,  0,    6909555 }       -- Insert
     keys.remove         = { 0,    0,  0,    8 }             -- Backspace
     keys.pgup           = { 0,    0,  0,    1885828464 }    -- Page up
@@ -2378,6 +2395,217 @@ function tracker:writeField(cdata, ellipsis, x, y, customFont)
   end
 end
 
+function tracker:spirals(mode)
+  self.sim = self.sim or {}
+  self.sim.boost_galaxy = ( self.sim.boost_galaxy or 0 ) + (gfx.mouse_cap & 1 > 0 and 1 or 0)
+  self.sim.boost_galaxy2 = ( self.sim.boost_galaxy2 or 0 ) + (gfx.mouse_cap & 2 > 0 and 1 or 0)
+  
+  local alpha = 0
+  local theta = 0
+  local r = 0
+  local ry = 0
+  local ecc = 1.41
+  local N_particles = 6000
+  
+  local cx, cy
+  if mode < 10 then
+    cx = .5*gfx.w
+    cy = .5*gfx.h
+  end
+  
+  local color = self.colors.shadercolor  
+  gfx.set(color[1], color[2], color[3], .35)
+  
+  local dr = .45 * gfx.h / N_particles
+  
+  local t = 4*math.sin(.00001*reaper.time_precise() + .00001*self.sim.boost_galaxy)
+  local t2 = math.sin(self.sim.boost_galaxy2)
+  gfx.mode = 1
+  alpha = reaper.time_precise();
+  for i=1,N_particles do
+    if mode == 1 then
+      cx = .5*gfx.w + .02*gfx.w*math.sin(alpha+reaper.time_precise())
+      cy = .5*gfx.h + .02*gfx.h*math.cos(alpha+reaper.time_precise())
+    end
+  
+    x = cx + r * math.cos(alpha)*math.cos(theta) - r * ecc * math.sin(alpha)*math.sin(theta)
+    y = cy + r * math.cos(alpha)*math.sin(theta) + r * ecc * math.sin(alpha)*math.cos(theta)
+    
+    r = r + dr;
+    theta = theta + .3 + t2;
+    alpha = alpha + t;
+    gfx.circle(x, y, 1, 1)
+  end
+  gfx.mode = 0
+end
+
+function tracker:simulate_shallow_water(mode, movement)
+ local function create_2d_table(NX, NY)
+    local table = {}
+    for i = 1, (NX*NY + 1)*2 do
+      table[i] = 0;
+    end
+    return table
+  end
+
+  local xs = 8;
+  local sim_w = (gfx.w + xs);
+  local sim_h = (gfx.h + xs);
+  local Nx = math.floor(sim_w/xs);
+  local Ny = math.floor(sim_h/xs);
+  dtg = 9.81*0.1;
+  dth = .4*0.1;
+  
+  local cx, cy;
+  local dUx, dUy, dHx, dHy, h
+  local height = (self.sim and self.sim.height) or create_2d_table(Nx, Ny)
+  local velocity_prediction_x = (self.sim and self.sim.velocity_prediction_x) or create_2d_table(Nx, Ny)
+  local velocity_prediction_y = (self.sim and self.sim.velocity_prediction_y) or create_2d_table(Nx, Ny)
+  local velocity_x = (self.sim and self.sim.velocity_x) or create_2d_table(Nx, Ny)
+  local velocity_y = (self.sim and self.sim.velocity_y) or create_2d_table(Nx, Ny)
+
+  if movement == 0 then
+    cx = math.floor((Nx-4) * math.random() + 2);
+    cy = math.floor((Ny-4) * math.random() + 2);
+    if math.random() > .6 then
+      height[cx * Ny + cy + 1] = 8*(.5+math.random());
+    end
+  else
+    local time = .7 * reaper.time_precise()
+    local sx = ( math.sin(time) + math.sin(3.6*time) ) / 2
+    local sy = ( math.cos(time) + math.sin(2.6*time) ) / 2
+    cx = math.floor(.5*Nx + .4*Nx * sx )
+    cy = math.floor(.5*Ny + .4*Ny * sy )
+    height[cx * Ny + cy + 1] = 6;
+    
+    local time = .7 * reaper.time_precise()
+    local sx = ( math.sin(time) + math.sin(3.5*time) ) / 2
+    local sy = ( math.cos(time) + math.sin(2.5*time) ) / 2
+    cx = math.floor(.5*Nx + .4*Nx * sx )
+    cy = math.floor(.5*Ny + .4*Ny * sy )
+    height[cx * Ny + cy + 1] = 4;
+  end
+  
+  if gfx.mouse_cap > 0 then
+    for dx = -1, 1 do
+      for dy = -1, 1 do
+        cx = math.floor(gfx.mouse_x / xs) + dx;
+        cy = math.floor(gfx.mouse_y / xs) + dy;
+        if cx > 0 and cy > 0 and cx < Nx and cy < Ny then
+            height[cx * Ny + cy + 1] = height[cx * Ny + cy + 1] + 3;
+            if height[cx * Ny + cy + 1] > 5 then
+              height[cx * Ny + cy + 1] = 5
+            end
+        end
+      end
+    end
+  end
+
+  for cx = 1, Nx - 1 do
+    for cy = 1, Ny - 1 do
+      center = cx * Ny + cy + 1;
+    
+      h = height[center];
+      dHx = h - height[center - Ny];
+      dHy = h - height[center - 1];
+  
+      velocity_prediction_x[center] = velocity_x[center] - dtg * dHx;
+      velocity_prediction_y[center] = velocity_y[center] - dtg * dHy;
+    end
+  end
+  
+  -- Boundary conditions
+  cx = 0;
+  for cy = 0, Ny do
+    velocity_prediction_x[cy + 1] = 0;
+    velocity_prediction_x[(Nx-1) * Ny + cy + 1] = 0;
+  end
+  
+  cx = 0;
+  for cy = 0, Ny do
+    velocity_prediction_y[cx * Ny + 1] = 0;
+    velocity_prediction_y[cx * Ny + (Ny-1) + 1] = 0;
+  end
+  
+  cx = 0;
+  local color = self.colors.shadercolor
+  for cx = 1, Nx - 1 do
+    for cy = 1, Ny - 1 do
+      local center = cx * Ny + cy + 1
+      
+      dUx = velocity_prediction_x[center + Ny] - velocity_prediction_x[center];
+      dUy = velocity_prediction_y[center + 1]  - velocity_prediction_y[center];
+    
+      h = height[center];
+      height[center] = h - dth * (dUx + dUy) - .005*h;
+
+      local alpha = h
+      if alpha > 1 then
+        alpha = 1;
+      end
+      
+      if mode == 0 then
+        gfx.set(color[1], color[2], color[3], .7*alpha)
+        gfx.rect(cx*xs, cy*xs, xs-1, xs-1)
+      elseif mode == 1 then
+        gfx.set(color[1], color[2], color[3], alpha)
+        gfx.circle(cx*xs, cy*xs, .25*xs, 0)
+      elseif mode == 2 then
+        gfx.set(color[1], color[2], color[3], alpha)
+        gfx.circle(cx*xs, cy*xs, .25*xs, 1)
+      elseif mode == 3 then
+        gfx.set(color[1], color[2], color[3], alpha)
+        gfx.circle(cx*xs, cy*xs, 3*alpha, 0)      
+      elseif mode == 4 then
+        gfx.set(color[1], color[2], color[3], alpha)
+        gfx.circle(cx*xs, cy*xs, 3*alpha, 1)
+      end
+    end
+  end
+    
+  for cx = 1, Nx - 1 do
+    for cy = 1, Ny - 1 do
+      local center = cx * Ny + cy + 1
+    
+      h = height[center];
+      dHx = h - height[center - Ny];
+      dHy = h - height[center - 1];
+    
+      velocity_x[center] = velocity_x[center] - dtg * dHx;
+      velocity_y[center] = velocity_y[center] - dtg * dHy;
+    end
+  end
+  
+  if mode == 5 or mode == 6 then
+    local spacing = 1
+    if mode == 6 then
+      spacing = 3
+    end
+  
+    gfx.set(color[1], color[2], color[3], .3)
+    for cy = 1, Ny - 1 do
+      lh = 0;
+      local ly = xs * cy
+      for cx = 1, Nx - 1 do
+        local center = cx * Ny + cy + 1
+        h = xs * math.min(height[center], 3);
+        gfx.line(xs*(cx - 1), ly - lh, xs*cx - spacing, ly - h, 1);
+        lh = h;
+      end
+    end
+  end
+  
+  local sim = self.sim or {}
+  
+  sim.height = height
+  sim.velocity_prediction_x = velocity_prediction_x
+  sim.velocity_prediction_y = velocity_prediction_y
+  sim.velocity_x = velocity_x
+  sim.velocity_y = velocity_y
+  
+  self.sim = sim
+end
+
 ------------------------------
 -- Draw the GUI
 ------------------------------
@@ -2422,6 +2650,14 @@ function tracker:printGrid()
   else
     gfx.setfont(0)
     headerShift = 4
+  end
+
+  if self.cfg.fx1 > 0 then
+    if self.cfg.fx1 < 3 then
+      self:simulate_shallow_water(self.cfg.fx2, self.cfg.fx1-1);
+    else
+      self:spirals(self.cfg.fx2)
+    end
   end
 
   -- Render in relative FOV coordinates
@@ -2672,6 +2908,10 @@ function tracker:printGrid()
     local ye  = clamp(1, fov.height, cp.ystop  - fov.scrolly)
     local xmi = clamp(1, fov.width,  xl + gmin(glink[xl]))
     local xma = clamp(1, fov.width,  xe + gmax(glink[xe]))
+    
+    xma = math.min(xma, #xloc)
+    ye = math.min(ye, #yloc)
+    
     gfx.set(table.unpack(colors.copypaste))
     if ( cp.all == 0 ) then
       gfx.rect(xloc[xmi], yloc[yl] - plotData.yshift, xloc[xma] + xwidth[xma] - xloc[xmi], yloc[ye]-yloc[yl]+yheight[ye] )
@@ -2903,7 +3143,7 @@ function tracker:printGrid()
   end
 
   if ( tracker.optionsActive == 1 ) then
-    local themeMenu, keymapMenu, layoutMenu, fontsizeMenu, binaryOptions, labelLocation = tracker:optionLocations()
+    local themeMenu, keymapMenu, layoutMenu, fontsizeMenu, binaryOptions, fx1Menu, fx2Menu, labelLocation = tracker:optionLocations()
 
     gfx.set(table.unpack(colors.textcolorbar or colors.helpcolor2))
     gfx.x = labelLocation.x
@@ -2917,7 +3157,9 @@ function tracker:printGrid()
     themeMenu:drawMenu("Theme", tracker.colorschemes, tracker.cfg.colorscheme, titleColor, selectedColor, normalColor)
     keymapMenu:drawMenu("Map", keysets, tracker.cfg.keyset, titleColor, selectedColor, normalColor)    
     layoutMenu:drawMenu("Layout", keyLayouts, tracker.cfg.keyLayout, titleColor, selectedColor, normalColor)
-    fontsizeMenu:drawMenu("Fontsize", fontSizes, tracker.cfg.fontSize, titleColor, selectedColor, normalColor)
+    fontsizeMenu:drawMenu("Font", fontSizes, tracker.cfg.fontSize, titleColor, selectedColor, normalColor)
+    fx1Menu:drawMenu("FX", fx1Options, tracker.cfg.fx1, titleColor, selectedColor, normalColor)
+    fx2Menu:drawMenu("Style", fx2Options, tracker.cfg.fx2, titleColor, selectedColor, normalColor)
 
     xs = binaryOptions.x
     ys = binaryOptions.y
@@ -3051,6 +3293,17 @@ function CreateMenu(_x, _y, _w, _h)
         end
         gfx.printf(v)
       end
+    end,
+    
+    processSimple = function(self, cfgField, options)
+      sel = self:processMouseMenu()
+      if ( options[sel] ) then
+        if ( options[sel] ~= tracker.cfg[cfgField] ) then
+          changedOptions = 1
+        end
+        tracker.cfg[cfgField] = options[sel]
+      end
+      return changedOptions
     end
   }
 end
@@ -3095,12 +3348,20 @@ function tracker:optionLocations()
   local layoutMenu = CreateMenu(xloc, ys + yheight * 2, w, yheight)
 
   xloc = xloc + w;
-  w = gfx.measurestr('fontsize')
+  w = gfx.measurestr('font__')
   local fontsizeMenu = CreateMenu(xloc, ys + yheight * 2, w, yheight)
+  
+  xloc = xloc + w;
+  w = gfx.measurestr('fx1__')
+  local fx1Menu = CreateMenu(xloc, ys + yheight * 2, w, yheight)
+  
+  xloc = xloc + w;
+  w = gfx.measurestr('fx2__')
+  local fx2Menu = CreateMenu(xloc, ys + yheight * 2, w, yheight)
 
   local binaryOptions = CreateMenu(xs + 8.2 * 2, ys + yheight * ( 1 + #tracker.colorschemes + #keysets ), w, yheight)
 
-  return themeMenu, keymapMenu, layoutMenu, fontsizeMenu, binaryOptions, {x=xs, y=ys}
+  return themeMenu, keymapMenu, layoutMenu, fontsizeMenu, binaryOptions, fx1Menu, fx2Menu, {x=xs, y=ys}
 end
 
 function tracker:chordLocations()
@@ -4420,7 +4681,7 @@ function tracker:toQn(seconds)
 end
 
 function tracker:getResolution( reso )
-  -- Determine Row per Qn for this MIDI item
+ -- Determine Row per Qn for this MIDI item
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   for i=0,textsyxevtcntOut do
     local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
@@ -4552,7 +4813,7 @@ end
 -- returns true if something changed
 ------------------------------
 function tracker:getRowInfo()
-  if ( self.take and self.item ) then
+  if ( self:validateCurrentItem() ) then
     self.rowPerQn = self:getResolution()
 
     -- How many rows do we need?
@@ -5865,23 +6126,27 @@ function tracker:setTake( take )
       end
 
       self.take = take
-      self.track = reaper.GetMediaItem_Track(self.item)
-
-      -- Store note hash (second arg = notes only)
-      self.hash = reaper.MIDI_GetHash( self.take, false, "?" )
-      self.newRowPerQn = self:getResolution()
-      self.outChannel = self:getOutChannel()
-      self:update()
-
-      if ( self.cfg.alwaysRecord == 1 ) then
-        tracker:arm()
+      if self:validateCurrentItem() then      
+        self.track = reaper.GetMediaItem_Track(self.item)
+  
+        -- Store note hash (second arg = notes only)
+        self.hash = reaper.MIDI_GetHash( self.take, false, "?" )
+        self.newRowPerQn = self:getResolution()
+        self.outChannel = self:getOutChannel()
+        self:update()
+  
+        if ( self.cfg.alwaysRecord == 1 ) then
+          tracker:arm()
+        end
+  
+        if tracker.noteNamesActive == 1 then
+          tracker:getNoteNames()
+        end
+        return true
+        
+      else
+        return false
       end
-
-      if tracker.noteNamesActive == 1 then
-        tracker:getNoteNames()
-      end
-
-      return true
     end
   end
   return false
@@ -5918,7 +6183,7 @@ function tracker:checkChange()
     -- When glueing from the arrange view, the item disappears and it takes a
     -- short while before the item is back.
     if ( not self.itemMissingDelay or self.itemMissingDelay < 10 ) then
-      reaper.defer(self.updateLoop)
+      --reaper.defer(self.updateLoop)
       self.itemMissingDelay = (self.itemMissingDelay or 0) + 1
       return false
     else
@@ -6886,12 +7151,19 @@ end
 
 function tracker:playNote(chan, pitch, vel)
   self:checkArmed()
+  
+  local line_played = self.line_played or {}   
   if ( self.armed == 1 ) then
     local ch = 1
     self:stopNote()
     reaper.StuffMIDIMessage(0, 0x90 + ch - 1, pitch, vel)
     self.lastNote = {ch, pitch, vel}
+    
+    line_played[ch] = {}
+    line_played[ch][0] = pitch
+    line_played[ch][1] = vel
   end
+  self.line_played = line_played
 end
 
 function tracker:stopNote()
@@ -6901,6 +7173,21 @@ function tracker:stopNote()
       local lastNote = self.lastNote
       reaper.StuffMIDIMessage(0, 0x80 + lastNote[1] - 1, lastNote[2], lastNote[3])
       self.lastNote = nil
+    end
+  end
+end
+
+function tracker:stopAllNotes()
+  self:checkArmed()
+  if ( self.armed == 1) then
+    self:stopNote()
+    if self.line_played then
+      local line_played = self.line_played
+      for c = 1,self.channels do 
+        if self.line_played[c] then
+          reaper.StuffMIDIMessage(0, 0x80 + c - 1, line_played[c][0], line_played[c][1])
+        end
+      end
     end
   end
 end
@@ -7012,10 +7299,22 @@ function tracker:stopChord()
   end
 end
 
+function tracker:validateCurrentItem()
+  local valid = reaper.ValidatePtr(self.take, "MediaItem_Take*") and reaper.ValidatePtr(self.item, "MediaItem*")
+  if not valid then
+    self.item = nil
+    self.take = nil
+    self:tryPreviousItem()
+  end
+  return valid
+end
+
 function tracker:setLoopToPattern()
-  local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
-  local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")
-  reaper.GetSet_LoopTimeRange2(0, true, true, mpos, mpos+mlen, true)
+  if self:validateCurrentItem() then
+    local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+    local mlen = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
+    reaper.GetSet_LoopTimeRange2(0, true, true, mpos, mpos+mlen, true)
+  end
 end
 
 function tracker:setLoopStart()
@@ -7359,6 +7658,41 @@ local function getCapValue( sensitivity )
   return ( ( value - capture.min ) % (capture.max - capture.min + 1) ) + capture.min
 end
 
+function tracker:playLine()
+  if ( self.armed == 0 ) then
+     self:arm()
+  end
+     
+  local line_played = self.line_played or {} 
+  local data      = self.data
+  local rows      = self.rows
+  local notes     = self.notes
+  local noteStart = data.noteStart
+  local noteGrid  = data.note
+  local ftype, chan, row = self:getLocation()
+  for c = 1,self.channels do  
+    local noteToEdit = noteStart[rows*c+row]
+    local noteOff = noteGrid[rows*c+row] and noteGrid[rows*c+row] == -1
+    
+    if (noteOff) then
+      if line_played[c] then
+        reaper.StuffMIDIMessage(0, 0x80 + c - 1, line_played[c][0], line_played[c][1])
+      end
+    elseif noteToEdit then
+      if line_played[c] then
+         reaper.StuffMIDIMessage(0, 0x80 + c - 1, line_played[c][0], line_played[c][1])
+      end
+    
+      local pitch, vel = table.unpack(notes[noteToEdit])
+      reaper.StuffMIDIMessage(0, 0x90 + c - 1, pitch, vel)
+      line_played[c] = {}
+      line_played[c][0] = pitch
+      line_played[c][1] = vel
+    end
+  end
+  self.line_played = line_played
+end
+
 function tracker:gotoCurrentPosition()
   -- Check where we are
   local playPos = reaper.GetPlayPosition()
@@ -7537,13 +7871,27 @@ local function updateLoop()
 
     -- Mouse on track size indicator?
     local xl, yl, xm, ym = tracker:getSizeIndicatorLocation()
-    if ( gfx.mouse_y > yl ) then
-      if ( gfx.mouse_y < ym ) then
-        if ( gfx.mouse_x > xl ) then
-          if ( gfx.mouse_x < xm ) then
-            tracker.renaming = 3
-            tracker.newLength = tostring(tracker.max_ypos)
+    if ( gfx.mouse_x > xl ) and ( gfx.mouse_x < xm ) and ( gfx.mouse_y < ym ) then
+      if ( gfx.mouse_y > yl ) then
+        tracker.renaming = 3
+        tracker.newLength = tostring(tracker.max_ypos)
+      else
+        local function goto_position(i)
+          tracker.ypos = i + fov.scrolly
+          local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+          local loc = reaper.AddProjectMarker(0, 0, mpos + tracker:toSeconds(tracker.ypos-1), 0, "", -1)
+          reaper.GoToMarker(0, loc, 0)
+          reaper.DeleteProjectMarker(0, loc, 0)
+        end
+      
+        -- Check where we need to move the play position
+        for i=1,#yloc-1 do
+          if ( ( gfx.mouse_y > yloc[i] ) and ( gfx.mouse_y < yloc[i+1] ) ) then
+            goto_position(i)
           end
+        end
+        if ( gfx.mouse_y > yloc[#yloc] ) then
+          goto_position(#yloc)
         end
       end
     end
@@ -7711,7 +8059,7 @@ local function updateLoop()
     -- Mouse in range of options?
     if ( tracker.optionsActive == 1 ) then
       local changedOptions = 0
-      local themeMenu, keymapMenu, layoutMenu, fontsizeMenu, binaryOptions = tracker:optionLocations()
+      local themeMenu, keymapMenu, layoutMenu, fontsizeMenu, binaryOptions, fx1Menu, fx2Menu = tracker:optionLocations()
 
       if not tracker.holding then
         local sel
@@ -7744,15 +8092,9 @@ local function updateLoop()
           setKeyboard(tracker.cfg.keyset)
         end
         
-        --Font sizes
-        sel = fontsizeMenu:processMouseMenu()
-        if ( fontSizes[sel] ) then
-          if ( fontSizes[sel] ~= tracker.cfg.fontSize ) then
-            changedOptions = 1
-             
-          end
-          tracker.cfg.fontSize = fontSizes[sel]
-        end
+        changedOptions = fontsizeMenu:processSimple("fontSize", fontSizes) or changedOptions
+        changedOptions = fx1Menu:processSimple("fx1", fx1Options) or changedOptions
+        changedOptions = fx2Menu:processSimple("fx2", fx2Options) or changedOptions
         
         -- Binary options
         if ( gfx.mouse_x > binaryOptions.x ) then
@@ -8385,6 +8727,8 @@ local function updateLoop()
       tracker.midiName = ''
       tracker.renaming = 1
       tracker:updateMidiName()
+    elseif inputs('playline') then
+      tracker:playLine()
     elseif inputs('toggleRec') then
       tracker:toggleRec()
     elseif( inputs('closeTracker') ) then
@@ -8524,7 +8868,7 @@ function tracker:loadClipboard(storage)
 end
 
 function tracker:terminate()
-  tracker:stopNote()
+  self:stopAllNotes()
   self.terminated = 1
 
   local d, x, y, w, h = gfx.dock(-1,1,1,1,1)
