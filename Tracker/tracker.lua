@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.11
+@version 2.12
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v2.12 (2020-02-22)
+   + Update loop when following selection.
  * v2.11 (2020-02-20)
    + Add default channel = 1 option.
  * v2.10 (2020-02-09)
@@ -375,7 +377,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.11"
+tracker.name = "Hackey Trackey v2.12"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -5903,6 +5905,9 @@ function tracker:checkChange()
   -- follow selection is off.
   if ( self.cfg.followSelection == 1 or not self.take ) then
     tracker:grabActiveItem()
+    if ( tracker.cfg.loopFollow == 1 ) then
+      tracker:setLoopToPattern()
+    end
   end
 
   -- Did our take disappear?
@@ -6824,8 +6829,6 @@ function tracker:seen_item(ch)
   reaper.MIDI_InsertTextSysexEvt(self.take, false, false, 0, 1, 'HT_SEEN' )
   return false
 end
-
-
 
 function tracker:getOutChannel( ch )
   if not pcall( self.testGetTake ) then
