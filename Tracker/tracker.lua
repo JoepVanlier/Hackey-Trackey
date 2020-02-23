@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.13
+@version 2.14
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -38,6 +38,10 @@
 
 --[[
  * Changelog:
+ * v2.14 (2020-02-23)
+   + Minor bugfix scrolling behavior.
+   + Quietly ignore missing keys.
+   + Improve scrollbar behaviour.
  * v2.13 (2020-02-22)
    + Added clicking on left column to set position.
    + Added optional graphical effects.
@@ -382,7 +386,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.13"
+tracker.name = "Hackey Trackey v2.14"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -1061,6 +1065,7 @@ function tracker:loadKeys( keySet )
 
   elseif keyset == "buzz" then
     --                    CTRL    ALT SHIFT Keycode
+    keys.playline       = { 0,    0,  1,    32 }            -- Ctrl + Space
     keys.left           = { 0,    0,  0,    1818584692 }    -- <-
     keys.right          = { 0,    0,  0,    1919379572 }    -- ->
     keys.up             = { 0,    0,  0,    30064 }         -- /\
@@ -1223,6 +1228,7 @@ function tracker:loadKeys( keySet )
     }
   elseif keyset == "renoise" then
     --                    CTRL    ALT SHIFT Keycode
+    keys.playline       = { 0,    0,  1,    32 }            -- Ctrl + Space
     keys.left           = { 0,    0,  0,    1818584692 }    -- <-
     keys.right          = { 0,    0,  0,    1919379572 }    -- ->
     keys.up             = { 0,    0,  0,    30064 }         -- /\
@@ -1400,7 +1406,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Shift + Alt + +/-', 'Shift root note' },
     }
     elseif ( self.loadCustomKeys ) then
-      self:loadKeys( "default" )
+      self:loadKeys("default")
       self.loadCustomKeys(keyset)
     else
       reaper.ShowMessageBox("FATAL ERROR: Something went wrong with loading key layout. Please fix or delete userkeys.lua.", "FATAL ERROR", 0)
@@ -2290,25 +2296,58 @@ function scrollbar.create( w )
     self.x = x
     self.y = y
     self.h = h
+    self.loc = 0
 
     self.ytop = ytop
     self.yend = yend
   end
-  self.setExtent = function( self, ytop, yend )
+  
+  self.setExtent = function( self, ytop, yend, ypos, rows )
     self.ytop = ytop
     self.yend = yend
+    self.loc = ypos
+    self.ymarker = ytop + (ypos - ytop) - .5 * (self.yend-self.ytop)/rows
+    self.nrows = rows
   end
 
   self.mouseUpdate = function(self, mx, my, left)
-    local loc
-    if ( left == 1 ) then
-      if ( ( mx > self.x ) and ( mx < self.x + self.w ) ) then
-        if ( ( my > self.y ) and ( my < self.y + self.h ) ) then
-          loc = ( my - self.y ) / self.h
+    if ( behavior == 1 ) then
+      if ( left == 1 ) then
+        if ( ( mx > self.x ) and ( mx < self.x + self.w ) ) then
+          if ( ( my > self.y ) and ( my < self.y + self.h ) ) then
+            self.loc = ( my - self.y ) / self.h
+          end
         end
+        return self.loc
       end
-      return loc
+    else
+      if ( left == 1 ) then
+        if ( ( mx > self.x ) and ( mx < self.x + self.w ) ) or self.dragging then
+          if ( ( my > self.y ) and ( my < self.y + self.h ) ) or self.dragging then
+            if ( ( my > (self.y + self.h*self.ymarker-4) ) and ( my < (self.y + self.h*self.ymarker+4) ) ) and not self.dragging then
+              self.dragging = 1
+              self.cdy = 0
+            end
+            
+            if self.dragging then
+              self.cdy = self.cdy + ((my - self.ly) / self.h)
+              local dy = math.floor(self.cdy*self.nrows)/self.nrows
+              self.cdy = self.cdy - dy
+              
+              self.loc = math.max(0.0, math.min(1.0, self.loc + dy))
+            else
+              self.loc = ( my - self.y ) / self.h
+            end            
+          end
+        end
+        self.ly = my
+        return self.loc
+      else
+        self.dragging = nil
+      end
     end
+    
+    self.ly = my
   end
 
   self.draw = function(self, colors)
@@ -2325,6 +2364,8 @@ function scrollbar.create( w )
     gfx.rect(x+1, y+1, w-2, h-2)
     gfx.set(table.unpack(colors.scrollbar1))
     gfx.rect(x+2, y + ytop*h+2, w-4, (yend-ytop)*h-3)
+    gfx.set(table.unpack(colors.scrollbar1))
+    gfx.rect(x-2, y + self.ymarker*h-1, w+4, 2)
   end
 
   return self
@@ -2892,7 +2933,7 @@ function tracker:printGrid()
   ------------------------------
   -- Scrollbar
   ------------------------------
-  tracker.scrollbar:setExtent( fov.scrolly / rows, ( fov.scrolly + fov.height ) / rows )
+  tracker.scrollbar:setExtent( fov.scrolly / rows, ( fov.scrolly + fov.height ) / rows, tracker.ypos/rows, rows )
   if ( tracker.fov.height < self.rows ) then
     tracker.scrollbar:draw(colors)
   end
@@ -4628,12 +4669,17 @@ function tracker:forceCursorInRange(forceY)
   if ( self.ypos > self.max_ypos ) then
     self.ypos = math.floor( self.max_ypos )
   end
+
   -- Is the cursor off fov?
   if ( ( yTarget - fov.scrolly ) > self.fov.height ) then
     self.fov.scrolly = yTarget - self.fov.height
   end
   if ( ( yTarget - fov.scrolly ) < 1 ) then
     self.fov.scrolly = yTarget - 1
+  end
+  
+  if (self.fov.scrolly + self.fov.height) > self.rows then
+    self.fov.scrolly = math.max(0, yTarget - self.fov.height)
   end
 
   if ( self.cfg.followRow == 1 ) then
@@ -7031,11 +7077,13 @@ local function inputs( name )
   if ( alt > 0 ) then alt = 1 end
 
   local checkMask = keys[name]
-  if ( checkMask[1] == control ) then
-    if ( checkMask[2] == alt ) then
-      if ( checkMask[3] == shift ) then
-        if ( lastChar == checkMask[4] ) then
-          return true
+  if checkMask then
+    if ( checkMask[1] == control ) then
+      if ( checkMask[2] == alt ) then
+        if ( checkMask[3] == shift ) then
+          if ( lastChar == checkMask[4] ) then
+            return true
+          end
         end
       end
     end
