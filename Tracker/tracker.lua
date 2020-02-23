@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.14
+@version 2.15
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v2.15 (2020-02-23)
+   + Fix note off AZERTY layout Renoise.
  * v2.14 (2020-02-23)
    + Minor bugfix scrolling behavior.
    + Quietly ignore missing keys.
@@ -386,7 +388,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.14"
+tracker.name = "Hackey Trackey v2.15"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -1302,7 +1304,14 @@ function tracker:loadKeys( keySet )
     keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
     keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F
 
-    keys.off2           = { 0,    0,  0,    97 }            -- A
+    local noteOff = '\\ or A'
+    if tracker.cfg.keyLayout == "AZERTY" then
+      keys.off2           = { 0,    0,  0,    113 }           -- Q
+      keys.off            = { 0,    0,  0,    -1 }
+      noteOff = 'Q'
+    else
+      keys.off2           = { 0,    0,  0,    97 }            -- A
+    end
 
     keys.shpatdown      = { 1,    0,  0,    26161 }         -- CTRL + F1
     keys.shpatup        = { 1,    0,  0,    26162 }         -- CTRL + F2
@@ -1357,7 +1366,7 @@ function tracker:loadKeys( keySet )
 
     help = {
       { 'Shift + Note', 'Advance column after entry' },
-      { '\\ or A', 'Note OFF' },
+      { noteOff, 'Note OFF' },
       { 'Insert/Backspace', 'Insert/Remove line' },
       { 'CTRL + Insert/Backspace', 'Insert Row/Remove Row' },
       { 'Del/Ctrl+Del', 'Delete/Delete Row' },
