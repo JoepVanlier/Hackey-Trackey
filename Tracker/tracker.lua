@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.16
+@version 2.17
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v2.17 (2020-03-07)
+   + Bugfix mute status. Make sure added notes respect mute status.
  * v2.16 (2020-03-07)
    + Support channel level mutes.
  * v2.15 (2020-02-23)
@@ -390,7 +392,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.16"
+tracker.name = "Hackey Trackey v2.17"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -421,7 +423,7 @@ tracker.trackFX = 1
 tracker.showloop = 1
 
 -- Set this to one if you want to see what keystrokes correspond to which keys
-tracker.printKeys = 1
+tracker.printKeys = 0
 
 -- Set this to 1 if you want the selected MIDI item in the sequencer view to change
 -- when you change the selected pattern with CTRL + -> or CTRL + <-. This makes it
@@ -1963,7 +1965,7 @@ function tracker:linkData()
     else
       grouplink[#grouplink+1] = {0}
     end
-    if self.muted_channels[j] then
+    if self.muted_channels and self.muted_channels[j] then
       headers[#headers + 1]   = string.format('(Ch%2d)', j)
     else
       headers[#headers + 1]   = string.format('Ch%2d', j)
@@ -3695,7 +3697,7 @@ function tracker:addNotePpq(startppqpos, endppqpos, chan, pitch, velocity)
     end
   end
 
-  reaper.MIDI_InsertNote( self.take, false, false, startppqpos, endppqpos, chan, pitch, velocity, true )
+  reaper.MIDI_InsertNote( self.take, false, self.muted_channels[chan], startppqpos, endppqpos, chan, pitch, velocity, true )
 end
 
 function tracker:addNote(startrow, endrow, chan, pitch, velocity)
@@ -3709,7 +3711,7 @@ function tracker:addNote(startrow, endrow, chan, pitch, velocity)
       end
     end
 
-    reaper.MIDI_InsertNote( self.take, false, false, startppqpos, endppqpos, chan, pitch, velocity, true )
+    reaper.MIDI_InsertNote( self.take, false, self.muted_channels[chan], startppqpos, endppqpos, chan, pitch, velocity, true )
   end
 end
 
@@ -6000,6 +6002,10 @@ function tracker:setChannelMute(muteChannel, muteStatus)
 end
 
 function tracker:toggleSoloChannel()
+  if not self.take then
+    return
+  end
+
   local _, soloChannel, _ = self:getLocation()
   
   -- Check if we are the only channel playing
@@ -6034,6 +6040,10 @@ function tracker:toggleSoloChannel()
 end
 
 function tracker:toggleMuteChannel()
+  if not self.take then
+    return
+  end
+
   local _, muteChannel, _ = self:getLocation()
   self:setChannelMute(muteChannel, not self.muted_channels[muteChannel])
   reaper.MIDI_Sort(self.take)  
