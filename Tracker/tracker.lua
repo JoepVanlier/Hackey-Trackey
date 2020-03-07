@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.15
+@version 2.16
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v2.16 (2020-03-07)
+   + Support channel level mutes.
  * v2.15 (2020-02-23)
    + Fix note off AZERTY layout Renoise.
  * v2.14 (2020-02-23)
@@ -388,7 +390,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.15"
+tracker.name = "Hackey Trackey v2.16"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -419,7 +421,7 @@ tracker.trackFX = 1
 tracker.showloop = 1
 
 -- Set this to one if you want to see what keystrokes correspond to which keys
-tracker.printKeys = 0
+tracker.printKeys = 1
 
 -- Set this to 1 if you want the selected MIDI item in the sequencer view to change
 -- when you change the selected pattern with CTRL + -> or CTRL + <-. This makes it
@@ -977,6 +979,8 @@ function tracker:loadKeys( keySet )
     keys.closeTracker   = { 1,    0,  0,    6697266 }       -- Ctrl + F12
     keys.nextTrack      = { 1,    0,  1,    1919379572.0 }  -- CTRL + Shift + ->
     keys.prevTrack      = { 1,    0,  1,    1818584692.0 }  -- CTRL + Shift + <-
+    keys.solo           = { 1,    0,  0,    19 }            -- Solo channel
+    keys.mute           = { 1,    0,  0,    1 }             -- Mute/Unmute channel    
 
     keys.insertRow      = { 1,    0,  0,    6909555 }       -- Insert row CTRL+Ins
     keys.removeRow      = { 1,    0,  0,    8 }             -- Remove Row CTRL+Backspace
@@ -1063,6 +1067,7 @@ function tracker:loadKeys( keySet )
       { 'Alt', 'Invert first note' },
       { 'Shift', 'Invert second note' },
       { 'CTRL + Shift + Alt + +/-', 'Shift root note' },
+      { 'CTRL + S / CTRL + A', '(un)Solo / (un)Mute' },      
     }
 
   elseif keyset == "buzz" then
@@ -1183,6 +1188,8 @@ function tracker:loadKeys( keySet )
     keys.shiftpgup      = { 0,    0,  1,    1885828464 }    -- Shift + PgUp
     keys.shifthome      = { 0,    0,  1,    1752132965 }    -- Shift + Home
     keys.shiftend       = { 0,    0,  1,    6647396 }       -- Shift + End
+    keys.solo           = { 1,    0,  0,    19 }            -- Solo channel
+    keys.mute           = { 1,    0,  0,    1 }             -- Mute/Unmute channel
 
     keys.startPat       = { 0,    0,  0,    13,  "Hackey Sequencer/Sequencer/HackeyPatterns_exec.lua", 1 }
 
@@ -1227,9 +1234,12 @@ function tracker:loadKeys( keySet )
       { 'Alt', 'Invert first note' },
       { 'Shift', 'Invert second note' },
       { 'CTRL + Shift + Alt + +/-', 'Shift root note' },
+      { 'CTRL + S / CTRL + A', '(un)Solo / (un)Mute' },
     }
   elseif keyset == "renoise" then
     --                    CTRL    ALT SHIFT Keycode
+    keys.solo           = { 1,    0,  0,    19 }            -- Solo channel
+    keys.mute           = { 1,    0,  0,    1 }             -- Mute/Unmute channel    
     keys.playline       = { 0,    0,  1,    32 }            -- Ctrl + Space
     keys.left           = { 0,    0,  0,    1818584692 }    -- <-
     keys.right          = { 0,    0,  0,    1919379572 }    -- ->
@@ -1413,6 +1423,7 @@ function tracker:loadKeys( keySet )
       { 'Alt', 'Invert first note' },
       { 'Shift', 'Invert second note' },
       { 'CTRL + Shift + Alt + +/-', 'Shift root note' },
+      { 'CTRL + S / CTRL + A', '(un)Solo / (un)Mute' },      
     }
     elseif ( self.loadCustomKeys ) then
       self:loadKeys("default")
@@ -1952,7 +1963,11 @@ function tracker:linkData()
     else
       grouplink[#grouplink+1] = {0}
     end
-    headers[#headers + 1]   = string.format('Ch%2d', j)
+    if self.muted_channels[j] then
+      headers[#headers + 1]   = string.format('(Ch%2d)', j)
+    else
+      headers[#headers + 1]   = string.format('Ch%2d', j)
+    end
     headerW[#headerW+1]     = 6 + 3 * hasDelay + 3 * hasEnd
     hints[#hints+1]         = string.format('Note channel %2d', j)
 
@@ -5973,6 +5988,57 @@ function tracker:findTakeClosestToSongPos(overridePos)
   return nil
 end
 
+function tracker:setChannelMute(muteChannel, muteStatus)
+  local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+  for i=0,notecntOut do
+    local retval, selected, muted, startppqpos, endppqpos, chan, pitch, vel = reaper.MIDI_GetNote(self.take, i)
+    if retval and chan == muteChannel then
+      reaper.MIDI_SetNote(self.take, i, nil, muteStatus, nil, nil, nil, nil, nil, true)
+    end
+  end
+  self.muted_channels[muteChannel] = muteStatus
+end
+
+function tracker:toggleSoloChannel()
+  local _, soloChannel, _ = self:getLocation()
+  
+  -- Check if we are the only channel playing
+  local isSolo = true
+  for i=0,#self.muted_channels do
+    if i == soloChannel then
+      if self.muted_channels[i] then
+        isSolo = false
+      end
+    else
+      if not self.muted_channels[i] then
+        isSolo = false
+      end
+    end
+  end
+
+  if isSolo then
+    for i=0,#self.muted_channels do    
+      self:setChannelMute(i, false)
+    end
+  else
+    for i=0,#self.muted_channels do
+      if i == soloChannel then
+        self:setChannelMute(i, false)
+      else
+        self:setChannelMute(i, true)
+      end
+    end
+  end
+  
+  reaper.MIDI_Sort(self.take)
+end
+
+function tracker:toggleMuteChannel()
+  local _, muteChannel, _ = self:getLocation()
+  self:setChannelMute(muteChannel, not self.muted_channels[muteChannel])
+  reaper.MIDI_Sort(self.take)  
+end
+
 --------------------------------------------------------------
 -- Update function
 -- heavy-ish, avoid calling too often (only on MIDI changes)
@@ -6081,6 +6147,14 @@ function tracker:update()
       -- NOTES
       ---------------------------------------------
       local channels = {}
+      local muted_channels = self.muted_channels
+      if not self.muted_channels then
+        muted_channels = {}
+        for i = 0,self.channels do
+          muted_channels[i] = false
+        end
+      end
+      
       channels[0] = {}
       local notes = {}
       for i=0,notecntOut do
@@ -6091,9 +6165,14 @@ function tracker:update()
           end
           notes[i] = {pitch, vel, startppqpos, endppqpos}
           channels[chan][#(channels[chan])+1] = i
+          
+          if muted then
+            muted_channels[chan] = true
+          end
         end
       end
       self.notes = notes
+      self.muted_channels = muted_channels
 
       -- Assign the tracker assigned channels first
       local failures = {}
@@ -6197,6 +6276,8 @@ function tracker:setTake( take )
         if tracker.noteNamesActive == 1 then
           tracker:getNoteNames()
         end
+        
+        self.muted_channels = nil
         return true
         
       else
@@ -8788,6 +8869,10 @@ local function updateLoop()
       tracker:playLine()
     elseif inputs('toggleRec') then
       tracker:toggleRec()
+    elseif inputs('mute') then
+      tracker:toggleMuteChannel()
+    elseif inputs('solo') then
+      tracker:toggleSoloChannel()
     elseif( inputs('closeTracker') ) then
       tracker:terminate()
     elseif inputs('escape') then
