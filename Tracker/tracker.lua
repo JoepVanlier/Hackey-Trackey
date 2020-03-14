@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.17
+@version 2.18
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v2.18 (2020-03-14)
+   + Add support for lowest midi octave.
  * v2.17 (2020-03-07)
    + Bugfix mute status. Make sure added notes respect mute status.
  * v2.16 (2020-03-07)
@@ -392,7 +394,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.17"
+tracker.name = "Hackey Trackey v2.18"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -515,7 +517,7 @@ tracker.noteNamesActive = 0
 tracker.helpActive = 0
 tracker.optionsActive = 0
 tracker.renaming = 0
-tracker.minoct = 0
+tracker.minoct = -1
 tracker.maxoct = 12
 tracker.onlyListen = 0
 
@@ -1750,7 +1752,12 @@ end
 function tracker:generatePitches()
   local notes = { 'C-', 'C#', 'D-', 'D#', 'E-', 'F-', 'F#', 'G-', 'G#', 'A-', 'A#', 'B-' }
   local pitches = {}
-  j = 12
+  j = 0
+  for k,v in pairs(notes) do
+    pitches[j] = v.."M"
+    j = j + 1
+  end
+  
   for i = 0,12 do
     for k,v in pairs(notes) do
       pitches[j] = v..i
@@ -3149,8 +3156,7 @@ function tracker:printGrid()
     gfx.printf('Note Names')
     ys = ys + yheight[1] + 4 * itempady
 
-    -- start at 12 because notes 0-11 are octave -1, which isn't in pitchTable
-    for note = 12, 127 do
+    for note = 0, 127 do
       noteName = noteNames[note]
       if noteName then
         noteNamesFound = true;
