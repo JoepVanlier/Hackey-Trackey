@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.18
+@version 2.19
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v2.19 (2020-03-28)
+   + Fix remember position.
  * v2.18 (2020-03-14)
    + Add support for lowest midi octave.
  * v2.17 (2020-03-07)
@@ -394,7 +396,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.18"
+tracker.name = "Hackey Trackey v2.19"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -7912,7 +7914,6 @@ local function updateLoop()
   if ( tracker.cfg.colResize == 1 ) then
     tracker:autoResize()
     tracker:computeDims(tracker.rows)
-
     if ( tracker.fov.abswidth ~= tracker.fov.lastabswidth ) then
       tracker.fov.lastabswidth = tracker.fov.abswidth
       tracker:update()
@@ -9140,6 +9141,10 @@ function tracker:computeDims(inRows)
   if ( tracker.cfg.autoResize == 0 ) then
     if ( self.lastY ) then
       height = self.lastY
+    else
+      local wpos = tracker:loadConfig("_wpos.cfg", {})
+      height = wpos.h
+      width = wpos.w
     end
   end
 
