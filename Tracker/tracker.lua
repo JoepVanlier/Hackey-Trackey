@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.19
+@version 2.20
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -38,6 +38,10 @@
 
 --[[
  * Changelog:
+ * v2.20 (2020-05-09)
+   + Only show pulse warning once.
+   + Add config option that allows delay or note end to always be open as a preference.
+   + Don't let font run off screen.
  * v2.19 (2020-03-28)
    + Fix remember position.
  * v2.18 (2020-03-14)
@@ -462,9 +466,20 @@ tracker.enveps = 1e-4
 -- This prevents that the pattern automation has to be the same from that point.
 tracker.duplicationBehaviour = 2
 
+
 -- Do we want delays to be shown?
-tracker.showDelays    = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-tracker.showEnd       = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+function updateShown()
+  if tracker.cfg.alwaysShowDelays == 1 then
+    tracker.showDelays    = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }
+  else
+    tracker.showDelays    = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+  end
+  if tracker.cfg.alwaysShowNoteEnd == 1 then
+    tracker.showEnd       = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }
+  else
+    tracker.showEnd       = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+  end
+end
 
 -- Start by default in mono or multi-col CC mode
 -- Mono-col (0) mode shows one column for the CC's that is always displayed
@@ -484,7 +499,7 @@ function updateFontScale()
   
   tracker.grid = {}
   tracker.grid.fontScaler = fontScaler
-  tracker.grid.originx   = 35
+  tracker.grid.originx   = 22 + 18*fontScaler  -- 35
   tracker.grid.originy   = 35
   tracker.grid.dx        = 8 * fontScaler
   tracker.grid.dy        = 20 * fontScaler
@@ -579,6 +594,9 @@ tracker.cfg.useItemColors = 0
 tracker.cfg.returnAfterChord = 1
 tracker.cfg.fx1 = 0
 tracker.cfg.fx2 = 0
+tracker.cfg.showedWarning = 0
+tracker.cfg.alwaysShowNoteEnd = 0
+tracker.cfg.alwaysShowDelays = 0
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -606,6 +624,8 @@ tracker.binaryOptions = {
     { 'followRow', 'Follow row in arrange view' },
     { 'useItemColors', 'Use item colors in headers' },
     { 'returnAfterChord', 'Return to first column after chords' },
+    { 'alwaysShowNoteEnd', 'Always show note end' },
+    { 'alwaysShowDelays', 'Always show note delay' },
     }
 
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2"}
@@ -3804,9 +3824,10 @@ function tracker:showMore()
     else
       local singlerow = math.floor(self:rowToPpq(1))
       if ( ( singlerow / 256 ) ~= math.floor( singlerow/256 ) ) then
-        if ( not self.showedWarning ) then
+        if ( self.cfg.showedWarning == 0 ) then
           reaper.ShowMessageBox("WARNING: This functionality only works reliably when MIDI pulses per row is set to a multiple of 256!\nPreferences > Media/MIDI > Ticks per quarter note for new MIDI items.", "WARNING", 0)
-          self.showedWarning = 1
+          self.cfg.showedWarning = 1
+          tracker:saveConfig(tracker.configFile, tracker.cfg)
         end
       end
 
@@ -8277,6 +8298,7 @@ local function updateLoop()
         tracker:initColors()
         tracker:loadKeys(cfg.keyset)
         tracker:forceUpdate()
+        updateShown()
       end
     end
   else
@@ -9557,6 +9579,7 @@ local function Main()
 
     -- Load user options
     local cfg = tracker:loadConfig(tracker.configFile, tracker.cfg)
+    updateShown()
     tracker:loadColors(cfg.colorscheme)
     tracker:initColors()
 
@@ -9599,7 +9622,7 @@ local function Main()
     --if ( wpos.w and wpos.w > width ) then
       width = wpos.w or width
     --end
-    if ( wpos.h and wpos.h > width ) then
+    if ( wpos.h ) then
       height = wpos.h or height
     end
     local xpos = wpos.x or 200
