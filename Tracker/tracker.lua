@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.20
+@version 2.21
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v2.21 (2020-06-09)
+   + Added sink color scheme.
  * v2.20 (2020-05-09)
    + Only show pulse warning once.
    + Add config option that allows delay or note end to always be open as a preference.
@@ -400,7 +402,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.19"
+tracker.name = "Hackey Trackey v2.21"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -495,6 +497,9 @@ function updateFontScale()
   local fontScaler = 1
   if ( tracker.colors.patternFont and tracker.colors.patternFontSize ) then
     fontScaler = tracker.colors.patternFontSize/14
+    if tracker.colors.customFontWidth then
+      fontScaler = tracker.colors.customFontWidth
+    end
   end
   
   tracker.grid = {}
@@ -628,7 +633,7 @@ tracker.binaryOptions = {
     { 'alwaysShowDelays', 'Always show note delay' },
     }
 
-tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2"}
+tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2", "sink"}
 
 noteNames = {}
 
@@ -891,6 +896,107 @@ function tracker:loadColors(colorScheme)
     self.colors.patternFont         = "DejaVu Sans"
     self.colors.patternFontSize     = tracker.cfg.fontSize or 14
     self.colors.customFontDisplace  = { self.colors.patternFontSize-6, -3 }
+  elseif colorScheme == "sink" then
+  
+  --[[gfx.set(table.unpack(colors.textcolorbar or colors.helpcolor2))
+  local selectedColor = colors.harmonyselect or colors.helpcolor2
+  local normalColor = colors.helpcolor
+  local titleColor = colors.textcolorbar or colors.helpcolor2]]--
+  
+    self.colors.ellipsis         = 1
+    self.colors.shadercolor      = {177/255, 171/255, 116/255, 1.0}    
+    self.colors.harmonycolor     = {16/256, 16/256, 16/256, 1.0}
+    self.colors.harmonyselect    = {52/255, 160/255, 232/255, 1.0}
+    self.colors.helpcolor        = {16/255, 16/255, 16/255, 1.0} -- the functions
+    self.colors.helpcolor2       = {32/256, 32/256, 32/256, 1} -- the keys
+    self.colors.selectcolor      = {125/256, 207/256, 255/256, 1} -- the cursor
+    self.colors.selecttext       = {0, 0, 0, 1} -- the cursor
+    self.colors.textcolor        = {16/256, 16/256, 16/256, 1} --{1/256*60, 1/256*105, 1/256*59, 1} -- main pattern data (rows should all be darker & this should be green)
+    self.colors.textcolorbar     = {16/255, 16/255, 16/255, 1}
+    self.colors.headercolor      = {16/256, 16/256, 16/256, 1} -- column headers, statusbar etc
+    self.colors.inactive         = {115/256, 115/256, 115/256, 1} -- column headers, statusbar etc
+    self.colors.linecolor        = {235/256, 235/256, 235/256, 0.6} -- normal row
+    self.colors.linecolor2       = {204/256, 204/256, 204/256, 0.6} -- beats (must not have 100% alpha as it's drawn over the cursor(!))
+    self.colors.linecolor3       = {16/256, 16/256, 16/256, 1} -- scroll indicating trangle thingy
+    self.colors.linecolor4       = {16/256, 16/256, 16/256, 1} -- Reaper edit cursor
+    self.colors.linecolor5       = {179/256, 179/256, 179/256, 1.0} -- Bar start
+    self.colors.loopcolor        = {104/256, 204/256, 256/256, 1} -- lines surrounding loop
+    self.colors.copypaste        = {125/256, 207/256, 255/256, 0.66}  -- the selection (should be lighter(not alpha blanded) but is drawn over the data)
+    self.colors.scrollbar1       = {98/256, 98/256, 98/256, 1} -- scrollbar handle & outline
+    self.colors.scrollbar2       = {19/256, 19/256, 19/256, 1} -- scrollbar background
+    self.colors.changed          = {.5, .8, 1, 1}
+    self.colors.changed2         = {0, .5, 1, .5} -- Only listening
+    self.colors.windowbackground = {235/256, 235/256, 235/256, 1}
+    self.crtStrength             = 0
+    
+    self.colors.normal.mod1      = {16/255, 16/255, 16/255, 1.0}
+    self.colors.normal.mod2      = self.colors.normal.mod1
+    self.colors.normal.mod3      = self.colors.normal.mod1
+    self.colors.normal.mod4      = self.colors.normal.mod1
+    self.colors.normal.modtxt1   = {243/255, 171/255, 116/255, 1.0}
+    self.colors.normal.modtxt2   = self.colors.normal.modtxt1
+    self.colors.normal.modtxt3   = self.colors.normal.modtxt1
+    self.colors.normal.modtxt4   = self.colors.normal.modtxt1
+    self.colors.normal.legato    = {92/255, 92/255, 92/255, 1.0}
+    self.colors.normal.vel1      = {19/255, 102/255, 136/255, 1.0}
+    self.colors.normal.vel2      = self.colors.normal.vel1
+    self.colors.normal.delay1    = {77/255, 77/255, 77/255, 1.0}
+    self.colors.normal.delay2    = self.colors.normal.delay1
+    self.colors.normal.fx1       = {183/255, 255/255, 191/255, 1.0}
+    self.colors.normal.fx2       = self.colors.normal.fx1
+    self.colors.normal.end1      = {52/255, 160/255, 232/255, 1.0}
+    self.colors.normal.end2      = self.colors.normal.end1
+    
+    self.colors.bar.mod1         = {16/255, 16/255, 16/255, 1.0}
+    self.colors.bar.mod2         = self.colors.bar.mod1
+    self.colors.bar.mod3         = self.colors.bar.mod1
+    self.colors.bar.mod4         = self.colors.bar.mod1
+    self.colors.bar.modtxt1      = {255/255, 159/255, 88/255, 1.0}
+    self.colors.bar.modtxt2      = self.colors.bar.modtxt1
+    self.colors.bar.modtxt3      = self.colors.bar.modtxt1
+    self.colors.bar.modtxt4      = self.colors.bar.modtxt1
+    self.colors.bar.legato       = {92/255, 92/255, 92/255, 1.0}
+    self.colors.bar.vel1         = {19/255, 102/255, 136/255, 1.0}
+    self.colors.bar.vel2         = self.colors.bar.vel1
+    self.colors.bar.delay1       = {77/255, 77/255, 77/255, 1.0}
+    self.colors.bar.delay2       = self.colors.bar.delay1
+    self.colors.bar.fx1          = {146/255, 255/255, 157/255, 1.0}
+    self.colors.bar.fx2          = self.colors.normal.fx1
+    self.colors.bar.end1         = {52/255, 160/255, 232/255, 1.0}
+    self.colors.bar.end2         = self.colors.bar.end1
+    
+    self.colors.patternFont      = "Bebas"
+    -- Poorly written check whether Bebas is present on the system
+    gfx.setfont(1, self.colors.patternFont, 16)
+    local w1 = gfx.measurechar(65)
+    gfx.setfont(1, self.colors.patternFont, 18)
+    local w2 = gfx.measurechar(65)
+    gfx.setfont(1, self.colors.patternFont, 19)
+    local w3 = gfx.measurechar(65)
+
+    -- Bebas present?
+    if w1 == 6 and w2 == 7 and w3 == 7 then
+      self.colors.patternFontSize     = tracker.cfg.fontSize or 14
+      if self.colors.patternFontSize > 16 then
+        self.colors.customFontDisplace  = { self.colors.patternFontSize-12, -7 }
+        self.colors.customFontWidth     = .7 * self.colors.patternFontSize / 14
+      else
+        self.colors.customFontDisplace  = { self.colors.patternFontSize-8, -5 }
+        self.colors.customFontWidth     = .8 * self.colors.patternFontSize / 14
+      end
+    else
+      self.colors.patternFont = nil
+    end
+  
+  --[[background = light grey RGB(235,235,235)
+  background line1 = light grey RGB(235,235,235)
+  background line2 = RGB(204,204,204)
+  LEGATO text color = RGB(92,92,92)
+  NOTE text color = black RGB(16,16,16)
+  VELOCITY text color = RGB(19,102,136)
+  DELAY text color = RGB(77,77,77)
+  LENGHT text color = RGB(52,160,232)
+  If possible : background line3 (every 8 steps) = RGB(179,179,179)]]--
   end
   -- clear colour is in a different format
   gfx.clear = tracker.colors.windowbackground[1]*256+(tracker.colors.windowbackground[2]*256*256)+(tracker.colors.windowbackground[3]*256*256*256)
@@ -2437,10 +2543,10 @@ function tracker:getSizeIndicatorLocation()
   if ( self.cfg.stickToBottom == 1 ) then
     yl = self.windowHeight - yheight[1]*2
   else
-    yl = yloc[#yloc] + 1 * yheight[1] + plotData.itempady
+    yl = yloc[#yloc] + yheight[1] + plotData.itempady
   end
   local xm = xl + plotData.textSize*3
-  local ym = yl+yheight[1]-6
+  local ym = yl + yheight[1] - plotData.itempady
 
   return xl, yl, xm, ym
 end
@@ -2773,7 +2879,7 @@ function tracker:printGrid()
         c2 = colors.linecolor5s
         tx = colors.textcolorbar or colors.textcolor
         fc = colors.bar
-      elseif false and( (((absy-1)/(sig/4)) - math.floor((absy-1)/(sig/4))) == 0 ) then
+      elseif ( (((absy-1)/(.25*sig)) - math.floor((absy-1)/(.25*sig))) == 0 ) then
         c1 = colors.linecolor2
         c2 = colors.linecolor2s
         tx = colors.textcolorbar or colors.textcolor
@@ -2843,9 +2949,9 @@ function tracker:printGrid()
       gfx.printf("%3d", self.max_ypos)
     end
 
-    gfx.line(xl, yl-2, xm,  yl-2)
-    gfx.line(xl, ym,   xm,  ym)
-    gfx.line(xm, ym,   xm,  yl-2)
+    gfx.line(xl, yl-2,   xm,  yl-2)
+    gfx.line(xl, ym-2,   xm,  ym-2)
+    gfx.line(xm, ym-2,   xm,  yl-2)
   end
 
   ------------------------------
