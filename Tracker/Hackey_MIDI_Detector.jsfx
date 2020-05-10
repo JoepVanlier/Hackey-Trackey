@@ -1,0 +1,83 @@
+noindex: true
+desc:Hackey_MIDI_Detector
+options:gmem=saike_HT_detect
+options:no_meter
+
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+@init
+
+@slider
+
+@block
+function pushToHT()
+(
+  noteOut = note_data;
+  loop(note_data[]*note_size + 2,
+    gmem[noteOut] = noteOut[];
+    noteOut += 1;
+  );
+  note_data[] = 0;
+);
+
+
+note_on  = $x90;
+note_off = $x80;
+note_size = 4;
+note_data = 0; // First element is the note count
+while(midirecv(offset, msg, pitch, vel)) (
+  type = msg & 0xf0;
+  
+  // Handle note off that's performed via a silent note.
+  type == note_on && vel == 0 ? type = note_off;
+  chan = msg & 0x0f;
+
+  note_count = note_data[];
+  note_ptr = note_count * note_size + 1;
+  type == note_on ? (
+    nonFree = 1;
+    note_ptr[] = chan;
+    note_ptr[1] = pitch;
+    note_ptr[2] = vel;
+    note_ptr[3] = 1;
+    note_data[0] += 1;
+  );
+
+  // Set released notes to zero and check whether all have been released.
+  type == note_off ? (
+    nonFree = 0;
+    
+    // Find the note that was turned off
+    notePtr = note_data + 1;
+    loop(note_count,
+      (notePtr[] == chan) && (notePtr[1] == pitch) ? (
+        notePtr[3] = 0;
+      );
+      nonFree = nonFree || notePtr[3];      
+      notePtr += note_size;
+    );
+  );
+
+  // If nonFree equates to zero and note_count is bigger than zero, then we are ready to push it to Hackey Trackey.
+  nonFree == 0 && note_count > 0 ? pushToHT();
+
+  midisend(offset, msg, pitch, vel);
+);
+
+@gfx
+  gfx_set(0, 0, 0, 1);
+  gfx_rect(0, 0, gfx_w, gfx_h);
+  gfx_x = gfx_y = 0;
+  gfx_set(.5, .5, 1, 1);
+  notes = note_data[];
+  notePtr = note_data;
+  loop(notes*note_size + 1,
+    gfx_printf("%d ", notePtr[]);
+    notePtr += 1;
+  );
+  gfx_y += 10;
+  gfx_x = 0;
+  gfx_printf("%d", nonFree);

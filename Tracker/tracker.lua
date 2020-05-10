@@ -4,10 +4,11 @@
 @provides
   scales.lua
   [main] .
+  [effect] Hackey_MIDI_Detector.jsfx
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.22
+@version 2.23
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -38,6 +39,8 @@
 
 --[[
  * Changelog:
+ * v2.23 (2020-06-10)
+   + Add optional MIDI step sequencing via global memory / JSFX (BETA).
  * v2.22 (2020-06-10)
    + Block operation while recording.
  * v2.21 (2020-06-09)
@@ -404,7 +407,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.22"
+tracker.name = "Hackey Trackey v2.23"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -605,6 +608,8 @@ tracker.cfg.showedWarning = 0
 tracker.cfg.alwaysShowNoteEnd = 0
 tracker.cfg.alwaysShowDelays = 0
 tracker.cfg.blockWhileRecording = 1
+tracker.cfg.readfrommidi = 0
+tracker.cfg.velfrommidi = 0
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -635,6 +640,8 @@ tracker.binaryOptions = {
     { 'alwaysShowNoteEnd', 'Always show note end' },
     { 'alwaysShowDelays', 'Always show note delay' },
     { 'blockWhileRecording', 'Block while recording' },
+    { 'readfrommidi', 'Track from MIDI (BETA)' },
+    { 'velfrommidi', 'Use recorded velocities' },
     }
 
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2", "sink"}
@@ -3849,7 +3856,11 @@ function tracker:addNote(startrow, endrow, chan, pitch, velocity)
       end
     end
 
-    reaper.MIDI_InsertNote( self.take, false, self.muted_channels[chan], startppqpos, endppqpos, chan, pitch, velocity, true )
+    if self.muted_channels then
+      reaper.MIDI_InsertNote( self.take, false, self.muted_channels[chan], startppqpos, endppqpos, chan, pitch, velocity, true )
+    else
+      reaper.MIDI_InsertNote( self.take, false, false, startppqpos, endppqpos, chan, pitch, velocity, true )
+    end
   end
 end
 
@@ -3971,6 +3982,84 @@ function tracker:showLess()
   end
 end
 
+-- Place a note, potentially overwriting an existing note, or shortening one that is already here.
+function tracker:placeNote(pitch, chan, row)
+  local rows       = self.rows
+  local data       = self.data  
+  local noteGrid   = data.note
+  local noteStart  = data.noteStart
+  local notes      = self.notes
+  local shouldMove = false
+
+  local noteToInterrupt
+  if ( row > 0 ) then
+    noteToInterrupt = noteGrid[rows*chan+row-1]
+  else
+    noteToInterrupt = noteGrid[rows*chan+row]
+  end
+  
+  local noteToEdit = noteStart[rows*chan+row]
+  
+  -- Is there already a note starting here? Simply change the note.
+  if ( noteToEdit ) then
+    reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, pitch, nil, true)
+    local p2, v2 = table.unpack( notes[noteToEdit] )
+    self:playNote(chan, pitch, v2)
+  else
+    -- No note yet? See how long the new note can get. Note that we have to ignore any note
+    -- we might be interrupting (placed in the middle of)
+    local k = row+1
+    while( k < rows ) do
+      if ( noteGrid[rows*chan+k] and not ( noteGrid[rows*chan+k] == noteToInterrupt ) ) then
+        break
+      end
+      k = k + 1
+    end
+  
+    -- Create the new note!
+    self:addNote(row, k, chan, pitch, self.lastVel)
+    self:playNote(chan, pitch, self.lastVel)
+  
+    if ( noteGrid[rows*chan+k] ) then
+      if ( noteGrid[rows*chan+k] < -1 ) then
+        self:deleteNote(chan, k)
+      end
+    end
+  
+    -- If we interrupted a note, that note needs to be shortened / removed!
+    -- If we overwrote an OFF marker that was still here, then it needs to be removed as well.
+    if ( noteToInterrupt ) then
+      -- Note
+      if ( noteToInterrupt > -1 ) then
+        -- Shorten the note we are interrupting
+        local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToInterrupt] )
+        endppqpos = self:rowToPpq(row)
+  
+        -- Check if we are at a legato point. Since we are interrupting a note,
+        -- we have to maintain additional overlap
+        if ( chan == 1 ) then
+          local legato = self.legato
+          if ( legato[row] and ( legato[row] > -1 ) ) then
+            endppqpos = endppqpos + tracker.magicOverlap
+          end
+        end
+  
+        -- Set the new note length
+        reaper.MIDI_SetNote(self.take, noteToInterrupt, nil, nil, nil, endppqpos, nil, nil, nil, true)
+      end
+    end
+  
+    -- Were we overwriting an OFF marker?
+    local idx = rows*chan+row
+    if ( noteGrid[idx] and noteGrid[idx] < -1 ) then
+      self:deleteNote(chan, row)
+    end
+  end
+  shouldMove = true
+  
+  return shouldMove
+end
+
 ---------------------
 -- Add note
 ---------------------
@@ -3996,84 +4085,22 @@ function tracker:createNote(inChar, shift)
     local note = keys.pitches[char]
     if ( note ) then
       -- Note is present, we are good to go!
-      local pitch = note + tracker.transpose * 12
+      local pitch = note + self.transpose * 12
       self:playNote(chan, pitch, self.lastVel)
     end
 
     return
   end
-
+  
   local noteToEdit = noteStart[rows*chan+row]
-  local noteToInterrupt
-  if ( row > 0 ) then
-    noteToInterrupt = noteGrid[rows*chan+row-1]
-  else
-    noteToInterrupt = noteGrid[rows*chan+row]
-  end
 
    -- What are we manipulating here?
   if ( ftype == 'text' ) then
     local note = keys.pitches[char]
     if ( note ) then
       -- Note is present, we are good to go!
-      local pitch = note + tracker.transpose * 12
-
-      -- Is there already a note starting here? Simply change the note.
-      if ( noteToEdit ) then
-        reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, pitch, nil, true)
-        local p2, v2 = table.unpack( notes[noteToEdit] )
-        self:playNote(chan, pitch, v2)
-      else
-        -- No note yet? See how long the new note can get. Note that we have to ignore any note
-        -- we might be interrupting (placed in the middle of)
-        local k = row+1
-        while( k < rows ) do
-          if ( noteGrid[rows*chan+k] and not ( noteGrid[rows*chan+k] == noteToInterrupt ) ) then
-            break
-          end
-          k = k + 1
-        end
-
-        -- Create the new note!
-        self:addNote(row, k, chan, pitch, self.lastVel)
-        self:playNote(chan, pitch, self.lastVel)
-
-        if ( noteGrid[rows*chan+k] ) then
-          if ( noteGrid[rows*chan+k] < -1 ) then
-            self:deleteNote(chan, k)
-          end
-        end
-
-        -- If we interrupted a note, that note needs to be shortened / removed!
-        -- If we overwrote an OFF marker that was still here, then it needs to be removed as well.
-        if ( noteToInterrupt ) then
-          -- Note
-          if ( noteToInterrupt > -1 ) then
-            -- Shorten the note we are interrupting
-            local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToInterrupt] )
-            endppqpos = self:rowToPpq(row)
-
-            -- Check if we are at a legato point. Since we are interrupting a note,
-            -- we have to maintain additional overlap
-            if ( chan == 1 ) then
-              local legato = self.legato
-              if ( legato[row] and ( legato[row] > -1 ) ) then
-                endppqpos = endppqpos + tracker.magicOverlap
-              end
-            end
-
-            -- Set the new note length
-            reaper.MIDI_SetNote(self.take, noteToInterrupt, nil, nil, nil, endppqpos, nil, nil, nil, true)
-          end
-        end
-
-        -- Were we overwriting an OFF marker?
-        local idx = rows*chan+row
-        if ( noteGrid[idx] and noteGrid[idx] < -1 ) then
-          self:deleteNote(chan, row)
-        end
-      end
-      shouldMove = true
+      local pitch = note + self.transpose * 12
+      shouldMove = self:placeNote(pitch, chan, row)
     else
       local octave = keys.octaves[char]
       if ( octave ) then
@@ -7444,7 +7471,7 @@ function tracker:playNote(chan, pitch, vel)
   self:checkArmed()
   
   local line_played = self.line_played or {}   
-  if ( self.armed == 1 ) then
+  if ( self.armed == 1 and not (self.cfg.readfrommidi == 1) ) then
     local ch = 1
     self:stopNote()
     reaper.StuffMIDIMessage(0, 0x90 + ch - 1, pitch, vel)
@@ -8020,6 +8047,87 @@ function tracker:noteEdit()
   end
 end
 
+local function findFXByGUID(track, targetGUID, recFX)
+  local i, offset = 0, recFX and 0x1000000 or 0
+  local guid = reaper.TrackFX_GetFXGUID(track, offset + i)
+
+  while guid do
+    if guid == targetGUID then
+      return i
+    end
+
+    i = i + 1
+    guid = reaper.TrackFX_GetFXGUID(track, offset + i)
+  end
+end
+
+function killJSFX()
+  if not jsfx or not reaper.ValidatePtr2(0, jsfx.track, 'MediaTrack*') then return end
+  
+  local index = findFXByGUID(jsfx.track, jsfx.guid, true)
+  if index then
+    reaper.TrackFX_Delete(jsfx.track, index | 0x1000000)
+  end
+  
+  jsfx = nil
+end
+
+function tracker:addJSFX()
+  if not reaper.ValidatePtr2(0, self.track, "MediaTrack*") then
+    return false
+  end
+  
+  if jsfx and self.track == jsfx.track then return true end
+  
+  reaper.Undo_BeginBlock2(0)
+  killJSFX()
+  
+  local index = reaper.TrackFX_AddByName(self.track, "Hackey_MIDI_Detector.jsfx", true, 1)
+
+  jsfx = {
+    guid  = reaper.TrackFX_GetFXGUID(self.track, index | 0x1000000),
+    track = self.track,
+    index = index
+  }
+  reaper.Undo_EndBlock2(0, "Add HT recording JSFX to input FX",  2)
+  
+  reaper.atexit(function()
+    killJSFX()
+    reaper.gmem_write(0, 0) -- disable the global note buffer
+  end)
+end
+
+function tracker:readNotesFromJSFX()
+  reaper.gmem_attach('saike_HT_detect');
+  local notes = reaper.gmem_read(0);
+  
+  self:addJSFX();
+  
+  reaper.gmem_write(0, 0);
+  
+  if notes > 0 then
+    local idx = 1;
+    local xpos = tracker.xpos
+    for i = 0, notes-1 do
+      channel = reaper.gmem_read(idx);
+      pitch = reaper.gmem_read(idx + 1);
+      velocity = reaper.gmem_read(idx + 2);
+      idx = idx + 4;
+      
+      local ftype, chan, row = self:getLocation()
+      if chan then
+        if self.cfg.velfrommidi == 1 then
+          self.lastVel = velocity
+        end
+        self:placeNote(pitch, chan, row)
+        self:tab()
+      end
+    end
+    tracker.ypos = tracker.ypos + 1;
+    tracker.xpos = xpos
+  end
+end
+
 ------------------------------
 -- Main update loop
 -----------------------------
@@ -8447,7 +8555,11 @@ local function updateLoop()
     tracker:resetShiftSelect()
     gfx.mouse_wheel = 0
   end
-
+  
+  if tracker.cfg.readfrommidi == 1 then
+    tracker:readNotesFromJSFX();
+  end
+  
   local modified = 0
   if ( tracker.renaming == 0 ) then
     if inputs('left') and tracker.take then
