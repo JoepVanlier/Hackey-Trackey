@@ -7,7 +7,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.21
+@version 2.22
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -38,6 +38,8 @@
 
 --[[
  * Changelog:
+ * v2.22 (2020-06-10)
+   + Block operation while recording.
  * v2.21 (2020-06-09)
    + Added sink color scheme.
  * v2.20 (2020-05-09)
@@ -402,7 +404,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.21"
+tracker.name = "Hackey Trackey v2.22"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -602,6 +604,7 @@ tracker.cfg.fx2 = 0
 tracker.cfg.showedWarning = 0
 tracker.cfg.alwaysShowNoteEnd = 0
 tracker.cfg.alwaysShowDelays = 0
+tracker.cfg.blockWhileRecording = 1
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -631,6 +634,7 @@ tracker.binaryOptions = {
     { 'returnAfterChord', 'Return to first column after chords' },
     { 'alwaysShowNoteEnd', 'Always show note end' },
     { 'alwaysShowDelays', 'Always show note delay' },
+    { 'blockWhileRecording', 'Block while recording' },
     }
 
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2", "sink"}
@@ -7410,14 +7414,18 @@ function tracker:arm()
 end
 
 function tracker:checkArmed()
-  if ( self.armed == 1 and self.track ) then
-    local recinput = reaper.GetMediaTrackInfo_Value(self.track, "I_RECINPUT")
-    local recarm = reaper.GetMediaTrackInfo_Value(self.track, "I_RECARM")
-    local recmonitor = reaper.GetMediaTrackInfo_Value(self.track, "I_RECMON")
-    local ready = ( recinput == tracker.playNoteCh ) and ( recarm == 1 ) and ( recmonitor == 1 )
-    if ( not ready ) then
-      self.armed = 0
+  if reaper.ValidatePtr(self.track, "MediaTrack*") then
+    if ( self.armed == 1 and self.track ) then
+      local recinput = reaper.GetMediaTrackInfo_Value(self.track, "I_RECINPUT")
+      local recarm = reaper.GetMediaTrackInfo_Value(self.track, "I_RECARM")
+      local recmonitor = reaper.GetMediaTrackInfo_Value(self.track, "I_RECMON")
+      local ready = ( recinput == tracker.playNoteCh ) and ( recarm == 1 ) and ( recmonitor == 1 )
+      if ( not ready ) then
+        self.armed = 0
+      end
     end
+  else
+    self.armed = 0
   end
 end
 
@@ -8022,8 +8030,27 @@ local function updateLoop()
   tracker.updateLoop = updateLoop
 
   -- Check if the note data or take changed, if so, update the note contents
-  if ( not tracker:checkChange() ) then
-    tracker:lostItem()
+  tracker:checkArmed()
+  if (reaper.GetPlayState() & 4 == 0) or (self.armed == 0) or (tracker.cfg.blockWhileRecording == 0) then
+    if ( not tracker:checkChange() ) then
+      tracker:lostItem()
+    end
+  else
+    tracker:printGrid()
+    gfx.set(0, 0, 0, .5)
+    gfx.rect(0, 0, gfx.w, gfx.h);
+    gfx.update()
+    
+    gfx.setfont(2, "Arial", 100);
+    local ww, hh = gfx.measurestr("Recording ...")
+    gfx.x = .5*gfx.w - .5*ww;
+    gfx.y = .5*gfx.h - hh;
+    gfx.printf("Recording ...")
+  
+    if lastChar ~= -1 then
+      reaper.defer(updateLoop)
+    end
+    return
   end
 
   -- Auto resize y
@@ -8051,7 +8078,6 @@ local function updateLoop()
   tracker:clearInsertLists()
 
   tracker:resizeWindow()
-  tracker:checkArmed()
 
   -- Maintain the loop until the window is closed or escape is pressed
   prevChar = lastChar
