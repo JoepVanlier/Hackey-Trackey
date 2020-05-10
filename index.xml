@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="ff97adb5b5394c050f98b7bacd9a6e3732b176ad">
+<index version="1" name="Tracker tools" commit="029db609ba807d1f0cf2886275017873a61a2b45">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -644,6 +644,12 @@ FF = the full length of the last tick.]]></changelog>
         <changelog><![CDATA[+ Block operation while recording.]]></changelog>
         <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/ff97adb5b5394c050f98b7bacd9a6e3732b176ad/Tracker/scales.lua</source>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/ff97adb5b5394c050f98b7bacd9a6e3732b176ad/Tracker/tracker.lua</source>
+      </version>
+      <version name="2.23" author=": Joep Vanlier" time="2020-05-10T16:28:56Z">
+        <changelog><![CDATA[+ Add optional MIDI step sequencing via global memory / JSFX (BETA).]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/029db609ba807d1f0cf2886275017873a61a2b45/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/029db609ba807d1f0cf2886275017873a61a2b45/Tracker/tracker.lua</source>
+        <source type="effect" file="Hackey_MIDI_Detector.jsfx">https://github.com/JoepVanlier/Hackey-Trackey/raw/029db609ba807d1f0cf2886275017873a61a2b45/Tracker/Hackey_MIDI_Detector.jsfx</source>
       </version>
     </reapack>
   </category>
