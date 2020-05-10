@@ -8,7 +8,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.23
+@version 2.25
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -39,6 +39,8 @@
 
 --[[
  * Changelog:
+ * v2.25 (2020-06-10)
+   + Make MIDI step sequencing respect advance setting.
  * v2.23 (2020-06-10)
    + Add optional MIDI step sequencing via global memory / JSFX (BETA).
  * v2.22 (2020-06-10)
@@ -407,7 +409,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.23"
+tracker.name = "Hackey Trackey v2.25"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -8107,7 +8109,7 @@ function tracker:readNotesFromJSFX()
   
   if notes > 0 then
     local idx = 1;
-    local xpos = tracker.xpos
+    local xpos = self.xpos
     for i = 0, notes-1 do
       channel = reaper.gmem_read(idx);
       pitch = reaper.gmem_read(idx + 1);
@@ -8123,8 +8125,12 @@ function tracker:readNotesFromJSFX()
         self:tab()
       end
     end
-    tracker.ypos = tracker.ypos + 1;
-    tracker.xpos = xpos
+    self.ypos = self.ypos + self.advance
+    if self.ypos > self.rows then
+      self.ypos = self.ypos - self.rows
+    end
+    
+    self.xpos = xpos
   end
 end
 
