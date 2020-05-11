@@ -8,7 +8,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.25
+@version 2.26
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -39,6 +39,14 @@
 
 --[[
  * Changelog:
+ * v2.26 (2020-06-11)
+   + Just realized I'm working from the future.
+   + Added note advance mode that skips to next note instead of moving forward by advance.
+   + Add toggle to enable advance by note mode (CTRL + T)
+   + Add optional bigger line indicator when playing.
+   + Improve ellipsis rendering.
+   + Optionally enable CRT mode for sink theme.
+   + Minor UI fixups (selection used to not quite overlap with cursors).
  * v2.25 (2020-06-10)
    + Make MIDI step sequencing respect advance setting.
  * v2.23 (2020-06-10)
@@ -409,7 +417,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.25"
+tracker.name = "Hackey Trackey v2.26"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -612,6 +620,8 @@ tracker.cfg.alwaysShowDelays = 0
 tracker.cfg.blockWhileRecording = 1
 tracker.cfg.readfrommidi = 0
 tracker.cfg.velfrommidi = 0
+tracker.cfg.advanceByNote = 0
+tracker.cfg.bigLineIndicator = 1
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -644,6 +654,8 @@ tracker.binaryOptions = {
     { 'blockWhileRecording', 'Block while recording' },
     { 'readfrommidi', 'Track from MIDI (BETA)' },
     { 'velfrommidi', 'Use recorded velocities' },
+    { 'advanceByNote', 'Advance to next note mode (CTRL + T)' },
+    { 'bigLineIndicator', 'Bigger play indicator' },
     }
 
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2", "sink"}
@@ -906,6 +918,7 @@ function tracker:loadColors(colorScheme)
     self.colors.windowbackground = {1/256*218, 1/256*214, 1/256*201, 1}
     self.crtStrength             = 0
 
+    self.colors.ellipsis            = 1;
     self.colors.patternFont         = "DejaVu Sans"
     self.colors.patternFontSize     = tracker.cfg.fontSize or 14
     self.colors.customFontDisplace  = { self.colors.patternFontSize-6, -3 }
@@ -934,7 +947,7 @@ function tracker:loadColors(colorScheme)
     self.colors.linecolor4       = {16/256, 16/256, 16/256, 1} -- Reaper edit cursor
     self.colors.linecolor5       = {179/256, 179/256, 179/256, 1.0} -- Bar start
     self.colors.loopcolor        = {104/256, 204/256, 256/256, 1} -- lines surrounding loop
-    self.colors.copypaste        = {125/256, 207/256, 255/256, 0.66}  -- the selection (should be lighter(not alpha blanded) but is drawn over the data)
+    self.colors.copypaste        = {125/256, 125/256, 155/256, 0.26}  -- the selection (should be lighter(not alpha blanded) but is drawn over the data)
     self.colors.scrollbar1       = {98/256, 98/256, 98/256, 1} -- scrollbar handle & outline
     self.colors.scrollbar2       = {19/256, 19/256, 19/256, 1} -- scrollbar background
     self.colors.changed          = {.5, .8, 1, 1}
@@ -977,6 +990,7 @@ function tracker:loadColors(colorScheme)
     self.colors.bar.fx2          = self.colors.normal.fx1
     self.colors.bar.end1         = {52/255, 160/255, 232/255, 1.0}
     self.colors.bar.end2         = self.colors.bar.end1
+    self.crtStrength             = 1
     
     self.colors.patternFont      = "Bebas"
     -- Poorly written check whether Bebas is present on the system
@@ -991,7 +1005,7 @@ function tracker:loadColors(colorScheme)
     if w1 == 6 and w2 == 7 and w3 == 7 then
       self.colors.patternFontSize     = tracker.cfg.fontSize or 14
       if self.colors.patternFontSize > 16 then
-        self.colors.customFontDisplace  = { self.colors.patternFontSize-12, -7 }
+        self.colors.customFontDisplace  = { self.colors.patternFontSize-12, -6 }
         self.colors.customFontWidth     = .7 * self.colors.patternFontSize / 14
       else
         self.colors.customFontDisplace  = { self.colors.patternFontSize-8, -5 }
@@ -1131,6 +1145,8 @@ function tracker:loadKeys( keySet )
     keys.removeRow      = { 1,    0,  0,    8 }             -- Remove Row CTRL+Backspace
     keys.wrapDown       = { 1,    0,  1,    6909555 }       -- CTRL + SHIFT + Ins
     keys.wrapUp         = { 1,    0,  1,    8 }             -- CTRL + SHIFT + Backspace
+    
+    keys.toggleNoteMode = { 1,    0,  0,    20 }            -- CTRL + T / Toggle whether advance should move to next note rather than numeric value
 
     keys.m0             = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m25            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
@@ -1205,6 +1221,8 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },
       { 'CTRL + Shift + A/P', 'Per channel CC/PC' },
       { 'CTRL + Shift + Click row indicator', 'Change highlighting (RMB resets)' },
+      { 'CTRL + S / CTRL + A', '(un)Solo / (un)Mute' },   
+      { 'CTRL + T', 'Toggle advance to next note' },      
       { '', '' },
       { 'Harmony helper', '' },
       { 'F9', 'Toggle harmonizer' },
@@ -1212,7 +1230,6 @@ function tracker:loadKeys( keySet )
       { 'Alt', 'Invert first note' },
       { 'Shift', 'Invert second note' },
       { 'CTRL + Shift + Alt + +/-', 'Shift root note' },
-      { 'CTRL + S / CTRL + A', '(un)Solo / (un)Mute' },      
     }
 
   elseif keyset == "buzz" then
@@ -1295,6 +1312,8 @@ function tracker:loadKeys( keySet )
     keys.wrapDown       = { 1,    0,  1,    6909555 }       -- CTRL + SHIFT + Ins
     keys.wrapUp         = { 1,    0,  1,    8 }             -- CTRL + SHIFT + Backspace
 
+    keys.toggleNoteMode = { 1,    0,  0,    20 }            -- CTRL + T / Toggle whether advance should move to next note rather than numeric value
+
     keys.m0             = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m25            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m50            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
@@ -1372,6 +1391,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },
       { 'CTRL + Shift + A/P', 'Per channel CC/PC' },
       { 'CTRL + Shift + Click row indicator', 'Change highlighting (RMB resets)' },
+      { 'CTRL + T', 'Toggle advance to next note' },
       { '', '' },
       { 'Harmony helper', '' },
       { 'F9', 'Toggle harmonizer' },
@@ -1519,6 +1539,8 @@ function tracker:loadKeys( keySet )
     keys.nextTrack      = { 1,    0,  1,    1919379572.0 }  -- CTRL + Shift + ->
     keys.prevTrack      = { 1,    0,  1,    1818584692.0 }  -- CTRL + Shift + <-
 
+    keys.toggleNoteMode = { 1,    0,  0,    20 }            -- CTRL + T / Toggle whether advance should move to next note rather than numeric value
+
     help = {
       { 'Shift + Note', 'Advance column after entry' },
       { noteOff, 'Note OFF' },
@@ -1562,6 +1584,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + F11/F12', 'Pattern octave up' },
       { 'CTRL + Shift + F11/F12', 'Column octave up' },
       { 'CTRL + Alt + F11/F12', 'Block octave up' },
+      { 'CTRL + T', 'Toggle advance to next note' },
       { '---', '' },
       { 'CTRL + H', 'Toggle harmonizer' },
       { 'CTRL + Click', 'Insert chord' },
@@ -2564,29 +2587,29 @@ function tracker:getSizeIndicatorLocation()
   return xl, yl, xm, ym
 end
 
+local function draw_ellipsis(x, py)
+  gfx.rect(x,  py, 1, 1)
+  gfx.rect(x+2, py, 1, 1)
+  gfx.rect(x+4, py, 1, 1)
+end
+
 function tracker:writeField(cdata, ellipsis, x, y, customFont)
   if ( type(cdata) == "number" ) then
     if ( cdata == -1 ) then
       if ( ellipsis == 1 ) then
         local py = y + 6
-        gfx.rect(x,  py, 1, 1)
-        gfx.rect(x+2, py, 1, 1)
-        gfx.rect(x+4, py, 1, 1)
-        gfx.rect(x+9, py, 1, 1)
-        gfx.rect(x+11, py, 1, 1)
-        gfx.rect(x+13, py, 1, 1)
-        gfx.rect(x+18, py, 1, 1)
-        gfx.rect(x+20, py, 1, 1)
-        gfx.rect(x+22, py, 1, 1)
+        local delta = customFont and customFont[1] or 9
+        x = x + 2
+        draw_ellipsis(x, py)
+        draw_ellipsis(x + delta, py)
+        draw_ellipsis(x + delta*2, py)
       else
         gfx.printf("...", cdata)
       end
     else
       if ( ellipsis == 1 ) then
         local py = y + 6
-        gfx.rect(x,  py, 1, 1)
-        gfx.rect(x+2, py, 1, 1)
-        gfx.rect(x+4, py, 1, 1)
+        draw_ellipsis(x, py)
       else
         gfx.printf(".", cdata)
       end
@@ -2933,7 +2956,7 @@ function tracker:printGrid()
     if ( xloc[relx] and yloc[rely] ) then
       local absy = rely + scrolly
       gfx.set(table.unpack(colors.selectcolor))
-      gfx.rect(xloc[relx]-1, yloc[rely]-plotData.yshift, xwidth[relx], yheight[rely])
+      gfx.rect(xloc[relx]-1, yloc[rely]-plotData.yshift, xwidth[relx], yheight[rely] + itempady)
 
       gfx.x = xloc[relx]
       gfx.y = yloc[rely]
@@ -3129,9 +3152,9 @@ function tracker:printGrid()
     
     gfx.set(table.unpack(colors.copypaste))
     if ( cp.all == 0 ) then
-      gfx.rect(xloc[xmi], yloc[yl] - plotData.yshift, xloc[xma] + xwidth[xma] - xloc[xmi], yloc[ye]-yloc[yl]+yheight[ye] )
+      gfx.rect(xloc[xmi]-1, yloc[yl] - plotData.yshift, xloc[xma] + xwidth[xma] - xloc[xmi], yloc[ye]-yloc[yl]+yheight[ye]+itempady )
     else
-      gfx.rect(xloc[1] - itempadx, yloc[yl] - plotData.yshift, tw, yloc[ye]-yloc[yl]+yheight[ye] )
+      gfx.rect(xloc[1] - itempadx-1, yloc[yl] - plotData.yshift, tw, yloc[ye]-yloc[yl]+yheight[ye]+itempady )
     end
   end
 
@@ -3168,7 +3191,17 @@ function tracker:printGrid()
       gfx.set(table.unpack(colors.linecolor3))
       triangle(xc, yc, 5, 1)
     else
-      gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * playLoc - itempady - 1, tw, 1)
+      gfx.set(table.unpack(colors.selectcolor))
+      
+      if self.cfg.bigLineIndicator == 0 then
+        gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * playLoc - itempady - 1, tw, 1)
+      else
+        gfx.a = .2;
+        playLoc = math.floor(playLoc * self.rows)+1
+        if yloc[playLoc] then
+          gfx.rect(plotData.xstart - itempadx, yloc[playLoc]-plotData.yshift, tw, yc)
+        end
+      end
     end
   end
   local markerLoc = self:getCursorLocation()
@@ -3382,7 +3415,7 @@ function tracker:printGrid()
       gfx.x = xs + 13
       local cys = ys + i * binaryOptions.h
       gfx.y = cys + extraFontShift
-
+--c
       gfx.line(xs, cys, xs,  cys+8)
       gfx.line(xs+8, cys, xs+8,  cys+8)
       gfx.line(xs, cys, xs+8,  cys)
@@ -3433,7 +3466,11 @@ function tracker:infoString()
 
   local str = {}
   str[4] = string.format( "Oct [%d]", self.transpose )
-  str[3] = string.format( "Adv [%d]", self.advance )
+  if self.cfg.advanceByNote == 1 then
+    str[3] = string.format( "Adv [N]", self.advance )
+  else
+    str[3] = string.format( "Adv [%d]", self.advance )
+  end
   str[2] = string.format( "Env [%s]", tracker.envShapes[tracker.envShape] )
   str[1] = string.format( "Out [%s]", self:outString() )
   str[5] = string.format( "Res [%d]", tracker.newRowPerQn )
@@ -3617,6 +3654,49 @@ function tracker:getLocation()
   return dlink[relx], xlink[relx], tracker.ypos - 1
 end
 
+function tracker:findNextNote(direction)
+  -- Determine fieldtype, channel and row
+  local ftype, chan, row = self:getLocation()
+  local rows       = self.rows
+  local data       = self.data  
+  local noteStart  = data.noteStart
+  local stepsLeft = self.rows
+  
+  local ypos = self.ypos + direction
+  while stepsLeft > 0 do
+    if noteStart[rows*chan+ypos - 1] then
+      return ypos
+    end
+    ypos = ypos + direction
+    if ypos > rows then
+      ypos = 0
+    end
+    if ypos < 0 then
+      ypos = rows
+    end
+    
+    stepsLeft = stepsLeft - 1;
+  end
+  
+  return ypos
+end
+
+function tracker:rewindCursor()
+  if self.cfg.advanceByNote == 1 then
+    self.ypos = self:findNextNote(-1)
+  else
+    self.ypos = self.ypos - self.advance
+  end
+end
+
+function tracker:advanceCursor()
+  if self.cfg.advanceByNote == 1 then
+    self.ypos = self:findNextNote(1)
+  else
+    self.ypos = self.ypos + self.advance
+  end
+end
+
 function tracker:placeOff()
   local rows      = self.rows
   local notes     = self.notes
@@ -3686,8 +3766,8 @@ function tracker:placeOff()
       end
     end
   end
-  self.ypos = self.ypos + self.advance
-  tracker:stopNote()
+  self:advanceCursor()
+  self:stopNote()
 end
 
 ---------------------
@@ -4226,7 +4306,7 @@ function tracker:createNote(inChar, shift)
     if shift then
       self:tab()
     else
-      self.ypos = self.ypos + self.advance
+      self:advanceCursor()
     end
   end
 
@@ -8125,12 +8205,8 @@ function tracker:readNotesFromJSFX()
         self:tab()
       end
     end
-    self.ypos = self.ypos + self.advance
-    if self.ypos > self.rows then
-      self.ypos = self.ypos - self.rows
-    end
-    
     self.xpos = xpos
+    self:advanceCursor()
   end
 end
 
@@ -8211,6 +8287,34 @@ local function updateLoop()
       if ( shift > 0 ) then  print("shift") end
       local alt     = gfx.mouse_cap & 16
       if ( alt > 0 ) then  print("alt") end
+      
+      -- Bitmask oddly enough doesn't behave as expected
+      local control = gfx.mouse_cap & 4
+      if ( control > 0 ) then control = 1 end
+      local shift   = gfx.mouse_cap & 8
+      if ( shift > 0 ) then shift = 1 end
+      local alt     = gfx.mouse_cap & 16
+      if ( alt > 0 ) then alt = 1 end
+      
+      local exists = nil;
+      for keyName, checkMask in pairs(keys) do
+        if checkMask then
+          if type(checkMask) == "table" then
+            if ( checkMask[1] == control ) then
+              if ( checkMask[2] == alt ) then
+                if ( checkMask[3] == shift ) then
+                  if ( lastChar == checkMask[4] ) then
+                    exists = keyName;
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+      if exists then
+        print("Already taken in this keyset by " .. exists);
+      end
     end
   end
 
@@ -8219,7 +8323,7 @@ local function updateLoop()
     tracker.shiftChordInProgress = false
     if tracker.cfg.returnAfterChord == 1 then
       tracker.xpos = tracker.shiftChordStartXpos
-      tracker.ypos = tracker.ypos + tracker.advance
+      tracker:advanceCursor()
       tracker.shiftChordStartXpos = nil
     end
   end
@@ -8581,10 +8685,10 @@ local function updateLoop()
       tracker.ypos = tracker.ypos + 1
       tracker:resetShiftSelect()
     elseif inputs('upByAdvance') and tracker.take then
-      tracker.ypos = tracker.ypos - tracker.advance
+      tracker:rewindCursor()
       tracker:resetShiftSelect()
     elseif inputs('downByAdvance') and tracker.take then
-      tracker.ypos = tracker.ypos + tracker.advance
+      tracker:advanceCursor()
       tracker:resetShiftSelect()
     elseif inputs('shiftleft') and tracker.take then
       tracker:dragBlock()
@@ -8658,7 +8762,7 @@ local function updateLoop()
       tracker:delete()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
-      tracker.ypos = tracker.ypos + tracker.advance
+      tracker:advanceCursor()
     elseif ( inputs('deleteRow') and tracker.take ) then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Delete row (Del)")
@@ -8667,7 +8771,7 @@ local function updateLoop()
       tracker:mendBlock({xstart=1, ystart=tracker.ypos, xstop=#datafields, ystop=tracker.ypos})
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
-      tracker.ypos = tracker.ypos + tracker.advance
+      tracker:advanceCursor()
     elseif ( inputs('insertRow') and tracker.take ) then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Insert Row")
@@ -9064,6 +9168,9 @@ local function updateLoop()
           tracker.newRowPerQn = tracker.maxRowPerQn
         end
       end
+    elseif inputs('toggleNoteMode') then
+      tracker.cfg.advanceByNote = 1.0 - tracker.cfg.advanceByNote
+      tracker:saveConfig(tracker.configFile, tracker.cfg)      
     elseif inputs('stop2') then
       reaper.Main_OnCommand(1016, 0)
     elseif inputs('panic') then
