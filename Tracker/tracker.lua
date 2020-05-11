@@ -8,7 +8,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.26
+@version 2.27
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -39,6 +39,9 @@
 
 --[[
  * Changelog:
+ * v2.27 (2020-06-11)
+   + Minor style tweaks.
+   + Bugfix note advance mode.
  * v2.26 (2020-06-11)
    + Just realized I'm working from the future.
    + Added note advance mode that skips to next note instead of moving forward by advance.
@@ -417,7 +420,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.26"
+tracker.name = "Hackey Trackey v2.27"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -827,7 +830,7 @@ function tracker:loadColors(colorScheme)
     self.colors.bar.delay1       = {116/255, 162/255, 255/255, 1.0}
     self.colors.bar.delay2       = self.colors.bar.delay1
     self.colors.bar.fx1          = {146/255, 255/255, 157/255, 1.0}
-    self.colors.bar.fx2          = self.colors.normal.fx1
+    self.colors.bar.fx2          = self.colors.bar.fx1
     self.colors.bar.end1         = {136/255, 80/255, 178/255, 1.0}
     self.colors.bar.end2         = self.colors.bar.end1
   elseif colorScheme == "renoiseB" then
@@ -887,7 +890,7 @@ function tracker:loadColors(colorScheme)
     self.colors.bar.delay1       = {116/255, 162/255, 255/255, 1.0}
     self.colors.bar.delay2       = self.colors.bar.delay1
     self.colors.bar.fx1          = {146/255, 255/255, 157/255, 1.0}
-    self.colors.bar.fx2          = self.colors.normal.fx1
+    self.colors.bar.fx2          = self.colors.bar.fx1
     self.colors.bar.end1         = {136/255, 80/255, 178/255, 1.0}
     self.colors.bar.end2         = self.colors.bar.end1
 
@@ -968,7 +971,7 @@ function tracker:loadColors(colorScheme)
     self.colors.normal.vel2      = self.colors.normal.vel1
     self.colors.normal.delay1    = {77/255, 77/255, 77/255, 1.0}
     self.colors.normal.delay2    = self.colors.normal.delay1
-    self.colors.normal.fx1       = {183/255, 255/255, 191/255, 1.0}
+    self.colors.normal.fx1       = {92/255, 160/255, 232/255, 1.0}
     self.colors.normal.fx2       = self.colors.normal.fx1
     self.colors.normal.end1      = {52/255, 160/255, 232/255, 1.0}
     self.colors.normal.end2      = self.colors.normal.end1
@@ -986,8 +989,8 @@ function tracker:loadColors(colorScheme)
     self.colors.bar.vel2         = self.colors.bar.vel1
     self.colors.bar.delay1       = {77/255, 77/255, 77/255, 1.0}
     self.colors.bar.delay2       = self.colors.bar.delay1
-    self.colors.bar.fx1          = {146/255, 255/255, 157/255, 1.0}
-    self.colors.bar.fx2          = self.colors.normal.fx1
+    self.colors.bar.fx1          = {82/255, 160/255, 232/255, 1.0}
+    self.colors.bar.fx2          = self.colors.bar.fx1
     self.colors.bar.end1         = {52/255, 160/255, 232/255, 1.0}
     self.colors.bar.end2         = self.colors.bar.end1
     self.crtStrength             = 1
@@ -3658,9 +3661,13 @@ function tracker:findNextNote(direction)
   -- Determine fieldtype, channel and row
   local ftype, chan, row = self:getLocation()
   local rows       = self.rows
-  local data       = self.data  
+  local data       = self.data
   local noteStart  = data.noteStart
   local stepsLeft = self.rows
+  
+  if ftype == "fx1" or ftype == "fx2" or ftype == "modtxt1" or ftype == "modtxt2" then
+    chan = 1
+  end
   
   local ypos = self.ypos + direction
   while stepsLeft > 0 do
