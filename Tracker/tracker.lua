@@ -8,7 +8,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.27
+@version 2.28
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -39,6 +39,8 @@
 
 --[[
  * Changelog:
+ * v2.28 (2020-06-11)
+   + Fixup wraparound.
  * v2.27 (2020-06-11)
    + Minor style tweaks.
    + Bugfix note advance mode.
@@ -420,7 +422,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.27"
+tracker.name = "Hackey Trackey v2.28"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -3701,6 +3703,9 @@ function tracker:advanceCursor()
     self.ypos = self:findNextNote(1)
   else
     self.ypos = self.ypos + self.advance
+    if self.ypos > self.rows then
+      self.ypos = self.ypos - self.rows
+    end
   end
 end
 
