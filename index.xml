@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="0f3a7a688285a16ad0cd4dad995f3f4ad6706005">
+<index version="1" name="Tracker tools" commit="908a1c533cae4261c0ebb2fe9cdc329d90e7dde1">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -656,6 +656,18 @@ FF = the full length of the last tick.]]></changelog>
         <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/0f3a7a688285a16ad0cd4dad995f3f4ad6706005/Tracker/scales.lua</source>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/0f3a7a688285a16ad0cd4dad995f3f4ad6706005/Tracker/tracker.lua</source>
         <source type="effect" file="Hackey_MIDI_Detector.jsfx">https://github.com/JoepVanlier/Hackey-Trackey/raw/0f3a7a688285a16ad0cd4dad995f3f4ad6706005/Tracker/Hackey_MIDI_Detector.jsfx</source>
+      </version>
+      <version name="2.26" author=": Joep Vanlier" time="2020-05-11T22:27:29Z">
+        <changelog><![CDATA[+ Just realized I'm working from the future.
++ Added note advance mode that skips to next note instead of moving forward by advance.
++ Add toggle to enable advance by note mode (CTRL + T)
++ Add optional bigger line indicator when playing.
++ Improve ellipsis rendering.
++ Optionally enable CRT mode for sink theme.
++ Minor UI fixups (selection used to not quite overlap with cursors).]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/908a1c533cae4261c0ebb2fe9cdc329d90e7dde1/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/908a1c533cae4261c0ebb2fe9cdc329d90e7dde1/Tracker/tracker.lua</source>
+        <source type="effect" file="Hackey_MIDI_Detector.jsfx">https://github.com/JoepVanlier/Hackey-Trackey/raw/908a1c533cae4261c0ebb2fe9cdc329d90e7dde1/Tracker/Hackey_MIDI_Detector.jsfx</source>
       </version>
     </reapack>
   </category>
