@@ -8,7 +8,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.28
+@version 2.29
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -39,6 +39,9 @@
 
 --[[
  * Changelog:
+ * v2.29 (2020-06-11)
+   + Clamp note advance to selection.
+   + Move advance to next note mode higher up.
  * v2.28 (2020-06-11)
    + Fixup wraparound.
  * v2.27 (2020-06-11)
@@ -422,7 +425,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.28"
+tracker.name = "Hackey Trackey v2.29"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -627,6 +630,7 @@ tracker.cfg.readfrommidi = 0
 tracker.cfg.velfrommidi = 0
 tracker.cfg.advanceByNote = 0
 tracker.cfg.bigLineIndicator = 1
+tracker.cfg.clampToSelection = 1
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -639,6 +643,8 @@ tracker.binaryOptions = {
     { 'followSelection', 'Follow Selection' },
     { 'storedSettings', 'Use settings stored in pattern' },
     { 'followSong', 'Follow Song (CTRL + F)' },
+    { 'advanceByNote', 'Advance to next note mode (CTRL + T)' },
+    { 'clampToSelection', 'Clamp to selection in note mode' },
     { 'stickToBottom', 'Info Sticks to Bottom' },
     { 'colResize', 'Adjust Column Count to Window' },
     { 'alwaysRecord', 'Always Enable Recording' },
@@ -659,7 +665,6 @@ tracker.binaryOptions = {
     { 'blockWhileRecording', 'Block while recording' },
     { 'readfrommidi', 'Track from MIDI (BETA)' },
     { 'velfrommidi', 'Use recorded velocities' },
-    { 'advanceByNote', 'Advance to next note mode (CTRL + T)' },
     { 'bigLineIndicator', 'Bigger play indicator' },
     }
 
@@ -1227,7 +1232,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Shift + A/P', 'Per channel CC/PC' },
       { 'CTRL + Shift + Click row indicator', 'Change highlighting (RMB resets)' },
       { 'CTRL + S / CTRL + A', '(un)Solo / (un)Mute' },   
-      { 'CTRL + T', 'Toggle advance to next note' },      
+      { 'CTRL + T', 'Toggle advance to next note mode' },      
       { '', '' },
       { 'Harmony helper', '' },
       { 'F9', 'Toggle harmonizer' },
@@ -1396,7 +1401,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },
       { 'CTRL + Shift + A/P', 'Per channel CC/PC' },
       { 'CTRL + Shift + Click row indicator', 'Change highlighting (RMB resets)' },
-      { 'CTRL + T', 'Toggle advance to next note' },
+      { 'CTRL + T', 'Toggle advance to next note mode' },
       { '', '' },
       { 'Harmony helper', '' },
       { 'F9', 'Toggle harmonizer' },
@@ -1589,7 +1594,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + F11/F12', 'Pattern octave up' },
       { 'CTRL + Shift + F11/F12', 'Column octave up' },
       { 'CTRL + Alt + F11/F12', 'Block octave up' },
-      { 'CTRL + T', 'Toggle advance to next note' },
+      { 'CTRL + T', 'Toggle advance to next note mode' },
       { '---', '' },
       { 'CTRL + H', 'Toggle harmonizer' },
       { 'CTRL + Click', 'Insert chord' },
@@ -3659,6 +3664,13 @@ function tracker:getLocation()
   return dlink[relx], xlink[relx], tracker.ypos - 1
 end
 
+
+  --  local xl  = clamp(1, fov.width,  cp.xstart - fov.scrollx)
+  --  local xe  = clamp(1, fov.width,  cp.xstop  - fov.scrollx)
+  --  local yl  = clamp(1, fov.height, cp.ystart - fov.scrolly)
+  --  local ye  = clamp(1, fov.height, cp.ystop  - fov.scrolly)
+
+
 function tracker:findNextNote(direction)
   -- Determine fieldtype, channel and row
   local ftype, chan, row = self:getLocation()
@@ -3671,17 +3683,28 @@ function tracker:findNextNote(direction)
     chan = 1
   end
   
+  local endpos = rows
+  local beginpos = 0
+  
+  if self.cp and self.cfg.clampToSelection == 1 then
+    local cp = self.cp
+    if cp.ystop > cp.ystart then
+      endpos = cp.ystop
+      beginpos = cp.ystart
+    end
+  end
+  
   local ypos = self.ypos + direction
   while stepsLeft > 0 do
     if noteStart[rows*chan+ypos - 1] then
       return ypos
     end
     ypos = ypos + direction
-    if ypos > rows then
-      ypos = 0
+    if ypos > endpos then
+      ypos = beginpos
     end
-    if ypos < 0 then
-      ypos = rows
+    if ypos < beginpos then
+      ypos = endpos
     end
     
     stepsLeft = stepsLeft - 1;
