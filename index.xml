@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="305cd01a2b7889474f2ed9eb633343a33a5fdea9">
+<index version="1" name="Tracker tools" commit="6d49fbb75a84b76cffe469aa2c4c894a96f32a7e">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -681,6 +681,13 @@ FF = the full length of the last tick.]]></changelog>
         <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/305cd01a2b7889474f2ed9eb633343a33a5fdea9/Tracker/scales.lua</source>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/305cd01a2b7889474f2ed9eb633343a33a5fdea9/Tracker/tracker.lua</source>
         <source type="effect" file="Hackey_MIDI_Detector.jsfx">https://github.com/JoepVanlier/Hackey-Trackey/raw/305cd01a2b7889474f2ed9eb633343a33a5fdea9/Tracker/Hackey_MIDI_Detector.jsfx</source>
+      </version>
+      <version name="2.29" author=": Joep Vanlier" time="2020-05-12T20:26:13Z">
+        <changelog><![CDATA[+ Clamp note advance to selection.
++ Move advance to next note mode higher up.]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/6d49fbb75a84b76cffe469aa2c4c894a96f32a7e/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/6d49fbb75a84b76cffe469aa2c4c894a96f32a7e/Tracker/tracker.lua</source>
+        <source type="effect" file="Hackey_MIDI_Detector.jsfx">https://github.com/JoepVanlier/Hackey-Trackey/raw/6d49fbb75a84b76cffe469aa2c4c894a96f32a7e/Tracker/Hackey_MIDI_Detector.jsfx</source>
       </version>
     </reapack>
   </category>
