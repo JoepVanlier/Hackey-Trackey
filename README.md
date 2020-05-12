@@ -113,6 +113,27 @@ menu.
 Yes, there are various themes to choose from. See the options menu (F11).
 ![Themes](https://i.imgur.com/wxnbQUV.png)
 
+The latest theme is Sink, but it relies on installing a font first which you 
+can get here: https://www.dafont.com/bebas.font
+![Sink](https://imgur.com/mzLQshj.png)
+
+### Can I do step sequencing from my MIDI device?
+Yes you can! Enable track from MIDI in the options. This will inject a JSFX on
+the track in question which will track the incoming MIDI and send it to HT.
+Note that this will disable any playback preview within Hackey Trackey however,
+as that would otherwise create an infinite loop.
+
+### What is advance to next note mode?
+Advance to next note mode is a mode in which the cursor always advances to the
+next note in on the column you're working in, rather than a fixed number of
+steps. When you get to the end of the pattern, it loops back to the start. This
+allows you to quickly audition different potential melodies for a particular
+rhythm. You can quickly toggle it with CTRL + T. 
+
+Note that an additional feature of advance to next note mode is that if you
+select a region on the pattern, the method will constrain the advance method to
+stay within that region.
+
 ### Can I change the pattern length from the tracker?
 Yes. Click the pattern length indicator in the bottom left of the tracker. You can 
 enter a new value here.
