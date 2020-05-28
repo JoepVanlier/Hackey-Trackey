@@ -8,7 +8,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.29
+@version 2.30
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -39,6 +39,8 @@
 
 --[[
  * Changelog:
+ * v2.30 (2020-06-11)
+   + Make selection follow block-select when this configuration option is active.
  * v2.29 (2020-06-11)
    + Clamp note advance to selection.
    + Move advance to next note mode higher up.
@@ -425,7 +427,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.29"
+tracker.name = "Hackey Trackey v2.30"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -631,6 +633,7 @@ tracker.cfg.velfrommidi = 0
 tracker.cfg.advanceByNote = 0
 tracker.cfg.bigLineIndicator = 1
 tracker.cfg.clampToSelection = 1
+tracker.cfg.selectMIDINotes = 0
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -666,6 +669,7 @@ tracker.binaryOptions = {
     { 'readfrommidi', 'Track from MIDI (BETA)' },
     { 'velfrommidi', 'Use recorded velocities' },
     { 'bigLineIndicator', 'Bigger play indicator' },
+    { 'selectMIDINotes', 'Block select selects notes' },
     }
 
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2", "sink"}
@@ -5585,6 +5589,54 @@ function tracker:readLegato( ppqpos, i )
   legato[row] = i
 end
 
+function tracker:updateNoteSelection()
+  if self.cfg.selectMIDINotes == 1 then
+    local cp = self.cp
+    if self.cp.changed then
+      self.cp.changed = nil
+  
+      if ( reaper.ValidatePtr2(0, self.take, "MediaItem_Take*") ) then
+      
+        local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+        local data      = self.data
+        local noteGrid  = data.note
+        local noteStart = data.noteStart
+        local notes     = self.notes
+        local txtList   = self.txtList
+        local rows      = self.rows
+        
+      
+        local chanmin = 1000
+        local chanmax = -1000
+        for jx = cp.xstart, cp.xstop do
+          if ( datafields[jx] == 'text' ) then
+            if chanmin > idxfields[jx] then
+              chanmin = idxfields[jx]
+            end
+            if chanmax < idxfields[jx] then
+              chanmax = idxfields[jx]
+            end      
+          end
+        end
+      
+        -- ystart starts counting at 1
+        local minppq = self:rowToPpq(cp.ystart-1)
+        local maxppq = self:rowToPpq(cp.ystop)
+        
+        local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+        for i=0,notecntOut do
+          local retval, selected, muted, startppqpos, endppqpos, chan, pitch, vel = reaper.MIDI_GetNote(self.take, i)
+ 
+          local selected = chan >= chanmin and chan <= chanmax and startppqpos >= minppq and startppqpos < maxppq
+          reaper.MIDI_SetNote(self.take, i, selected, muted, -1, -1, -1, -1, -1, true)
+        end
+        
+        reaper.MIDI_Sort(self.take)
+      end
+    end
+  end
+end
+
 -----------------------------
 -- Merge problematic overlaps
 -----------------------------
@@ -7328,6 +7380,11 @@ end
 function tracker:resetShiftSelect()
   local cp = self.cp
   self:forceCursorInRange()
+  
+  if cp.ystart > -1 then
+    cp.changed = 1
+  end
+  
   if ( cp.lastShiftCoord ) then
     cp.lastShiftCoord = nil
     self:resetBlock()
@@ -7371,6 +7428,7 @@ function tracker:dragBlock(cx, cy)
   cp.all     = 0
   cp.ystart  = ystart
   cp.ystop   = yend
+  cp.changed = 1
 end
 
 function tracker:beginBlock()
@@ -9419,6 +9477,8 @@ local function updateLoop()
     reaper.MIDI_Sort(tracker.take)
     tracker.hash = math.random()
   end
+
+  tracker:updateNoteSelection()
 
   --lastChar ~= 27 and
   if lastChar ~= -1 then
