@@ -8,7 +8,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.30
+@version 2.31
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -39,6 +39,8 @@
 
 --[[
  * Changelog:
+ * v2.31 (2020-06-22)
+   + Fix bug scrollbar that would clamp position back to 0 when updating notes in certain edge cases.
  * v2.30 (2020-06-11)
    + Make selection follow block-select when this configuration option is active.
  * v2.29 (2020-06-11)
@@ -427,7 +429,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.30"
+tracker.name = "Hackey Trackey v2.31"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -2336,6 +2338,7 @@ function tracker:updatePlotLink()
       break
     end
   end
+  
   fov.width = q-fov.scrollx
   plotData.xloc = xloc
   plotData.xwidth = xwidth
@@ -2349,7 +2352,7 @@ function tracker:updatePlotLink()
   plotData.headers = header
   plotData.headerW = headerWidths
   plotData.description = hints
-
+  
   -- Generate y locations for the columns
   local yloc = {}
   local yheight = {}
@@ -2367,7 +2370,6 @@ function tracker:updatePlotLink()
   plotData.textSize = dx
 
   self.plotData = plotData
-
   self.scrollbar:setPos( plotData.xstart + plotData.totalwidth, yloc[1] - plotData.yshift, plotData.totalheight - plotData.itempady )
 end
 
@@ -2507,7 +2509,7 @@ function scrollbar.create( w )
     self.x = x
     self.y = y
     self.h = h
-    self.loc = 0
+    self.loc = self.loc or 0
 
     self.ytop = ytop
     self.yend = yend
