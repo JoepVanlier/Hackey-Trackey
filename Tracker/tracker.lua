@@ -8,7 +8,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.31
+@version 2.32
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -39,6 +39,8 @@
 
 --[[
  * Changelog:
+ * v2.32 (2020-07-25)
+   + Allow to disable making undo points for column reassignments.
  * v2.31 (2020-06-22)
    + Fix bug scrollbar that would clamp position back to 0 when updating notes in certain edge cases.
  * v2.30 (2020-06-11)
@@ -636,6 +638,7 @@ tracker.cfg.advanceByNote = 0
 tracker.cfg.bigLineIndicator = 1
 tracker.cfg.clampToSelection = 1
 tracker.cfg.selectMIDINotes = 0
+tracker.cfg.undoForReassignment = 1
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -672,6 +675,7 @@ tracker.binaryOptions = {
     { 'velfrommidi', 'Use recorded velocities' },
     { 'bigLineIndicator', 'Bigger play indicator' },
     { 'selectMIDINotes', 'Block select selects notes' },
+    { 'undoForReassignment', 'Add undo pt for col reassignment' },
     }
 
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2", "sink"}
@@ -6541,7 +6545,9 @@ function tracker:update()
 
       if ( #failures > 0 ) then
         -- We are going to be changing the data, so add an undo point
-        reaper.Undo_OnStateChange2(0, "Tracker: Channel reassignment")
+        if tracker.cfg.undoForReassignment == 1 then
+          reaper.Undo_OnStateChange2(0, "Tracker: Channel reassignment")
+        end
         reaper.MarkProjectDirty(0)
       end
 
