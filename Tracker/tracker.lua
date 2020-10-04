@@ -8,7 +8,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.32
+@version 2.33
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -39,6 +39,8 @@
 
 --[[
  * Changelog:
+ * v2.33 (2020-10-04)
+   + Add option for note offs on release for record input kbd.
  * v2.32 (2020-07-25)
    + Allow to disable making undo points for column reassignments.
  * v2.31 (2020-06-22)
@@ -639,6 +641,7 @@ tracker.cfg.bigLineIndicator = 1
 tracker.cfg.clampToSelection = 1
 tracker.cfg.selectMIDINotes = 0
 tracker.cfg.undoForReassignment = 1
+tracker.cfg.releaseNoteOffs = 0
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -676,6 +679,7 @@ tracker.binaryOptions = {
     { 'bigLineIndicator', 'Bigger play indicator' },
     { 'selectMIDINotes', 'Block select selects notes' },
     { 'undoForReassignment', 'Add undo pt for col reassignment' },
+    { 'releaseNoteOffs', 'Emit note off on release' },
     }
 
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2", "sink"}
@@ -7656,8 +7660,25 @@ function tracker:playNote(chan, pitch, vel)
   local line_played = self.line_played or {}   
   if ( self.armed == 1 and not (self.cfg.readfrommidi == 1) ) then
     local ch = 1
-    self:stopNote()
-    reaper.StuffMIDIMessage(0, 0x90 + ch - 1, pitch, vel)
+    
+    if self.cfg.releaseNoteOffs == 0 then
+      self:stopNote()
+      reaper.StuffMIDIMessage(0, 0x90 + ch - 1, pitch, vel)
+    else
+      -- Only create note if it isn't already playing
+      local found = false
+      if self.listeners then
+        for i,v in pairs(self.listeners) do
+          if (v[1] == ch) and (v[2] == pitch) then
+            found = 1
+          end
+        end
+      end
+      if not found then
+        reaper.StuffMIDIMessage(0, 0x90 + ch - 1, pitch, vel)
+      end
+    end
+    
     self.lastNote = {ch, pitch, vel}
     
     line_played[ch] = {}
@@ -8208,6 +8229,35 @@ function tracker:gotoCurrentPosition()
   tracker:forceCursorInRange(row)
 end
 
+-- Add callbacks to make sure VK notes stop on release
+function tracker:addListener(charToListenTo, pitchChar)
+  if ( not pitchChar or ( pitchChar > 256 ) ) then
+    return
+  end
+  
+  if not self.listeners then
+    self.listeners = {}
+  end
+  
+  local note = keys.pitches[string.lower(string.char(pitchChar))]
+  if ( note ) then
+    local pitch = note + self.transpose * 12
+    local ftype, chan, row = self:getLocation()
+    self.listeners[charToListenTo] = {chan, pitch};
+  end
+end
+
+function tracker:listenForNotesToStop()
+  if self.listeners then
+    for i, v in pairs(self.listeners) do
+      if gfx.getchar(i) == 0 then
+        reaper.StuffMIDIMessage(0, 0x90 + v[1] - 1, v[2], 0)
+        self.listeners[i] = nil
+      end
+    end
+  end
+end
+
 function tracker:noteEdit()
   if self.take then
     reaper.Undo_OnStateChange2(0, "Tracker: Add note / Edit volume")
@@ -8216,13 +8266,21 @@ function tracker:noteEdit()
     
     local ok, char = pcall(function () return string.char(lastChar) end)
     if shift and string.match(char,"[^%w]") == nil then
-      if not tracker.shiftChordInProgress then
-        tracker.shiftChordInProgress = true
-        tracker.shiftChordStartXpos = tracker.xpos
+      if not self.shiftChordInProgress then
+        self.shiftChordInProgress = true
+        self.shiftChordStartXpos = tracker.xpos
       end
-      tracker:createNote(lastChar + 32, true)
+      self:createNote(lastChar + 32, true)
+      
+      if self.cfg.releaseNoteOffs == 1 then
+        self:addListener(lastChar, lastChar + 32);
+      end
     else
-      tracker:createNote(lastChar, false)
+      self:createNote(lastChar, false)
+      
+      if self.cfg.releaseNoteOffs == 1 then
+        self:addListener(lastChar, lastChar);
+      end
     end
 
     tracker:deleteNow()
@@ -8486,6 +8544,10 @@ local function updateLoop()
         tracker:storeSettings()
       end
     end
+  end
+
+  if tracker.cfg.releaseNoteOffs == 1 then
+    tracker:listenForNotesToStop()
   end
 
   if ( left == 1 and mouse_cap == 0 ) then
