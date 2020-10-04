@@ -8,7 +8,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.33
+@version 2.34
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -39,6 +39,8 @@
 
 --[[
  * Changelog:
+ * v2.34 (2020-10-04)
+   + Bugfix new feature for channels > 1.
  * v2.33 (2020-10-04)
    + Add option for note offs on release for record input kbd.
  * v2.32 (2020-07-25)
@@ -7675,7 +7677,11 @@ function tracker:playNote(chan, pitch, vel)
         end
       end
       if not found then
-        reaper.StuffMIDIMessage(0, 0x90 + ch - 1, pitch, vel)
+        if self.outChannel == 0 then
+          reaper.StuffMIDIMessage(0, 0x90 + chan - 1, pitch, vel)
+        else
+          reaper.StuffMIDIMessage(0, 0x90 + self.outChannel - 1, pitch, vel)
+        end
       end
     end
     
@@ -8243,6 +8249,11 @@ function tracker:addListener(charToListenTo, pitchChar)
   if ( note ) then
     local pitch = note + self.transpose * 12
     local ftype, chan, row = self:getLocation()
+    
+    if self.outChannel > 0 then
+      chan = self.outChannel;
+    end
+    
     self.listeners[charToListenTo] = {chan, pitch};
   end
 end
