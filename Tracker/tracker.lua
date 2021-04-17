@@ -3381,7 +3381,7 @@ function tracker:printGrid()
         gfx.a = .2;
         playLoc = math.floor(playLoc * fov.height)+1
         if yloc[playLoc] then
-          gfx.rect(plotData.xstart - itempadx, yloc[playLoc]-plotData.yshift, tw, yc)
+          gfx.rect(plotData.xstart - itempadx, yloc[playLoc]-plotData.yshift, tw, yheight[1] + itempady)
         end
       end
     end
