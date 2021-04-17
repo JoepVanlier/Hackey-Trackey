@@ -715,6 +715,7 @@ tracker.cfg.lastVel = 96
 tracker.cfg.lastVelSample = 1
 
 tracker.tracker_samples = 0
+tracker.cfg.pinPosition = 0
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -727,6 +728,7 @@ tracker.binaryOptions = {
     { 'followSelection', 'Follow Selection' },
     { 'storedSettings', 'Use settings stored in pattern' },
     { 'followSong', 'Follow Song (CTRL + F)' },
+    { 'pinPosition', 'Pin position relative to view' },
     { 'advanceByNote', 'Advance to next note mode (CTRL + T)' },
     { 'clampToSelection', 'Clamp to selection in note mode' },
     { 'stickToBottom', 'Info Sticks to Bottom' },
@@ -5152,25 +5154,28 @@ function tracker:forceCursorInRange(forceY)
     self.ypos = math.floor( self.max_ypos )
   end
 
-  -- Is the cursor off fov?
-  -- if ( ( yTarget - fov.scrolly ) > self.fov.height ) then
-  --   self.fov.scrolly = yTarget - self.fov.height
-  -- end
-  -- if ( ( yTarget - fov.scrolly ) < 1 ) then
-  --   self.fov.scrolly = yTarget - 1
-  -- end
-  
-  -- if (self.fov.scrolly + self.fov.height) > self.rows then
-  --   self.fov.scrolly = math.max(0, yTarget - self.fov.height)
-  -- end
-  local candidateScrollY = yTarget - (self.fov.height / 2);
-  if candidateScrollY < 0 then
-    candidateScrollY = 0
+  if (self.cfg.pinPosition == 1) then
+    local candidateScrollY = yTarget - (self.fov.height / 2);
+    if candidateScrollY < 0 then
+      candidateScrollY = 0
+    end
+    if candidateScrollY > self.rows - self.fov.height then
+      candidateScrollY = self.rows - self.fov.height
+    end
+    self.fov.scrolly = math.floor(candidateScrollY)
+  else
+    --Is the cursor off fov?
+    if ( ( yTarget - fov.scrolly ) > self.fov.height ) then
+      self.fov.scrolly = yTarget - self.fov.height
+    end
+    if ( ( yTarget - fov.scrolly ) < 1 ) then
+      self.fov.scrolly = yTarget - 1
+    end
+    
+    if (self.fov.scrolly + self.fov.height) > self.rows then
+      self.fov.scrolly = math.max(0, yTarget - self.fov.height)
+    end
   end
-  if candidateScrollY > self.rows - self.fov.height then
-    candidateScrollY = self.rows - self.fov.height
-  end
-  self.fov.scrolly = math.floor(candidateScrollY)
 
   if ( self.cfg.followRow == 1 ) then
     local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
