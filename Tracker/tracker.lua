@@ -5153,16 +5153,24 @@ function tracker:forceCursorInRange(forceY)
   end
 
   -- Is the cursor off fov?
-  if ( ( yTarget - fov.scrolly ) > self.fov.height ) then
-    self.fov.scrolly = yTarget - self.fov.height
-  end
-  if ( ( yTarget - fov.scrolly ) < 1 ) then
-    self.fov.scrolly = yTarget - 1
-  end
+  -- if ( ( yTarget - fov.scrolly ) > self.fov.height ) then
+  --   self.fov.scrolly = yTarget - self.fov.height
+  -- end
+  -- if ( ( yTarget - fov.scrolly ) < 1 ) then
+  --   self.fov.scrolly = yTarget - 1
+  -- end
   
-  if (self.fov.scrolly + self.fov.height) > self.rows then
-    self.fov.scrolly = math.max(0, yTarget - self.fov.height)
+  -- if (self.fov.scrolly + self.fov.height) > self.rows then
+  --   self.fov.scrolly = math.max(0, yTarget - self.fov.height)
+  -- end
+  local candidateScrollY = yTarget - (self.fov.height / 2);
+  if candidateScrollY < 0 then
+    candidateScrollY = 0
   end
+  if candidateScrollY > self.rows - self.fov.height then
+    candidateScrollY = self.rows - self.fov.height
+  end
+  self.fov.scrolly = math.floor(candidateScrollY)
 
   if ( self.cfg.followRow == 1 ) then
     local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
