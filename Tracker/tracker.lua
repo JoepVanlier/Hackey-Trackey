@@ -5156,11 +5156,13 @@ function tracker:forceCursorInRange(forceY)
 
   if (self.cfg.pinPosition == 1) then
     local candidateScrollY = yTarget - (self.fov.height / 2);
-    if candidateScrollY < 0 then
-      candidateScrollY = 0
+    local minScrollY = 1
+    local maxScrollY = math.max(self.rows - self.fov.height, 0)
+    if candidateScrollY < minScrollY then
+      candidateScrollY = minScrollY
     end
-    if candidateScrollY > self.rows - self.fov.height then
-      candidateScrollY = self.rows - self.fov.height
+    if candidateScrollY > maxScrollY then
+      candidateScrollY = maxScrollY
     end
     self.fov.scrolly = math.floor(candidateScrollY)
   else
