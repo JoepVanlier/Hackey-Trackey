@@ -716,6 +716,7 @@ tracker.cfg.lastVelSample = 1
 
 tracker.tracker_samples = 0
 tracker.cfg.pinPosition = 0
+tracker.cfg.pinPosAt = 0.5
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -2643,7 +2644,7 @@ function scrollbar.create( w )
               self.cdy = 0
             end
 
-            local pinPosAt = 0.5
+            local pinPosAt = tracker.cfg.pinPosAt
             local diff = (self.yend - self.ytop) * tracker.fov.height / (tracker.fov.height - 1)
             local totLen = 1 + diff
 
@@ -2692,7 +2693,7 @@ function scrollbar.create( w )
       gfx.set(table.unpack(colors.scrollbar2))
       gfx.rect(x+1, y+1, w-2, h-2)
 
-      local pinPosAt = 0.5
+      local pinPosAt = tracker.cfg.pinPosAt
       local diff = (yend - ytop) * tracker.fov.height / (tracker.fov.height - 1)
       local totLen = 1 + diff
 
@@ -5190,7 +5191,7 @@ function tracker:forceCursorInRange(forceY)
   end
 
   if (self.cfg.pinPosition == 1) then
-    self.fov.scrolly = math.floor(yTarget - (self.fov.height / 2))
+    self.fov.scrolly = math.floor(yTarget - self.fov.height * self.cfg.pinPosAt)
   else
     --Is the cursor off fov?
     if ( ( yTarget - fov.scrolly ) > self.fov.height ) then
@@ -9009,6 +9010,14 @@ local function updateLoop()
       if ( gfx.mouse_x < xloc[1] ) then
         tracker.cfg.rowOverride = math.floor((gfx.mouse_y - yloc[1])/(yloc[2]-yloc[1]))
         tracker:storeSettings()
+      end
+    end
+
+    if (tracker.cfg.pinPosition) then
+      if ( ( ( gfx.mouse_cap & 4 ) > 0 ) and ( ( gfx.mouse_cap & 16 ) > 0 ) ) then
+        if ( gfx.mouse_x < xloc[1] ) then
+          tracker.cfg.pinPosAt = math.floor((gfx.mouse_y - yloc[1])/(yloc[2]-yloc[1])) / fov.height
+        end
       end
     end
 
