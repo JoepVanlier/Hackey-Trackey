@@ -9017,6 +9017,7 @@ local function updateLoop()
       if ( ( ( gfx.mouse_cap & 4 ) > 0 ) and ( ( gfx.mouse_cap & 16 ) > 0 ) ) then
         if ( gfx.mouse_x < xloc[1] ) then
           tracker.cfg.pinPosAt = math.floor((gfx.mouse_y - yloc[1])/(yloc[2]-yloc[1])) / fov.height
+          tracker:saveConfig(tracker.configFile, tracker.cfg)
         end
       end
     end
@@ -10196,7 +10197,7 @@ function tracker:loadConfig(fn, cfg)
       io.input(file)
       local str = io.read()
       while ( str ) do
-        for k, v in string.gmatch(str, "(%w+)=(%w+)") do
+        for k, v in string.gmatch(str, "(%w+)=(%S+)") do
           local no = tonumber(v)
 
           if ( no ) then
