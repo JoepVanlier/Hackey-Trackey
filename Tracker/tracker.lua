@@ -3086,48 +3086,49 @@ function tracker:printGrid()
   if ( self.take ) then
     for y=1,#yloc do
       local absy = y + scrolly
+      if (absy > 0 and absy <= rows) then
+        local c1, c2, tx
+        if ( (((absy-1)/sig) - math.floor((absy-1)/sig)) == 0 ) then
+          c1 = colors.linecolor5
+          c2 = colors.linecolor5s
+          tx = colors.textcolorbar or colors.textcolor
+          fc = colors.bar
+        elseif ( (((absy-1)/(.25*sig)) - math.floor((absy-1)/(.25*sig))) == 0 ) then
+          c1 = colors.linecolor2
+          c2 = colors.linecolor2s
+          tx = colors.textcolorbar or colors.textcolor
+          fc = colors.bar
+        else
+          c1 = colors.linecolor
+          c2 = colors.linecolors
+          tx = colors.textcolor
+          fc = colors.normal
+        end
 
-      local c1, c2, tx
-      if ( (((absy-1)/sig) - math.floor((absy-1)/sig)) == 0 ) then
-        c1 = colors.linecolor5
-        c2 = colors.linecolor5s
-        tx = colors.textcolorbar or colors.textcolor
-        fc = colors.bar
-      elseif ( (((absy-1)/(.25*sig)) - math.floor((absy-1)/(.25*sig))) == 0 ) then
-        c1 = colors.linecolor2
-        c2 = colors.linecolor2s
-        tx = colors.textcolorbar or colors.textcolor
-        fc = colors.bar
-      else
-        c1 = colors.linecolor
-        c2 = colors.linecolors
-        tx = colors.textcolor
-        fc = colors.normal
-      end
+        gfx.y = yloc[y] + extraFontShift
+        gfx.x = xloc[1] - plotData.indicatorShiftX
 
-      gfx.y = yloc[y] + extraFontShift
-      gfx.x = xloc[1] - plotData.indicatorShiftX
+        gfx.set(table.unpack(tx))
+        if tracker.zeroindexed == 1 then
+          gfx.printf("%03d", absy-1)
+        else
+          gfx.printf("%03d", absy)
+        end
+        gfx.set(table.unpack(c1))
+        gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, yheight[1] + itempady)
+        gfx.set(table.unpack(c2))
+        gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, 1)
+        gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, 1, yheight[y])
+        gfx.rect(xloc[1] - itempadx + tw + 0, yloc[y] - yshift, 1, yheight[y] + itempady)
 
-      gfx.set(table.unpack(tx))
-      if tracker.zeroindexed == 1 then
-        gfx.printf("%03d", absy-1)
-      else
-        gfx.printf("%03d", absy)
-      end
-      gfx.set(table.unpack(c1))
-      gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, yheight[1] + itempady)
-      gfx.set(table.unpack(c2))
-      gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, 1)
-      gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, 1, yheight[y])
-      gfx.rect(xloc[1] - itempadx + tw + 0, yloc[y] - yshift, 1, yheight[y] + itempady)
+        for x=1,#xloc do
+          local thisfield = dlink[x]
+          gfx.x = xloc[x]
+          gfx.set(table.unpack(fc[thisfield] or tx))
 
-      for x=1,#xloc do
-        local thisfield = dlink[x]
-        gfx.x = xloc[x]
-        gfx.set(table.unpack(fc[thisfield] or tx))
-
-        local cdata = data[thisfield][rows*xlink[x]+absy-1]
-        self:writeField( cdata, ellipsis, xloc[x], yloc[y], customFont )
+          local cdata = data[thisfield][rows*xlink[x]+absy-1]
+          self:writeField( cdata, ellipsis, xloc[x], yloc[y], customFont )
+        end
       end
     end
 
@@ -5155,16 +5156,7 @@ function tracker:forceCursorInRange(forceY)
   end
 
   if (self.cfg.pinPosition == 1) then
-    local candidateScrollY = yTarget - (self.fov.height / 2);
-    local minScrollY = 1
-    local maxScrollY = math.max(self.rows - self.fov.height, 0)
-    if candidateScrollY < minScrollY then
-      candidateScrollY = minScrollY
-    end
-    if candidateScrollY > maxScrollY then
-      candidateScrollY = maxScrollY
-    end
-    self.fov.scrolly = math.floor(candidateScrollY)
+    self.fov.scrolly = math.floor(yTarget - (self.fov.height / 2))
   else
     --Is the cursor off fov?
     if ( ( yTarget - fov.scrolly ) > self.fov.height ) then
