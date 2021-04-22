@@ -8919,11 +8919,14 @@ local function updateLoop()
         tracker.newLength = tostring(tracker.max_ypos)
       else
         local function goto_position(i)
-          tracker.ypos = i + fov.scrolly
-          local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
-          local loc = reaper.AddProjectMarker(0, 0, mpos + tracker:toSeconds(tracker.ypos-1), 0, "", -1)
-          reaper.GoToMarker(0, loc, 0)
-          reaper.DeleteProjectMarker(0, loc, 0)
+          local newY = i + fov.scrolly
+          if ( newY > 0 and newY <= tracker.rows ) then
+            tracker.ypos = newY
+            local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+            local loc = reaper.AddProjectMarker(0, 0, mpos + tracker:toSeconds(tracker.ypos-1), 0, "", -1)
+            reaper.GoToMarker(0, loc, 0)
+            reaper.DeleteProjectMarker(0, loc, 0)
+          end
         end
       
         -- Check where we need to move the play position
