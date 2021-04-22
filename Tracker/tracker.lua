@@ -8974,22 +8974,24 @@ local function updateLoop()
     -- Mouse in range of pattern data?
     local Inew, Jnew = tracker:mouseToPatternCoord(mouse_cap == 6)
     if ( Inew and Jnew ) then
-      -- Move the cursor pos on initial click
-      if ( tracker.lastleft == 0 ) then
-        if ( tracker.cfg.pinPosition == 0 ) then
-          setCapMode(6)
-          tracker:resetShiftSelect()
-          tracker:dragBlock(Inew, Jnew)
-          tracker.xpos = Inew
-          tracker.ypos = Jnew
+      if (Jnew > 0 and Jnew < tracker.rows) then
+        -- Move the cursor pos on initial click
+        if ( tracker.lastleft == 0 ) then
+          if ( tracker.cfg.pinPosition == 0 ) then
+            setCapMode(6)
+            tracker:resetShiftSelect()
+            tracker:dragBlock(Inew, Jnew)
+            tracker.xpos = Inew
+            tracker.ypos = Jnew
+          else
+            setCapMode(6)
+            tracker:resetShiftSelect()
+            tracker.xpos = Inew
+          end
         else
-          setCapMode(6)
-          tracker:resetShiftSelect()
-          tracker.xpos = Inew
+          -- Change selection if it wasn't the initial click
+          tracker:dragBlock(Inew, Jnew)
         end
-      else
-        -- Change selection if it wasn't the initial click
-        tracker:dragBlock(Inew, Jnew)
       end
     end
 
