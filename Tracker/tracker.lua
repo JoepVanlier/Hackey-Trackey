@@ -8976,11 +8976,17 @@ local function updateLoop()
     if ( Inew and Jnew ) then
       -- Move the cursor pos on initial click
       if ( tracker.lastleft == 0 ) then
-        setCapMode(6)
-        tracker:resetShiftSelect()
-        tracker:dragBlock(Inew, Jnew)
-        tracker.xpos = Inew
-        tracker.ypos = Jnew
+        if ( tracker.cfg.pinPosition == 0 ) then
+          setCapMode(6)
+          tracker:resetShiftSelect()
+          tracker:dragBlock(Inew, Jnew)
+          tracker.xpos = Inew
+          tracker.ypos = Jnew
+        else
+          setCapMode(6)
+          tracker:resetShiftSelect()
+          tracker.xpos = Inew
+        end
       else
         -- Change selection if it wasn't the initial click
         tracker:dragBlock(Inew, Jnew)
