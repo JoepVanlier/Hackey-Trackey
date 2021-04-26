@@ -2672,14 +2672,34 @@ function scrollbar.create( w )
     local ytop = self.ytop
     local yend = self.yend
 
-    gfx.set(table.unpack(colors.scrollbar1))
-    gfx.rect(x, y, w, h)
-    gfx.set(table.unpack(colors.scrollbar2))
-    gfx.rect(x+1, y+1, w-2, h-2)
-    gfx.set(table.unpack(colors.scrollbar1))
-    gfx.rect(x+2, y + ytop*h+2, w-4, (yend-ytop)*h-3)
-    gfx.set(table.unpack(colors.scrollbar1))
-    gfx.rect(x-2, y + self.ymarker*h-1, w+4, 2)
+    if (tracker.cfg.pinPosition == 1) then
+      gfx.set(table.unpack(colors.scrollbar1))
+      gfx.rect(x, y, w, h)
+      gfx.set(table.unpack(colors.scrollbar2))
+      gfx.rect(x+1, y+1, w-2, h-2)
+
+      local pinPosAt = 0.5
+      local diff = yend - ytop
+      local totLen = 1 + diff
+
+      ytop = (ytop + pinPosAt * diff) / totLen
+      yend = (yend + pinPosAt * diff) / totLen
+      local ymarker = (self.ymarker + pinPosAt * diff) / totLen
+
+      gfx.set(table.unpack(colors.scrollbar1))
+      gfx.rect(x+2, y + ytop*h+2, w-4, (yend-ytop)*h-3)
+      gfx.set(table.unpack(colors.scrollbar1))
+      gfx.rect(x-2, y + ymarker*h-1, w+4, 2)
+    else
+      gfx.set(table.unpack(colors.scrollbar1))
+      gfx.rect(x, y, w, h)
+      gfx.set(table.unpack(colors.scrollbar2))
+      gfx.rect(x+1, y+1, w-2, h-2)
+      gfx.set(table.unpack(colors.scrollbar1))
+      gfx.rect(x+2, y + ytop*h+2, w-4, (yend-ytop)*h-3)
+      gfx.set(table.unpack(colors.scrollbar1))
+      gfx.rect(x-2, y + self.ymarker*h-1, w+4, 2)
+    end
   end
 
   return self
