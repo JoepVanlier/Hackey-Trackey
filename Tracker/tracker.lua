@@ -2642,15 +2642,24 @@ function scrollbar.create( w )
               self.dragging = 1
               self.cdy = 0
             end
-            
+
             if self.dragging then
               self.cdy = self.cdy + ((my - self.ly) / self.h)
               local dy = math.floor(self.cdy*self.nrows)/self.nrows
               self.cdy = self.cdy - dy
-              
+
               self.loc = math.max(0.0, math.min(1.0, self.loc + dy))
             else
-              self.loc = ( my - self.y ) / self.h
+              if (tracker.cfg.pinPosition == 1) then
+                local pinPosAt = 0.5
+                local diff = (self.yend - self.ytop) * tracker.fov.height / (tracker.fov.height - 1)
+                local totLen = 1 + diff
+    
+                local newLoc = (( my - self.y ) / self.h) * totLen - pinPosAt * diff
+                self.loc = math.max(0.0, math.min(1.0, newLoc))
+              else
+                self.loc = ( my - self.y ) / self.h
+              end
             end            
           end
         end
@@ -2660,7 +2669,7 @@ function scrollbar.create( w )
         self.dragging = nil
       end
     end
-    
+
     self.ly = my
   end
 
@@ -2679,7 +2688,7 @@ function scrollbar.create( w )
       gfx.rect(x+1, y+1, w-2, h-2)
 
       local pinPosAt = 0.5
-      local diff = yend - ytop
+      local diff = (yend - ytop) * tracker.fov.height / (tracker.fov.height - 1)
       local totLen = 1 + diff
 
       ytop = (ytop + pinPosAt * diff) / totLen
