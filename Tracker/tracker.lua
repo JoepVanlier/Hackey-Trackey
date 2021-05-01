@@ -2638,7 +2638,7 @@ function scrollbar.create( w )
       if ( left == 1 ) then
         if ( ( mx > self.x ) and ( mx < self.x + self.w ) ) or self.dragging then
           if ( ( my > self.y ) and ( my < self.y + self.h ) ) or self.dragging then
-            if ( ( my > (self.y + self.h*self.ymarker-4) ) and ( my < (self.y + self.h*self.ymarker+4) ) ) and not self.dragging then
+            if ( self.ly and my ~= self.ly and not self.dragging ) then
               self.dragging = 1
               self.cdy = 0
             end
