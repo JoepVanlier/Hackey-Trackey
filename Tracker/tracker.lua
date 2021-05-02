@@ -5203,6 +5203,10 @@ function tracker:forceCursorInRange(forceY)
     if (self.fov.scrolly + self.fov.height) > self.rows then
       self.fov.scrolly = math.max(0, yTarget - self.fov.height)
     end
+
+    if (self.fov.scrolly < 0) then
+      self.fov.scrolly = 0
+    end
   end
 
   if ( self.cfg.followRow == 1 ) then
