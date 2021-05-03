@@ -715,8 +715,8 @@ tracker.cfg.lastVel = 96
 tracker.cfg.lastVelSample = 1
 
 tracker.tracker_samples = 0
-tracker.cfg.pinPosition = 0
-tracker.cfg.pinPosAt = 0.5
+tracker.cfg.fixedIndicator = 0
+tracker.cfg.fixedIndLoc = 0.5
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -729,7 +729,7 @@ tracker.binaryOptions = {
     { 'followSelection', 'Follow Selection' },
     { 'storedSettings', 'Use settings stored in pattern' },
     { 'followSong', 'Follow Song (CTRL + F)' },
-    { 'pinPosition', 'Pin position relative to view' },
+    { 'fixedIndicator', 'Fix indicator position in view' },
     { 'advanceByNote', 'Advance to next note mode (CTRL + T)' },
     { 'clampToSelection', 'Clamp to selection in note mode' },
     { 'stickToBottom', 'Info Sticks to Bottom' },
@@ -2647,12 +2647,12 @@ function scrollbar.create( w )
               self.cdy = 0
             end
 
-            local pinPosAt = tracker.cfg.pinPosAt
+            local fixedIndLoc = tracker.cfg.fixedIndLoc
             local diff = (self.yend - self.ytop) * tracker.fov.height / (tracker.fov.height - 1)
             local totLen = 1 + diff
 
             if self.dragging then
-              if (tracker.cfg.pinPosition == 1) then
+              if (tracker.cfg.fixedIndicator == 1) then
                 self.cdy = self.cdy + ((my - self.ly) / self.h) * totLen
               else
                 self.cdy = self.cdy + ((my - self.ly) / self.h)
@@ -2663,8 +2663,8 @@ function scrollbar.create( w )
               
               self.loc = math.max(0.0, math.min(1.0, self.loc + dy))
             else
-              if (tracker.cfg.pinPosition == 1) then
-                local newLoc = (( my - self.y ) / self.h) * totLen - pinPosAt * diff
+              if (tracker.cfg.fixedIndicator == 1) then
+                local newLoc = (( my - self.y ) / self.h) * totLen - fixedIndLoc * diff
                 self.loc = math.max(0.0, math.min(1.0, newLoc))
               else
                 self.loc = ( my - self.y ) / self.h
@@ -2690,19 +2690,19 @@ function scrollbar.create( w )
     local ytop = self.ytop
     local yend = self.yend
 
-    if (tracker.cfg.pinPosition == 1) then
+    if (tracker.cfg.fixedIndicator == 1) then
       gfx.set(table.unpack(colors.scrollbar1))
       gfx.rect(x, y, w, h)
       gfx.set(table.unpack(colors.scrollbar2))
       gfx.rect(x+1, y+1, w-2, h-2)
 
-      local pinPosAt = tracker.cfg.pinPosAt
+      local fixedIndLoc = tracker.cfg.fixedIndLoc
       local diff = (yend - ytop) * tracker.fov.height / (tracker.fov.height - 1)
       local totLen = 1 + diff
 
-      ytop = (ytop + pinPosAt * diff) / totLen
-      yend = (yend + pinPosAt * diff) / totLen
-      local ymarker = (self.ymarker + pinPosAt * diff) / totLen
+      ytop = (ytop + fixedIndLoc * diff) / totLen
+      yend = (yend + fixedIndLoc * diff) / totLen
+      local ymarker = (self.ymarker + fixedIndLoc * diff) / totLen
 
       gfx.set(table.unpack(colors.scrollbar1))
       gfx.rect(x+2, y + ytop*h+2, w-4, (yend-ytop)*h-3)
@@ -5193,8 +5193,8 @@ function tracker:forceCursorInRange(forceY)
     self.ypos = math.floor( self.max_ypos )
   end
 
-  if (self.cfg.pinPosition == 1) then
-    self.fov.scrolly = math.floor(yTarget - self.fov.height * self.cfg.pinPosAt)
+  if (self.cfg.fixedIndicator == 1) then
+    self.fov.scrolly = math.floor(yTarget - self.fov.height * self.cfg.fixedIndLoc)
   else
     --Is the cursor off fov?
     if ( ( yTarget - fov.scrolly ) > self.fov.height ) then
@@ -9016,10 +9016,10 @@ local function updateLoop()
       end
     end
 
-    if (tracker.cfg.pinPosition) then
+    if (tracker.cfg.fixedIndicator) then
       if ( ( ( gfx.mouse_cap & 4 ) > 0 ) and ( ( gfx.mouse_cap & 16 ) > 0 ) ) then
         if ( gfx.mouse_x < xloc[1] ) then
-          tracker.cfg.pinPosAt = math.floor((gfx.mouse_y - yloc[1])/(yloc[2]-yloc[1])) / fov.height
+          tracker.cfg.fixedIndLoc = math.floor((gfx.mouse_y - yloc[1])/(yloc[2]-yloc[1])) / fov.height
           tracker:saveConfig(tracker.configFile, tracker.cfg)
         end
       end
@@ -9031,7 +9031,7 @@ local function updateLoop()
       if (Jnew > 0 and Jnew < tracker.rows) then
         -- Move the cursor pos on initial click
         if ( tracker.lastleft == 0 ) then
-          if ( tracker.cfg.pinPosition == 0 ) then
+          if ( tracker.cfg.fixedIndicator == 0 ) then
             setCapMode(6)
             tracker:resetShiftSelect()
             tracker:dragBlock(Inew, Jnew)
