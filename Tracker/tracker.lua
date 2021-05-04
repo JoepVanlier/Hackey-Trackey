@@ -8971,7 +8971,7 @@ local function updateLoop()
         end
       
         -- Check where we need to move the play position
-        if gfx.mouse_cap & 28 == 0 then
+        if ( gfx.mouse_cap & 28 == 0 and ( tracker.cfg.fixedIndicator ~= 1 or tracker.lastleft == 0 ) ) then
           for i=1,#yloc-1 do
             if ( ( gfx.mouse_y > yloc[i] ) and ( gfx.mouse_y < yloc[i+1] ) ) then
               goto_position(i)
