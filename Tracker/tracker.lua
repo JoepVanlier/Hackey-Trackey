@@ -3414,14 +3414,18 @@ function tracker:printGrid()
       triangle(xc, yc, 5, 1)
     else
       gfx.set(table.unpack(colors.selectcolor))
-      
-      if self.cfg.bigLineIndicator == 0 then
-        gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * playLoc - itempady - 1, tw, 1)
-      else
-        gfx.a = .2;
-        playLoc = math.floor(playLoc * fov.height)+1
-        if yloc[playLoc] then
-          gfx.rect(plotData.xstart - itempadx, yloc[playLoc]-plotData.yshift, tw, yheight[1] + itempady)
+
+      local absy = math.floor(playLoc * fov.height) + scrolly + 1
+
+      if ( absy > 0 and absy <= rows ) then
+        if self.cfg.bigLineIndicator == 0 then
+          gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * playLoc - itempady - 1, tw, 1)
+        else
+          gfx.a = .2;
+          playLoc = math.floor(playLoc * fov.height)+1
+          if yloc[playLoc] then
+            gfx.rect(plotData.xstart - itempadx, yloc[playLoc]-plotData.yshift, tw, yheight[1] + itempady)
+          end
         end
       end
     end
