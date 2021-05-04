@@ -2647,12 +2647,11 @@ function scrollbar.create( w )
               self.cdy = 0
             end
 
-            local fixedIndLoc = tracker.cfg.fixedIndLoc
             local diff = (self.yend - self.ytop) * tracker.fov.height / (tracker.fov.height - 1)
             local totLen = 1 + diff
 
             if self.dragging then
-              if (tracker.cfg.fixedIndicator == 1) then
+              if ( tracker.cfg.fixedIndicator == 1 ) then
                 self.cdy = self.cdy + ((my - self.ly) / self.h) * totLen
               else
                 self.cdy = self.cdy + ((my - self.ly) / self.h)
@@ -2663,8 +2662,8 @@ function scrollbar.create( w )
               
               self.loc = math.max(0.0, math.min(1.0, self.loc + dy))
             else
-              if (tracker.cfg.fixedIndicator == 1) then
-                local newLoc = (( my - self.y ) / self.h) * totLen - fixedIndLoc * diff
+              if ( tracker.cfg.fixedIndicator == 1 ) then
+                local newLoc = (( my - self.y ) / self.h) * totLen - tracker.cfg.fixedIndLoc * diff
                 self.loc = math.max(0.0, math.min(1.0, newLoc))
               else
                 self.loc = ( my - self.y ) / self.h
@@ -2690,7 +2689,7 @@ function scrollbar.create( w )
     local ytop = self.ytop
     local yend = self.yend
 
-    if (tracker.cfg.fixedIndicator == 1) then
+    if ( tracker.cfg.fixedIndicator == 1 ) then
       gfx.set(table.unpack(colors.scrollbar1))
       gfx.rect(x, y, w, h)
       gfx.set(table.unpack(colors.scrollbar2))
@@ -3124,7 +3123,7 @@ function tracker:printGrid()
   if ( self.take ) then
     for y=1,#yloc do
       local absy = y + scrolly
-      if (absy > 0 and absy <= rows) then
+      if ( absy > 0 and absy <= rows ) then
         local c1, c2, tx
         if ( (((absy-1)/sig) - math.floor((absy-1)/sig)) == 0 ) then
           c1 = colors.linecolor5
@@ -5193,7 +5192,7 @@ function tracker:forceCursorInRange(forceY)
     self.ypos = math.floor( self.max_ypos )
   end
 
-  if (self.cfg.fixedIndicator == 1) then
+  if ( self.cfg.fixedIndicator == 1 ) then
     self.fov.scrolly = math.floor(yTarget - self.fov.height * self.cfg.fixedIndLoc)
   else
     --Is the cursor off fov?
@@ -5204,11 +5203,11 @@ function tracker:forceCursorInRange(forceY)
       self.fov.scrolly = yTarget - 1
     end
     
-    if (self.fov.scrolly + self.fov.height) > self.rows then
+    if ( ( self.fov.scrolly + self.fov.height ) > self.rows ) then
       self.fov.scrolly = math.max(0, yTarget - self.fov.height)
     end
 
-    if (self.fov.scrolly < 0) then
+    if ( self.fov.scrolly < 0 ) then
       self.fov.scrolly = 0
     end
   end
@@ -9016,7 +9015,7 @@ local function updateLoop()
       end
     end
 
-    if (tracker.cfg.fixedIndicator) then
+    if ( tracker.cfg.fixedIndicator == 1 ) then
       if ( ( ( gfx.mouse_cap & 4 ) > 0 ) and ( ( gfx.mouse_cap & 16 ) > 0 ) ) then
         if ( gfx.mouse_x < xloc[1] ) then
           tracker.cfg.fixedIndLoc = math.floor((gfx.mouse_y - yloc[1])/(yloc[2]-yloc[1])) / fov.height
@@ -9031,16 +9030,12 @@ local function updateLoop()
       if (Jnew > 0 and Jnew < tracker.rows) then
         -- Move the cursor pos on initial click
         if ( tracker.lastleft == 0 ) then
-          if ( tracker.cfg.fixedIndicator == 0 ) then
-            setCapMode(6)
-            tracker:resetShiftSelect()
+          setCapMode(6)
+          tracker:resetShiftSelect()
+          tracker.xpos = Inew
+          if ( tracker.cfg.fixedIndicator ~= 1 ) then
             tracker:dragBlock(Inew, Jnew)
-            tracker.xpos = Inew
             tracker.ypos = Jnew
-          else
-            setCapMode(6)
-            tracker:resetShiftSelect()
-            tracker.xpos = Inew
           end
         else
           -- Change selection if it wasn't the initial click
