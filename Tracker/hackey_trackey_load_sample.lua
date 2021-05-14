@@ -46,7 +46,7 @@ function transfer_take()
           end
         end
         
-        reaper.gmem_write(0, len * nChannels);
+        reaper.gmem_write(0, len * 2);
         reaper.gmem_write(1, srate);
       end
     end
