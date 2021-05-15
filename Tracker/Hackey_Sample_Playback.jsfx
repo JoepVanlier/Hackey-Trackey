@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.02
+version: 0.03
 author: Joep Vanlier
-changelog: Added big sample view. Added option to set loops. 
+changelog: Bugfix looping: specify loop points relative to sample start rather than absolute position.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -44,6 +44,14 @@ global(crossfade_samples, SAMPLE_HEADER)
   speed = playspeed;
 );
 
+function update_loop_parameters(buffer_loc)
+instance(loop_start, loop_stop, loop_type)
+(
+  loop_start = buffer_loc[3];
+  loop_stop = buffer_loc[4];
+  loop_type = buffer_loc[5];
+);
+
 function stop_playback()
 instance(x_fade_position)
 global(crossfade_samples)
@@ -51,6 +59,7 @@ global(crossfade_samples)
   x_fade_position = - crossfade_samples;
 );
 
+/* Sample play (each channel has two of these guys that alternate) */
 function play()
 instance(start_ptr, read_ptr, x_fade_position, fade_start,
          outL, outR, playing, fade_level, position, speed,
@@ -128,11 +137,13 @@ local(frac, ism1, is0, is1, is2, id0, id1, id2, id3)
   fade_level
 );
 
+/* Channel play */
 function play_sample(sample_idx, pitch)
-instance(current_playback)
+instance(current_playback, playing_sample)
 global(samplelocs, srate)
 local(speed, sample_location, fs, fnote)
 (
+  playing_sample = sample_idx;
   sample_location = samplelocs[sample_idx];
   fs = sample_location[1];
   fs > 100 ? (
@@ -147,6 +158,19 @@ local(speed, sample_location, fs, fnote)
       this.play0.stop_playback();  
     );
     current_playback = 1.0 - current_playback;
+  );
+);
+
+/* Channel update loop */
+function channel_update_loop()
+instance(current_playback, playing_sample, playing_sample)
+global(samplelocs)
+local()
+(
+  (current_playback == 0) ? (
+    this.play0.update_loop_parameters(samplelocs[playing_sample]);
+  ) : (
+    this.play1.update_loop_parameters(samplelocs[playing_sample]);
   );
 );
 
@@ -573,12 +597,12 @@ DRAG_SAMPLE = 1;
 DRAG_LOOP_POINT_1 = 2;
 DRAG_LOOP_POINT_2 = 3;
 
-function handle_loop_point(cx, cy, ww, hh, disp_range_start, disp_range_len, loop_loc, capture_mode)
+function handle_loop_point(cx, cy, ww, hh, sample_start, disp_range_start, disp_range_len, loop_loc, capture_mode)
 local(loop_point, point_in_samples)
-global(captured, oldloc, newloc,
+global(captured, oldloc, newloc, updated_loop,
        mouse_x, mouse_y)
 (
-  loop_point = cx + ww * (2 * loop_loc[] - disp_range_start) / disp_range_len;
+  loop_point = cx + ww * (2 * loop_loc[] - disp_range_start + sample_start) / disp_range_len;
   gfx_rect(loop_point - 1, cy, 2, hh);
   
   mouse_over(loop_point-3, cy, 6, hh) ? (
@@ -590,7 +614,8 @@ global(captured, oldloc, newloc,
   );
     
   (captured == capture_mode) ? (
-    loop_loc[] = 0.5 * (disp_range_start + disp_range_len * max(min((mouse_x - cx) / ww, 1), 0));
+    loop_loc[] = 0.5 * (disp_range_start - sample_start + disp_range_len * max(min((mouse_x - cx) / ww, 1), 0));
+    updated_loop = 1;
     mouse_release(1) ? captured = 0;
   );
   
@@ -604,6 +629,7 @@ instance(sample_start, sample_len,
 local(is_over, menu_selection, fractional_pos, center, loop_start, loop_stop, mouse_pos_in_samples)
 global(samplelocs, selected_sample, SAMPLE_HEADER, captured,
        DRAG_SAMPLE, DRAG_LOOP_POINT_1, DRAG_LOOP_POINT_2,
+       updated_loop,
        mouse_x, mouse_y, mouse_wheel,
        gfx_x, gfx_y, gfx_a)
 (
@@ -614,8 +640,8 @@ global(samplelocs, selected_sample, SAMPLE_HEADER, captured,
   // Loop points
   (samplelocs[selected_sample][3] > -1) ? (
     gfx_a = 0.5;
-    loop_start = handle_loop_point(cx, cy, ww, hh, disp_range_start, disp_range_len, samplelocs[selected_sample] + 3, DRAG_LOOP_POINT_1);
-    loop_stop = handle_loop_point(cx, cy, ww, hh, disp_range_start, disp_range_len, samplelocs[selected_sample] + 4, DRAG_LOOP_POINT_2);
+    loop_start = handle_loop_point(cx, cy, ww, hh, sample_start, disp_range_start, disp_range_len, samplelocs[selected_sample] + 3, DRAG_LOOP_POINT_1);
+    loop_stop = handle_loop_point(cx, cy, ww, hh, sample_start, disp_range_start, disp_range_len, samplelocs[selected_sample] + 4, DRAG_LOOP_POINT_2);
     gfx_a = 0.1;
     gfx_rect(loop_start, cy, loop_stop - loop_start, hh);
   );
@@ -658,14 +684,15 @@ global(samplelocs, selected_sample, SAMPLE_HEADER, captured,
       reset_zoom = 1;
     ) : ((menu_selection == 3) || (menu_selection == 4)) ? (
       ( block_start < block_end ) ? (
-        samplelocs[selected_sample][3] = floor(0.5 * block_start);        // Loop start
-        samplelocs[selected_sample][4] = floor(0.5 * block_end);          // Loop end
+        samplelocs[selected_sample][3] = floor(0.5 * (block_start - sample_start));        // Loop start
+        samplelocs[selected_sample][4] = floor(0.5 * (block_end - sample_start));          // Loop end
       ) : (
-        samplelocs[selected_sample][3] = floor(0.5 * block_end);
-        samplelocs[selected_sample][4] = floor(0.5 * block_start);
+        samplelocs[selected_sample][3] = floor(0.5 * (block_end - sample_start));
+        samplelocs[selected_sample][4] = floor(0.5 * (block_start - sample_start));
       );
       
       samplelocs[selected_sample][5] = (menu_selection == 3) ? 0 : 1; // Bi-directional?
+      updated_loop = 1;
     ) : (menu_selection == 5) ? (
       samplelocs[selected_sample][3] = -1;
     );
@@ -694,6 +721,26 @@ global(samplelocs, selected_sample, SAMPLE_HEADER, captured,
     block_start = 0;
     block_end = 0;
   );
+);
+
+updated_loop ? (
+  updated_loop = 0;
+  chan1.channel_update_loop();
+  chan2.channel_update_loop();
+  chan3.channel_update_loop();
+  chan4.channel_update_loop();
+  chan5.channel_update_loop();
+  chan6.channel_update_loop();
+  chan7.channel_update_loop();
+  chan8.channel_update_loop();
+  chan9.channel_update_loop();
+  chan10.channel_update_loop();
+  chan11.channel_update_loop();
+  chan12.channel_update_loop();
+  chan13.channel_update_loop();
+  chan14.channel_update_loop();
+  chan15.channel_update_loop();
+  chan16.channel_update_loop();
 );
 
 /* Zoomed in waveform */
