@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.06
+version: 0.07
 author: Joep Vanlier
-changelog: Support volume effect (basic smoothing).
+changelog: Add delete option in sample editor.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -256,6 +256,8 @@ loop(N_SAMPLES,
   idx += 1;
 );
 
+freemem = (scratchloc = freemem) + MAX_SAMPLE_DURATION;
+
 freemem = (midimem = freemem) + 32768;
 midi.initializeMIDI(midimem, 1, 1);
 
@@ -358,6 +360,8 @@ spl0 += ssl;
 spl1 += ssr;
 
 @gfx
+current_char = gfx_getchar();
+
 /* Has the user dropped a file? */
 DROPPED_FILE_STR = 14;
 file_dropped = -1;
@@ -658,10 +662,10 @@ function draw_sample_big(cx, cy, ww, hh, reset_zoom)
 instance(sample_start, sample_len,
          disp_range_start, disp_range_len,
          block_start, block_end)
-local(is_over, menu_selection, fractional_pos, center, loop_start, loop_stop, mouse_pos_in_samples)
+local(is_over, menu_selection, fractional_pos, center, loop_start, loop_stop, mouse_pos_in_samples, left, right)
 global(samplelocs, selected_sample, SAMPLE_HEADER, captured,
        DRAG_SAMPLE, DRAG_LOOP_POINT_1, DRAG_LOOP_POINT_2,
-       updated_loop,
+       updated_loop, current_char,
        mouse_x, mouse_y, mouse_wheel,
        gfx_x, gfx_y, gfx_a)
 (
@@ -699,6 +703,23 @@ global(samplelocs, selected_sample, SAMPLE_HEADER, captured,
     gfx_rect(cx + ww * (block_start - disp_range_start) / disp_range_len, cy, ww * (block_end - block_start) / disp_range_len, hh);
   ) : (
     gfx_rect(cx + ww * (block_end - disp_range_start) / disp_range_len, cy, ww * (block_start - block_end) / disp_range_len, hh);
+  );
+  
+  // Delete
+  (current_char == 6579564) ? (
+    left = min(block_start, block_end);
+    right = max(block_start, block_end);
+    memcpy(left, right, sample_len - right + sample_start);
+    
+    memset(sample_start + sample_len - (right - left), 0, right - left);
+    samplelocs[selected_sample][] -= right - left;
+    sample_len = samplelocs[selected_sample][];
+    
+    // Clamp visible range to now
+    disp_range_len = min(disp_range_len, sample_len - (disp_range_start - sample_start));
+    
+    block_end = 0;
+    block_start = 0;
   );
   
   (is_over && !captured && mouse_press(2)) ? (
@@ -791,3 +812,4 @@ last_cap = mouse_cap;
 reset_zoom = 0;
 mouse_dx = mouse_x - last_mouse_x;
 last_mouse_x = mouse_x;
+
