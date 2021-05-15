@@ -8,7 +8,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.34
+@version 2.35
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -39,6 +39,9 @@
 
 --[[
  * Changelog:
+ * v2.35 (2021-05-16)
+   + Fix issue with CC's not being deleted when "inserted" off the pattern.
+   + Make CC's more readable on sink theme.
  * v2.34 (2020-10-04)
    + Bugfix new feature for channels > 1.
  * v2.33 (2020-10-04)
@@ -1003,7 +1006,7 @@ function tracker:loadColors(colorScheme)
     self.colors.bar.mod2         = self.colors.bar.mod1
     self.colors.bar.mod3         = self.colors.bar.mod1
     self.colors.bar.mod4         = self.colors.bar.mod1
-    self.colors.bar.modtxt1      = {255/255, 159/255, 88/255, 1.0}
+    self.colors.bar.modtxt1      = {55/255, 19/255, 88/255, 1.0}
     self.colors.bar.modtxt2      = self.colors.bar.modtxt1
     self.colors.bar.modtxt3      = self.colors.bar.modtxt1
     self.colors.bar.modtxt4      = self.colors.bar.modtxt1
@@ -5850,7 +5853,7 @@ function tracker:insertCCPt( row, modtype )
       end
     end
   end
-  self:deleteCC_range( self.rows, modtype )
+  self:deleteCC_range( self.rows, self.rows + 1, modtype )
 end
 
 -----------------------
