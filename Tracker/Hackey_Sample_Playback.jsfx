@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.05
+version: 0.06
 author: Joep Vanlier
-changelog: Add shift/ctrl modifier for moving loop point.
+changelog: Support volume effect (basic smoothing).
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -25,6 +25,26 @@ SAMPLE_HEADER = 64;
 MAX_SAMPLE_DURATION = 32768 * 16 - SAMPLE_HEADER;
 N_SAMPLES = 36;
 TOTAL_MEM = N_SAMPLES * MAX_SAMPLE_DURATION;
+
+!initialized ? (
+ chan1.vol = 1;
+ chan2.vol = 1;
+ chan3.vol = 1;
+ chan4.vol = 1;
+ chan5.vol = 1;
+ chan6.vol = 1;
+ chan7.vol = 1;
+ chan8.vol = 1;
+ chan9.vol = 1;
+ chan10.vol = 1;
+ chan11.vol = 1;
+ chan12.vol = 1;
+ chan13.vol = 1;
+ chan14.vol = 1;
+ chan15.vol = 1;
+ chan16.vol = 1;
+ initialized = 1;
+);
 
 function start_playback(buffer_loc, playspeed)
 instance(start_ptr, x_fade_position, playing, fade_start, position, speed,
@@ -199,24 +219,30 @@ global(N_SAMPLES)
     this.stop_sample();
   ) : (msg1>$xAF && msg1<$xC0) ? (
     // CC
-    1
+    
+    // Set volume
+    ((msg2 & 127) == 7) ? (
+      this.vol = (msg3 & 127) / 127;
+      this.vol *= this.vol;
+    );
   )
 );
 
 
 function play_channel()
-instance()
+instance(vol, cvol)
 global(ssl, ssr)
 (
+  cvol = 0.998 * cvol + 0.002 * vol;
   this.play0.playing ? (
     this.play0.play();
-    ssl += this.play0.outL;
-    ssr += this.play0.outR;
+    ssl += this.play0.outL * cvol;
+    ssr += this.play0.outR * cvol;
   );
   this.play1.playing ? (
     this.play1.play();
-    ssl += this.play1.outL;
-    ssr += this.play1.outR;
+    ssl += this.play1.outL * cvol;
+    ssr += this.play1.outR * cvol;
   );
 );
 
