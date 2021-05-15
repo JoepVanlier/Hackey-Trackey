@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.12
+version: 0.13
 author: Joep Vanlier
-changelog: Add crop to selection.
+changelog: Implemented offset.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -43,10 +43,12 @@ TOTAL_MEM = N_SAMPLES * MAX_SAMPLE_DURATION;
  chan14.vol = 1;
  chan15.vol = 1;
  chan16.vol = 1;
+ 
+ preview_channel.vol = 1;
  initialized = 1;
 );
 
-function start_playback(buffer_loc, playspeed)
+function start_playback(buffer_loc, playspeed, offset)
 instance(start_ptr, x_fade_position, playing, fade_start, position, speed,
          loop_start, loop_stop, loop_type)
 global(crossfade_samples, SAMPLE_HEADER)
@@ -59,7 +61,7 @@ global(crossfade_samples, SAMPLE_HEADER)
   loop_type = buffer_loc[5];
   
   x_fade_position = crossfade_samples;
-  position = 0;
+  position = offset;
   playing = 1;
   speed = playspeed;
 );
@@ -158,39 +160,73 @@ local(frac, ism1, is0, is1, is2, id0, id1, id2, id3)
 );
 
 /* Channel play */
-function play_sample(sample_idx, pitch)
-instance(current_playback, playing_sample)
-global(samplelocs, srate)
-local(speed, sample_location, fs, fnote)
+function prepare_channel_for_messages()
+instance(offset, got_note, effect, effect_value)
+global()
+local()
 (
-  playing_sample = sample_idx;
+  offset = 0;
+  got_note = 0;
+  effect = -1;
+  effect_value = -1;
+);
+
+function schedule_note(sample_idx, pitch)
+instance(sample_location, speed, got_note)
+local(fs, fnote)
+global(srate, samplelocs)
+(
   sample_location = samplelocs[sample_idx];
   fs = sample_location[1];
-  fs > 100 ? (
-    fnote = sample_location[2];
-    speed = (pitch / fnote) * (fs / srate);
-    
-    (current_playback == 1) ? (
-      this.play0.start_playback(sample_location, speed);
-      this.play1.stop_playback();
-    ) : (
-      this.play1.start_playback(sample_location, speed);
-      this.play0.stop_playback();  
+  fnote = sample_location[2];
+  speed = (pitch / fnote) * (fs / srate);
+  got_note = 1;
+);
+
+function commit_note()
+instance(current_playback, sample_location, speed, offset,
+         got_note, effect_value, effect)
+global(effect_value_yes)
+local()
+(
+  (effect == 9) ? (offset = effect_value / 127;);
+  
+  // Check whether this has a valid samplerate
+  got_note ? (
+    sample_location[1] > 90 ? (
+      (current_playback == 1) ? (
+        this.play0.start_playback(sample_location, speed, 0.5 * offset * sample_location[]);
+        this.play1.stop_playback();
+      ) : (
+        this.play1.start_playback(sample_location, speed, 0.5 * offset * sample_location[]);
+        this.play0.stop_playback();
+      );
+      current_playback = 1.0 - current_playback;
     );
-    current_playback = 1.0 - current_playback;
   );
+);
+
+function play_sample(sample_idx, pitch, offset)
+instance()
+global()
+local()
+(
+  this.prepare_channel_for_messages();
+  this.schedule_note(sample_idx, pitch);
+  this.offset = offset;
+  this.commit_note();
 );
 
 /* Channel update loop */
 function channel_update_loop()
-instance(current_playback, playing_sample, playing_sample)
-global(samplelocs)
+instance(current_playback, sample_location)
+global()
 local()
 (
   (current_playback == 0) ? (
-    this.play0.update_loop_parameters(samplelocs[playing_sample]);
+    this.play0.update_loop_parameters(sample_location);
   ) : (
-    this.play1.update_loop_parameters(samplelocs[playing_sample]);
+    this.play1.update_loop_parameters(sample_location);
   );
 );
 
@@ -206,28 +242,31 @@ global(samplelocs)
 );
 
 function handle_message(msg1, msg2, msg3)
-local()
+instance(vol, effect, effect_value)
+local(cc_msg)
 global(N_SAMPLES)
 (
   (msg1>$x8F && msg1<$xA0 && msg3!=0) ? (
     // Note on?
     (msg3 < N_SAMPLES) ? (
-      this.play_sample(msg3 - 1, msg2); /* msg3 = velocity which serves as note now ; msg2 is pitch */
+      this.schedule_note(msg3 - 1, msg2); /* msg3 = velocity which serves as note now ; msg2 is pitch */
     );
   ) : ( (msg1>$x7F && msg1<$x90) || (msg1>$x89&&msg1<$xA0 && msg3==0 ) ) ? (
     // Note off
     this.stop_sample();
   ) : (msg1>$xAF && msg1<$xC0) ? (
-    // CC
-    
     // Set volume
-    ((msg2 & 127) == 7) ? (
-      this.vol = (msg3 & 127) / 127;
-      this.vol *= this.vol;
+    cc_msg = msg2 & 127;
+    (cc_msg == 7) ? (
+      vol = (msg3 & 127) / 127;
+      vol *= vol;  // Square volume
+    ) : (cc_msg == 12) ? (
+      effect = msg3 & 127;
+    ) : (cc_msg == 13) ? (
+      effect_value = msg3 & 127;
     );
-  )
+  );
 );
-
 
 function play_channel()
 instance(vol, cvol)
@@ -304,6 +343,23 @@ instance(notePtr, remainingNotes, nextNote, curSample)
 (
   // Take notes from the stack until we hit the end marker -1
   (remainingNotes) ? (
+    chan1.prepare_channel_for_messages();
+    chan2.prepare_channel_for_messages();
+    chan3.prepare_channel_for_messages();
+    chan4.prepare_channel_for_messages();
+    chan5.prepare_channel_for_messages();
+    chan6.prepare_channel_for_messages();
+    chan7.prepare_channel_for_messages();
+    chan8.prepare_channel_for_messages();
+    chan9.prepare_channel_for_messages();
+    chan10.prepare_channel_for_messages();
+    chan11.prepare_channel_for_messages();
+    chan12.prepare_channel_for_messages();
+    chan13.prepare_channel_for_messages();
+    chan14.prepare_channel_for_messages();
+    chan15.prepare_channel_for_messages();
+    chan16.prepare_channel_for_messages();
+  
     while(nextNote == curSample) (
       notePtr += 1;
       
@@ -330,6 +386,23 @@ instance(notePtr, remainingNotes, nextNote, curSample)
       nextNote = notePtr[];
       remainingNotes = nextNote != -1337;
     );
+    
+    chan1.commit_note();
+    chan2.commit_note();
+    chan3.commit_note();
+    chan4.commit_note();
+    chan5.commit_note();
+    chan6.commit_note();
+    chan7.commit_note();
+    chan8.commit_note();
+    chan9.commit_note();
+    chan10.commit_note();
+    chan11.commit_note();
+    chan12.commit_note();
+    chan13.commit_note();
+    chan14.commit_note();
+    chan15.commit_note();
+    chan16.commit_note();
   );
   
   curSample += 1;
@@ -355,6 +428,8 @@ chan13.play_channel();
 chan14.play_channel();
 chan15.play_channel();
 chan16.play_channel();
+
+preview_channel.play_channel();
 
 spl0 += ssl;
 spl1 += ssr;
@@ -468,7 +543,7 @@ local()
 function process_pad(x, y, w, h, idx, sample_location)
 global(mouse_x, mouse_y, mouse_cap, last_cap, captured,
        file_dropped, DROPPED_FILE_STR,
-       chan1.play_sample, selected_sample)
+       preview_channel.play_sample, selected_sample)
 local(is_over)
 (
   is_over = mouse_over(x, y, w, h);
@@ -483,7 +558,7 @@ local(is_over)
   );
   
   ((last_cap & 1) == 0) && (mouse_cap & 1) && is_over && !captured ? (
-    chan1.play_sample(idx, 69);
+    preview_channel.play_sample(idx, 69, 0);
     selected_sample = idx;
   );
 );
@@ -858,6 +933,8 @@ updated_loop ? (
   chan14.channel_update_loop();
   chan15.channel_update_loop();
   chan16.channel_update_loop();
+  
+  preview_channel.channel_update_loop();
 );
 
 /* Zoomed in waveform */
