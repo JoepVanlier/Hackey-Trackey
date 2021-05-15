@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.04
+version: 0.05
 author: Joep Vanlier
-changelog: Bugfix failure to load preset.
+changelog: Add shift/ctrl modifier for moving loop point.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -599,9 +599,9 @@ DRAG_LOOP_POINT_1 = 2;
 DRAG_LOOP_POINT_2 = 3;
 
 function handle_loop_point(cx, cy, ww, hh, sample_start, disp_range_start, disp_range_len, loop_loc, capture_mode)
-local(loop_point, point_in_samples)
+local(loop_point, point_in_samples, mul)
 global(captured, oldloc, newloc, updated_loop,
-       mouse_x, mouse_y)
+       mouse_dx, mouse_x, mouse_y, mouse_cap)
 (
   loop_point = cx + ww * (2 * loop_loc[] - disp_range_start + sample_start) / disp_range_len;
   gfx_rect(loop_point - 1, cy, 2, hh);
@@ -613,9 +613,14 @@ global(captured, oldloc, newloc, updated_loop,
       captured = capture_mode;
     );
   );
+  
+  mul = 1;
+  (mouse_cap&4) ? mul = mul * 0.125; /* CTRL */
+  (mouse_cap&8) ? mul = mul * 0.125; /* SHIFT */
     
   (captured == capture_mode) ? (
-    loop_loc[] = 0.5 * (disp_range_start - sample_start + disp_range_len * max(min((mouse_x - cx) / ww, 1), 0));
+//    loop_loc[] = 0.5 * (disp_range_start - sample_start + disp_range_len * max(min((mouse_x - cx) / ww, 1), 0));
+    loop_loc[] += 0.5 * mul * disp_range_len * mouse_dx / ww;
     updated_loop = 1;
     mouse_release(1) ? captured = 0;
   );
@@ -758,3 +763,5 @@ critical_error ? (
 
 last_cap = mouse_cap;
 reset_zoom = 0;
+mouse_dx = mouse_x - last_mouse_x;
+last_mouse_x = mouse_x;
