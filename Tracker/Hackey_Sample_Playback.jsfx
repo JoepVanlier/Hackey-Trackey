@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.07
+version: 0.08
 author: Joep Vanlier
-changelog: Add delete option in sample editor.
+changelog: Add menu option to reverse sample.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -662,8 +662,8 @@ function draw_sample_big(cx, cy, ww, hh, reset_zoom)
 instance(sample_start, sample_len,
          disp_range_start, disp_range_len,
          block_start, block_end)
-local(is_over, menu_selection, fractional_pos, center, loop_start, loop_stop, mouse_pos_in_samples, left, right)
-global(samplelocs, selected_sample, SAMPLE_HEADER, captured,
+local(is_over, menu_selection, fractional_pos, center, loop_start, loop_stop, mouse_pos_in_samples, left, right, ptr_from, ptr_to)
+global(samplelocs, scratchloc, selected_sample, SAMPLE_HEADER, captured,
        DRAG_SAMPLE, DRAG_LOOP_POINT_1, DRAG_LOOP_POINT_2,
        updated_loop, current_char,
        mouse_x, mouse_y, mouse_wheel,
@@ -725,10 +725,12 @@ global(samplelocs, selected_sample, SAMPLE_HEADER, captured,
   (is_over && !captured && mouse_press(2)) ? (
     gfx_x = mouse_x;
     gfx_y = mouse_y;
+    left = min(block_start, block_end);
+    right = max(block_start, block_end);
     (abs(block_end - block_start) < 5) ? (
-      menu_selection = gfx_showmenu("#Zoom|Reset Zoom||#Set loop|#Set loop (bidirectional)|Remove loop");
+      menu_selection = gfx_showmenu("#Zoom|Reset Zoom||#Set loop|#Set loop (bidirectional)|Remove loop||#Reverse");
     ) : (
-      menu_selection = gfx_showmenu("Zoom|Reset Zoom||Set loop|Set loop (bidirectional)|Remove loop");
+      menu_selection = gfx_showmenu("Zoom|Reset Zoom||Set loop|Set loop (bidirectional)|Remove loop||Reverse");
     );
     (menu_selection == 1) ? (
       disp_range_len = max(10, abs(block_end - block_start));
@@ -736,18 +738,22 @@ global(samplelocs, selected_sample, SAMPLE_HEADER, captured,
     ) : (menu_selection == 2) ? (
       reset_zoom = 1;
     ) : ((menu_selection == 3) || (menu_selection == 4)) ? (
-      ( block_start < block_end ) ? (
-        samplelocs[selected_sample][3] = floor(0.5 * (block_start - sample_start));        // Loop start
-        samplelocs[selected_sample][4] = floor(0.5 * (block_end - sample_start));          // Loop end
-      ) : (
-        samplelocs[selected_sample][3] = floor(0.5 * (block_end - sample_start));
-        samplelocs[selected_sample][4] = floor(0.5 * (block_start - sample_start));
-      );
-      
-      samplelocs[selected_sample][5] = (menu_selection == 3) ? 0 : 1; // Bi-directional?
+      samplelocs[selected_sample][3] = floor(0.5 * (left - sample_start));    // Loop start
+      samplelocs[selected_sample][4] = floor(0.5 * (right - sample_start));   // Loop end
+      samplelocs[selected_sample][5] = (menu_selection == 3) ? 0 : 1;         // Bi-directional?
       updated_loop = 1;
     ) : (menu_selection == 5) ? (
       samplelocs[selected_sample][3] = -1;
+    ) : (menu_selection == 6) ? (
+      memcpy(scratchloc, left, right - left);
+      ptr_to = right - 1;
+      ptr_from = scratchloc;
+      loop(0.5 * (right - left),
+        ptr_to[0] = ptr_from[0];
+        ptr_to[1] = ptr_from[1];
+        ptr_to -= 2;
+        ptr_from += 2;
+      );
     );
   );
   
