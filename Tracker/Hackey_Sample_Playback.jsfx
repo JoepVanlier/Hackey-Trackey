@@ -189,6 +189,9 @@ instance(current_playback, sample_location, speed, offset,
 global(effect_value_yes)
 local()
 (
+  /* If no effect is set, don't use one */
+  (effect_value == -1) ? effect = -1;
+
   (effect == 9) ? (offset = effect_value / 127;);
   
   // Check whether this has a valid samplerate
