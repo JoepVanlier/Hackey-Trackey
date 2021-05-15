@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.11
+version: 0.12
 author: Joep Vanlier
-changelog: Bugfix fadeout.
+changelog: Add crop to selection.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -781,9 +781,9 @@ global(samplelocs, selected_sample, SAMPLE_HEADER, captured,
     left = min(block_start, block_end);
     right = max(block_start, block_end);
     (abs(block_end - block_start) < 5) ? (
-      menu_selection = gfx_showmenu("#Zoom|Reset Zoom||#Set loop|#Set loop (bidirectional)|Remove loop||#Reverse||#Fade in|#Fade out");
+      menu_selection = gfx_showmenu("#Zoom|Reset Zoom||#Set loop|#Set loop (bidirectional)|Remove loop||#Reverse||#Fade in|#Fade out||#Crop to selection");
     ) : (
-      menu_selection = gfx_showmenu("Zoom|Reset Zoom||Set loop|Set loop (bidirectional)|Remove loop||Reverse||Fade in|Fade out");
+      menu_selection = gfx_showmenu("Zoom|Reset Zoom||Set loop|Set loop (bidirectional)|Remove loop||Reverse||Fade in|Fade out||Crop to selection");
     );
     (menu_selection == 1) ? (
       disp_range_len = max(10, abs(block_end - block_start));
@@ -801,6 +801,17 @@ global(samplelocs, selected_sample, SAMPLE_HEADER, captured,
       reverse(left, right);
     ) : ( ( menu_selection == 7 ) || ( menu_selection == 8 ) ) ? (
       fade(left, right, menu_selection == 7);
+    ) : (menu_selection == 7) ? (
+      // Crop to selection
+      memcpy(sample_start, left, right - left);
+      memset(sample_start + sample_len - (right - left), 0, right - left);
+      samplelocs[selected_sample][] = right - left;
+      sample_len = samplelocs[selected_sample][];
+      disp_range_start = sample_start;
+      disp_range_len = sample_len;
+      
+      block_end = 0;
+      block_start = 0;
     );
   );
   
