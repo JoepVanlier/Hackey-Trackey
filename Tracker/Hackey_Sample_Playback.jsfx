@@ -658,12 +658,55 @@ global(captured, oldloc, newloc, updated_loop,
   loop_point
 );
 
+function reverse(left, right)
+local(ptr_from, ptr_to)
+global(scratchloc)
+(
+  memcpy(scratchloc, left, right - left);
+  ptr_to = right;
+  ptr_from = scratchloc;
+  loop(0.5 * (right - left),
+    ptr_to[0] = ptr_from[0];
+    ptr_to[1] = ptr_from[1];
+    ptr_to -= 2;
+    ptr_from += 2;
+  );
+);
+
+function fade(left, right, in_or_out)
+local(fade_len, ptr, dx, lvol, lv2)
+global(finval)
+(
+  fade_len = 0.5 * (right - left);
+  ptr = left;
+  
+  in_or_out ? (
+    dx = 1.0 / (fade_len - 1);
+    lvol = 0;
+  ) : (
+    dx = -1.0 / (fade_len - 1);
+    lvol = 1;
+  );
+  
+  loop(fade_len,
+    lv2 = lvol * lvol;
+    
+    ptr[] *= lv2;
+    ptr[1] *= lv2;
+    
+    lvol += dx;
+    ptr += 2;
+  );
+  
+  finval = lv2;
+);
+
 function draw_sample_big(cx, cy, ww, hh, reset_zoom)
 instance(sample_start, sample_len,
          disp_range_start, disp_range_len,
          block_start, block_end)
-local(is_over, menu_selection, fractional_pos, center, loop_start, loop_stop, mouse_pos_in_samples, left, right, ptr_from, ptr_to)
-global(samplelocs, scratchloc, selected_sample, SAMPLE_HEADER, captured,
+local(is_over, menu_selection, fractional_pos, center, loop_start, loop_stop, mouse_pos_in_samples, left, right)
+global(samplelocs, selected_sample, SAMPLE_HEADER, captured,
        DRAG_SAMPLE, DRAG_LOOP_POINT_1, DRAG_LOOP_POINT_2,
        updated_loop, current_char,
        mouse_x, mouse_y, mouse_wheel,
@@ -728,9 +771,9 @@ global(samplelocs, scratchloc, selected_sample, SAMPLE_HEADER, captured,
     left = min(block_start, block_end);
     right = max(block_start, block_end);
     (abs(block_end - block_start) < 5) ? (
-      menu_selection = gfx_showmenu("#Zoom|Reset Zoom||#Set loop|#Set loop (bidirectional)|Remove loop||#Reverse");
+      menu_selection = gfx_showmenu("#Zoom|Reset Zoom||#Set loop|#Set loop (bidirectional)|Remove loop||#Reverse||#Fade in|#Fade out");
     ) : (
-      menu_selection = gfx_showmenu("Zoom|Reset Zoom||Set loop|Set loop (bidirectional)|Remove loop||Reverse");
+      menu_selection = gfx_showmenu("Zoom|Reset Zoom||Set loop|Set loop (bidirectional)|Remove loop||Reverse||Fade in|Fade out");
     );
     (menu_selection == 1) ? (
       disp_range_len = max(10, abs(block_end - block_start));
@@ -745,15 +788,9 @@ global(samplelocs, scratchloc, selected_sample, SAMPLE_HEADER, captured,
     ) : (menu_selection == 5) ? (
       samplelocs[selected_sample][3] = -1;
     ) : (menu_selection == 6) ? (
-      memcpy(scratchloc, left, right - left);
-      ptr_to = right;
-      ptr_from = scratchloc;
-      loop(0.5 * (right - left),
-        ptr_to[0] = ptr_from[0];
-        ptr_to[1] = ptr_from[1];
-        ptr_to -= 2;
-        ptr_from += 2;
-      );
+      reverse(left, right);
+    ) : ( ( menu_selection == 7 ) || ( menu_selection == 8 ) ) ? (
+      fade(left, right, menu_selection == 7);
     );
   );
   
