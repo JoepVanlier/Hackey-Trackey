@@ -25,6 +25,9 @@ about:
     every N times per row (ticks).
     Here, the portamento slides continuously and the amount is specified in 
     eigth semitones. This means that 08 is 1 semitone. 10 is 2, etc.
+  03 - Glide
+    Glide to note. Glide speed is specified in 1/16th notes.
+    00 Continues a previous glide.
   09 - Set offset
     Unlike the classic Protracker, this sets offset as fraction of the sample length.
     Since 7F (127) is the maximum in MIDI; 40 is the middle of the sample, 20 1/4th etc.
@@ -190,7 +193,7 @@ local(frac, ism1, is0, is1, is2, id0, id1, id2, id3)
 
 /* Channel play */
 function prepare_channel_for_messages()
-instance(offset, got_note, effect, effect_value)
+instance(offset, got_note, stop, effect, effect_value)
 global()
 local()
 (
@@ -213,19 +216,41 @@ global(srate, samplelocs)
   got_note = 1;
 );
 
+function schedule_stop()
+instance(got_note)
+local()
+global()
+(
+  (got_note == 0) ? ( got_note = -1; );
+);
+
+function stop_sample()
+instance(current_playback)
+global()
+(
+  (current_playback == 1) ? (
+    this.play1.stop_playback();
+  ) : (
+    this.play0.stop_playback();  
+  );
+);
+
 function commit_note()
 instance(current_playback, sample_location, speed, offset,
          got_note, effect_value, effect)
 global(effect_value_yes, samples_per_beat)
-local(portamento_ds)
+local(portamento_ds, curspeed, portamento_len)
 (
   /* If no effect is set, don't use one */
   (effect_value == -1) ? effect = -1;
 
   (effect == 9) ? (offset = effect_value / 127;);
   
+  // Glide disables the note on and off.
+  (effect == 3) ? ( got_note = 0; );
+  
   // Check whether this has a valid samplerate
-  got_note ? (
+  (got_note > 0) ? (
     sample_location[1] > 90 ? (
       (current_playback == 1) ? (
         this.play0.start_playback(sample_location, speed, 0.5 * offset * sample_location[]);
@@ -236,6 +261,9 @@ local(portamento_ds)
       );
       current_playback = 1.0 - current_playback;
     );
+  ) : ( got_note < 0 ) ? (
+    // No note, but a stop signal, then terminate the sample.
+    this.stop_sample();
   );
   
   // Set portamento for upcoming row
@@ -252,6 +280,20 @@ local(portamento_ds)
       this.play0.portamento_ds = portamento_ds;
     ) : (
       this.play1.portamento_len = samples_per_beat;
+      this.play1.portamento_ds = portamento_ds;
+    );
+  );
+  
+  // Glide
+  (effect == 3) ? (
+    curspeed = (current_playback == 0) ? this.play0.speed : this.play1.speed;
+    portamento_ds = 2^(sign(speed - curspeed) * effect_value / (8 * 12 * samples_per_beat));
+    portamento_len = min((log(speed) - log(curspeed)) / log(portamento_ds), samples_per_beat);
+    (current_playback == 0) ? (
+      this.play0.portamento_len = portamento_len;
+      this.play0.portamento_ds = portamento_ds;
+    ) : (
+      this.play1.portamento_len = portamento_len;
       this.play1.portamento_ds = portamento_ds;
     );
   );
@@ -281,17 +323,6 @@ local()
   );
 );
 
-function stop_sample(sample_idx)
-instance(current_playback)
-global(samplelocs)
-(
-  (current_playback == 1) ? (
-    this.play1.stop_playback();
-  ) : (
-    this.play0.stop_playback();  
-  );
-);
-
 function handle_message(msg1, msg2, msg3)
 instance(vol, effect, effect_value)
 local(cc_msg)
@@ -304,7 +335,7 @@ global(N_SAMPLES)
     );
   ) : ( (msg1>$x7F && msg1<$x90) || (msg1>$x89&&msg1<$xA0 && msg3==0 ) ) ? (
     // Note off
-    this.stop_sample();
+    this.schedule_stop();
   ) : (msg1>$xAF && msg1<$xC0) ? (
     // Set volume
     cc_msg = msg2 & 127;
@@ -396,22 +427,30 @@ instance(notePtr, remainingNotes, nextNote, curSample)
 (
   // Take notes from the stack until we hit the end marker -1
   (remainingNotes) ? (
-    chan1.prepare_channel_for_messages();
-    chan2.prepare_channel_for_messages();
-    chan3.prepare_channel_for_messages();
-    chan4.prepare_channel_for_messages();
-    chan5.prepare_channel_for_messages();
-    chan6.prepare_channel_for_messages();
-    chan7.prepare_channel_for_messages();
-    chan8.prepare_channel_for_messages();
-    chan9.prepare_channel_for_messages();
-    chan10.prepare_channel_for_messages();
-    chan11.prepare_channel_for_messages();
-    chan12.prepare_channel_for_messages();
-    chan13.prepare_channel_for_messages();
-    chan14.prepare_channel_for_messages();
-    chan15.prepare_channel_for_messages();
-    chan16.prepare_channel_for_messages();
+    passes += 1;
+    
+    // This handleMessages is ugly, but if we don't do this, we're going
+    // to be checking this every cycle where there is any MIDI in the block => Not good.
+    handleMessages = 0;
+    (nextNote == curSample) ? (
+      handleMessages = 1;
+      chan1.prepare_channel_for_messages();
+      chan2.prepare_channel_for_messages();
+      chan3.prepare_channel_for_messages();
+      chan4.prepare_channel_for_messages();
+      chan5.prepare_channel_for_messages();
+      chan6.prepare_channel_for_messages();
+      chan7.prepare_channel_for_messages();
+      chan8.prepare_channel_for_messages();
+      chan9.prepare_channel_for_messages();
+      chan10.prepare_channel_for_messages();
+      chan11.prepare_channel_for_messages();
+      chan12.prepare_channel_for_messages();
+      chan13.prepare_channel_for_messages();
+      chan14.prepare_channel_for_messages();
+      chan15.prepare_channel_for_messages();
+      chan16.prepare_channel_for_messages();
+    );
   
     while(nextNote == curSample) (
       notePtr += 1;
@@ -440,22 +479,24 @@ instance(notePtr, remainingNotes, nextNote, curSample)
       remainingNotes = nextNote != -1337;
     );
     
-    chan1.commit_note();
-    chan2.commit_note();
-    chan3.commit_note();
-    chan4.commit_note();
-    chan5.commit_note();
-    chan6.commit_note();
-    chan7.commit_note();
-    chan8.commit_note();
-    chan9.commit_note();
-    chan10.commit_note();
-    chan11.commit_note();
-    chan12.commit_note();
-    chan13.commit_note();
-    chan14.commit_note();
-    chan15.commit_note();
-    chan16.commit_note();
+    handleMessages ? (
+      chan1.commit_note();
+      chan2.commit_note();
+      chan3.commit_note();
+      chan4.commit_note();
+      chan5.commit_note();
+      chan6.commit_note();
+      chan7.commit_note();
+      chan8.commit_note();
+      chan9.commit_note();
+      chan10.commit_note();
+      chan11.commit_note();
+      chan12.commit_note();
+      chan13.commit_note();
+      chan14.commit_note();
+      chan15.commit_note();
+      chan16.commit_note();
+    );
   );
   
   curSample += 1;
