@@ -1,0 +1,57 @@
+MIDI buffer library
+version: 0.02
+author: Joep Vanlier
+license: MIT
+(C) Joep Vanlier 2020
+
+@init
+function initializeMIDI(mem, mWheel, passThrough)
+local()
+global(MAX_NOTES)
+instance(noteMem, modWheel, pass,
+         voice1, voice2, voice3, voice4,
+         notesOn, lastNotesOn)
+(
+  voice1 = voice2 = voice3 = voice4 = 0;
+  noteMem = mem;
+  modWheel = mWheel;
+  pass = passThrough;
+  notesOn = 0; 
+  lastNotesOn = 0;
+);
+
+function processMIDIBlock()
+local(offset, msg1, msg2, msg3
+      noteOn, noteOff, mwCC, mWheel, pb)
+global(channel)
+instance(notePtr, noteMem, pass, modWheel, curSample, remainingNotes, nextNote)
+(
+  notePtr = noteMem;
+  while (midirecv(offset,msg1,msg2,msg3)) (
+      channel = msg1 & 15;
+      noteOn = msg1>$x8F && msg1<$xA0 && msg3!=0;
+      noteOff = (msg1>$x7F && msg1<$x90) || (msg1>$x89&&msg1<$xA0 && msg3==0);
+      mwCC = (msg1>$xAF&&msg1<$xC0);
+      
+    ( noteOn || noteOff || mwCC ) ? (
+      notePtr[] = offset;
+      notePtr += 1;
+      notePtr[] = channel;  // Channel
+      notePtr += 1;
+      notePtr[] = msg1;     // Type
+      notePtr += 1;
+      notePtr[] = msg2;     // Note or CC value
+      notePtr += 1;
+      notePtr[] = msg3;     // Velocity or controller value
+      notePtr += 1;
+    );
+    
+    pass ? midisend(offset,msg1,msg2,msg3); // passthrough MIDI events
+  );
+  notePtr[]       = -1337;    // Signal end of note buffer
+  notePtr         = noteMem;
+  curSample       = 0;        // Current sample in block
+  remainingNotes  = 1;        // End of the note buffer?
+  nextNote        = notePtr[];
+);
+
