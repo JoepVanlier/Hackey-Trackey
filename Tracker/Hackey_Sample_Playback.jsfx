@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.15
+version: 0.16
 author: Joep Vanlier
-changelog: Fixup pitch. Implemented portamento.
+changelog: Repair crop functionality.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -193,13 +193,12 @@ local(frac, ism1, is0, is1, is2, id0, id1, id2, id3)
 
 /* Channel play */
 function prepare_channel_for_messages()
-instance(offset, got_note, stop, effect, effect_value)
+instance(offset, got_note, effect, effect_value)
 global()
 local()
 (
   offset = 0;
   got_note = 0;
-  effect = -1;
   effect_value = -1;
 );
 
@@ -427,8 +426,6 @@ instance(notePtr, remainingNotes, nextNote, curSample)
 (
   // Take notes from the stack until we hit the end marker -1
   (remainingNotes) ? (
-    passes += 1;
-    
     // This handleMessages is ugly, but if we don't do this, we're going
     // to be checking this every cycle where there is any MIDI in the block => Not good.
     handleMessages = 0;
@@ -970,7 +967,7 @@ global(samplelocs, selected_sample, SAMPLE_HEADER, captured,
       reverse(left, right);
     ) : ( ( menu_selection == 7 ) || ( menu_selection == 8 ) ) ? (
       fade(left, right, menu_selection == 7);
-    ) : (menu_selection == 7) ? (
+    ) : (menu_selection == 9) ? (
       // Crop to selection
       memcpy(sample_start, left, right - left);
       memset(sample_start + sample_len - (right - left), 0, right - left);
