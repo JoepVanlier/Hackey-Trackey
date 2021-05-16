@@ -1,12 +1,33 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.13
+version: 0.15
 author: Joep Vanlier
-changelog: Implemented offset.
+changelog: Fixup pitch. Implemented portamento.
 license: MIT
 about:
   # Hackey Tracker Sampler
   A small sampler designed to interoperate with Hackey Trackey.
+  
+  ### Usage instructions:
+  This small JSFX acts as a sampler that interoperates with Hackey Trackey to 
+  support tracker-like sample playback.
+  
+  Volume is sent on MIDI CC 9, while efects are sent on CC 12 (to indicate the 
+  effect number) and CC 13 (to indicate the value). Note that due to the limitations 
+  of the format, some concessions had to be made. Please read the effect list below 
+  carefully and consider how this impacts your workflow.
+  
+  - Effect List
+  01 - Portamento up
+  02 - Portamento down
+    Note that the portamento's behave different from Protracker. In PT you directly
+    perform the portamento based on the period of the signal. Portamento is updated
+    every N times per row (ticks).
+    Here, the portamento slides continuously and the amount is specified in 
+    eigth semitones. This means that 08 is 1 semitone. 10 is 2, etc.
+  09 - Set offset
+    Unlike the classic Protracker, this sets offset as fraction of the sample length.
+    Since 7F (127) is the maximum in MIDI; 40 is the middle of the sample, 20 1/4th etc.
 
 options:gmem=saike_HT_sample
 in_pin:left input
@@ -25,6 +46,8 @@ SAMPLE_HEADER = 64;
 MAX_SAMPLE_DURATION = 32768 * 16 - SAMPLE_HEADER;
 N_SAMPLES = 36;
 TOTAL_MEM = N_SAMPLES * MAX_SAMPLE_DURATION;
+
+(ticks_per_beat == 0) ? ticks_per_beat = 4;
 
 !initialized ? (
  chan1.vol = 1;
@@ -85,8 +108,9 @@ global(crossfade_samples)
 function play()
 instance(start_ptr, read_ptr, x_fade_position, fade_start,
          outL, outR, playing, fade_level, position, speed,
-         loop_start, loop_stop, loop_type)
-global(crossfade_samples, pi_inv_crossfade_samples, eco)
+         loop_start, loop_stop, loop_type,
+         portamento_len, portamento_ds)
+global(crossfade_samples, pi_inv_crossfade_samples, eco, play_state)
 local(frac, ism1, is0, is1, is2, id0, id1, id2, id3)
 (
   // Positive fade means fading in
@@ -109,10 +133,10 @@ local(frac, ism1, is0, is1, is2, id0, id1, id2, id3)
     
     (loop_start > 0) ? (
       (loop_type == 0) ? (
-        (position > loop_stop) ? position -= (loop_stop - loop_start);
+        play_state ? (position > loop_stop) ? position -= (loop_stop - loop_start);
       ) : (
         (position > loop_stop) ? (
-          speed = - speed;
+          play_state ? speed = - speed;
         ) : ( position < loop_start ) ? (
           speed = abs(speed);
         );
@@ -156,6 +180,11 @@ local(frac, ism1, is0, is1, is2, id0, id1, id2, id3)
   outR *= fade_level;
   position += speed;
   
+  portamento_len > 0 ? (
+    portamento_len -= 1;
+    speed *= portamento_ds;
+  );
+  
   fade_level
 );
 
@@ -173,21 +202,22 @@ local()
 
 function schedule_note(sample_idx, pitch)
 instance(sample_location, speed, got_note)
-local(fs, fnote)
+local(fs, fnote, r_speed)
 global(srate, samplelocs)
 (
   sample_location = samplelocs[sample_idx];
   fs = sample_location[1];
   fnote = sample_location[2];
-  speed = (pitch / fnote) * (fs / srate);
+  r_speed = 2^((pitch - fnote)/12);
+  speed = r_speed * (fs / srate);
   got_note = 1;
 );
 
 function commit_note()
 instance(current_playback, sample_location, speed, offset,
          got_note, effect_value, effect)
-global(effect_value_yes)
-local()
+global(effect_value_yes, samples_per_beat)
+local(portamento_ds)
 (
   /* If no effect is set, don't use one */
   (effect_value == -1) ? effect = -1;
@@ -205,6 +235,24 @@ local()
         this.play0.stop_playback();
       );
       current_playback = 1.0 - current_playback;
+    );
+  );
+  
+  // Set portamento for upcoming row
+  ((effect == 1) || (effect == 2)) ? (
+    // Semitone given by effect_value / 8. Hence 2^(value / (8*12))
+    (effect == 1) ? (
+      portamento_ds = 2^(effect_value / (8*12 * samples_per_beat));
+    ) : (
+      portamento_ds = 2^(-effect_value / (8*12 * samples_per_beat));
+    );
+
+    (current_playback == 0) ? (
+      this.play0.portamento_len = samples_per_beat;
+      this.play0.portamento_ds = portamento_ds;
+    ) : (
+      this.play1.portamento_len = samples_per_beat;
+      this.play1.portamento_ds = portamento_ds;
     );
   );
 );
@@ -340,6 +388,8 @@ loop(N_SAMPLES,
 midi.processMIDIBlock();
 
 @sample
+samples_per_beat = floor((srate * 60) / tempo / ticks_per_beat);
+
 function processMIDISample()
 local(channel)
 instance(notePtr, remainingNotes, nextNote, curSample)
