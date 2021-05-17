@@ -8,7 +8,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.35
+@version 2.36
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -39,6 +39,8 @@
 
 --[[
  * Changelog:
+ * v2.36 (2021-05-17)
+   + Autodetect Hackey Trackey Sampler on the track and convert to tracker mode.
  * v2.35 (2021-05-16)
    + Fix issue with CC's not being deleted when "inserted" off the pattern.
    + Make CC's more readable on sink theme.
@@ -648,6 +650,8 @@ tracker.cfg.selectMIDINotes = 0
 tracker.cfg.undoForReassignment = 1
 tracker.cfg.releaseNoteOffs = 0
 
+tracker.tracker_samples = 0
+
 -- Defaults
 tracker.cfg.transpose = 3
 tracker.cfg.advance = 1
@@ -666,7 +670,7 @@ tracker.binaryOptions = {
     { 'alwaysRecord', 'Always Enable Recording' },
     { 'CRT', 'CRT mode' },
     { 'oldBlockBehavior', 'Do not mend after paste' },
-    { 'channelCCs', 'Enable CCs for channels > 0 (beta)' },
+    { 'channelCCs', 'Enable CCs for channels > 0' },
     { 'loopFollow', 'Set loop on pattern switch' },
     { 'initLoopSet', 'Set loop when tracker is opened' },
     { 'minimumSize', 'Force minimum size'},
@@ -2107,7 +2111,7 @@ function tracker:linkData()
   local master    = {}
 
   if ( self.showMod == 1 ) then
-    tracker:linkCC_channel(math.max(self.modMode, self.cfg.channelCCs), 0, data, master, datafield, idx, colsizes, padsizes, grouplink, headers, headerW, hints)
+    tracker:linkCC_channel(math.max(self.modMode, self.cfg.channelCCs, self.tracker_samples), 0, data, master, datafield, idx, colsizes, padsizes, grouplink, headers, headerW, hints)
   end
 
   if ( fx.names ) then
@@ -2193,7 +2197,7 @@ function tracker:linkData()
     datafield[#datafield+1] = 'vel2'
     idx[#idx+1]             = j
     colsizes[#colsizes + 1] = 1
-    padsizes[#padsizes + 1] = 2 - self.cfg.channelCCs
+    padsizes[#padsizes + 1] = 2 - math.max(self.cfg.channelCCs, self.tracker_samples)
     if ( self.selectionBehavior == 1 ) then
       grouplink[#grouplink+1] = {-2, -1}
     else
@@ -2203,7 +2207,7 @@ function tracker:linkData()
     headerW[#headerW+1]     = 0
     hints[#hints+1]         = string.format('Velocity channel %2d', j)
 
-    if ( self.cfg.channelCCs == 1 ) then
+    if ( math.max(self.cfg.channelCCs, self.tracker_samples) == 1 ) then
       tracker:linkCC_channel(1, j, data, master, datafield, idx, colsizes, padsizes, grouplink, headers, headerW, hints)
     end
 
@@ -6399,6 +6403,19 @@ function tracker:toggleMuteChannel()
   reaper.MIDI_Sort(self.take)  
 end
 
+function tracker:addSamplerCCs(all)
+  -- Preassign the CCs we need for the sampler for convenience
+  if (self.tracker_samples == 1) then
+    for ch = 1,self.channels do
+      local fixed_ccs = {7, 12, 13}
+      for _, cc in pairs(fixed_ccs) do
+        all[512 * ch + cc] = 1
+      end
+    end
+  end
+  return all
+end
+
 --------------------------------------------------------------
 -- Update function
 -- heavy-ish, avoid calling too often (only on MIDI changes)
@@ -6459,7 +6476,7 @@ function tracker:update()
       ---------------------------------------------
       local skip = self.CCjump
       if ( self.showMod == 1 ) then
-        local modmode = self.modMode == 1 or self.cfg.channelCCs == 1
+        local modmode = self.modMode == 1 or self.cfg.channelCCs == 1 or self.tracker_samples == 1
         if ( modmode ) then
           local all = self:getOpenCC()
           for i=0,ccevtcntOut do
@@ -6468,6 +6485,10 @@ function tracker:update()
 
             all[msg2 + (chan)*skip] = 1
           end
+          
+          -- Preassign the CCs we need for the sampler for convenience
+          all = self:addSamplerCCs(all)
+          
           all[0] = nil
           local indices = {}
           for i in pairs(all) do
@@ -6475,11 +6496,13 @@ function tracker:update()
               table.insert(indices, i)
             end
           end
+          
           table.sort(indices)
           local modtypes = {}
           for i,v in pairs(indices) do
             modtypes[#modtypes+1] = v
           end
+          
           if ( #modtypes > 0 ) then
             tracker:initializeModChannels(modtypes)
             for i=0,ccevtcntOut do
@@ -6611,6 +6634,24 @@ function tracker:setItem( item )
   self.itemStart = reaper.GetMediaItemInfo_Value( self.item, "D_POSITION" )
 end
 
+local function hasSampler(track)
+  -- Check whether hackey trackey sampler is on this track
+  -- NOTE: track has to be a validated track ptr
+  local samplerName = "Hackey Trackey Sample Playback"
+  
+  local fxcnt = reaper.TrackFX_GetCount(track)
+  local foundSampler = 0
+  for fidx = 0, fxcnt - 1 do
+    local retval, str = reaper.TrackFX_GetFXName(track, fidx, "")
+    
+    if string.find(str, samplerName) then
+      foundSampler = 1
+    end
+  end
+  
+  return foundSampler
+end
+
 function tracker:setTake( take )
   -- Only switch if we're actually changing take
   if ( self.take ~= take ) then
@@ -6624,7 +6665,10 @@ function tracker:setTake( take )
       self.take = take
       if self:validateCurrentItem() then      
         self.track = reaper.GetMediaItem_Track(self.item)
-  
+        
+        -- Set flag that we are dealing with a sampler-based track here
+        self.tracker_samples = hasSampler(self.track)
+        
         -- Store note hash (second arg = notes only)
         self.hash = reaper.MIDI_GetHash( self.take, false, "?" )
         self.newRowPerQn = self:getResolution()
