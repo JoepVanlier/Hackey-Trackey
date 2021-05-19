@@ -2893,6 +2893,8 @@ function tracker:customFieldDescription()
       local modtype, cc_value = self:getCC( self.ypos - 1, self.CCjump * channel + sampler_effect_type )
       local modtype, cc_level = self:getCC( self.ypos - 1, self.CCjump * channel + sampler_effect_value )
       
+      local vibrato_periods = {"Continue", "128", "64", "32", "24", "16", "12", "8", "6", "5", "4", "3", "2", "1", "1/4", "1/8"}
+      
       if not cc_value then
         return
       elseif cc_value == 1 then
@@ -2902,15 +2904,15 @@ function tracker:customFieldDescription()
       elseif cc_value == 3 then
         return string.format("Glide (%d/8th semitones)", cc_level)
       elseif cc_value == 4 then
-        return string.format("Vibrato (Speed: %d, Depth: %d)", math.floor(cc_level/16), math.floor(cc_level % 16))
+        return string.format("Vibrato (Depth: %d/7 s.t., Period: %s rows)", math.floor(cc_level/16), vibrato_periods[cc_level % 16 + 1])
       elseif cc_value == 5 then
         return string.format("Not implemented")
       elseif cc_value == 6 then
         return string.format("Not implemented")        
       --elseif cc_value == 6 then
       --  return string.format("Auto panning (Speed: %d, Depth: %d)", math.floor(cc_level/16), math.floor(cc_level % 16))
-      elseif cc_value == 7 then
-        return string.format("Tremolo (Speed: %d, Depth: %d)", math.floor(cc_level/16), math.floor(cc_level % 16))
+      --elseif cc_value == 7 then
+      --  return string.format("Tremolo (Speed: %d/7, Depth: %d)", math.floor(cc_level/16), math.floor(cc_level % 16))
       elseif cc_value == 8 then
         return string.format("Set Panning (%d)", cc_level)
       elseif cc_value == 9 then
