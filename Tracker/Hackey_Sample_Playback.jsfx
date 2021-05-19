@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.16
+version: 0.17
 author: Joep Vanlier
-changelog: Repair crop functionality.
+changelog: Memorize last.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -28,6 +28,11 @@ about:
   03 - Glide
     Glide to note. Glide speed is specified in 1/16th notes.
     00 Continues a previous glide.
+  04 - Vibrato
+    X is pitch depth (value from 0 to 7). They are given in seventh semitones.
+    Y is speed (value from 0 to F).
+      Continue, 128, 64, 32, 24, 16, 12, 8, 6, 5, 4, 3, 2, 1, 0.25, 0.125
+    0 continues the previous value.
   09 - Set offset
     Unlike the classic Protracker, this sets offset as fraction of the sample length.
     Since 7F (127) is the maximum in MIDI; 40 is the middle of the sample, 20 1/4th etc.
@@ -236,7 +241,8 @@ global()
 
 function commit_note()
 instance(current_playback, sample_location, speed, offset,
-         got_note, effect_value, effect)
+         got_note, effect_value, effect,
+         last_porta)
 global(effect_value_yes, samples_per_beat)
 local(portamento_ds, curspeed, portamento_len)
 (
@@ -267,6 +273,7 @@ local(portamento_ds, curspeed, portamento_len)
   
   // Set portamento for upcoming row
   ((effect == 1) || (effect == 2)) ? (
+    (effect_value == 0) ? effect_value = last_porta;
     // Semitone given by effect_value / 8. Hence 2^(value / (8*12))
     (effect == 1) ? (
       portamento_ds = 2^(effect_value / (8*12 * samples_per_beat));
@@ -281,10 +288,12 @@ local(portamento_ds, curspeed, portamento_len)
       this.play1.portamento_len = samples_per_beat;
       this.play1.portamento_ds = portamento_ds;
     );
+    last_porta = effect_value;
   );
   
   // Glide
   (effect == 3) ? (
+    (effect_value == 0) ? effect_value = last_porta;
     curspeed = (current_playback == 0) ? this.play0.speed : this.play1.speed;
     portamento_ds = 2^(sign(speed - curspeed) * effect_value / (8 * 12 * samples_per_beat));
     portamento_len = min((log(speed) - log(curspeed)) / log(portamento_ds), samples_per_beat);
@@ -295,6 +304,7 @@ local(portamento_ds, curspeed, portamento_len)
       this.play1.portamento_len = portamento_len;
       this.play1.portamento_ds = portamento_ds;
     );
+    last_porta = effect_value;
   );
 );
 
