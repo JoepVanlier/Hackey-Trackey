@@ -25,6 +25,7 @@ about:
     every N times per row (ticks).
     Here, the portamento slides continuously and the amount is specified in 
     eigth semitones. This means that 08 is 1 semitone. 10 is 2, etc.
+    00 continues the last portamento.
   03 - Glide
     Glide to note. Glide speed is specified in 1/16th notes.
     00 Continues a previous glide.
@@ -36,6 +37,8 @@ about:
   09 - Set offset
     Unlike the classic Protracker, this sets offset as fraction of the sample length.
     Since 7F (127) is the maximum in MIDI; 40 is the middle of the sample, 20 1/4th etc.
+  0C - Sample probability
+    
 
 options:gmem=saike_HT_sample
 in_pin:left input
@@ -250,6 +253,12 @@ local(portamento_ds, curspeed, portamento_len)
   (effect_value == -1) ? effect = -1;
 
   (effect == 9) ? (offset = effect_value / 127;);
+  
+  effect_value_yes = effect_value;
+  
+  (effect == 12) ? (
+    (rand() > (effect_value / 127)) ? got_note = 0;
+  );
   
   // Glide disables the note on and off.
   (effect == 3) ? ( got_note = 0; );
