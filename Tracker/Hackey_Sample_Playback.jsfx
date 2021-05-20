@@ -259,8 +259,8 @@ instance(current_playback, sample_location, speed, offset,
          vol, chan,
          pitch, sample_idx)
 global(samples_per_beat, note_schedule, note_schedule_ptr,
-       next_backlog, samplelocs, srate,  vol_change, )
-local(fs, fnote, r_speed
+       next_backlog, samplelocs, srate)
+local(fs, fnote, r_speed, vol_change,
       portamento_ds, curspeed, portamento_len, count, cv,dt)
 (
   note_schedule[] = -1337;
