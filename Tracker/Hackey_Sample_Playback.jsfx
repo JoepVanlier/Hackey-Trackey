@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.18
+version: 0.19
 author: Joep Vanlier
-changelog: Implement retrigger.
+changelog: Repair glide.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -265,27 +265,32 @@ local(fs, fnote, r_speed, vol_change,
 (
   note_schedule[] = -1337;
 
+  (effect == 12) ? (
+    (rand() > (effect_value / 127)) ? got_note = 0;
+  );
+
+  // Warning: this is a regression waiting to happen. Glide disables
+  // note offs, but should not disable pitch computation from happening
+  // since this is needed to know where to go.
+  got_note ? (
+    fs = sample_location[1];
+    fnote = sample_location[2];
+    r_speed = 2^((pitch - fnote)/12);
+    speed = r_speed * (fs / srate);
+  );
+
   /* If no effect is set, don't use one */
   // TO DO: Do not do this for portamento or vibrato
   (effect_value == -1) ? effect = -1;
 
   (effect == 9) ? (offset = effect_value / 127;);
   
-  (effect == 12) ? (
-    (rand() > (effect_value / 127)) ? got_note = 0;
-  );
-  
-  // Glide disables the note on and off.
+  // Glide disables the note on and off. See note on got_note above.
   (effect == 3) ? ( got_note = 0; );
   
   // Check whether this has a valid samplerate
   (got_note > 0) ? (
     sample_location = samplelocs[sample_idx];
-    fs = sample_location[1];
-    fnote = sample_location[2];
-    r_speed = 2^((pitch - fnote)/12);
-    speed = r_speed * (fs / srate);
-  
     sample_location[1] > 90 ? (
       (current_playback == 1) ? (
         this.play0.start_playback(sample_location, speed, 0.5 * offset * sample_location[]);
