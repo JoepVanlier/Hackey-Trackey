@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.19
+version: 0.20
 author: Joep Vanlier
-changelog: Repair glide.
+changelog: Implement arpeggiator.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -37,6 +37,8 @@ about:
   09 - Set offset
     Unlike the classic Protracker, this sets offset as fraction of the sample length.
     Since 7F (127) is the maximum in MIDI; 40 is the middle of the sample, 20 1/4th etc.
+  0A - Apreggiator
+    Arpeggiate. X and Y are note offsets in semitones. 0 continues previous value.
   0B - Retrigger
     Retrigger note.
     X - Volume reduction per trigger
@@ -252,16 +254,27 @@ global()
   );
 );
 
+function pitch_to_speed(sample_location, pitch)
+local(fs, fnote, r_speed, speed)
+global(srate)
+(
+  fs = sample_location[1];
+  fnote = sample_location[2];
+  r_speed = 2^((pitch - fnote)/12);
+  speed = r_speed * (fs / srate);
+);
+
 function commit_note()
 instance(current_playback, sample_location, speed, offset,
          got_note, effect_value, effect,
          last_porta,
+         last_arp_1, last_arp_2,
          vol, chan,
          pitch, sample_idx)
 global(samples_per_beat, note_schedule, note_schedule_ptr,
        next_backlog, samplelocs, srate)
-local(fs, fnote, r_speed, vol_change,
-      portamento_ds, curspeed, portamento_len, count, cv,dt)
+local(vol_change,
+      portamento_ds, curspeed, portamento_len, count, cv, dt)
 (
   note_schedule[] = -1337;
 
@@ -273,13 +286,10 @@ local(fs, fnote, r_speed, vol_change,
   // note offs, but should not disable pitch computation from happening
   // since this is needed to know where to go.
   got_note ? (
-    fs = sample_location[1];
-    fnote = sample_location[2];
-    r_speed = 2^((pitch - fnote)/12);
-    speed = r_speed * (fs / srate);
+    speed = pitch_to_speed(sample_location, pitch);
   );
 
-  /* If no effect is set, don't use one */
+  /* If no effect value is set, don't use one */
   // TO DO: Do not do this for portamento or vibrato
   (effect_value == -1) ? effect = -1;
 
@@ -342,6 +352,41 @@ local(fs, fnote, r_speed, vol_change,
     last_porta = effect_value;
   );
   
+  // Arpeggiator
+  (effect == 10) ? (
+    count = floor(effect_value / 16);
+    count > 0 ? last_arp_1 = count;
+    
+    count = effect_value % 16;
+    count > 0 ? last_arp_2 = count;
+    
+    dt = floor(samples_per_beat / 3);
+    (current_playback == 1) ? (
+      this.play1.speed = pitch_to_speed(sample_location, pitch);
+    ) : (
+      this.play0.speed = pitch_to_speed(sample_location, pitch);
+    );
+    
+    note_schedule_ptr = note_schedule;
+    note_schedule_ptr[] = dt; note_schedule_ptr += 1;
+    note_schedule_ptr[] = chan; note_schedule_ptr += 1; // Channel
+    note_schedule_ptr[] = vol; note_schedule_ptr += 1; // Volume
+    note_schedule_ptr[] = sample_idx; note_schedule_ptr += 1; // Sample
+    note_schedule_ptr[] = - pitch - last_arp_1; note_schedule_ptr += 1; // Pitch
+    
+    note_schedule_ptr[] = dt; note_schedule_ptr += 1;
+    note_schedule_ptr[] = chan; note_schedule_ptr += 1; // Channel
+    note_schedule_ptr[] = vol; note_schedule_ptr += 1; // Volume
+    note_schedule_ptr[] = sample_idx; note_schedule_ptr += 1; // Sample
+    note_schedule_ptr[] = - pitch - last_arp_2; note_schedule_ptr += 1; // Pitch
+    
+    note_schedule_ptr[] = -1337;
+    
+    next_backlog = dt;
+    note_schedule_ptr = note_schedule;
+  );
+  
+  // Retrigger
   (effect == 11) ? (
     note_schedule_ptr = note_schedule;
     
@@ -368,15 +413,23 @@ local(fs, fnote, r_speed, vol_change,
   );
 );
 
-function play_sample(sample_idx, pitch, offset)
-instance()
-global()
+function play_sample(sample_idx, new_pitch, offset)
+instance(current_playback)
+global(samplelocs)
 local()
 (
-  this.prepare_channel_for_messages();
-  this.schedule_note(sample_idx, pitch);
-  this.offset = offset;
-  this.commit_note();
+  new_pitch > 0 ? (
+    this.prepare_channel_for_messages();
+    this.schedule_note(sample_idx, new_pitch);
+    this.offset = offset;
+    this.commit_note();
+  ) : (
+    (current_playback == 1) ? (
+      this.play1.speed = pitch_to_speed(samplelocs[sample_idx], -new_pitch);
+    ) : (
+      this.play0.speed = pitch_to_speed(samplelocs[sample_idx], -new_pitch);
+    );
+  );
 );
 
 /* Channel update loop */
