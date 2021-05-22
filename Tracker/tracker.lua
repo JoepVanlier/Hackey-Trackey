@@ -8,7 +8,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.37
+@version 2.38
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -39,6 +39,8 @@
 
 --[[
  * Changelog:
+ * v2.38 (2021-05-22)
+   + Force termination of every effect (workaround to prevent MIDI chase from applying non-needed effects the first row of a loop).
  * v2.37 (2021-05-17)
    + Name the effect channels appropriately.
  * v2.36 (2021-05-17)
@@ -442,7 +444,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.31"
+tracker.name = "Hackey Trackey v2.38"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -2879,8 +2881,12 @@ function tracker:simulate_shallow_water(mode, movement)
   self.sim = sim
 end
 
+-- CC values are used to designate tracker FX. They are always terminated _within_ the row
+-- by setting the effect to 102 shortly after.
+tracker.sampler_effect_type = 12  -- The CC value used for setting effects in sampler mode.
+tracker.stop_cc_effect_value = 102 -- The CC used to force a stop after each effect.
 function tracker:customFieldDescription()
-  local sampler_effect_type = 12
+  local sampler_effect_type = self.sampler_effect_type
   local sampler_effect_value = 13
 
   local ftype, chan, row = self:getLocation()
@@ -2893,8 +2899,6 @@ function tracker:customFieldDescription()
       local modtype, cc_value = self:getCC( self.ypos - 1, self.CCjump * channel + sampler_effect_type )
       local modtype, cc_level = self:getCC( self.ypos - 1, self.CCjump * channel + sampler_effect_value )
       
-      local vibrato_periods = {"Continue", "128", "64", "32", "24", "16", "12", "8", "6", "5", "4", "3", "2", "1", "1/4", "1/8"}
-      
       if not cc_value then
         return
       elseif cc_value == 1 then
@@ -2904,6 +2908,7 @@ function tracker:customFieldDescription()
       elseif cc_value == 3 then
         return string.format("Glide (%d/8th semitones)", cc_level)
       elseif cc_value == 4 then
+        local vibrato_periods = {"Continue", "128", "64", "32", "24", "16", "12", "8", "6", "5", "4", "3", "2", "1", "1/4", "1/8"}
         return string.format("Vibrato (Depth: %d/7 s.t., Period: %s rows)", math.floor(cc_level/16), vibrato_periods[cc_level % 16 + 1])
       elseif cc_value == 5 then
         return string.format("Not implemented")
@@ -4392,6 +4397,7 @@ function tracker:createNote(inChar, shift)
     self.lastmodval = newval
     shouldMove = true
   elseif ( ( ftype == 'modtxt1' ) and validHex( char ) ) then
+    -- Set col CC
     local modtypes = data.modtypes
     local modtype, val = self:getCC( self.ypos - 1, modtypes[chan] )
     local newval = self:editCCField( val, 1, char )
@@ -5341,6 +5347,12 @@ function tracker:assignCC2(ppq, modtype, modval)
   local row = math.floor( self.rowPerPpq * ppq + self.eps )
 
   if ( ppq and modval and modtype and ( modtype > 0 ) ) then
+    if self.tracker_samples and ((modtype % self.CCjump) == self.sampler_effect_type and (modval == self.stop_cc_effect_value)) then
+      -- There's a CC value that is used to "terminate" effects in sampler mode. This is to prevent effects from
+      -- previous patterns being replayed on top of this pattern when midi cc's are chased.
+      return
+    end
+  
     local col = self:CCToColumn(modtype)
     local hexVal = string.format('%02X', math.floor(modval) )
     data.modtxt1[col*rows+row] = hexVal:sub(1,1)
@@ -6052,12 +6064,18 @@ function tracker:addCCPt_channel(row, modtype, value)
 
   -- Is it an actual MIDI event or a Program Change?
   if ( modtype >= self.PCloc ) then
-    modtype = modtype - self.PCloc
-    ch = math.floor(modtype / self.CCjump)
+    local modtype = modtype - self.PCloc
+    local ch = math.floor(modtype / self.CCjump)
     reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 192, ch, value, 0)
   else
-    ch = math.floor(modtype / self.CCjump)
-    reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 176, ch, modtype - ch*self.CCjump, value)
+    local ch = math.floor(modtype / self.CCjump)
+    local cc_type = modtype - ch*self.CCjump
+    reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 176, ch, cc_type, value)
+    if self.tracker_samples and cc_type == self.sampler_effect_type then
+      -- There's a CC value that is used to "terminate" effects in sampler mode. This is to prevent effects from
+      -- previous patterns being replayed on top of this pattern when midi cc's are chased.
+      reaper.MIDI_InsertCC(self.take, false, false, ppqStart + self:rowToPpq(row/8), 176, ch, cc_type, self.stop_cc_effect_value)
+    end
   end
 end
 
