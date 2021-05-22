@@ -8,7 +8,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.39
+@version 2.40
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -39,6 +39,8 @@
 
 --[[
  * Changelog:
+ * v2.40 (2021-05-22)
+   + Improve labelling panning.
  * v2.39 (2021-05-22)
    + Bugfix termination markers.
    + Add arpeggiator.
@@ -447,7 +449,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.39"
+tracker.name = "Hackey Trackey v2.40"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -2922,7 +2924,7 @@ function tracker:customFieldDescription()
       --elseif cc_value == 7 then
       --  return string.format("Tremolo (Speed: %d/7, Depth: %d)", math.floor(cc_level/16), math.floor(cc_level % 16))
       elseif cc_value == 8 then
-        return string.format("Set Panning (%d)", cc_level)
+        return string.format("Set Panning (L: %d, R: %d)", math.ceil(100 - 100*cc_level/127), math.floor(100*cc_level/127))
       elseif cc_value == 9 then
         return string.format("Play from offset (%d %%)", math.floor(100 * (cc_level / 128)))
       elseif cc_value == 10 then

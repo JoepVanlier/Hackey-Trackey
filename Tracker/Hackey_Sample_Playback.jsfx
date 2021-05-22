@@ -34,6 +34,8 @@ about:
     Y is speed (value from 0 to F).
       Continue, 128, 64, 32, 24, 16, 12, 8, 6, 5, 4, 3, 2, 1, 0.25, 0.125
     0 continues the previous value.
+  08 - Panning
+    Panning.
   09 - Set offset
     Unlike the classic Protracker, this sets offset as fraction of the sample length.
     Since 7F (127) is the maximum in MIDI; 40 is the middle of the sample, 20 1/4th etc.
@@ -66,6 +68,17 @@ TOTAL_MEM = N_SAMPLES * MAX_SAMPLE_DURATION;
 
 (ticks_per_beat == 0) ? ticks_per_beat = 4;
 
+function set_pan(pan)
+local(p)
+global()
+instance(lpan, rpan)
+(
+  pan > 0.99 ? pan = 1;
+  p = 0.5 * $pi * pan;
+  lpan = cos(p);
+  rpan = sin(p);
+);
+
 function chan_default(idx)
 instance(vol, chan)
 global()
@@ -73,6 +86,7 @@ local()
 (
   vol = 1;
   chan = idx;
+  this.set_pan(0.5);
 );
 
 !initialized ? (
@@ -336,6 +350,10 @@ local(vol_change,
     last_porta = effect_value;
   );
   
+  (effect == 8) ? (
+    this.set_pan(effect_value/128);
+  );
+  
   // Glide
   (effect == 3) ? (
     (effect_value == 0) ? effect_value = last_porta;
@@ -473,19 +491,21 @@ global(N_SAMPLES)
 );
 
 function play_channel()
-instance(vol, cvol)
+instance(vol, cleft, cright, lpan, rpan)
 global(ssl, ssr)
 (
-  cvol = 0.998 * cvol + 0.002 * vol;
+  cleft = 0.998 * cleft + 0.002 * lpan * vol;
+  cright = 0.998 * cright + 0.002 * rpan * vol;
+  
   this.play0.playing ? (
     this.play0.play();
-    ssl += this.play0.outL * cvol;
-    ssr += this.play0.outR * cvol;
+    ssl += this.play0.outL * cleft;
+    ssr += this.play0.outR * cright;
   );
   this.play1.playing ? (
     this.play1.play();
-    ssl += this.play1.outL * cvol;
-    ssr += this.play1.outR * cvol;
+    ssl += this.play1.outL * cleft;
+    ssr += this.play1.outR * cright;
   );
 );
 
