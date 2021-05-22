@@ -8,7 +8,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.38
+@version 2.39
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -39,6 +39,9 @@
 
 --[[
  * Changelog:
+ * v2.39 (2021-05-22)
+   + Bugfix termination markers.
+   + Add arpeggiator.
  * v2.38 (2021-05-22)
    + Force termination of every effect (workaround to prevent MIDI chase from applying non-needed effects the first row of a loop).
  * v2.37 (2021-05-17)
@@ -444,7 +447,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.38"
+tracker.name = "Hackey Trackey v2.39"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -2922,6 +2925,15 @@ function tracker:customFieldDescription()
         return string.format("Set Panning (%d)", cc_level)
       elseif cc_value == 9 then
         return string.format("Play from offset (%d %%)", math.floor(100 * (cc_level / 128)))
+      elseif cc_value == 10 then
+        function to_txt(s)
+          if s == 0 then
+            return "continue"
+          else
+            return s
+          end
+        end
+        return string.format("Arpeggiate (%s, %s semitones)", to_txt(math.floor(cc_level/16)), to_txt(cc_level % 16))
       elseif cc_value == 11 then
         return string.format("Retrigger (Vol: %d %%, Count: %d)", math.floor(100 - 100*cc_level/16/8), ((cc_level % 16)))
       elseif cc_value == 12 then
@@ -6074,7 +6086,7 @@ function tracker:addCCPt_channel(row, modtype, value)
     if self.tracker_samples and cc_type == self.sampler_effect_type then
       -- There's a CC value that is used to "terminate" effects in sampler mode. This is to prevent effects from
       -- previous patterns being replayed on top of this pattern when midi cc's are chased.
-      reaper.MIDI_InsertCC(self.take, false, false, ppqStart + self:rowToPpq(row/8), 176, ch, cc_type, self.stop_cc_effect_value)
+      reaper.MIDI_InsertCC(self.take, false, false, ppqStart + math.floor(self:rowToPpq(1/8)), 176, ch, cc_type, self.stop_cc_effect_value)
     end
   end
 end
