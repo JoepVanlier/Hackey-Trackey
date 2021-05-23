@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.25
+version: 0.26
 author: Joep Vanlier
-changelog: Add no-selection delete (deletes whole sample).
+changelog: Add CTRL + R as hotkey for reverse.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -1256,15 +1256,23 @@ global(samplelocs, selected_sample, SAMPLE_HEADER, SAMPLE_DURATION, captured,
     reset_zoom = 1;
   );
   
+  ((current_char == 18) && (mouse_cap == 4)) ? (
+    left = min(block_start, block_end);
+    right = max(block_start, block_end);
+    ((right - left) > 2) ? (
+      reverse(left, right);
+    );
+  );
+  
   (is_over && !captured && mouse_press(2)) ? (
     gfx_x = mouse_x;
     gfx_y = mouse_y;
     left = min(block_start, block_end);
     right = max(block_start, block_end);
     (abs(block_end - block_start) < 5) ? (
-      menu_selection = gfx_showmenu("#Zoom|Reset Zoom||#Set loop|#Set loop (bidirectional)|Remove loop||#Reverse||#Fade in|#Fade out||#Crop to selection||#Copy (Ctrl + C)|Paste (Ctrl + V)");
+      menu_selection = gfx_showmenu("#Zoom|Reset Zoom||#Set loop|#Set loop (bidirectional)|Remove loop||#Reverse (Ctrl + R)||#Fade in|#Fade out||#Crop to selection||#Copy (Ctrl + C)|Paste (Ctrl + V)");
     ) : (
-      menu_selection = gfx_showmenu("Zoom|Reset Zoom||Set loop|Set loop (bidirectional)|Remove loop||Reverse||Fade in|Fade out||Crop to selection||Copy (Ctrl + C)|Paste (Ctrl + V)");
+      menu_selection = gfx_showmenu("Zoom|Reset Zoom||Set loop|Set loop (bidirectional)|Remove loop||Reverse (Ctrl + R)||Fade in|Fade out||Crop to selection||Copy (Ctrl + C)|Paste (Ctrl + V)");
     );
     (menu_selection == 1) ? (
       disp_range_len = max(10, abs(block_end - block_start));
