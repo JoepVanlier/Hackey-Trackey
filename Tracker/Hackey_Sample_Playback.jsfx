@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.23
+version: 0.24
 author: Joep Vanlier
-changelog: Tweak play.
+changelog: Add sample copy paste.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -565,6 +565,7 @@ loop(N_SAMPLES,
 );
 
 freemem = (scratchloc = freemem) + MAX_SAMPLE_DURATION;
+freemem = (copyloc = freemem) + MAX_SAMPLE_DURATION;
 
 freemem = (midimem = freemem) + 32768;
 midi.initializeMIDI(midimem, 1, 1);
@@ -1109,6 +1110,27 @@ global(scratchloc)
   );
 );
 
+function copy(sample_loc, left, right)
+local()
+global(copyloc, SAMPLE_HEADER)
+(
+  memset(copyloc, 0, SAMPLE_HEADER);
+  copyloc[] = right - left;
+  copyloc[1] = sample_loc[1];
+  copyloc[2] = sample_loc[2];
+  copyloc[3] = -1;
+  copyloc[4] = -1;
+  copyloc[5] = 0;
+  memcpy(copyloc + SAMPLE_HEADER, left, right - left);
+);
+
+function paste(target)
+local()
+global(copyloc, SAMPLE_HEADER)
+(
+  memcpy(target, copyloc, SAMPLE_HEADER + copyloc[]);
+);
+
 function fade(left, right, in_or_out)
 local(fade_len, ptr, dx, lvol, lv2)
 global(finval)
@@ -1170,7 +1192,7 @@ global(samplelocs, selected_sample, SAMPLE_HEADER, captured,
     block_start = floor(block_start * 0.5) * 2;
     block_end = floor(block_end * 0.5) * 2;
     
-    ((time_precise() - last_click_time) < 0.25) ? (
+    ((time_precise() - last_click_time) < 0.5) ? (
       block_start = sample_start;
       block_end = sample_start + sample_len; 
       captured = 0;
@@ -1217,9 +1239,9 @@ global(samplelocs, selected_sample, SAMPLE_HEADER, captured,
     left = min(block_start, block_end);
     right = max(block_start, block_end);
     (abs(block_end - block_start) < 5) ? (
-      menu_selection = gfx_showmenu("#Zoom|Reset Zoom||#Set loop|#Set loop (bidirectional)|Remove loop||#Reverse||#Fade in|#Fade out||#Crop to selection");
+      menu_selection = gfx_showmenu("#Zoom|Reset Zoom||#Set loop|#Set loop (bidirectional)|Remove loop||#Reverse||#Fade in|#Fade out||#Crop to selection||#Copy|Paste");
     ) : (
-      menu_selection = gfx_showmenu("Zoom|Reset Zoom||Set loop|Set loop (bidirectional)|Remove loop||Reverse||Fade in|Fade out||Crop to selection");
+      menu_selection = gfx_showmenu("Zoom|Reset Zoom||Set loop|Set loop (bidirectional)|Remove loop||Reverse||Fade in|Fade out||Crop to selection||Copy|Paste");
     );
     (menu_selection == 1) ? (
       disp_range_len = max(10, abs(block_end - block_start));
@@ -1248,6 +1270,11 @@ global(samplelocs, selected_sample, SAMPLE_HEADER, captured,
       
       block_end = 0;
       block_start = 0;
+    ) : (menu_selection == 10) ? (
+      copy(samplelocs[selected_sample], left, right);
+    ) : (menu_selection == 11) ? (
+      paste(samplelocs[selected_sample]);
+      reset_zoom = 1;
     );
   );
   
