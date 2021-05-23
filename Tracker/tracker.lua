@@ -8,7 +8,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.42
+@version 2.43
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -39,6 +39,8 @@
 
 --[[
  * Changelog:
+ * v2.43 (2021-05-24)
+   + Make sure rec preview can be heard.
  * v2.42 (2021-05-23)
    + Force column mode when in sampler mode.
  * v2.41 (2021-05-23)
@@ -7797,13 +7799,17 @@ end
 function tracker:playNote(chan, pitch, vel)
   self:checkArmed()
   
-  local line_played = self.line_played or {}   
+  local line_played = self.line_played or {}
+  local ch = 1
   if ( self.armed == 1 and not (self.cfg.readfrommidi == 1) ) then
-    local ch = 1
-    
     if self.cfg.releaseNoteOffs == 0 then
       self:stopNote()
-      reaper.StuffMIDIMessage(0, 0x90 + ch - 1, pitch, vel)
+      if self.outChannel == 0 then
+        ch = chan
+      else
+        ch = self.outChannel
+      end
+      reaper.StuffMIDIMessage(0, 0x90 + chan, pitch, vel)
     else
       -- Only create note if it isn't already playing
       local found = false
@@ -7816,13 +7822,13 @@ function tracker:playNote(chan, pitch, vel)
       end
       if not found then
         if self.outChannel == 0 then
-          reaper.StuffMIDIMessage(0, 0x90 + chan - 1, pitch, vel)
+          ch = chan
         else
-          reaper.StuffMIDIMessage(0, 0x90 + self.outChannel - 1, pitch, vel)
+          ch = self.outChannel
         end
+        reaper.StuffMIDIMessage(0, 0x90 + ch, pitch, vel)
       end
     end
-    
     self.lastNote = {ch, pitch, vel}
     
     line_played[ch] = {}
@@ -7837,7 +7843,7 @@ function tracker:stopNote()
   if ( self.armed == 1 ) then
     if ( self.lastNote ) then
       local lastNote = self.lastNote
-      reaper.StuffMIDIMessage(0, 0x80 + lastNote[1] - 1, lastNote[2], lastNote[3])
+      reaper.StuffMIDIMessage(0, 0x80 + lastNote[1], lastNote[2], lastNote[3])
       self.lastNote = nil
     end
   end
@@ -7851,7 +7857,7 @@ function tracker:stopAllNotes()
       local line_played = self.line_played
       for c = 1,self.channels do 
         if self.line_played[c] then
-          reaper.StuffMIDIMessage(0, 0x80 + c - 1, line_played[c][0], line_played[c][1])
+          reaper.StuffMIDIMessage(0, 0x80 + c, line_played[c][0], line_played[c][1])
         end
       end
     end
@@ -8342,15 +8348,15 @@ function tracker:playLine()
     
     if (noteOff) then
       if line_played[c] then
-        reaper.StuffMIDIMessage(0, 0x80 + c - 1, line_played[c][0], line_played[c][1])
+        reaper.StuffMIDIMessage(0, 0x80 + c, line_played[c][0], line_played[c][1])
       end
     elseif noteToEdit then
       if line_played[c] then
-         reaper.StuffMIDIMessage(0, 0x80 + c - 1, line_played[c][0], line_played[c][1])
+         reaper.StuffMIDIMessage(0, 0x80 + c, line_played[c][0], line_played[c][1])
       end
     
       local pitch, vel = table.unpack(notes[noteToEdit])
-      reaper.StuffMIDIMessage(0, 0x90 + c - 1, pitch, vel)
+      reaper.StuffMIDIMessage(0, 0x90 + c, pitch, vel)
       line_played[c] = {}
       line_played[c][0] = pitch
       line_played[c][1] = vel
