@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.21
+version: 0.22
 author: Joep Vanlier
-changelog: Bugfix vibrato and stopping mechanism.
+changelog: Bugfix sample location selector.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -323,6 +323,7 @@ local(vol_change,
   // note offs, but should not disable pitch computation from happening
   // since this is needed to know where to go.
   got_note ? (
+    sample_location = samplelocs[sample_idx];
     speed = pitch_to_speed(sample_location, pitch);
   );
 
@@ -336,7 +337,6 @@ local(vol_change,
   
   // Check whether this has a valid samplerate
   (got_note > 0) ? (
-    sample_location = samplelocs[sample_idx];
     sample_location[1] > 90 ? (
       (current_playback == 1) ? (
         this.play0.start_playback(sample_location, speed, 0.5 * offset * sample_location[]);
