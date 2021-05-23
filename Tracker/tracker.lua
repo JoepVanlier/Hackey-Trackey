@@ -8,7 +8,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.41
+@version 2.42
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -39,6 +39,8 @@
 
 --[[
  * Changelog:
+ * v2.42 (2021-05-23)
+   + Force column mode when in sampler mode.
  * v2.41 (2021-05-23)
    + Add vibrato.
  * v2.40 (2021-05-22)
@@ -451,7 +453,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.40"
+tracker.name = "Hackey Trackey v2.42"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -3107,7 +3109,7 @@ function tracker:printGrid()
     if ( self.take ) then
       local current_description = description[tracker.xpos]
       
-      if self.tracker_samples then
+      if (self.tracker_samples == 1) then
         current_description = self:customFieldDescription() or current_description
       end
       gfx.printf("%s", current_description)
@@ -5363,7 +5365,7 @@ function tracker:assignCC2(ppq, modtype, modval)
   local row = math.floor( self.rowPerPpq * ppq + self.eps )
 
   if ( ppq and modval and modtype and ( modtype > 0 ) ) then
-    if self.tracker_samples and ((modtype % self.CCjump) == self.sampler_effect_type and (modval == self.stop_cc_effect_value)) then
+    if (self.tracker_samples == 1) and ((modtype % self.CCjump) == self.sampler_effect_type and (modval == self.stop_cc_effect_value)) then
       -- There's a CC value that is used to "terminate" effects in sampler mode. This is to prevent effects from
       -- previous patterns being replayed on top of this pattern when midi cc's are chased.
       return
@@ -6087,7 +6089,7 @@ function tracker:addCCPt_channel(row, modtype, value)
     local ch = math.floor(modtype / self.CCjump)
     local cc_type = modtype - ch*self.CCjump
     reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 176, ch, cc_type, value)
-    if self.tracker_samples and cc_type == self.sampler_effect_type then
+    if (self.tracker_samples == 1) and cc_type == self.sampler_effect_type then
       -- There's a CC value that is used to "terminate" effects in sampler mode. This is to prevent effects from
       -- previous patterns being replayed on top of this pattern when midi cc's are chased.
       reaper.MIDI_InsertCC(self.take, false, false, ppqStart + math.floor(self:rowToPpq(1/8)), 176, ch, cc_type, self.stop_cc_effect_value)
@@ -6512,7 +6514,6 @@ end
 --------------------------------------------------------------
 function tracker:update()
   local reaper = reaper
-
   if ( self.debug == 1 ) then
     print( "Updating the grid ..." )
   end
@@ -6566,7 +6567,7 @@ function tracker:update()
       ---------------------------------------------
       local skip = self.CCjump
       if ( self.showMod == 1 ) then
-        local modmode = self.modMode == 1 or self.cfg.channelCCs == 1 or self.tracker_samples == 1
+        local modmode = self.modMode == 1 or self.cfg.channelCCs == 1 or (self.tracker_samples == 1)
         if ( modmode ) then
           local all = self:getOpenCC()
           for i=0,ccevtcntOut do
@@ -8526,6 +8527,11 @@ local function updateLoop()
   local tracker = tracker
   tracker.updateLoop = updateLoop
 
+  if (tracker.tracker_samples == 1) and tracker.outChannel ~= 0 then
+    tracker:setOutChannel(0)
+    tracker.outChannel = 0
+  end
+
   -- Check if the note data or take changed, if so, update the note contents
   tracker:checkArmed()
   if (reaper.GetPlayState() & 4 == 0) or (self.armed == 0) or (tracker.cfg.blockWhileRecording == 0) then
@@ -9440,11 +9446,17 @@ local function updateLoop()
       if ( tracker.outChannel > 16 ) then
         tracker.outChannel = 0
       end
+      if tracker.tracker_samples == 1 then
+        tracker.outChannel = 0
+      end
       tracker:setOutChannel( tracker.outChannel )
     elseif inputs('outchandown') and tracker.take then
       tracker.outChannel = tracker.outChannel - 1
       if ( tracker.outChannel < 0) then
         tracker.outChannel = 16
+      end
+      if tracker.tracker_samples == 1 then
+        tracker.outChannel = 0
       end
       tracker:setOutChannel( tracker.outChannel )
     elseif inputs('advanceup') and tracker.take then
