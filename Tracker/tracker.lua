@@ -8,7 +8,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.40
+@version 2.41
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -39,6 +39,8 @@
 
 --[[
  * Changelog:
+ * v2.41 (2021-05-23)
+   + Add vibrato.
  * v2.40 (2021-05-22)
    + Improve labelling panning.
  * v2.39 (2021-05-22)
@@ -2913,7 +2915,7 @@ function tracker:customFieldDescription()
       elseif cc_value == 3 then
         return string.format("Glide (%d/8th semitones)", cc_level)
       elseif cc_value == 4 then
-        local vibrato_periods = {"Continue", "128", "64", "32", "24", "16", "12", "8", "6", "5", "4", "3", "2", "1", "1/4", "1/8"}
+        local vibrato_periods = {"Continue", "32", "24", "16", "12", "8", "6", "5", "4", "3", "2", "3/2", "1", "1/2", "1/4", "1/8"}
         return string.format("Vibrato (Depth: %d/7 s.t., Period: %s rows)", math.floor(cc_level/16), vibrato_periods[cc_level % 16 + 1])
       elseif cc_value == 5 then
         return string.format("Not implemented")

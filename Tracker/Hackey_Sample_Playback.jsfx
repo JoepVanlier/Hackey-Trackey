@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.20
+version: 0.21
 author: Joep Vanlier
-changelog: Add vibrato. Make MIDI processor ignore the chase-avoidance solution for CCs.
+changelog: Bugfix vibrato and stopping mechanism.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -149,7 +149,7 @@ function play()
 instance(start_ptr, read_ptr, x_fade_position, fade_start,
          outL, outR, playing, fade_level, position, speed,
          loop_start, loop_stop, loop_type,
-         portamento_len, portamento_ds,
+         portamento_len, portamento_ds, vib_len,
          vib_depth, vib_speed, vib_phase)
 global(crossfade_samples, pi_inv_crossfade_samples, eco, play_state)
 local(frac, ism1, is0, is1, is2, id0, id1, id2, id3)
@@ -164,6 +164,8 @@ local(frac, ism1, is0, is1, is2, id0, id1, id2, id3)
     x_fade_position += 1;
     (x_fade_position == 0) ? (
       playing = 0; // Terminate playback
+      vib_len = 0;
+      portamento_len = 0;
     );
   ) : (
     // Fade out if we're approaching the end of the recorded sample
@@ -220,10 +222,14 @@ local(frac, ism1, is0, is1, is2, id0, id1, id2, id3)
   outL *= fade_level;
   outR *= fade_level;
   
-  (vib_phase != -1337) ? (
-    vib_phase += vib_speed;
-    vib_phase > 2 ? vib_phase -= 2;
-    position += speed * exp(vib_depth * (2 * abs(vib_phase - 1) - 1));
+  (vib_len > 0) ? (
+    (vib_len == 1) ? ( vib_phase = -1337; )
+    : (
+      vib_phase += vib_speed;
+      (vib_phase > 1) ? vib_phase -= 2;
+      position += speed * exp(vib_depth * (2 * abs(vib_phase) - 1));
+    );
+    vib_len -= 1;
   ) : (
     position += speed;
   );
@@ -290,7 +296,7 @@ function vibrato_speed(speed_idx)
 local()
 global()
 (
-  (speed_idx == 1) ? ( 0.03125 ) : (speed_idx == 2) ? ( 0.041666666666666664 ) : (speed_idx == 3) ? ( 0.0625 ) : (speed_idx == 4) ? ( 0.08333333333333333 ) : (speed_idx == 5) ? ( 0.125 ) : (speed_idx == 6) ? ( 0.16666666666666666 ) : (speed_idx == 7) ? ( 0.2 ) : (speed_idx == 8) ? ( 0.25 ) : (speed_idx == 9) ? ( 0.3333333333333333 ) : (speed_idx == 10) ? ( 0.5 ) : (speed_idx == 11) ? ( 0.6666666666666666 ) : (speed_idx == 12) ? ( 1.0 ) : (speed_idx == 13) ? ( 2.0 ) : (speed_idx == 14) ? ( 4.0 ) : (speed_idx == 15) ? ( 8.0 )
+  (speed_idx == 1) ? ( 0.0625 ) : (speed_idx == 2) ? ( 0.08333333333333333 ) : (speed_idx == 3) ? ( 0.125 ) : (speed_idx == 4) ? ( 0.16666666666666666 ) : (speed_idx == 5) ? ( 0.25 ) : (speed_idx == 6) ? ( 0.3333333333333333 ) : (speed_idx == 7) ? ( 0.4 ) : (speed_idx == 8) ? ( 0.5 ) : (speed_idx == 9) ? ( 0.6666666666666666 ) : (speed_idx == 10) ? ( 1.0 ) : (speed_idx == 11) ? ( 1.3333333333333333 ) : (speed_idx == 12) ? ( 2.0 ) : (speed_idx == 13) ? ( 4.0 ) : (speed_idx == 14) ? ( 8.0 ) : (speed_idx == 15) ? ( 16.0 )
 );
 
 function commit_note()
@@ -321,7 +327,6 @@ local(vol_change,
   );
 
   /* If no effect value is set, don't use one */
-  // TO DO: Do not do this for portamento or vibrato
   (effect_value == -1) ? effect = -1;
 
   (effect == 9) ? (offset = effect_value / 127;);
@@ -370,24 +375,24 @@ local(vol_change,
   (effect == 4) ? (
     // The log 2 is to make sure we can use exp, instead of 2^in the sample function.
     count = effect_value / 16;
-    vib_depth = count > 1 ? log(2) * floor(count) / (8 * 12) : last_vib_depth;
+    vib_depth = count > 1 ? log(2) * floor(count) / (7 * 12) : last_vib_depth;
     count = effect_value % 16;
     vib_speed = count > 1 ? vibrato_speed(count) / samples_per_beat : last_vib_speed;
     
     (current_playback == 0) ? (
-      (this.play0.vib_phase == -1337) ? this.play0.vib_phase = 1.5;
+      (this.play0.vib_phase < -1336) ? this.play0.vib_phase = 0.5;
       this.play0.vib_depth = vib_depth;
       this.play0.vib_speed = vib_speed;
+      this.play0.vib_len = samples_per_beat + 2;
     ) : (
-      (this.play1.vib_phase == -1337) ? this.play1.vib_phase = 1.5;
+      (this.play1.vib_phase < -1336) ? this.play1.vib_phase = 0.5;
       this.play1.vib_depth = vib_depth;
       this.play1.vib_speed = vib_speed;
+      this.play1.vib_len = samples_per_beat + 2;
     );
+    
     last_vib_speed = vib_speed;
     last_vib_depth = vib_depth;
-  ) : (
-    this.play0.vib_phase = -1337;
-    this.play1.vib_phase = -1337;
   );
   
   (effect == 8) ? (
