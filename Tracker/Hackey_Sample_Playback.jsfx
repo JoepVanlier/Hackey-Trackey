@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.24
+version: 0.25
 author: Joep Vanlier
-changelog: Add CTRL + C, CTRL + V.
+changelog: Add no-selection delete (deletes whole sample).
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -1166,7 +1166,7 @@ instance(sample_start, sample_len,
          disp_range_start, disp_range_len,
          block_start, block_end)
 local(is_over, menu_selection, fractional_pos, center, loop_start, loop_stop, mouse_pos_in_samples, left, right)
-global(samplelocs, selected_sample, SAMPLE_HEADER, captured,
+global(samplelocs, selected_sample, SAMPLE_HEADER, SAMPLE_DURATION, captured,
        DRAG_SAMPLE, DRAG_LOOP_POINT_1, DRAG_LOOP_POINT_2,
        updated_loop, current_char, last_click_time,
        mouse_x, mouse_y, mouse_wheel, mouse_cap,
@@ -1221,19 +1221,24 @@ global(samplelocs, selected_sample, SAMPLE_HEADER, captured,
   
   // Delete
   (current_char == 6579564) ? (
-    left = min(block_start, block_end);
-    right = max(block_start, block_end);
-    memcpy(left, right, sample_len - right + sample_start);
-    
-    memset(sample_start + sample_len - (right - left), 0, right - left);
-    samplelocs[selected_sample][] -= right - left;
-    sample_len = samplelocs[selected_sample][];
-    
-    // Clamp visible range to now
-    disp_range_len = min(disp_range_len, sample_len - (disp_range_start - sample_start));
-    
-    block_end = 0;
-    block_start = 0;
+    ( (block_start == 0) && (block_end == 0) ) ? (
+      memset(samplelocs[selected_sample], 0, SAMPLE_HEADER + SAMPLE_DURATION);
+      reset_zoom = 1;
+    ) : (
+      left = min(block_start, block_end);
+      right = max(block_start, block_end);
+      memcpy(left, right, sample_len - right + sample_start);
+      
+      memset(sample_start + sample_len - (right - left), 0, right - left);
+      samplelocs[selected_sample][] -= right - left;
+      sample_len = samplelocs[selected_sample][];
+      
+      // Clamp visible range to now
+      disp_range_len = min(disp_range_len, sample_len - (disp_range_start - sample_start));
+      
+      block_end = 0;
+      block_start = 0;
+    );
   );
   
   ((current_char == 3) && (mouse_cap == 4)) ? (
