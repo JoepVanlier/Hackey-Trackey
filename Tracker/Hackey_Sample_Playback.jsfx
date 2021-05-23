@@ -2,7 +2,7 @@ desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
 version: 0.24
 author: Joep Vanlier
-changelog: Add sample copy paste.
+changelog: Add CTRL + C, CTRL + V.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -49,6 +49,8 @@ about:
     
 
 options:gmem=saike_HT_sample
+options:want_all_kb
+options:no_meter
 in_pin:left input
 in_pin:right input
 out_pin:left output
@@ -1167,8 +1169,9 @@ local(is_over, menu_selection, fractional_pos, center, loop_start, loop_stop, mo
 global(samplelocs, selected_sample, SAMPLE_HEADER, captured,
        DRAG_SAMPLE, DRAG_LOOP_POINT_1, DRAG_LOOP_POINT_2,
        updated_loop, current_char, last_click_time,
-       mouse_x, mouse_y, mouse_wheel,
-       gfx_x, gfx_y, gfx_a)
+       mouse_x, mouse_y, mouse_wheel, mouse_cap,
+       gfx_x, gfx_y, gfx_a,
+       current_char_testy)
 (
   draw_box(cx, cy, ww, hh);
   draw_waveform(cx, cy, ww, 0.5 * hh, disp_range_start, disp_range_len);
@@ -1233,15 +1236,30 @@ global(samplelocs, selected_sample, SAMPLE_HEADER, captured,
     block_start = 0;
   );
   
+  ((current_char == 3) && (mouse_cap == 4)) ? (
+    (abs(block_end - block_start) > 5) ? (
+      left = min(block_start, block_end);
+      right = max(block_start, block_end);
+      copy(samplelocs[selected_sample], left, right);
+    ) : ( (block_start == 0) && (block_end == 0) ) ? (
+      copy(samplelocs[selected_sample], sample_start, sample_start + sample_len);
+    );
+  );
+  
+  ((current_char == 22) && (mouse_cap == 4)) ? (
+    paste(samplelocs[selected_sample]);
+    reset_zoom = 1;
+  );
+  
   (is_over && !captured && mouse_press(2)) ? (
     gfx_x = mouse_x;
     gfx_y = mouse_y;
     left = min(block_start, block_end);
     right = max(block_start, block_end);
     (abs(block_end - block_start) < 5) ? (
-      menu_selection = gfx_showmenu("#Zoom|Reset Zoom||#Set loop|#Set loop (bidirectional)|Remove loop||#Reverse||#Fade in|#Fade out||#Crop to selection||#Copy|Paste");
+      menu_selection = gfx_showmenu("#Zoom|Reset Zoom||#Set loop|#Set loop (bidirectional)|Remove loop||#Reverse||#Fade in|#Fade out||#Crop to selection||#Copy (Ctrl + C)|Paste (Ctrl + V)");
     ) : (
-      menu_selection = gfx_showmenu("Zoom|Reset Zoom||Set loop|Set loop (bidirectional)|Remove loop||Reverse||Fade in|Fade out||Crop to selection||Copy|Paste");
+      menu_selection = gfx_showmenu("Zoom|Reset Zoom||Set loop|Set loop (bidirectional)|Remove loop||Reverse||Fade in|Fade out||Crop to selection||Copy (Ctrl + C)|Paste (Ctrl + V)");
     );
     (menu_selection == 1) ? (
       disp_range_len = max(10, abs(block_end - block_start));
