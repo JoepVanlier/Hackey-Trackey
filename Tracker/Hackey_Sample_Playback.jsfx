@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.22
+version: 0.23
 author: Joep Vanlier
-changelog: Bugfix sample location selector.
+changelog: Tweak play.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -176,10 +176,10 @@ local(frac, ism1, is0, is1, is2, id0, id1, id2, id3)
     
     (loop_start > 0) ? (
       (loop_type == 0) ? (
-        play_state ? (position > loop_stop) ? position -= (loop_stop - loop_start);
+        (position > loop_stop) ? position -= (loop_stop - loop_start);
       ) : (
         (position > loop_stop) ? (
-          play_state ? speed = - speed;
+          speed = - speed;
         ) : ( position < loop_start ) ? (
           speed = abs(speed);
         );
@@ -846,7 +846,8 @@ global(DROPPED_FILE_STR, MAX_SAMPLE_DURATION, SAMPLE_HEADER, ref_note)
 
 function control_rect(x, y, w, h, r, g, b, a, label)
 local(ww, hh)
-global(font_color_r, font_color_g, font_color_b, font_color_a, gfx_x, gfx_y, TINY_FONT)
+global(font_color_r, font_color_g, font_color_b, font_color_a, gfx_x, gfx_y, TINY_FONT,
+       mouse_x, mouse_y)
 (
   gfx_set(r, g, b, a*.7);
   gfx_rect(x, y, w, h);
@@ -859,6 +860,8 @@ global(font_color_r, font_color_g, font_color_b, font_color_a, gfx_x, gfx_y, TIN
   gfx_x = x + 0.5 * (w - ww);
   gfx_y = y + 0.5 * (h - hh);
   gfx_printf(label);
+  
+  (mouse_x > x) && (mouse_x < (x+w)) && (mouse_y > y) && (mouse_y < (y+h))
 );
 
 function mouse_over(x, y, w, h)
@@ -892,7 +895,7 @@ local()
 function process_pad(x, y, w, h, idx, sample_location)
 global(mouse_x, mouse_y, mouse_cap, last_cap, captured,
        file_dropped, DROPPED_FILE_STR,
-       preview_channel.play_sample, selected_sample)
+       preview_channel.play_sample, preview_channel.stop_sample, selected_sample)
 local(is_over)
 (
   is_over = mouse_over(x, y, w, h);
@@ -906,9 +909,20 @@ local(is_over)
     file_dropped = gfx_getdropfile(file_dropped, DROPPED_FILE_STR) ? file_dropped : -1;
   );
   
-  ((last_cap & 1) == 0) && (mouse_cap & 1) && is_over && !captured ? (
-    preview_channel.play_sample(idx, 69, 0);
+  ((last_cap & 1) == 0) && (mouse_cap & 1) && !captured && is_over ? (
     selected_sample = idx;
+  );
+  
+  control_rect(x, y + h - 15, 30, 15, 0.04, 0.07, 0.03, 1.0, "Play") ? (
+    ((last_cap & 1) == 0) && (mouse_cap & 1) && is_over && !captured ? (
+      preview_channel.play_sample(idx, 69, 0);
+    );    
+  );
+    
+  control_rect(x + 30, y + h - 15, 30, 15, 0.07, 0.04, 0.03, 1.0, "Stop") ? (
+    ((last_cap & 1) == 0) && (mouse_cap & 1) && is_over && !captured ? (
+      preview_channel.stop_sample();
+    );    
   );
 );
 
@@ -1013,8 +1027,6 @@ local(length_in_samples, ptr, len, step, ww, hh)
     gfx_set(font_color_r, font_color_g, font_color_b, font_color_a);
     gfx_printf("%d Hz", sample[1]);
   );
-  
-  control_rect(x, y + h - 15, 30, 15, 0.04, 0.07, 0.03, 1.0, "Play");
 );
 
 gfx_pad = 0.01 * gfx_w;
@@ -1035,8 +1047,8 @@ idx = 0;
 loop(ny,
   cx = gfx_pad;
   loop(nx,
-    process_pad(cx, cy, block_width, block_height, idx, samplelocs[idx]);
     draw_wavebox(cx, cy, block_width, block_height, idx, samplelocs[idx]);
+    process_pad(cx, cy, block_width, block_height, idx, samplelocs[idx]);
     cx += block_width + block_pad;
     idx += 1;
   );
