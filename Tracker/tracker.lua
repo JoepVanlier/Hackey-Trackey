@@ -39,6 +39,8 @@
 
 --[[
  * Changelog:
+ * v2.44 (2021-05-25)
+   + Remember last velocity that was used (a separate one for sampler vs regular MIDI mode).
  * v2.43 (2021-05-24)
    + Make sure rec preview can be heard.
  * v2.42 (2021-05-23)
@@ -581,7 +583,6 @@ tracker.xpos = 1
 tracker.ypos = 1
 tracker.xint = 0
 tracker.page = 4
-tracker.lastVel = 96
 tracker.lastEnv = 1
 tracker.rowPerQn = 4 -- The default
 tracker.newRowPerQn = 4
@@ -664,6 +665,8 @@ tracker.cfg.clampToSelection = 1
 tracker.cfg.selectMIDINotes = 0
 tracker.cfg.undoForReassignment = 1
 tracker.cfg.releaseNoteOffs = 0
+tracker.cfg.lastVel = 96
+tracker.cfg.lastVelSample = 1
 
 tracker.tracker_samples = 0
 
@@ -717,6 +720,22 @@ local function print(...)
   end
   reaper.ShowConsoleMsg(...)
   reaper.ShowConsoleMsg("\n")
+end
+
+function tracker:lastVel()
+  if self.tracker_samples == 1 then
+    return self.cfg.lastVelSample
+  else
+    return self.cfg.lastVel
+  end
+end
+
+function tracker:setLastVel(velocity)
+  if self.tracker_samples == 1 then
+    self.cfg.lastVelSample = velocity
+  else
+    self.cfg.lastVel = velocity
+  end
 end
 
 function tracker:loadColors(colorScheme)
@@ -4238,8 +4257,8 @@ function tracker:placeNote(pitch, chan, row)
     end
   
     -- Create the new note!
-    self:addNote(row, k, chan, pitch, self.lastVel)
-    self:playNote(chan, pitch, self.lastVel)
+    self:addNote(row, k, chan, pitch, self:lastVel())
+    self:playNote(chan, pitch, self:lastVel())
   
     if ( noteGrid[rows*chan+k] ) then
       if ( noteGrid[rows*chan+k] < -1 ) then
@@ -4307,7 +4326,7 @@ function tracker:createNote(inChar, shift)
     if ( note ) then
       -- Note is present, we are good to go!
       local pitch = note + self.transpose * 12
-      self:playNote(chan, pitch, self.lastVel)
+      self:playNote(chan, pitch, self:lastVel())
     end
 
     return
@@ -4338,7 +4357,7 @@ function tracker:createNote(inChar, shift)
     if ( noteToEdit ) then
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToEdit] )
       local newvel = tracker:editVelField( vel, 1, char )
-      self.lastVel = newvel
+      self:setLastVel(newvel)
       reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, nil, newvel, true)
     end
     shouldMove = true
@@ -4346,7 +4365,7 @@ function tracker:createNote(inChar, shift)
     if ( noteToEdit ) then
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToEdit] )
       local newvel = tracker:editVelField( vel, 2, char )
-      self.lastVel = newvel
+      self:setLastVel(newvel)
       reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, nil, newvel, true)
       shouldMove = true
     end
@@ -7807,9 +7826,9 @@ function tracker:playNote(chan, pitch, vel)
       if self.outChannel == 0 then
         ch = chan
       else
-        ch = self.outChannel
+        ch = self.outChannel - 1
       end
-      reaper.StuffMIDIMessage(0, 0x90 + chan, pitch, vel)
+      reaper.StuffMIDIMessage(0, 0x90 + ch, pitch, vel)
     else
       -- Only create note if it isn't already playing
       local found = false
@@ -7824,7 +7843,7 @@ function tracker:playNote(chan, pitch, vel)
         if self.outChannel == 0 then
           ch = chan
         else
-          ch = self.outChannel
+          ch = self.outChannel - 1
         end
         reaper.StuffMIDIMessage(0, 0x90 + ch, pitch, vel)
       end
@@ -7868,10 +7887,15 @@ end
 function tracker:playChord(chord)
   self:checkArmed()
   if ( self.armed == 1 ) then
-    local ch = 1
     self:stopChord()
+    local idx = 1
     for i,v in pairs( chord ) do
-      reaper.StuffMIDIMessage(0, 0x90 + v[1] - 1, v[2], v[3])
+      if self.outChannel == 0 then
+        reaper.StuffMIDIMessage(0, 0x90 + idx, v[2], v[3])
+        idx = idx + 1
+      else
+        reaper.StuffMIDIMessage(0, 0x90 + v[1], v[2], v[3])
+      end
     end
     self.lastChord = chord
   end
@@ -7963,8 +7987,14 @@ function tracker:stopChord()
   self:checkArmed()
   if ( self.armed == 1 ) then
     if ( self.lastChord ) then
+      local idx = 1
       for i,v in pairs( self.lastChord ) do
-        reaper.StuffMIDIMessage(0, 0x80 + v[1] - 1, v[2], v[3])
+        if self.outChannel == 0 then
+          reaper.StuffMIDIMessage(0, 0x80 + idx, v[2], v[3])
+          idx = idx + 1
+        else
+          reaper.StuffMIDIMessage(0, 0x80 + v[1], v[2], v[3])
+        end
       end
       self.lastChord = nil
     end
@@ -8513,7 +8543,7 @@ function tracker:readNotesFromJSFX()
       local ftype, chan, row = self:getLocation()
       if chan then
         if self.cfg.velfrommidi == 1 then
-          self.lastVel = velocity
+          self:setLastVel(velocity)
         end
         self:placeNote(pitch, chan, row)
         self:tab()
@@ -8876,7 +8906,7 @@ local function updateLoop()
 
                 for i,v in pairs(chord) do
                   v = v + tracker.transpose * 12 + 11
-                  playChord[i] = { 1, v, 127 }
+                  playChord[i] = { 1, v, tracker:lastVel() }
                 end
 
                 if ( alt == 1 ) then
