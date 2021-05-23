@@ -22,8 +22,8 @@ instance(noteMem, modWheel, pass,
 
 function processMIDIBlock()
 local(offset, msg1, msg2, msg3
-      noteOn, noteOff, mwCC, mWheel, pb)
-global(channel)
+      noteOn, noteOff, mwCC, mWheel, pb, channel)
+global()
 instance(notePtr, noteMem, pass, modWheel, curSample, remainingNotes, nextNote)
 (
   notePtr = noteMem;
@@ -32,6 +32,12 @@ instance(notePtr, noteMem, pass, modWheel, curSample, remainingNotes, nextNote)
       noteOn = msg1>$x8F && msg1<$xA0 && msg3!=0;
       noteOff = (msg1>$x7F && msg1<$x90) || (msg1>$x89&&msg1<$xA0 && msg3==0);
       mwCC = (msg1>$xAF&&msg1<$xC0);
+      
+      // Silence our chase suppression mechanism
+      (mwCC && (msg3 == 102)) ? (
+        mwCC = 0;
+      );
+    
       
     ( noteOn || noteOff || mwCC ) ? (
       notePtr[] = offset;
