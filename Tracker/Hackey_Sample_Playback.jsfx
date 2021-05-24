@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.28
+version: 0.29
 author: Joep Vanlier
-changelog: Allow playing with the keyboard.
+changelog: Make sample playback respect selection.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -59,8 +59,8 @@ out_pin:right output
 import htp_midi.jsfx-inc
 options:maxmem=34000000
 
-slider1:tracker=0<0,1,1{Buzz,Renoise}>Key mapping
-slider2:kb_layout=0<0,2,1{QWERTY,QWERTZ,AZERTY}>Keyboard layout
+slider1:tracker=0<0,1,1{Buzz,Renoise}>-Key mapping
+slider2:kb_layout=0<0,2,1{QWERTY,QWERTZ,AZERTY}>-Keyboard layout
 
 @init
 ref_note == 0 ? ref_note = 69;
@@ -500,6 +500,17 @@ local(vol_change,
     
     next_backlog = dt;
     note_schedule_ptr = note_schedule;
+  );
+);
+
+function set_offset_raw(offset)
+local()
+instance(current_playback)
+(
+  (current_playback == 1) ? (
+    this.play1.position = offset
+  ) : (
+    this.play0.position = offset
   );
 );
 
@@ -956,14 +967,18 @@ local(is_over)
 
 // Are we playing anything?
 new_pitch = get_pitch_from_kb(current_char);
-((new_pitch > -1) && (wait_for_release != current_char)) ? (
+((new_pitch > -1) && (wait_for_release != current_char) && gfx_getchar(current_char)) ? (
   preview_channel.play_sample(selected_sample, new_pitch + 69 - 24, 0);
+  preview_offset = min(close_up.block_start, close_up.block_end);
+  preview_offset > 0 ? (
+    preview_channel.set_offset_raw((preview_offset - close_up.sample_start) * 0.5);
+  );
   wait_for_release = current_char;
 );
 
 (!gfx_getchar(wait_for_release) && (wait_for_release > 0)) ? (
-  preview_channel.stop_sample();
   wait_for_release = 0;
+  preview_channel.stop_sample();
 );
 
 font_color_r = font_color_g = font_color_b = 0.8;
