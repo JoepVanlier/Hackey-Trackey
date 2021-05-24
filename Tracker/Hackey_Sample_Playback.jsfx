@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.31
+version: 0.32
 author: Joep Vanlier
-changelog: Show reference pitch.
+changelog: Stop playing samples on init.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -131,6 +131,24 @@ instance(lpan, rpan)
   rpan = sin(p);
 );
 
+function stop_playback()
+instance(x_fade_position)
+global(crossfade_samples)
+(
+  x_fade_position = - crossfade_samples;
+);
+
+function stop_sample()
+instance(current_playback)
+global()
+(
+  (current_playback == 1) ? (
+    this.play1.stop_playback();
+  ) : (
+    this.play0.stop_playback();
+  );
+);
+
 function chan_default(idx)
 instance(vol, chan)
 global()
@@ -158,10 +176,27 @@ local()
  chan14.chan_default(14);
  chan15.chan_default(15);
  chan16.chan_default(16);
- 
  preview_channel.chan_default(17);
  initialized = 1;
 );
+
+preview_channel.stop_sample();
+chan1.stop_sample(1);
+chan2.stop_sample(2);
+chan3.stop_sample(3);
+chan4.stop_sample(4);
+chan5.stop_sample(5);
+chan6.stop_sample(6);
+chan7.stop_sample(7);
+chan8.stop_sample(8);
+chan9.stop_sample(9);
+chan10.stop_sample(10);
+chan11.stop_sample(11);
+chan12.stop_sample(12);
+chan13.stop_sample(13);
+chan14.stop_sample(14);
+chan15.stop_sample(15);
+chan16.stop_sample(16);
 
 function start_playback(buffer_loc, playspeed, offset)
 instance(start_ptr, x_fade_position, playing, fade_start, position, speed,
@@ -187,13 +222,6 @@ instance(loop_start, loop_stop, loop_type)
   loop_start = buffer_loc[3];
   loop_stop = buffer_loc[4];
   loop_type = buffer_loc[5];
-);
-
-function stop_playback()
-instance(x_fade_position)
-global(crossfade_samples)
-(
-  x_fade_position = - crossfade_samples;
 );
 
 /* Sample play (each channel has two of these guys that alternate) */
@@ -321,17 +349,6 @@ local()
 global()
 (
   (got_note == 0) ? ( got_note = -1; );
-);
-
-function stop_sample()
-instance(current_playback)
-global()
-(
-  (current_playback == 1) ? (
-    this.play1.stop_playback();
-  ) : (
-    this.play0.stop_playback();  
-  );
 );
 
 function pitch_to_speed(sample_location, pitch)
