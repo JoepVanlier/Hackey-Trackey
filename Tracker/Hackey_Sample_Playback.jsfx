@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.27
+version: 0.28
 author: Joep Vanlier
-changelog: Add CTRL + X as cut operation on sample.
+changelog: Allow playing with the keyboard.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -59,6 +59,9 @@ out_pin:right output
 import htp_midi.jsfx-inc
 options:maxmem=34000000
 
+slider1:tracker=0<0,1,1{Buzz,Renoise}>Key mapping
+slider2:kb_layout=0<0,2,1{QWERTY,QWERTZ,AZERTY}>Keyboard layout
+
 @init
 ref_note == 0 ? ref_note = 69;
 crossfade_samples = 128*2;
@@ -69,6 +72,28 @@ N_SAMPLES = 36;
 TOTAL_MEM = N_SAMPLES * MAX_SAMPLE_DURATION;
 
 (ticks_per_beat == 0) ? ticks_per_beat = 4;
+
+function char_to_pitch(ch)
+global(tracker)
+(
+  (tracker == 0) ? (
+    (ch == 122) ? ( 24 ) : (ch == 90) ? ( 24 ) : (ch == 120) ? ( 26 ) : (ch == 88) ? ( 26 ) : (ch == 99) ? ( 28 ) : (ch == 67) ? ( 28 ) : (ch == 118) ? ( 29 ) : (ch == 86) ? ( 29 ) : (ch == 98) ? ( 31 ) : (ch == 66) ? ( 31 ) : (ch == 110) ? ( 33 ) : (ch == 78) ? ( 33 ) : (ch == 109) ? ( 35 ) : (ch == 77) ? ( 35 ) : (ch == 115) ? ( 25 ) : (ch == 83) ? ( 25 ) : (ch == 100) ? ( 27 ) : (ch == 68) ? ( 27 ) : (ch == 103) ? ( 30 ) : (ch == 71) ? ( 30 ) : (ch == 104) ? ( 32 ) : (ch == 72) ? ( 32 ) : (ch == 106) ? ( 34 ) : (ch == 74) ? ( 34 ) : (ch == 113) ? ( 36 ) : (ch == 81) ? ( 36 ) : (ch == 119) ? ( 38 ) : (ch == 87) ? ( 38 ) : (ch == 101) ? ( 40 ) : (ch == 69) ? ( 40 ) : (ch == 114) ? ( 41 ) : (ch == 82) ? ( 41 ) : (ch == 116) ? ( 43 ) : (ch == 84) ? ( 43 ) : (ch == 121) ? ( 45 ) : (ch == 89) ? ( 45 ) : (ch == 117) ? ( 47 ) : (ch == 85) ? ( 47 ) : (ch == 105) ? ( 48 ) : (ch == 73) ? ( 48 ) : (ch == 111) ? ( 50 ) : (ch == 79) ? ( 50 ) : (ch == 112) ? ( 52 ) : (ch == 80) ? ( 52 ) : -1
+  ) : ( tracker == 1 ) ? (
+    (ch == 122) ? ( 24 ) : (ch == 90) ? ( 24 ) : (ch == 120) ? ( 26 ) : (ch == 88) ? ( 26 ) : (ch == 99) ? ( 28 ) : (ch == 67) ? ( 28 ) : (ch == 118) ? ( 29 ) : (ch == 86) ? ( 29 ) : (ch == 98) ? ( 31 ) : (ch == 66) ? ( 31 ) : (ch == 110) ? ( 33 ) : (ch == 78) ? ( 33 ) : (ch == 109) ? ( 35 ) : (ch == 77) ? ( 35 ) : (ch == 44) ? ( 36 ) : (ch == 44) ? ( 36 ) : (ch == 46) ? ( 38 ) : (ch == 46) ? ( 38 ) : (ch == 47) ? ( 40 ) : (ch == 47) ? ( 40 ) : (ch == 115) ? ( 25 ) : (ch == 83) ? ( 25 ) : (ch == 100) ? ( 27 ) : (ch == 68) ? ( 27 ) : (ch == 103) ? ( 30 ) : (ch == 71) ? ( 30 ) : (ch == 104) ? ( 32 ) : (ch == 72) ? ( 32 ) : (ch == 106) ? ( 34 ) : (ch == 74) ? ( 34 ) : (ch == 108) ? ( 37 ) : (ch == 76) ? ( 37 ) : (ch == 59) ? ( 39 ) : (ch == 59) ? ( 39 ) : (ch == 113) ? ( 36 ) : (ch == 81) ? ( 36 ) : (ch == 119) ? ( 38 ) : (ch == 87) ? ( 38 ) : (ch == 101) ? ( 40 ) : (ch == 69) ? ( 40 ) : (ch == 114) ? ( 41 ) : (ch == 82) ? ( 41 ) : (ch == 116) ? ( 43 ) : (ch == 84) ? ( 43 ) : (ch == 121) ? ( 45 ) : (ch == 89) ? ( 45 ) : (ch == 117) ? ( 47 ) : (ch == 85) ? ( 47 ) : (ch == 105) ? ( 48 ) : (ch == 73) ? ( 48 ) : (ch == 111) ? ( 50 ) : (ch == 79) ? ( 50 ) : (ch == 112) ? ( 52 ) : (ch == 80) ? ( 52 ) : (ch == 91) ? ( 53 ) : (ch == 91) ? ( 53 ) : (ch == 93) ? ( 55 ) : (ch == 93) ? ( 55 ) : (ch == 50) ? ( 37 ) : (ch == 50) ? ( 37 ) : (ch == 51) ? ( 39 ) : (ch == 51) ? ( 39 ) : (ch == 53) ? ( 42 ) : (ch == 53) ? ( 42 ) : (ch == 54) ? ( 44 ) : (ch == 54) ? ( 44 ) : (ch == 55) ? ( 46 ) : (ch == 55) ? ( 46 ) : (ch == 57) ? ( 49 ) : (ch == 57) ? ( 49 ) : (ch == 48) ? ( 51 ) : (ch == 48) ? ( 51 ) : (ch == 61) ? ( 54 ) : (ch == 61) ? ( 54 ) : -1
+  );
+);
+
+function get_pitch_from_kb(kb)
+global(kb_layout)
+(
+  kb_layout == 0 ? (
+    char_to_pitch(kb)
+  ) : ( kb_layout == 1 ) ? (
+    char_to_pitch((kb == 122) ? ( 121 ) : (kb == 121) ? ( 122 ) :  (kb == 90) ? ( 89 ) : (kb == 89) ? ( 90 ) : kb)
+  ) : (
+    char_to_pitch((kb == 97) ? ( 113 ) : (kb == 113) ? ( 97 ) :  (kb == 65) ? ( 81 ) : (kb == 81) ? ( 65 ) :  (kb == 122) ? ( 119 ) : (kb == 119) ? ( 122 ) :  (kb == 90) ? ( 87 ) : (kb == 87) ? ( 90 ) :  (kb == 109) ? ( 59 ) : (kb == 59) ? ( 109 ) :  (kb == 77) ? ( 59 ) : (kb == 59) ? ( 77 ) : kb)
+  );
+);
 
 function set_pan(pan)
 local(p)
@@ -929,6 +954,18 @@ local(is_over)
   );
 );
 
+// Are we playing anything?
+new_pitch = get_pitch_from_kb(current_char);
+((new_pitch > -1) && (wait_for_release != current_char)) ? (
+  preview_channel.play_sample(selected_sample, new_pitch + 69 - 24, 0);
+  wait_for_release = current_char;
+);
+
+(!gfx_getchar(wait_for_release) && (wait_for_release > 0)) ? (
+  preview_channel.stop_sample();
+  wait_for_release = 0;
+);
+
 font_color_r = font_color_g = font_color_b = 0.8;
 font_color_a = 1.0;
 
@@ -1187,8 +1224,7 @@ global(samplelocs, selected_sample, SAMPLE_HEADER, SAMPLE_DURATION, captured,
        DRAG_SAMPLE, DRAG_LOOP_POINT_1, DRAG_LOOP_POINT_2,
        updated_loop, current_char, last_click_time,
        mouse_x, mouse_y, mouse_wheel, mouse_cap,
-       gfx_x, gfx_y, gfx_a,
-       current_char_testy)
+       gfx_x, gfx_y, gfx_a)
 (
   draw_box(cx, cy, ww, hh);
   draw_waveform(cx, cy, ww, 0.5 * hh, disp_range_start, disp_range_len);
