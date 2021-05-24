@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.30
+version: 0.31
 author: Joep Vanlier
-changelog: Add normalize sample.
+changelog: Show reference pitch.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -93,6 +93,31 @@ global(kb_layout)
   ) : (
     char_to_pitch((kb == 97) ? ( 113 ) : (kb == 113) ? ( 97 ) :  (kb == 65) ? ( 81 ) : (kb == 81) ? ( 65 ) :  (kb == 122) ? ( 119 ) : (kb == 119) ? ( 122 ) :  (kb == 90) ? ( 87 ) : (kb == 87) ? ( 90 ) :  (kb == 109) ? ( 59 ) : (kb == 59) ? ( 109 ) :  (kb == 77) ? ( 59 ) : (kb == 59) ? ( 77 ) : kb)
   );
+);
+
+function midi_pitch_to_note(pitch)
+local(p)
+global()
+(
+  p = pitch % 12;
+  (p == 0) ? ( "C" )
+  : (p == 1) ? ( "C#" )
+  : (p == 2) ? ( "D" )
+  : (p == 3) ? ( "D#" )
+  : (p == 4) ? ( "E" )
+  : (p == 5) ? ( "F" )
+  : (p == 6) ? ( "F#" )
+  : (p == 7) ? ( "G" )
+  : (p == 8) ? ( "G#" )
+  : (p == 9) ? ( "A" )
+  : (p == 10) ? ( "A#" )
+  : (p == 11) ? ( "B" )
+  : ( "Err" );
+);
+
+function midi_pitch_to_octave(pitch)
+(
+  floor(pitch / 12) - 1
 );
 
 function set_pan(pan)
@@ -883,9 +908,9 @@ global(DROPPED_FILE_STR, MAX_SAMPLE_DURATION, SAMPLE_HEADER, ref_note)
   );
 );
 
-function control_rect(x, y, w, h, r, g, b, a, label)
+function control_rect(x, y, w, h, r, g, b, a, font, label)
 local(ww, hh)
-global(font_color_r, font_color_g, font_color_b, font_color_a, gfx_x, gfx_y, TINY_FONT,
+global(font_color_r, font_color_g, font_color_b, font_color_a, gfx_x, gfx_y,
        mouse_x, mouse_y)
 (
   gfx_set(r, g, b, a*.7);
@@ -893,7 +918,7 @@ global(font_color_r, font_color_g, font_color_b, font_color_a, gfx_x, gfx_y, TIN
   gfx_set(r, g, b, a);
   gfx_line(x, y, x + w, y);
   
-  gfx_setfont(TINY_FONT);
+  gfx_setfont(font);
   gfx_measurestr(label, ww, hh);
   gfx_set(font_color_r, font_color_g, font_color_b, font_color_a);
   gfx_x = x + 0.5 * (w - ww);
@@ -934,7 +959,8 @@ local()
 function process_pad(x, y, w, h, idx, sample_location)
 global(mouse_x, mouse_y, mouse_cap, last_cap, captured,
        file_dropped, DROPPED_FILE_STR,
-       preview_channel.play_sample, preview_channel.stop_sample, selected_sample)
+       preview_channel.play_sample, preview_channel.stop_sample, selected_sample,
+       TINY_FONT)
 local(is_over)
 (
   is_over = mouse_over(x, y, w, h);
@@ -952,13 +978,13 @@ local(is_over)
     selected_sample = idx;
   );
   
-  control_rect(x, y + h - 15, 30, 15, 0.04, 0.07, 0.03, 1.0, "Play") ? (
+  control_rect(x, y + h - 15, 30, 15, 0.04, 0.07, 0.03, 1.0, TINY_FONT, "Play") ? (
     ((last_cap & 1) == 0) && (mouse_cap & 1) && is_over && !captured ? (
       preview_channel.play_sample(idx, 69, 0);
     );    
   );
     
-  control_rect(x + 30, y + h - 15, 30, 15, 0.07, 0.04, 0.03, 1.0, "Stop") ? (
+  control_rect(x + 30, y + h - 15, 30, 15, 0.07, 0.04, 0.03, 1.0, TINY_FONT, "Stop") ? (
     ((last_cap & 1) == 0) && (mouse_cap & 1) && is_over && !captured ? (
       preview_channel.stop_sample();
     );    
@@ -987,6 +1013,8 @@ font_color_a = 1.0;
 SAMPLE_FONT = 5;
 TINY_FONT = 6;
 gfx_setfont(TINY_FONT, "Arial", 12);
+BIG_FONT = 7;
+gfx_setfont(BIG_FONT, "Arial", 18);
 
 waveform_r = .3;
 waveform_g = .4;
@@ -1054,7 +1082,7 @@ global(SAMPLE_FONT, TINY_FONT, SAMPLE_HEADER, selected_sample,
        gfx_x, gfx_y,
        font_color_r, font_color_g, font_color_b, font_color_a,
        draw_box, draw_waveform)
-local(length_in_samples, ptr, len, step, ww, hh)
+local(length_in_samples, ptr, len, step, ww, hh, fine)
 (
   draw_box(x, y, w, h);
   
@@ -1081,6 +1109,12 @@ local(length_in_samples, ptr, len, step, ww, hh)
     gfx_setfont(TINY_FONT);
     gfx_set(font_color_r, font_color_g, font_color_b, font_color_a);
     gfx_printf("%d Hz", sample[1]);
+    
+    gfx_printf(", %s-%d", midi_pitch_to_note(sample[2]), midi_pitch_to_octave(sample[2]));
+    fine = sample[2] - floor(sample[2]);
+    fine > 0 ? (
+      gfx_printf(", +%.2f", sample[2] - floor(sample[2]));
+    );
   );
 );
 
@@ -1118,6 +1152,8 @@ loop(ny,
 DRAG_SAMPLE = 1;
 DRAG_LOOP_POINT_1 = 2;
 DRAG_LOOP_POINT_2 = 3;
+DRAG_PITCH = 4;
+DRAG_FINE = 5;
 
 function handle_loop_point(cx, cy, ww, hh, sample_start, disp_range_start, disp_range_len, loop_loc, capture_mode)
 local(loop_point, point_in_samples, mul)
@@ -1247,6 +1283,55 @@ instance(sample_len, sample_start, disp_range_start, disp_range_len, block_start
   block_start = 0;
 );
 
+
+function pitch_widget(cx, cy, ww, hh, sample_loc)
+local(button_width, button_height, frac, mul)
+global(BIG_FONT,
+       captured, mouse_cap, mouse_dy,
+       DRAG_FINE, DRAG_PITCH)
+instance(dy_sum)
+(
+  // Reference pitch
+  button_width = 50;
+  button_height = 30;
+  control_rect(cx + ww - button_width, cy, button_width, button_height, 0.07, 0.04, 0.03, 1.0, BIG_FONT, 
+  sprintf(8, "+%.2f", sample_loc[2] - floor(sample_loc[2]))) ? (
+    mouse_press(1) && !captured ? captured = DRAG_FINE;
+  );
+  
+  mul = 1;
+  (mouse_cap&4) ? mul = mul * 0.125; /* CTRL */
+  (mouse_cap&8) ? mul = mul * 0.125; /* SHIFT */
+  
+  ((captured == DRAG_FINE) && (mouse_is_down(1))) ? (
+    frac = sample_loc[2] - floor(sample_loc[2]) - 0.01 * mul * mouse_dy;
+    frac = max(0, min(0.9999999, frac + 0.01 * dy_sum));
+    sample_loc[2] = floor(sample_loc[2]) + frac;
+  );
+  
+  control_rect(cx + ww - 2 * button_width - 2, cy, button_width, button_height, 0.07, 0.04, 0.03, 1.0, BIG_FONT, 
+  sprintf(8, "%s-%d", midi_pitch_to_note(sample_loc[2]), midi_pitch_to_octave(sample_loc[2]))) ? (
+    (mouse_press(1) && !captured) ? captured = DRAG_PITCH;
+  );
+  
+  ((captured == DRAG_PITCH) && (mouse_is_down(1))) ? (
+    dy_sum -= 0.1 * mul * mouse_dy;
+    
+    (dy_sum > 1) ? (
+      sample_loc[2] += floor(dy_sum);
+      dy_sum -= floor(dy_sum);
+    ) : (dy_sum < -1) ? (
+      sample_loc[2] += ceil(dy_sum);
+      dy_sum -= ceil(dy_sum);
+    );
+  );
+  
+  ((captured == DRAG_FINE) || (captured == DRAG_PITCH)) ? (
+    (!mouse_is_down(1)) ? ( captured = 0; dy_sum = 0; );
+  );
+);
+
+
 function draw_sample_big(cx, cy, ww, hh, reset_zoom)
 instance(sample_start, sample_len,
          disp_range_start, disp_range_len,
@@ -1270,6 +1355,8 @@ global(samplelocs, selected_sample, SAMPLE_HEADER, SAMPLE_DURATION, captured,
     gfx_a = 0.1;
     gfx_rect(loop_start, cy, loop_stop - loop_start, hh);
   );
+
+  this.pitch_widget(cx, cy, ww, hh, samplelocs[selected_sample]);
   
   is_over = mouse_over(cx, cy, ww, hh);
   (is_over && mouse_press(1) && !captured) ? (
@@ -1461,5 +1548,7 @@ critical_error ? (
 last_cap = mouse_cap;
 reset_zoom = 0;
 mouse_dx = mouse_x - last_mouse_x;
+mouse_dy = mouse_y - last_mouse_y;
 last_mouse_x = mouse_x;
+last_mouse_y = mouse_y;
 
