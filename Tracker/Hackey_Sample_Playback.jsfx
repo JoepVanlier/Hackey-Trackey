@@ -1,8 +1,8 @@
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.29
+version: 0.30
 author: Joep Vanlier
-changelog: Make sample playback respect selection.
+changelog: Add normalize sample.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -1213,6 +1213,23 @@ global(finval)
   finval = lv2;
 );
 
+function normalize(start, len)
+local(mx, ptr)
+global()
+(
+  ptr = start;
+  mx = 0;
+  loop(len,
+    mx = max(mx, abs(ptr[]));
+    ptr += 1;
+  );
+  ptr = start;
+  loop(len,
+    ptr[] /= mx;
+    ptr += 1;
+  );
+);
+
 function delete(selected_sample, left, right)
 global(samplelocs)
 instance(sample_len, sample_start, disp_range_start, disp_range_len, block_start, block_end)
@@ -1338,9 +1355,9 @@ global(samplelocs, selected_sample, SAMPLE_HEADER, SAMPLE_DURATION, captured,
     left = min(block_start, block_end);
     right = max(block_start, block_end);
     (abs(block_end - block_start) < 5) ? (
-      menu_selection = gfx_showmenu("#Zoom|Reset Zoom||#Set loop|#Set loop (bidirectional)|Remove loop||#Reverse (Ctrl + R)||#Fade in|#Fade out||#Crop to selection||#Copy (Ctrl + C)|Paste (Ctrl + V)|#Cut (Ctrl + X)");
+      menu_selection = gfx_showmenu("#Zoom|Reset Zoom||#Set loop|#Set loop (bidirectional)|Remove loop||#Reverse (Ctrl + R)||#Fade in|#Fade out||#Crop to selection||#Copy (Ctrl + C)|Paste (Ctrl + V)|#Cut (Ctrl + X)||Normalize");
     ) : (
-      menu_selection = gfx_showmenu("Zoom|Reset Zoom||Set loop|Set loop (bidirectional)|Remove loop||Reverse (Ctrl + R)||Fade in|Fade out||Crop to selection||Copy (Ctrl + C)|Paste (Ctrl + V)|Cut (Ctrl + X)");
+      menu_selection = gfx_showmenu("Zoom|Reset Zoom||Set loop|Set loop (bidirectional)|Remove loop||Reverse (Ctrl + R)||Fade in|Fade out||Crop to selection||Copy (Ctrl + C)|Paste (Ctrl + V)|Cut (Ctrl + X)||Normalize");
     );
     (menu_selection == 1) ? (
       disp_range_len = max(10, abs(block_end - block_start));
@@ -1374,9 +1391,11 @@ global(samplelocs, selected_sample, SAMPLE_HEADER, SAMPLE_DURATION, captured,
     ) : (menu_selection == 11) ? (
       paste(samplelocs[selected_sample]);
       reset_zoom = 1;
-    ) : (
+    ) : (menu_selection == 12) ? (
       copy(samplelocs[selected_sample], left, right);
       this.delete(selected_sample, left, right);
+    ) : (menu_selection == 13) ? (
+      normalize(sample_start, sample_len);
     );
   );
   
