@@ -1,0 +1,1572 @@
+noindex: true
+desc:Hackey Trackey Sample Playback Module (pre-alpha)
+tags: tracker-style sampler
+version: 0.32
+author: Joep Vanlier
+changelog: Stop playing samples on init.
+license: MIT
+about:
+  # Hackey Tracker Sampler
+  A small sampler designed to interoperate with Hackey Trackey.
+  
+  ### Usage instructions:
+  This small JSFX acts as a sampler that interoperates with Hackey Trackey to 
+  support tracker-like sample playback.
+  
+  Volume is sent on MIDI CC 9, while efects are sent on CC 12 (to indicate the 
+  effect number) and CC 13 (to indicate the value). Note that due to the limitations 
+  of the format, some concessions had to be made. Please read the effect list below 
+  carefully and consider how this impacts your workflow.
+  
+  - Effect List
+  01 - Portamento up
+  02 - Portamento down
+    Note that the portamento's behave different from Protracker. In PT you directly
+    perform the portamento based on the period of the signal. Portamento is updated
+    every N times per row (ticks).
+    Here, the portamento slides continuously and the amount is specified in 
+    eigth semitones. This means that 08 is 1 semitone. 10 is 2, etc.
+    00 continues the last portamento.
+  03 - Glide
+    Glide to note. Glide speed is specified in 1/16th notes.
+    00 Continues a previous glide.
+  04 - Vibrato
+    X is pitch depth (value from 0 to 7). They are given in seventh semitones.
+    Y is speed (value from 0 to F).
+      Continue, 128, 64, 32, 24, 16, 12, 8, 6, 5, 4, 3, 2, 1, 0.25, 0.125
+    0 continues the previous value.
+  08 - Panning
+    Panning.
+  09 - Set offset
+    Unlike the classic Protracker, this sets offset as fraction of the sample length.
+    Since 7F (127) is the maximum in MIDI; 40 is the middle of the sample, 20 1/4th etc.
+  0A - Apreggiator
+    Arpeggiate. X and Y are note offsets in semitones. 0 continues previous value.
+  0B - Retrigger
+    Retrigger note.
+    X - Volume reduction per trigger
+    Y - Retrigger count
+  0C - Sample probability
+    
+
+options:gmem=saike_HT_sample
+options:want_all_kb
+options:no_meter
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+import htp_midi.jsfx-inc
+options:maxmem=34000000
+
+slider1:tracker=0<0,1,1{Buzz,Renoise}>-Key mapping
+slider2:kb_layout=0<0,2,1{QWERTY,QWERTZ,AZERTY}>-Keyboard layout
+
+@init
+ref_note == 0 ? ref_note = 69;
+crossfade_samples = 128*2;
+pi_inv_crossfade_samples = $pi / crossfade_samples;
+SAMPLE_HEADER = 64;
+MAX_SAMPLE_DURATION = 32768 * 16 - SAMPLE_HEADER;
+N_SAMPLES = 36;
+TOTAL_MEM = N_SAMPLES * MAX_SAMPLE_DURATION;
+
+(ticks_per_beat == 0) ? ticks_per_beat = 4;
+
+function char_to_pitch(ch)
+global(tracker)
+(
+  (tracker == 0) ? (
+    (ch == 122) ? ( 24 ) : (ch == 90) ? ( 24 ) : (ch == 120) ? ( 26 ) : (ch == 88) ? ( 26 ) : (ch == 99) ? ( 28 ) : (ch == 67) ? ( 28 ) : (ch == 118) ? ( 29 ) : (ch == 86) ? ( 29 ) : (ch == 98) ? ( 31 ) : (ch == 66) ? ( 31 ) : (ch == 110) ? ( 33 ) : (ch == 78) ? ( 33 ) : (ch == 109) ? ( 35 ) : (ch == 77) ? ( 35 ) : (ch == 115) ? ( 25 ) : (ch == 83) ? ( 25 ) : (ch == 100) ? ( 27 ) : (ch == 68) ? ( 27 ) : (ch == 103) ? ( 30 ) : (ch == 71) ? ( 30 ) : (ch == 104) ? ( 32 ) : (ch == 72) ? ( 32 ) : (ch == 106) ? ( 34 ) : (ch == 74) ? ( 34 ) : (ch == 113) ? ( 36 ) : (ch == 81) ? ( 36 ) : (ch == 119) ? ( 38 ) : (ch == 87) ? ( 38 ) : (ch == 101) ? ( 40 ) : (ch == 69) ? ( 40 ) : (ch == 114) ? ( 41 ) : (ch == 82) ? ( 41 ) : (ch == 116) ? ( 43 ) : (ch == 84) ? ( 43 ) : (ch == 121) ? ( 45 ) : (ch == 89) ? ( 45 ) : (ch == 117) ? ( 47 ) : (ch == 85) ? ( 47 ) : (ch == 105) ? ( 48 ) : (ch == 73) ? ( 48 ) : (ch == 111) ? ( 50 ) : (ch == 79) ? ( 50 ) : (ch == 112) ? ( 52 ) : (ch == 80) ? ( 52 ) : -1
+  ) : ( tracker == 1 ) ? (
+    (ch == 122) ? ( 24 ) : (ch == 90) ? ( 24 ) : (ch == 120) ? ( 26 ) : (ch == 88) ? ( 26 ) : (ch == 99) ? ( 28 ) : (ch == 67) ? ( 28 ) : (ch == 118) ? ( 29 ) : (ch == 86) ? ( 29 ) : (ch == 98) ? ( 31 ) : (ch == 66) ? ( 31 ) : (ch == 110) ? ( 33 ) : (ch == 78) ? ( 33 ) : (ch == 109) ? ( 35 ) : (ch == 77) ? ( 35 ) : (ch == 44) ? ( 36 ) : (ch == 44) ? ( 36 ) : (ch == 46) ? ( 38 ) : (ch == 46) ? ( 38 ) : (ch == 47) ? ( 40 ) : (ch == 47) ? ( 40 ) : (ch == 115) ? ( 25 ) : (ch == 83) ? ( 25 ) : (ch == 100) ? ( 27 ) : (ch == 68) ? ( 27 ) : (ch == 103) ? ( 30 ) : (ch == 71) ? ( 30 ) : (ch == 104) ? ( 32 ) : (ch == 72) ? ( 32 ) : (ch == 106) ? ( 34 ) : (ch == 74) ? ( 34 ) : (ch == 108) ? ( 37 ) : (ch == 76) ? ( 37 ) : (ch == 59) ? ( 39 ) : (ch == 59) ? ( 39 ) : (ch == 113) ? ( 36 ) : (ch == 81) ? ( 36 ) : (ch == 119) ? ( 38 ) : (ch == 87) ? ( 38 ) : (ch == 101) ? ( 40 ) : (ch == 69) ? ( 40 ) : (ch == 114) ? ( 41 ) : (ch == 82) ? ( 41 ) : (ch == 116) ? ( 43 ) : (ch == 84) ? ( 43 ) : (ch == 121) ? ( 45 ) : (ch == 89) ? ( 45 ) : (ch == 117) ? ( 47 ) : (ch == 85) ? ( 47 ) : (ch == 105) ? ( 48 ) : (ch == 73) ? ( 48 ) : (ch == 111) ? ( 50 ) : (ch == 79) ? ( 50 ) : (ch == 112) ? ( 52 ) : (ch == 80) ? ( 52 ) : (ch == 91) ? ( 53 ) : (ch == 91) ? ( 53 ) : (ch == 93) ? ( 55 ) : (ch == 93) ? ( 55 ) : (ch == 50) ? ( 37 ) : (ch == 50) ? ( 37 ) : (ch == 51) ? ( 39 ) : (ch == 51) ? ( 39 ) : (ch == 53) ? ( 42 ) : (ch == 53) ? ( 42 ) : (ch == 54) ? ( 44 ) : (ch == 54) ? ( 44 ) : (ch == 55) ? ( 46 ) : (ch == 55) ? ( 46 ) : (ch == 57) ? ( 49 ) : (ch == 57) ? ( 49 ) : (ch == 48) ? ( 51 ) : (ch == 48) ? ( 51 ) : (ch == 61) ? ( 54 ) : (ch == 61) ? ( 54 ) : -1
+  );
+);
+
+function get_pitch_from_kb(kb)
+global(kb_layout)
+(
+  kb_layout == 0 ? (
+    char_to_pitch(kb)
+  ) : ( kb_layout == 1 ) ? (
+    char_to_pitch((kb == 122) ? ( 121 ) : (kb == 121) ? ( 122 ) :  (kb == 90) ? ( 89 ) : (kb == 89) ? ( 90 ) : kb)
+  ) : (
+    char_to_pitch((kb == 97) ? ( 113 ) : (kb == 113) ? ( 97 ) :  (kb == 65) ? ( 81 ) : (kb == 81) ? ( 65 ) :  (kb == 122) ? ( 119 ) : (kb == 119) ? ( 122 ) :  (kb == 90) ? ( 87 ) : (kb == 87) ? ( 90 ) :  (kb == 109) ? ( 59 ) : (kb == 59) ? ( 109 ) :  (kb == 77) ? ( 59 ) : (kb == 59) ? ( 77 ) : kb)
+  );
+);
+
+function midi_pitch_to_note(pitch)
+local(p)
+global()
+(
+  p = pitch % 12;
+  (p == 0) ? ( "C" )
+  : (p == 1) ? ( "C#" )
+  : (p == 2) ? ( "D" )
+  : (p == 3) ? ( "D#" )
+  : (p == 4) ? ( "E" )
+  : (p == 5) ? ( "F" )
+  : (p == 6) ? ( "F#" )
+  : (p == 7) ? ( "G" )
+  : (p == 8) ? ( "G#" )
+  : (p == 9) ? ( "A" )
+  : (p == 10) ? ( "A#" )
+  : (p == 11) ? ( "B" )
+  : ( "Err" );
+);
+
+function midi_pitch_to_octave(pitch)
+(
+  floor(pitch / 12) - 1
+);
+
+function set_pan(pan)
+local(p)
+global()
+instance(lpan, rpan)
+(
+  pan > 0.99 ? pan = 1;
+  p = 0.5 * $pi * pan;
+  lpan = cos(p);
+  rpan = sin(p);
+);
+
+function stop_playback()
+instance(x_fade_position)
+global(crossfade_samples)
+(
+  x_fade_position = - crossfade_samples;
+);
+
+function stop_sample()
+instance(current_playback)
+global()
+(
+  (current_playback == 1) ? (
+    this.play1.stop_playback();
+  ) : (
+    this.play0.stop_playback();
+  );
+);
+
+function chan_default(idx)
+instance(vol, chan)
+global()
+local()
+(
+  vol = 1;
+  chan = idx;
+  this.set_pan(0.5);
+);
+
+!initialized ? (
+ chan1.chan_default(1);
+ chan2.chan_default(2);
+ chan3.chan_default(3);
+ chan4.chan_default(4);
+ chan5.chan_default(5);
+ chan6.chan_default(6);
+ chan7.chan_default(7);
+ chan8.chan_default(8);
+ chan9.chan_default(9);
+ chan10.chan_default(10);
+ chan11.chan_default(11);
+ chan12.chan_default(12);
+ chan13.chan_default(13);
+ chan14.chan_default(14);
+ chan15.chan_default(15);
+ chan16.chan_default(16);
+ preview_channel.chan_default(17);
+ initialized = 1;
+);
+
+preview_channel.stop_sample();
+chan1.stop_sample(1);
+chan2.stop_sample(2);
+chan3.stop_sample(3);
+chan4.stop_sample(4);
+chan5.stop_sample(5);
+chan6.stop_sample(6);
+chan7.stop_sample(7);
+chan8.stop_sample(8);
+chan9.stop_sample(9);
+chan10.stop_sample(10);
+chan11.stop_sample(11);
+chan12.stop_sample(12);
+chan13.stop_sample(13);
+chan14.stop_sample(14);
+chan15.stop_sample(15);
+chan16.stop_sample(16);
+
+function start_playback(buffer_loc, playspeed, offset)
+instance(start_ptr, x_fade_position, playing, fade_start, position, speed,
+         loop_start, loop_stop, loop_type)
+global(crossfade_samples, SAMPLE_HEADER)
+(
+  fade_start = buffer_loc + buffer_loc[] + SAMPLE_HEADER - 2 * playspeed * crossfade_samples;
+  start_ptr = buffer_loc + SAMPLE_HEADER;
+  
+  loop_start = buffer_loc[3];
+  loop_stop = buffer_loc[4];
+  loop_type = buffer_loc[5];
+  
+  x_fade_position = crossfade_samples;
+  position = offset;
+  playing = 1;
+  speed = playspeed;
+);
+
+function update_loop_parameters(buffer_loc)
+instance(loop_start, loop_stop, loop_type)
+(
+  loop_start = buffer_loc[3];
+  loop_stop = buffer_loc[4];
+  loop_type = buffer_loc[5];
+);
+
+/* Sample play (each channel has two of these guys that alternate) */
+function play()
+instance(start_ptr, read_ptr, x_fade_position, fade_start,
+         outL, outR, playing, fade_level, position, speed,
+         loop_start, loop_stop, loop_type,
+         portamento_len, portamento_ds, vib_len,
+         vib_depth, vib_speed, vib_phase)
+global(crossfade_samples, pi_inv_crossfade_samples, eco, play_state)
+local(frac, ism1, is0, is1, is2, id0, id1, id2, id3)
+(
+  // Positive fade means fading in
+  (x_fade_position > 0.01) ? (
+    fade_level = 1.0 - sqrt(0.5 - 0.5 * cos(x_fade_position * pi_inv_crossfade_samples));
+    x_fade_position -= 1;
+  // Negative fade means fading out
+  ) : (x_fade_position < -0.01) ? (
+    fade_level = sqrt(0.5 - 0.5 * cos(- x_fade_position * pi_inv_crossfade_samples));
+    x_fade_position += 1;
+    (x_fade_position == 0) ? (
+      playing = 0; // Terminate playback
+      vib_len = 0;
+      portamento_len = 0;
+    );
+  ) : (
+    // Fade out if we're approaching the end of the recorded sample
+    fade_level = 1;
+    (read_ptr > fade_start) ? (
+      x_fade_position = - crossfade_samples;
+    );
+    
+    (loop_start > 0) ? (
+      (loop_type == 0) ? (
+        (position > loop_stop) ? position -= (loop_stop - loop_start);
+      ) : (
+        (position > loop_stop) ? (
+          speed = - speed;
+        ) : ( position < loop_start ) ? (
+          speed = abs(speed);
+        );
+      );
+    );
+  );
+  
+  frac = position - floor(position);
+  
+  eco = 1;
+  eco ? (
+    read_ptr = start_ptr + 2 * floor(position) - 2;
+    outL = (read_ptr[] * (1.0 - frac) + frac * read_ptr[2]);
+    outR = (read_ptr[1] * (1.0 - frac) + frac * read_ptr[3]);
+  ) : (
+    read_ptr = start_ptr + 2 * floor(position) - 8;
+    ism1 = read_ptr[];
+    is0 = read_ptr[2];
+    is1 = read_ptr[4];
+    is2 = read_ptr[6];
+    
+    id0 = is0;
+    id1 = 0.5*(is1 - ism1);
+    id2 = ism1 - 2.5*is0 + 2*is1 - 0.5*is2;
+    id3 = 0.5*(is2 - ism1) + 1.5 * (is0 - is1);
+    outL = ((id3*frac+id2)*frac+id1)*frac+id0;
+    
+    ism1 = read_ptr[1];
+    is0 = read_ptr[3];
+    is1 = read_ptr[5];
+    is2 = read_ptr[7];
+    
+    id0 = is0;
+    id1 = 0.5*(is1 - ism1);
+    id2 = ism1 - 2.5*is0 + 2*is1 - 0.5*is2;
+    id3 = 0.5*(is2 - ism1) + 1.5 * (is0 - is1);
+    outR = ((id3*frac+id2)*frac+id1)*frac+id0;
+  );
+  
+  outL *= fade_level;
+  outR *= fade_level;
+  
+  (vib_len > 0) ? (
+    (vib_len == 1) ? ( vib_phase = -1337; )
+    : (
+      vib_phase += vib_speed;
+      (vib_phase > 1) ? vib_phase -= 2;
+      position += speed * exp(vib_depth * (2 * abs(vib_phase) - 1));
+    );
+    vib_len -= 1;
+  ) : (
+    position += speed;
+  );
+  
+  portamento_len > 0 ? (
+    portamento_len -= 1;
+    speed *= portamento_ds;
+  );
+  
+  fade_level
+);
+
+/* Channel play */
+function prepare_channel_for_messages()
+instance(offset, got_note, effect, effect_value)
+global()
+local()
+(
+  offset = 0;
+  got_note = 0;
+  effect_value = -1;
+);
+
+function schedule_note(new_sample_idx, new_pitch)
+instance(got_note, sample_idx, pitch)
+local()
+global()
+(
+  pitch = new_pitch;
+  sample_idx = new_sample_idx;
+  got_note = 1;
+);
+
+function schedule_stop()
+instance(got_note)
+local()
+global()
+(
+  (got_note == 0) ? ( got_note = -1; );
+);
+
+function pitch_to_speed(sample_location, pitch)
+local(fs, fnote, r_speed, speed)
+global(srate)
+(
+  fs = sample_location[1];
+  fnote = sample_location[2];
+  r_speed = 2^((pitch - fnote)/12);
+  speed = r_speed * (fs / srate);
+);
+
+function vibrato_speed(speed_idx)
+local()
+global()
+(
+  (speed_idx == 1) ? ( 0.0625 ) : (speed_idx == 2) ? ( 0.08333333333333333 ) : (speed_idx == 3) ? ( 0.125 ) : (speed_idx == 4) ? ( 0.16666666666666666 ) : (speed_idx == 5) ? ( 0.25 ) : (speed_idx == 6) ? ( 0.3333333333333333 ) : (speed_idx == 7) ? ( 0.4 ) : (speed_idx == 8) ? ( 0.5 ) : (speed_idx == 9) ? ( 0.6666666666666666 ) : (speed_idx == 10) ? ( 1.0 ) : (speed_idx == 11) ? ( 1.3333333333333333 ) : (speed_idx == 12) ? ( 2.0 ) : (speed_idx == 13) ? ( 4.0 ) : (speed_idx == 14) ? ( 8.0 ) : (speed_idx == 15) ? ( 16.0 )
+);
+
+function commit_note()
+instance(current_playback, sample_location, speed, offset,
+         got_note, effect_value, effect,
+         last_porta,
+         last_arp_1, last_arp_2,
+         last_vib_speed, last_vib_depth,
+         vol, chan,
+         pitch, sample_idx)
+global(samples_per_beat, note_schedule, note_schedule_ptr,
+       next_backlog, samplelocs, srate)
+local(vol_change,
+      portamento_ds, curspeed, portamento_len, count, cv, dt,
+      vib_depth, vib_speed)
+(
+  note_schedule[] = -1337;
+
+  (effect == 12) ? (
+    (rand() > (effect_value / 127)) ? got_note = 0;
+  );
+
+  // Warning: this is a regression waiting to happen. Glide disables
+  // note offs, but should not disable pitch computation from happening
+  // since this is needed to know where to go.
+  got_note ? (
+    sample_location = samplelocs[sample_idx];
+    speed = pitch_to_speed(sample_location, pitch);
+  );
+
+  /* If no effect value is set, don't use one */
+  (effect_value == -1) ? effect = -1;
+
+  (effect == 9) ? (offset = effect_value / 127;);
+  
+  // Glide disables the note on and off. See note on got_note above.
+  (effect == 3) ? ( got_note = 0; );
+  
+  // Check whether this has a valid samplerate
+  (got_note > 0) ? (
+    sample_location[1] > 90 ? (
+      (current_playback == 1) ? (
+        this.play0.start_playback(sample_location, speed, 0.5 * offset * sample_location[]);
+        this.play1.stop_playback();
+      ) : (
+        this.play1.start_playback(sample_location, speed, 0.5 * offset * sample_location[]);
+        this.play0.stop_playback();
+      );
+      current_playback = 1.0 - current_playback;
+    );
+  ) : ( got_note < 0 ) ? (
+    // No note, but a stop signal, then terminate the sample.
+    this.stop_sample();
+  );
+  
+  // Set portamento for upcoming row
+  ((effect == 1) || (effect == 2)) ? (
+    (effect_value == 0) ? effect_value = last_porta;
+    // Semitone given by effect_value / 8. Hence 2^(value / (8*12))
+    (effect == 1) ? (
+      portamento_ds = 2^(effect_value / (8*12 * samples_per_beat));
+    ) : (
+      portamento_ds = 2^(-effect_value / (8*12 * samples_per_beat));
+    );
+
+    (current_playback == 0) ? (
+      this.play0.portamento_len = samples_per_beat;
+      this.play0.portamento_ds = portamento_ds;
+    ) : (
+      this.play1.portamento_len = samples_per_beat;
+      this.play1.portamento_ds = portamento_ds;
+    );
+    last_porta = effect_value;
+  );
+  
+  (effect == 4) ? (
+    // The log 2 is to make sure we can use exp, instead of 2^in the sample function.
+    count = effect_value / 16;
+    vib_depth = count > 1 ? log(2) * floor(count) / (7 * 12) : last_vib_depth;
+    count = effect_value % 16;
+    vib_speed = count > 1 ? vibrato_speed(count) / samples_per_beat : last_vib_speed;
+    
+    (current_playback == 0) ? (
+      (this.play0.vib_phase < -1336) ? this.play0.vib_phase = 0.5;
+      this.play0.vib_depth = vib_depth;
+      this.play0.vib_speed = vib_speed;
+      this.play0.vib_len = samples_per_beat + 2;
+    ) : (
+      (this.play1.vib_phase < -1336) ? this.play1.vib_phase = 0.5;
+      this.play1.vib_depth = vib_depth;
+      this.play1.vib_speed = vib_speed;
+      this.play1.vib_len = samples_per_beat + 2;
+    );
+    
+    last_vib_speed = vib_speed;
+    last_vib_depth = vib_depth;
+  );
+  
+  (effect == 8) ? (
+    this.set_pan(effect_value/128);
+  );
+  
+  // Glide
+  (effect == 3) ? (
+    (effect_value == 0) ? effect_value = last_porta;
+    curspeed = (current_playback == 0) ? this.play0.speed : this.play1.speed;
+    portamento_ds = 2^(sign(speed - curspeed) * effect_value / (8 * 12 * samples_per_beat));
+    portamento_len = min((log(speed) - log(curspeed)) / log(portamento_ds), samples_per_beat);
+    (current_playback == 0) ? (
+      this.play0.portamento_len = portamento_len;
+      this.play0.portamento_ds = portamento_ds;
+    ) : (
+      this.play1.portamento_len = portamento_len;
+      this.play1.portamento_ds = portamento_ds;
+    );
+    last_porta = effect_value;
+  );
+  
+  // Arpeggiator
+  (effect == 10) ? (
+    count = floor(effect_value / 16);
+    count > 0 ? last_arp_1 = count;
+    
+    count = effect_value % 16;
+    count > 0 ? last_arp_2 = count;
+    
+    dt = floor(samples_per_beat / 3);
+    (current_playback == 1) ? (
+      this.play1.speed = pitch_to_speed(sample_location, pitch);
+    ) : (
+      this.play0.speed = pitch_to_speed(sample_location, pitch);
+    );
+    
+    note_schedule_ptr = note_schedule;
+    note_schedule_ptr[] = dt; note_schedule_ptr += 1;
+    note_schedule_ptr[] = chan; note_schedule_ptr += 1; // Channel
+    note_schedule_ptr[] = vol; note_schedule_ptr += 1; // Volume
+    note_schedule_ptr[] = sample_idx; note_schedule_ptr += 1; // Sample
+    note_schedule_ptr[] = - pitch - last_arp_1; note_schedule_ptr += 1; // Pitch
+    
+    note_schedule_ptr[] = dt; note_schedule_ptr += 1;
+    note_schedule_ptr[] = chan; note_schedule_ptr += 1; // Channel
+    note_schedule_ptr[] = vol; note_schedule_ptr += 1; // Volume
+    note_schedule_ptr[] = sample_idx; note_schedule_ptr += 1; // Sample
+    note_schedule_ptr[] = - pitch - last_arp_2; note_schedule_ptr += 1; // Pitch
+    
+    note_schedule_ptr[] = -1337;
+    
+    next_backlog = dt;
+    note_schedule_ptr = note_schedule;
+  );
+  
+  // Retrigger
+  (effect == 11) ? (
+    note_schedule_ptr = note_schedule;
+    
+    vol_change = (1.0 - floor(effect_value / 16) / 8);
+    count = effect_value % 16;
+    dt = floor(samples_per_beat / (count + 1));
+    cv = vol;
+    loop(count,
+      note_schedule_ptr[] = dt; note_schedule_ptr += 1;
+      note_schedule_ptr[] = chan; note_schedule_ptr += 1; // Channel
+      note_schedule_ptr[] = cv; note_schedule_ptr += 1; // Volume
+      cv *= vol_change;
+      note_schedule_ptr[] = sample_idx; note_schedule_ptr += 1; // Sample
+      note_schedule_ptr[] = pitch; note_schedule_ptr += 1; // Pitch
+    );
+    // Finalize with the volume after the trigger.
+    note_schedule_ptr[] = dt - 1; note_schedule_ptr += 1;
+    note_schedule_ptr[] = chan; note_schedule_ptr += 1;
+    note_schedule_ptr[] = vol; note_schedule_ptr += 1;
+    note_schedule_ptr[] = -1337;
+    
+    next_backlog = dt;
+    note_schedule_ptr = note_schedule;
+  );
+);
+
+function set_offset_raw(offset)
+local()
+instance(current_playback)
+(
+  (current_playback == 1) ? (
+    this.play1.position = offset
+  ) : (
+    this.play0.position = offset
+  );
+);
+
+function play_sample(sample_idx, new_pitch, offset)
+instance(current_playback)
+global(samplelocs)
+local()
+(
+  new_pitch > 0 ? (
+    this.prepare_channel_for_messages();
+    this.schedule_note(sample_idx, new_pitch);
+    this.offset = offset;
+    this.commit_note();
+  ) : (
+    (current_playback == 1) ? (
+      this.play1.speed = pitch_to_speed(samplelocs[sample_idx], -new_pitch);
+    ) : (
+      this.play0.speed = pitch_to_speed(samplelocs[sample_idx], -new_pitch);
+    );
+  );
+);
+
+/* Channel update loop */
+function channel_update_loop()
+instance(current_playback, sample_location)
+global()
+local()
+(
+  (current_playback == 0) ? (
+    this.play0.update_loop_parameters(sample_location);
+  ) : (
+    this.play1.update_loop_parameters(sample_location);
+  );
+);
+
+function handle_message(msg1, msg2, msg3)
+instance(vol, effect, effect_value)
+local(cc_msg)
+global(N_SAMPLES)
+(
+  (msg1>$x8F && msg1<$xA0 && msg3!=0) ? (
+    // Note on?
+    (msg3 < N_SAMPLES) ? (
+      this.schedule_note(msg3 - 1, msg2); /* msg3 = velocity which serves as note now ; msg2 is pitch */
+    );
+  ) : ( (msg1>$x7F && msg1<$x90) || (msg1>$x89&&msg1<$xA0 && msg3==0 ) ) ? (
+    // Note off
+    this.schedule_stop();
+  ) : (msg1>$xAF && msg1<$xC0) ? (
+    // Set volume
+    cc_msg = msg2 & 127;
+    (cc_msg == 7) ? (
+      vol = (msg3 & 127) / 127;
+      vol *= vol;  // Square volume
+    ) : (cc_msg == 12) ? (
+      effect = msg3 & 127;
+    ) : (cc_msg == 13) ? (
+      effect_value = msg3 & 127;
+    );
+  );
+);
+
+function play_channel()
+instance(vol, cleft, cright, lpan, rpan)
+global(ssl, ssr)
+(
+  cleft = 0.998 * cleft + 0.002 * lpan * vol;
+  cright = 0.998 * cright + 0.002 * rpan * vol;
+  
+  this.play0.playing ? (
+    this.play0.play();
+    ssl += this.play0.outL * cleft;
+    ssr += this.play0.outR * cright;
+  );
+  this.play1.playing ? (
+    this.play1.play();
+    ssl += this.play1.outL * cleft;
+    ssr += this.play1.outR * cright;
+  );
+);
+
+freemem = 0;
+
+// Sample locations are recorded as [64 byte header (first is length), sampledata]
+freemem = (samplelocs = freemem) + 128;
+idx = 0;
+loop(N_SAMPLES,
+  freemem = (samplelocs[idx] = freemem) + MAX_SAMPLE_DURATION;
+  idx += 1;
+);
+
+freemem = (scratchloc = freemem) + MAX_SAMPLE_DURATION;
+freemem = (copyloc = freemem) + MAX_SAMPLE_DURATION;
+
+freemem = (midimem = freemem) + 32768;
+midi.initializeMIDI(midimem, 1, 1);
+freemem = (note_schedule = freemem) + 32768;
+note_schedule[] = -1337;
+
+@slider
+
+@serialize
+function serialize_sample(location, writing)
+local(sample_duration, validate)
+global(samplelocs, critical_error, SAMPLE_HEADER)
+(
+  sample_duration = location[];
+  file_var(0, sample_duration);
+  file_mem(0, location + 1, sample_duration + SAMPLE_HEADER - 1);
+  location[] = sample_duration;
+  
+  !writing ? (
+    file_var(0, validate);
+    critical_error = critical_error || (validate != 1337);
+  ) : (
+    file_var(0, 1337);
+  );
+);
+
+writing = file_avail(0) < 0;
+loaded = 1;
+critical_error = 0;
+file_var(0, version);
+file_var(0, N_SAMPLES);
+
+swrite_idx = 0;
+loop(N_SAMPLES,
+  (!writing) ? memset(samplelocs[swrite_idx], 0, MAX_SAMPLE_DURATION + SAMPLE_HEADER);
+  serialize_sample(samplelocs[swrite_idx], writing);
+  swrite_idx += 1;
+);
+
+@block
+midi.processMIDIBlock();
+
+@sample
+samples_per_beat = floor((srate * 60) / tempo / ticks_per_beat);
+
+function processBacklog()
+local(chan, vol, sample_idx)
+global(note_schedule, note_schedule_ptr, next_backlog
+       chan1.vol, chan2.vol, chan3.vol, chan4.vol, chan5.vol, chan6.vol, chan7.vol, chan8.vol,
+       chan9.vol, chan10.vol, chan11.vol, chan12.vol, chan13.vol, chan14.vol, chan15.vol, chan16.vol,
+       chan1.play_sample, chan2.play_sample, chan3.play_sample, chan4.play_sample, 
+       chan5.play_sample, chan6.play_sample, chan7.play_sample, chan8.play_sample,
+       chan9.play_sample, chan10.play_sample, chan11.play_sample, chan12.play_sample, 
+       chan13.play_sample, chan14.play_sample, chan15.play_sample, chan16.play_sample)
+(
+  (next_backlog > 0) ?
+  (
+    // Count down to the next item
+    next_backlog -= 1;
+    
+    // FIRE!
+    next_backlog == 0 ? (
+      // What channel is this?
+      note_schedule_ptr += 1; // Go past the count
+      chan = note_schedule_ptr[]; note_schedule_ptr += 1;
+      vol = note_schedule_ptr[]; note_schedule_ptr += 1;
+      
+      (chan == 1) ? chan1.vol = vol;
+      (chan == 2) ? chan2.vol = vol;
+      (chan == 3) ? chan3.vol = vol;
+      (chan == 4) ? chan4.vol = vol;
+      (chan == 5) ? chan5.vol = vol;
+      (chan == 6) ? chan6.vol = vol;
+      (chan == 7) ? chan7.vol = vol;
+      (chan == 8) ? chan8.vol = vol;
+      (chan == 9) ? chan9.vol = vol;
+      (chan == 10) ? chan10.vol = vol;
+      (chan == 11) ? chan11.vol = vol;
+      (chan == 12) ? chan12.vol = vol;
+      (chan == 13) ? chan13.vol = vol;
+      (chan == 14) ? chan14.vol = vol;
+      (chan == 15) ? chan15.vol = vol;
+      (chan == 16) ? chan16.vol = vol;
+      
+      // Is there a note here or not?
+      sample_idx = note_schedule_ptr[];
+      (sample_idx > -1) ? (
+        note_schedule_ptr += 1;
+        (chan == 1) ? ( chan1.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
+        (chan == 2) ? ( chan2.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
+        (chan == 3) ? ( chan3.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
+        (chan == 4) ? ( chan4.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
+        (chan == 5) ? ( chan5.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
+        (chan == 6) ? ( chan6.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
+        (chan == 7) ? ( chan7.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
+        (chan == 8) ? ( chan8.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
+        (chan == 9) ? ( chan9.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
+        (chan == 10) ? ( chan10.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
+        (chan == 11) ? ( chan11.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
+        (chan == 12) ? ( chan12.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
+        (chan == 13) ? ( chan13.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
+        (chan == 14) ? ( chan14.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
+        (chan == 15) ? ( chan15.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
+        (chan == 16) ? ( chan16.play_sample(sample_idx, note_schedule_ptr[], 0); );
+        note_schedule_ptr += 1;
+      );
+      
+      // Proceed to the next one
+      next_backlog = note_schedule_ptr[];
+    );
+  );
+);
+
+function processMIDISample()
+local(channel)
+instance(notePtr, remainingNotes, nextNote, curSample)
+(
+  // Take notes from the stack until we hit the end marker -1
+  (remainingNotes) ? (
+    // This handleMessages is ugly, but if we don't do this, we're going
+    // to be checking this every cycle where there is any MIDI in the block => Not good.
+    handleMessages = 0;
+    (nextNote == curSample) ? (
+      handleMessages = 1;
+      chan1.prepare_channel_for_messages();
+      chan2.prepare_channel_for_messages();
+      chan3.prepare_channel_for_messages();
+      chan4.prepare_channel_for_messages();
+      chan5.prepare_channel_for_messages();
+      chan6.prepare_channel_for_messages();
+      chan7.prepare_channel_for_messages();
+      chan8.prepare_channel_for_messages();
+      chan9.prepare_channel_for_messages();
+      chan10.prepare_channel_for_messages();
+      chan11.prepare_channel_for_messages();
+      chan12.prepare_channel_for_messages();
+      chan13.prepare_channel_for_messages();
+      chan14.prepare_channel_for_messages();
+      chan15.prepare_channel_for_messages();
+      chan16.prepare_channel_for_messages();
+    );
+  
+    while(nextNote == curSample) (
+      notePtr += 1;
+      
+      channel = notePtr[];
+      (channel == 1) ? ( chan1.handle_message(notePtr[1], notePtr[2], notePtr[3]); )
+      : (channel == 2) ? ( chan2.handle_message(notePtr[1], notePtr[2], notePtr[3]); )
+      : (channel == 3) ? ( chan3.handle_message(notePtr[1], notePtr[2], notePtr[3]); )
+      : (channel == 4) ? ( chan4.handle_message(notePtr[1], notePtr[2], notePtr[3]); )
+      : (channel == 5) ? ( chan5.handle_message(notePtr[1], notePtr[2], notePtr[3]); )
+      : (channel == 6) ? ( chan6.handle_message(notePtr[1], notePtr[2], notePtr[3]); )
+      : (channel == 7) ? ( chan7.handle_message(notePtr[1], notePtr[2], notePtr[3]); )
+      : (channel == 8) ? ( chan8.handle_message(notePtr[1], notePtr[2], notePtr[3]); )
+      : (channel == 9) ? ( chan9.handle_message(notePtr[1], notePtr[2], notePtr[3]); )
+      : (channel == 10) ? ( chan10.handle_message(notePtr[1], notePtr[2], notePtr[3]); )
+      : (channel == 11) ? ( chan11.handle_message(notePtr[1], notePtr[2], notePtr[3]); )
+      : (channel == 12) ? ( chan12.handle_message(notePtr[1], notePtr[2], notePtr[3]); )
+      : (channel == 13) ? ( chan13.handle_message(notePtr[1], notePtr[2], notePtr[3]); )
+      : (channel == 14) ? ( chan14.handle_message(notePtr[1], notePtr[2], notePtr[3]); )
+      : (channel == 15) ? ( chan15.handle_message(notePtr[1], notePtr[2], notePtr[3]); )
+      : (channel == 16) ? ( chan16.handle_message(notePtr[1], notePtr[2], notePtr[3]); );
+      notePtr += 4;
+      
+      // Avoid constantly dereferencing by picking up the next one
+      nextNote = notePtr[];
+      remainingNotes = nextNote != -1337;
+    );
+    
+    handleMessages ? (
+      chan1.commit_note();
+      chan2.commit_note();
+      chan3.commit_note();
+      chan4.commit_note();
+      chan5.commit_note();
+      chan6.commit_note();
+      chan7.commit_note();
+      chan8.commit_note();
+      chan9.commit_note();
+      chan10.commit_note();
+      chan11.commit_note();
+      chan12.commit_note();
+      chan13.commit_note();
+      chan14.commit_note();
+      chan15.commit_note();
+      chan16.commit_note();
+    );
+  );
+  
+  curSample += 1;
+);
+ssl = ssr = 0;
+
+processBacklog();
+midi.processMIDISample();
+
+chan1.play_channel();
+chan2.play_channel();
+chan3.play_channel();
+chan4.play_channel();
+chan5.play_channel();
+chan6.play_channel();
+chan7.play_channel();
+chan8.play_channel();
+chan9.play_channel();
+chan10.play_channel();
+chan11.play_channel();
+chan12.play_channel();
+chan13.play_channel();
+chan14.play_channel();
+chan15.play_channel();
+chan16.play_channel();
+
+preview_channel.play_channel();
+
+spl0 += ssl;
+spl1 += ssr;
+
+@gfx
+current_char = gfx_getchar();
+
+/* Has the user dropped a file? */
+DROPPED_FILE_STR = 14;
+file_dropped = -1;
+gfx_getdropfile(0, DROPPED_FILE_STR) ? file_dropped = 0;
+
+/* Has the user run the sample dropping script? */
+sample_gmem_length = gmem[];
+sample_gmem_length > 0 ? (
+  memset(sample_location[selected_sample], 0, MAX_SAMPLE_DURATION);
+  gmem[] = 0;
+  sample_location[selected_sample][0] = sample_gmem_length;
+  sample_location[selected_sample][1] = gmem[1];  // Sample rate
+  sample_location[selected_sample][2] = ref_note; // Reference pitch
+  sample_location[selected_sample][3] = -1;       // Loop start (in position; raw sample pos/2)
+  sample_location[selected_sample][4] = -1;       // Loop end (in position; raw sample pos/2)
+  sample_location[selected_sample][5] = 0;        // Bi-directional?
+  //memcpy(sample_location[selected_sample] + SAMPLE_HEADER, gmem + 1, sample_gmem_length);
+  ptr = sample_location[selected_sample] + SAMPLE_HEADER;
+  cidx = 2;
+  loop(sample_gmem_length,
+    ptr[] = gmem[cidx];
+    ptr += 1;
+    cidx += 1;
+  );
+);
+
+
+function load_from_dropped(sample_location)
+local(file_handle, num_channels, samplerate, length, ptr)
+global(DROPPED_FILE_STR, MAX_SAMPLE_DURATION, SAMPLE_HEADER, ref_note)
+(
+  file_handle = file_open(DROPPED_FILE_STR);
+  file_handle >= 0 ? (
+    file_riff(file_handle, num_channels, samplerate);
+    memset(sample_location, 0, MAX_SAMPLE_DURATION);
+    (num_channels == 2) ? (
+      length = min(file_avail(file_handle), MAX_SAMPLE_DURATION - 4);
+      file_mem(file_handle, sample_location + SAMPLE_HEADER, length);
+    ) : (num_channels == 1) ? (
+      length = min(file_avail(file_handle), MAX_SAMPLE_DURATION - 4);
+      ptr = sample_location + SAMPLE_HEADER;
+      loop(length,
+        file_var(file_handle, ptr[]);
+        ptr[1] = ptr[];
+        ptr += 2;
+      );
+      length *= 2;
+    );
+    sample_location[] = length;       // Length
+    sample_location[1] = samplerate;  // Reference samplerate
+    sample_location[2] = ref_note;    // Reference pitch
+    sample_location[3] = -1;          // Loop start (in position; raw sample pos/2)
+    sample_location[4] = -1;          // Loop end (in position; raw sample pos/2)
+    sample_location[5] = 0;           // Bi-directional?
+    file_close(file_handle);
+  );
+);
+
+function control_rect(x, y, w, h, r, g, b, a, font, label)
+local(ww, hh)
+global(font_color_r, font_color_g, font_color_b, font_color_a, gfx_x, gfx_y,
+       mouse_x, mouse_y)
+(
+  gfx_set(r, g, b, a*.7);
+  gfx_rect(x, y, w, h);
+  gfx_set(r, g, b, a);
+  gfx_line(x, y, x + w, y);
+  
+  gfx_setfont(font);
+  gfx_measurestr(label, ww, hh);
+  gfx_set(font_color_r, font_color_g, font_color_b, font_color_a);
+  gfx_x = x + 0.5 * (w - ww);
+  gfx_y = y + 0.5 * (h - hh);
+  gfx_printf(label);
+  
+  (mouse_x > x) && (mouse_x < (x+w)) && (mouse_y > y) && (mouse_y < (y+h))
+);
+
+function mouse_over(x, y, w, h)
+global(mouse_x, mouse_y)
+local()
+(
+  (mouse_x > x) && (mouse_x < (x+w)) && (mouse_y > y) && (mouse_y < (y+h))
+);
+
+function mouse_press(cap)
+global(mouse_cap, last_cap)
+local()
+(
+  ((mouse_cap & cap) == cap) && ((last_cap & cap) == 0)
+);
+
+function mouse_release(cap)
+global(mouse_cap, last_cap)
+local()
+(
+  ((mouse_cap & cap) == 0) && ((last_cap & cap) == cap)
+);
+
+function mouse_is_down(cap)
+global(mouse_cap)
+local()
+(
+  ((mouse_cap & cap) == cap)
+);
+
+function process_pad(x, y, w, h, idx, sample_location)
+global(mouse_x, mouse_y, mouse_cap, last_cap, captured,
+       file_dropped, DROPPED_FILE_STR,
+       preview_channel.play_sample, preview_channel.stop_sample, selected_sample,
+       TINY_FONT)
+local(is_over)
+(
+  is_over = mouse_over(x, y, w, h);
+  
+  // File dropped zero means that the first file exists. Only the first
+  // one has to pass the check whether it is dropped on this pad. Any other
+  // file will be placed in subsequent positions.
+  (((file_dropped == 0) && is_over) || (file_dropped > 0)) ? (
+    load_from_dropped(sample_location);
+    file_dropped += 1;
+    file_dropped = gfx_getdropfile(file_dropped, DROPPED_FILE_STR) ? file_dropped : -1;
+  );
+  
+  ((last_cap & 1) == 0) && (mouse_cap & 1) && !captured && is_over ? (
+    selected_sample = idx;
+  );
+  
+  control_rect(x, y + h - 15, 30, 15, 0.04, 0.07, 0.03, 1.0, TINY_FONT, "Play") ? (
+    ((last_cap & 1) == 0) && (mouse_cap & 1) && is_over && !captured ? (
+      preview_channel.play_sample(idx, 69, 0);
+    );    
+  );
+    
+  control_rect(x + 30, y + h - 15, 30, 15, 0.07, 0.04, 0.03, 1.0, TINY_FONT, "Stop") ? (
+    ((last_cap & 1) == 0) && (mouse_cap & 1) && is_over && !captured ? (
+      preview_channel.stop_sample();
+    );    
+  );
+);
+
+// Are we playing anything?
+new_pitch = get_pitch_from_kb(current_char);
+((new_pitch > -1) && (wait_for_release != current_char) && gfx_getchar(current_char)) ? (
+  preview_channel.play_sample(selected_sample, new_pitch + 69 - 24, 0);
+  preview_offset = min(close_up.block_start, close_up.block_end);
+  preview_offset > 0 ? (
+    preview_channel.set_offset_raw((preview_offset - close_up.sample_start) * 0.5);
+  );
+  wait_for_release = current_char;
+);
+
+(!gfx_getchar(wait_for_release) && (wait_for_release > 0)) ? (
+  wait_for_release = 0;
+  preview_channel.stop_sample();
+);
+
+font_color_r = font_color_g = font_color_b = 0.8;
+font_color_a = 1.0;
+
+SAMPLE_FONT = 5;
+TINY_FONT = 6;
+gfx_setfont(TINY_FONT, "Arial", 12);
+BIG_FONT = 7;
+gfx_setfont(BIG_FONT, "Arial", 18);
+
+waveform_r = .3;
+waveform_g = .4;
+waveform_b = .5;
+waveform_a = 1.0;
+
+function draw_box(x, y, w, h)
+(
+  gfx_set(0.02, 0.02, 0.02, 1.0);
+  gfx_rect(x, y, w, h);
+  gfx_set(0.2, 0.2, 0.2, 0.5);
+  gfx_line(x, y, x + w - 1, y);
+  gfx_line(x, y + h - 1, x + w, y + h - 1);
+  gfx_line(x, y, x, y + h - 1);
+  gfx_line(x + w - 1, y, x + w - 1, y + h - 1);
+);
+
+function draw_waveform(x, y, w, h, sample, length_in_samples)
+local(len, ptr, step, todo
+      xp, ym, ww, hh, minacc, maxacc)
+global(waveform_r, waveform_g, waveform_b, waveform_a)
+(
+  len = max(0, floor(length_in_samples * 0.5));
+  ptr = sample;
+  step = len / w;
+  
+  gfx_set(waveform_r, waveform_g, waveform_b, waveform_a);
+  xp = x;
+  ym = y + 0.5 * h;
+  hh = 0.35 * h;
+  
+  step > 1 ? (
+    todo = step;
+    loop(w,
+      maxacc = 0;
+      minacc = 0;
+      loop(todo,
+        maxacc = max(ptr[], maxacc);
+        minacc = min(ptr[], minacc);
+        ptr += 2;
+      );
+      todo += step - floor(todo);
+      maxacc = min(1.0, maxacc);
+      minacc = max(-1.0, minacc);
+      gfx_line(xp, ym + hh * minacc, xp, ym + hh * maxacc);
+      xp += 1;
+    );
+  ) : (
+    step = w / len;
+    gfx_line(xp, ym, xp + w, ym);
+    loop(length_in_samples * 0.5,
+      maxacc = ptr[];
+      gfx_line(xp, ym, xp, ym + hh * maxacc);
+      gfx_circle(xp, ym + hh * maxacc, 2, 1);
+      ptr += 2;
+      xp += step;
+    );
+  );
+  
+  length_in_samples
+);
+
+function draw_wavebox(x, y, w, h, idx, sample)
+global(SAMPLE_FONT, TINY_FONT, SAMPLE_HEADER, selected_sample,
+       gfx_x, gfx_y,
+       font_color_r, font_color_g, font_color_b, font_color_a,
+       draw_box, draw_waveform)
+local(length_in_samples, ptr, len, step, ww, hh, fine)
+(
+  draw_box(x, y, w, h);
+  
+  selected_sample == idx ? (
+    gfx_set(0.1, 0.1, 0.5, 0.2);
+    gfx_rect(x, y, w, h);
+  );
+
+  gfx_set(0.1, 0.1, 0.1, 0.7);
+  gfx_setfont(SAMPLE_FONT, "Arial", h);
+  sprintf(16, "%d", idx + 1);
+  gfx_measurestr(16, ww, hh);
+  
+  gfx_x = x - 0.5 * ww + 0.5 * w;
+  gfx_y = y;
+  gfx_printf(16);
+
+  length_in_samples = sample[];
+  draw_waveform(x, y, w, h, sample + SAMPLE_HEADER, length_in_samples);
+  
+  length_in_samples > 1 ? (
+    gfx_x = x + 2;
+    gfx_y = y + 2;
+    gfx_setfont(TINY_FONT);
+    gfx_set(font_color_r, font_color_g, font_color_b, font_color_a);
+    gfx_printf("%d Hz", sample[1]);
+    
+    gfx_printf(", %s-%d", midi_pitch_to_note(sample[2]), midi_pitch_to_octave(sample[2]));
+    fine = sample[2] - floor(sample[2]);
+    fine > 0 ? (
+      gfx_printf(", +%.2f", sample[2] - floor(sample[2]));
+    );
+  );
+);
+
+gfx_pad = 0.01 * gfx_w;
+
+gfx_set(0, 0, 0, 1);
+gfx_rect(0, 0, gfx_w, gfx_h);
+
+nx = 6;
+ny = 6;
+block_pad = 4;
+sample_edit_size = 0.3 * gfx_h;
+block_width = floor((gfx_w - 2 * gfx_pad - (nx - 2) * block_pad) / nx);
+block_height = floor((gfx_h - 2 * gfx_pad - (ny + 1 - 2) * block_pad - sample_edit_size) / ny);
+
+cx = gfx_pad;
+cy = gfx_pad;
+idx = 0;
+loop(ny,
+  cx = gfx_pad;
+  loop(nx,
+    draw_wavebox(cx, cy, block_width, block_height, idx, samplelocs[idx]);
+    process_pad(cx, cy, block_width, block_height, idx, samplelocs[idx]);
+    cx += block_width + block_pad;
+    idx += 1;
+  );
+  cy += block_height + block_pad;
+);
+
+(selected_sample != last_selected_sample) ? (
+  reset_zoom = 1;
+  last_selected_sample = selected_sample;
+);
+
+DRAG_SAMPLE = 1;
+DRAG_LOOP_POINT_1 = 2;
+DRAG_LOOP_POINT_2 = 3;
+DRAG_PITCH = 4;
+DRAG_FINE = 5;
+
+function handle_loop_point(cx, cy, ww, hh, sample_start, disp_range_start, disp_range_len, loop_loc, capture_mode)
+local(loop_point, point_in_samples, mul)
+global(captured, oldloc, newloc, updated_loop,
+       mouse_dx, mouse_x, mouse_y, mouse_cap)
+(
+  loop_point = cx + ww * (2 * loop_loc[] - disp_range_start + sample_start) / disp_range_len;
+  gfx_rect(loop_point - 1, cy, 2, hh);
+  
+  mouse_over(loop_point-3, cy, 6, hh) ? (
+    gfx_rect(loop_point - 2, cy, 4, hh);
+    
+    ((!captured) && mouse_press(1)) ? (
+      captured = capture_mode;
+    );
+  );
+  
+  mul = 1;
+  (mouse_cap&4) ? mul = mul * 0.125; /* CTRL */
+  (mouse_cap&8) ? mul = mul * 0.125; /* SHIFT */
+    
+  (captured == capture_mode) ? (
+//    loop_loc[] = 0.5 * (disp_range_start - sample_start + disp_range_len * max(min((mouse_x - cx) / ww, 1), 0));
+    loop_loc[] += 0.5 * mul * disp_range_len * mouse_dx / ww;
+    updated_loop = 1;
+    mouse_release(1) ? captured = 0;
+  );
+  
+  loop_point
+);
+
+function reverse(left, right)
+local(ptr_from, ptr_to)
+global(scratchloc)
+(
+  memcpy(scratchloc, left, right - left);
+  ptr_to = right;
+  ptr_from = scratchloc;
+  loop(0.5 * (right - left),
+    ptr_to[0] = ptr_from[0];
+    ptr_to[1] = ptr_from[1];
+    ptr_to -= 2;
+    ptr_from += 2;
+  );
+);
+
+function copy(sample_loc, left, right)
+local()
+global(copyloc, SAMPLE_HEADER)
+(
+  memset(copyloc, 0, SAMPLE_HEADER);
+  copyloc[] = right - left;
+  copyloc[1] = sample_loc[1];
+  copyloc[2] = sample_loc[2];
+  copyloc[3] = -1;
+  copyloc[4] = -1;
+  copyloc[5] = 0;
+  memcpy(copyloc + SAMPLE_HEADER, left, right - left);
+);
+
+function paste(target)
+local()
+global(copyloc, SAMPLE_HEADER)
+(
+  memcpy(target, copyloc, SAMPLE_HEADER + copyloc[]);
+);
+
+function fade(left, right, in_or_out)
+local(fade_len, ptr, dx, lvol, lv2)
+global(finval)
+(
+  fade_len = 0.5 * (right - left);
+  ptr = left;
+  
+  in_or_out ? (
+    dx = 1.0 / (fade_len - 1);
+    lvol = 0;
+  ) : (
+    dx = -1.0 / (fade_len - 1);
+    lvol = 1;
+  );
+  
+  loop(fade_len,
+    lv2 = lvol * lvol;
+    
+    ptr[] *= lv2;
+    ptr[1] *= lv2;
+    
+    lvol += dx;
+    ptr += 2;
+  );
+  
+  finval = lv2;
+);
+
+function normalize(start, len)
+local(mx, ptr)
+global()
+(
+  ptr = start;
+  mx = 0;
+  loop(len,
+    mx = max(mx, abs(ptr[]));
+    ptr += 1;
+  );
+  ptr = start;
+  loop(len,
+    ptr[] /= mx;
+    ptr += 1;
+  );
+);
+
+function delete(selected_sample, left, right)
+global(samplelocs)
+instance(sample_len, sample_start, disp_range_start, disp_range_len, block_start, block_end)
+(
+  memcpy(left, right, sample_len - right + sample_start);
+  
+  memset(sample_start + sample_len - (right - left), 0, right - left);
+  samplelocs[selected_sample][] -= right - left;
+  sample_len = samplelocs[selected_sample][];
+  
+  // Clamp visible range to now
+  disp_range_len = min(disp_range_len, sample_len - (disp_range_start - sample_start));
+  
+  block_end = 0;
+  block_start = 0;
+);
+
+
+function pitch_widget(cx, cy, ww, hh, sample_loc)
+local(button_width, button_height, frac, mul)
+global(BIG_FONT,
+       captured, mouse_cap, mouse_dy,
+       DRAG_FINE, DRAG_PITCH)
+instance(dy_sum)
+(
+  // Reference pitch
+  button_width = 50;
+  button_height = 30;
+  control_rect(cx + ww - button_width, cy, button_width, button_height, 0.07, 0.04, 0.03, 1.0, BIG_FONT, 
+  sprintf(8, "+%.2f", sample_loc[2] - floor(sample_loc[2]))) ? (
+    mouse_press(1) && !captured ? captured = DRAG_FINE;
+  );
+  
+  mul = 1;
+  (mouse_cap&4) ? mul = mul * 0.125; /* CTRL */
+  (mouse_cap&8) ? mul = mul * 0.125; /* SHIFT */
+  
+  ((captured == DRAG_FINE) && (mouse_is_down(1))) ? (
+    frac = sample_loc[2] - floor(sample_loc[2]) - 0.01 * mul * mouse_dy;
+    frac = max(0, min(0.9999999, frac + 0.01 * dy_sum));
+    sample_loc[2] = floor(sample_loc[2]) + frac;
+  );
+  
+  control_rect(cx + ww - 2 * button_width - 2, cy, button_width, button_height, 0.07, 0.04, 0.03, 1.0, BIG_FONT, 
+  sprintf(8, "%s-%d", midi_pitch_to_note(sample_loc[2]), midi_pitch_to_octave(sample_loc[2]))) ? (
+    (mouse_press(1) && !captured) ? captured = DRAG_PITCH;
+  );
+  
+  ((captured == DRAG_PITCH) && (mouse_is_down(1))) ? (
+    dy_sum -= 0.1 * mul * mouse_dy;
+    
+    (dy_sum > 1) ? (
+      sample_loc[2] += floor(dy_sum);
+      dy_sum -= floor(dy_sum);
+    ) : (dy_sum < -1) ? (
+      sample_loc[2] += ceil(dy_sum);
+      dy_sum -= ceil(dy_sum);
+    );
+  );
+  
+  ((captured == DRAG_FINE) || (captured == DRAG_PITCH)) ? (
+    (!mouse_is_down(1)) ? ( captured = 0; dy_sum = 0; );
+  );
+);
+
+
+function draw_sample_big(cx, cy, ww, hh, reset_zoom)
+instance(sample_start, sample_len,
+         disp_range_start, disp_range_len,
+         block_start, block_end)
+local(is_over, menu_selection, fractional_pos, center, loop_start, loop_stop, mouse_pos_in_samples, left, right)
+global(samplelocs, selected_sample, SAMPLE_HEADER, SAMPLE_DURATION, captured,
+       DRAG_SAMPLE, DRAG_LOOP_POINT_1, DRAG_LOOP_POINT_2,
+       updated_loop, current_char, last_click_time,
+       mouse_x, mouse_y, mouse_wheel, mouse_cap,
+       gfx_x, gfx_y, gfx_a)
+(
+  draw_box(cx, cy, ww, hh);
+  draw_waveform(cx, cy, ww, 0.5 * hh, disp_range_start, disp_range_len);
+  draw_waveform(cx, cy + 0.5 * hh, ww, 0.5 * hh, disp_range_start + 1, disp_range_len);
+  
+  // Loop points
+  (samplelocs[selected_sample][3] > -1) ? (
+    gfx_a = 0.5;
+    loop_start = handle_loop_point(cx, cy, ww, hh, sample_start, disp_range_start, disp_range_len, samplelocs[selected_sample] + 3, DRAG_LOOP_POINT_1);
+    loop_stop = handle_loop_point(cx, cy, ww, hh, sample_start, disp_range_start, disp_range_len, samplelocs[selected_sample] + 4, DRAG_LOOP_POINT_2);
+    gfx_a = 0.1;
+    gfx_rect(loop_start, cy, loop_stop - loop_start, hh);
+  );
+
+  this.pitch_widget(cx, cy, ww, hh, samplelocs[selected_sample]);
+  
+  is_over = mouse_over(cx, cy, ww, hh);
+  (is_over && mouse_press(1) && !captured) ? (
+    captured = DRAG_SAMPLE;
+    mouse_pos_in_samples = disp_range_start + disp_range_len * max(min((mouse_x - cx) / ww, 1), 0);
+    block_start = mouse_pos_in_samples;
+    block_end = mouse_pos_in_samples;
+    block_start = floor(block_start * 0.5) * 2;
+    block_end = floor(block_end * 0.5) * 2;
+    
+    ((time_precise() - last_click_time) < 0.5) ? (
+      block_start = sample_start;
+      block_end = sample_start + sample_len; 
+      captured = 0;
+    );
+    last_click_time = time_precise();
+  ) : ((captured == DRAG_SAMPLE) && mouse_is_down(1)) ? (
+    mouse_pos_in_samples = disp_range_start + disp_range_len * max(min((mouse_x - cx) / ww, 1), 0);
+    block_end = mouse_pos_in_samples;
+    block_end = floor(block_end * 0.5) * 2;
+    (abs(block_end - block_start) > 5) ? (
+      last_click_time = time_precise();
+    );
+  ) : ((captured == DRAG_SAMPLE) && mouse_release(1)) ? (
+    captured = 0;
+  );
+  
+  gfx_set(1, 1, 1, 0.1);
+  block_end > block_start ? (
+    gfx_rect(cx + ww * (block_start - disp_range_start) / disp_range_len, cy, ww * (block_end - block_start) / disp_range_len, hh);
+  ) : (
+    gfx_rect(cx + ww * (block_end - disp_range_start) / disp_range_len, cy, ww * (block_start - block_end) / disp_range_len, hh);
+  );
+  
+  // Delete
+  (current_char == 6579564) ? (
+    ( (block_start == 0) && (block_end == 0) ) ? (
+      memset(samplelocs[selected_sample], 0, SAMPLE_HEADER + SAMPLE_DURATION);
+      reset_zoom = 1;
+    ) : (
+      left = min(block_start, block_end);
+      right = max(block_start, block_end);
+      
+      this.delete(selected_sample, left, right);
+    );
+  );
+  
+  ((current_char == 3) && (mouse_cap == 4)) ? (
+    (abs(block_end - block_start) > 5) ? (
+      left = min(block_start, block_end);
+      right = max(block_start, block_end);
+      copy(samplelocs[selected_sample], left, right);
+    ) : ( (block_start == 0) && (block_end == 0) ) ? (
+      copy(samplelocs[selected_sample], sample_start, sample_start + sample_len);
+    );
+  );
+  
+  ((current_char == 22) && (mouse_cap == 4)) ? (
+    paste(samplelocs[selected_sample]);
+    reset_zoom = 1;
+  );
+  
+  ((current_char == 18) && (mouse_cap == 4)) ? (
+    left = min(block_start, block_end);
+    right = max(block_start, block_end);
+    ((right - left) > 2) ? (
+      reverse(left, right);
+    );
+  );
+  
+  ((current_char == 24) && (mouse_cap == 4)) ? (
+    left = min(block_start, block_end);
+    right = max(block_start, block_end);
+    ((right - left) > 2) ? (
+      copy(samplelocs[selected_sample], left, right);
+      this.delete(selected_sample, left, right);
+    );
+  );
+  
+  (is_over && !captured && mouse_press(2)) ? (
+    gfx_x = mouse_x;
+    gfx_y = mouse_y;
+    left = min(block_start, block_end);
+    right = max(block_start, block_end);
+    (abs(block_end - block_start) < 5) ? (
+      menu_selection = gfx_showmenu("#Zoom|Reset Zoom||#Set loop|#Set loop (bidirectional)|Remove loop||#Reverse (Ctrl + R)||#Fade in|#Fade out||#Crop to selection||#Copy (Ctrl + C)|Paste (Ctrl + V)|#Cut (Ctrl + X)||Normalize");
+    ) : (
+      menu_selection = gfx_showmenu("Zoom|Reset Zoom||Set loop|Set loop (bidirectional)|Remove loop||Reverse (Ctrl + R)||Fade in|Fade out||Crop to selection||Copy (Ctrl + C)|Paste (Ctrl + V)|Cut (Ctrl + X)||Normalize");
+    );
+    (menu_selection == 1) ? (
+      disp_range_len = max(10, abs(block_end - block_start));
+      disp_range_start = min(block_start, block_end);
+    ) : (menu_selection == 2) ? (
+      reset_zoom = 1;
+    ) : ((menu_selection == 3) || (menu_selection == 4)) ? (
+      samplelocs[selected_sample][3] = floor(0.5 * (left - sample_start));    // Loop start
+      samplelocs[selected_sample][4] = floor(0.5 * (right - sample_start));   // Loop end
+      samplelocs[selected_sample][5] = (menu_selection == 3) ? 0 : 1;         // Bi-directional?
+      updated_loop = 1;
+    ) : (menu_selection == 5) ? (
+      samplelocs[selected_sample][3] = -1;
+    ) : (menu_selection == 6) ? (
+      reverse(left, right);
+    ) : ( ( menu_selection == 7 ) || ( menu_selection == 8 ) ) ? (
+      fade(left, right, menu_selection == 7);
+    ) : (menu_selection == 9) ? (
+      // Crop to selection
+      memcpy(sample_start, left, right - left);
+      memset(sample_start + sample_len - (right - left), 0, right - left);
+      samplelocs[selected_sample][] = right - left;
+      sample_len = samplelocs[selected_sample][];
+      disp_range_start = sample_start;
+      disp_range_len = sample_len;
+      
+      block_end = 0;
+      block_start = 0;
+    ) : (menu_selection == 10) ? (
+      copy(samplelocs[selected_sample], left, right);
+    ) : (menu_selection == 11) ? (
+      paste(samplelocs[selected_sample]);
+      reset_zoom = 1;
+    ) : (menu_selection == 12) ? (
+      copy(samplelocs[selected_sample], left, right);
+      this.delete(selected_sample, left, right);
+    ) : (menu_selection == 13) ? (
+      normalize(sample_start, sample_len);
+    );
+  );
+  
+  abs(mouse_wheel) > 0 ? (
+    fractional_pos = max(min((mouse_x - cx) / ww, 1), 0);
+    center = disp_range_start + disp_range_len * fractional_pos;
+    (mouse_wheel > 0) ? (
+      disp_range_start = max(sample_start, disp_range_start + disp_range_len * (1.0 - 0.75) * fractional_pos);
+      disp_range_len = max(10, 0.75 * disp_range_len);
+      disp_range_start = floor(disp_range_start * 0.5) * 2;
+    ) : (
+      disp_range_start = max(sample_start, disp_range_start + disp_range_len * (1.0 - 1.25) * fractional_pos);
+      disp_range_len = min(sample_len, 1.25 * disp_range_len);
+      disp_range_start = floor(disp_range_start * 0.5) * 2;
+    );
+    mouse_wheel = 0;
+  );
+  
+  reset_zoom ? (
+    sample_start = samplelocs[selected_sample] + SAMPLE_HEADER;
+    sample_len = samplelocs[selected_sample][];
+    disp_range_start = sample_start;
+    disp_range_len = sample_len;
+    block_start = 0;
+    block_end = 0;
+  );
+);
+
+updated_loop ? (
+  updated_loop = 0;
+  chan1.channel_update_loop();
+  chan2.channel_update_loop();
+  chan3.channel_update_loop();
+  chan4.channel_update_loop();
+  chan5.channel_update_loop();
+  chan6.channel_update_loop();
+  chan7.channel_update_loop();
+  chan8.channel_update_loop();
+  chan9.channel_update_loop();
+  chan10.channel_update_loop();
+  chan11.channel_update_loop();
+  chan12.channel_update_loop();
+  chan13.channel_update_loop();
+  chan14.channel_update_loop();
+  chan15.channel_update_loop();
+  chan16.channel_update_loop();
+  
+  preview_channel.channel_update_loop();
+);
+
+/* Zoomed in waveform */
+close_up.draw_sample_big(gfx_pad, cy, gfx_w - 2 * gfx_pad, sample_edit_size, reset_zoom);
+
+gfx_getdropfile(-1);
+
+critical_error ? (
+  gfx_x = gfx_y = 0;
+  gfx_set(1, 1, 1, 1);
+  gfx_setfont(3, "Arial", 100);
+  gfx_printf("FATAL PRESET ERROR");
+);
+
+last_cap = mouse_cap;
+reset_zoom = 0;
+mouse_dx = mouse_x - last_mouse_x;
+mouse_dy = mouse_y - last_mouse_y;
+last_mouse_x = mouse_x;
+last_mouse_y = mouse_y;
+

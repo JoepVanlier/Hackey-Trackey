@@ -3,12 +3,15 @@
 @author: Joep Vanlier
 @provides
   scales.lua
+  hackey_trackey_load_sample.lua
   [main] .
   [effect] Hackey_MIDI_Detector.jsfx
+  [effect] Hackey_Sample_Playback.jsfx
+  [effect] htp_midi.jsfx-inc
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.34
+@version 2.44
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -39,6 +42,30 @@
 
 --[[
  * Changelog:
+ * v2.45 (2021-05-25)
+   + Ship first usable version of HT sampler!
+ * v2.44 (2021-05-25)
+   + Remember last velocity that was used (a separate one for sampler vs regular MIDI mode).
+ * v2.43 (2021-05-24)
+   + Make sure rec preview can be heard.
+ * v2.42 (2021-05-23)
+   + Force column mode when in sampler mode.
+ * v2.41 (2021-05-23)
+   + Add vibrato.
+ * v2.40 (2021-05-22)
+   + Improve labelling panning.
+ * v2.39 (2021-05-22)
+   + Bugfix termination markers.
+   + Add arpeggiator.
+ * v2.38 (2021-05-22)
+   + Force termination of every effect (workaround to prevent MIDI chase from applying non-needed effects the first row of a loop).
+ * v2.37 (2021-05-17)
+   + Name the effect channels appropriately.
+ * v2.36 (2021-05-17)
+   + Autodetect Hackey Trackey Sampler on the track and convert to tracker mode.
+ * v2.35 (2021-05-16)
+   + Fix issue with CC's not being deleted when "inserted" off the pattern.
+   + Make CC's more readable on sink theme.
  * v2.34 (2020-10-04)
    + Bugfix new feature for channels > 1.
  * v2.33 (2020-10-04)
@@ -435,7 +462,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.31"
+tracker.name = "Hackey Trackey v2.42"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -561,7 +588,6 @@ tracker.xpos = 1
 tracker.ypos = 1
 tracker.xint = 0
 tracker.page = 4
-tracker.lastVel = 96
 tracker.lastEnv = 1
 tracker.rowPerQn = 4 -- The default
 tracker.newRowPerQn = 4
@@ -644,6 +670,10 @@ tracker.cfg.clampToSelection = 1
 tracker.cfg.selectMIDINotes = 0
 tracker.cfg.undoForReassignment = 1
 tracker.cfg.releaseNoteOffs = 0
+tracker.cfg.lastVel = 96
+tracker.cfg.lastVelSample = 1
+
+tracker.tracker_samples = 0
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -663,7 +693,7 @@ tracker.binaryOptions = {
     { 'alwaysRecord', 'Always Enable Recording' },
     { 'CRT', 'CRT mode' },
     { 'oldBlockBehavior', 'Do not mend after paste' },
-    { 'channelCCs', 'Enable CCs for channels > 0 (beta)' },
+    { 'channelCCs', 'Enable CCs for channels > 0' },
     { 'loopFollow', 'Set loop on pattern switch' },
     { 'initLoopSet', 'Set loop when tracker is opened' },
     { 'minimumSize', 'Force minimum size'},
@@ -695,6 +725,22 @@ local function print(...)
   end
   reaper.ShowConsoleMsg(...)
   reaper.ShowConsoleMsg("\n")
+end
+
+function tracker:lastVel()
+  if self.tracker_samples == 1 then
+    return self.cfg.lastVelSample
+  else
+    return self.cfg.lastVel
+  end
+end
+
+function tracker:setLastVel(velocity)
+  if self.tracker_samples == 1 then
+    self.cfg.lastVelSample = velocity
+  else
+    self.cfg.lastVel = velocity
+  end
 end
 
 function tracker:loadColors(colorScheme)
@@ -1003,7 +1049,7 @@ function tracker:loadColors(colorScheme)
     self.colors.bar.mod2         = self.colors.bar.mod1
     self.colors.bar.mod3         = self.colors.bar.mod1
     self.colors.bar.mod4         = self.colors.bar.mod1
-    self.colors.bar.modtxt1      = {255/255, 159/255, 88/255, 1.0}
+    self.colors.bar.modtxt1      = {55/255, 19/255, 88/255, 1.0}
     self.colors.bar.modtxt2      = self.colors.bar.modtxt1
     self.colors.bar.modtxt3      = self.colors.bar.modtxt1
     self.colors.bar.modtxt4      = self.colors.bar.modtxt1
@@ -2104,7 +2150,7 @@ function tracker:linkData()
   local master    = {}
 
   if ( self.showMod == 1 ) then
-    tracker:linkCC_channel(math.max(self.modMode, self.cfg.channelCCs), 0, data, master, datafield, idx, colsizes, padsizes, grouplink, headers, headerW, hints)
+    tracker:linkCC_channel(math.max(self.modMode, self.cfg.channelCCs, self.tracker_samples), 0, data, master, datafield, idx, colsizes, padsizes, grouplink, headers, headerW, hints)
   end
 
   if ( fx.names ) then
@@ -2190,7 +2236,7 @@ function tracker:linkData()
     datafield[#datafield+1] = 'vel2'
     idx[#idx+1]             = j
     colsizes[#colsizes + 1] = 1
-    padsizes[#padsizes + 1] = 2 - self.cfg.channelCCs
+    padsizes[#padsizes + 1] = 2 - math.max(self.cfg.channelCCs, self.tracker_samples)
     if ( self.selectionBehavior == 1 ) then
       grouplink[#grouplink+1] = {-2, -1}
     else
@@ -2200,7 +2246,7 @@ function tracker:linkData()
     headerW[#headerW+1]     = 0
     hints[#hints+1]         = string.format('Velocity channel %2d', j)
 
-    if ( self.cfg.channelCCs == 1 ) then
+    if ( math.max(self.cfg.channelCCs, self.tracker_samples) == 1 ) then
       tracker:linkCC_channel(1, j, data, master, datafield, idx, colsizes, padsizes, grouplink, headers, headerW, hints)
     end
 
@@ -2870,6 +2916,67 @@ function tracker:simulate_shallow_water(mode, movement)
   self.sim = sim
 end
 
+-- CC values are used to designate tracker FX. They are always terminated _within_ the row
+-- by setting the effect to 102 shortly after.
+tracker.sampler_effect_type = 12  -- The CC value used for setting effects in sampler mode.
+tracker.stop_cc_effect_value = 102 -- The CC used to force a stop after each effect.
+function tracker:customFieldDescription()
+  local sampler_effect_type = self.sampler_effect_type
+  local sampler_effect_value = 13
+
+  local ftype, chan, row = self:getLocation()
+  if (ftype == "modtxt1") or (ftype == "modtxt2") then
+    -- Dealing with a CC event
+    local cc_type = self.data.modtypes[chan] % self.CCjump
+    local channel = math.floor(self.data.modtypes[chan] / self.CCjump)
+    
+    if (cc_type == sampler_effect_type) or (cc_type == sampler_effect_value) then
+      local modtype, cc_value = self:getCC( self.ypos - 1, self.CCjump * channel + sampler_effect_type )
+      local modtype, cc_level = self:getCC( self.ypos - 1, self.CCjump * channel + sampler_effect_value )
+      
+      if not cc_value then
+        return
+      elseif cc_value == 1 then
+        return string.format("Porta Up (%d/8th semitones)", cc_level)
+      elseif cc_value == 2 then
+        return string.format("Porta Down (%d/8th semitones)", cc_level)
+      elseif cc_value == 3 then
+        return string.format("Glide (%d/8th semitones)", cc_level)
+      elseif cc_value == 4 then
+        local vibrato_periods = {"Continue", "32", "24", "16", "12", "8", "6", "5", "4", "3", "2", "3/2", "1", "1/2", "1/4", "1/8"}
+        return string.format("Vibrato (Depth: %d/7 s.t., Period: %s rows)", math.floor(cc_level/16), vibrato_periods[cc_level % 16 + 1])
+      elseif cc_value == 5 then
+        return string.format("Not implemented")
+      elseif cc_value == 6 then
+        return string.format("Not implemented")        
+      --elseif cc_value == 6 then
+      --  return string.format("Auto panning (Speed: %d, Depth: %d)", math.floor(cc_level/16), math.floor(cc_level % 16))
+      --elseif cc_value == 7 then
+      --  return string.format("Tremolo (Speed: %d/7, Depth: %d)", math.floor(cc_level/16), math.floor(cc_level % 16))
+      elseif cc_value == 8 then
+        return string.format("Set Panning (L: %d, R: %d)", math.ceil(100 - 100*cc_level/127), math.floor(100*cc_level/127))
+      elseif cc_value == 9 then
+        return string.format("Play from offset (%d %%)", math.floor(100 * (cc_level / 128)))
+      elseif cc_value == 10 then
+        function to_txt(s)
+          if s == 0 then
+            return "continue"
+          else
+            return s
+          end
+        end
+        return string.format("Arpeggiate (%s, %s semitones)", to_txt(math.floor(cc_level/16)), to_txt(cc_level % 16))
+      elseif cc_value == 11 then
+        return string.format("Retrigger (Vol: %d %%, Count: %d)", math.floor(100 - 100*cc_level/16/8), ((cc_level % 16)))
+      elseif cc_value == 12 then
+        return string.format("Sample probability (%d %%)", math.floor(100 * (cc_level / 127)))
+      else
+        return string.format("Unknown effect (%s)", cc_value)
+      end
+    end
+  end
+end
+
 ------------------------------
 -- Draw the GUI
 ------------------------------
@@ -3026,7 +3133,12 @@ function tracker:printGrid()
   gfx.set(table.unpack(colors.headercolor))
   if ( tracker.renaming ~= 2 and tracker.renaming ~= 4 ) then
     if ( self.take ) then
-      gfx.printf("%s", description[tracker.xpos])
+      local current_description = description[tracker.xpos]
+      
+      if (self.tracker_samples == 1) then
+        current_description = self:customFieldDescription() or current_description
+      end
+      gfx.printf("%s", current_description)
     end
   else
       gfx.set(table.unpack(colors.changed))
@@ -4150,8 +4262,8 @@ function tracker:placeNote(pitch, chan, row)
     end
   
     -- Create the new note!
-    self:addNote(row, k, chan, pitch, self.lastVel)
-    self:playNote(chan, pitch, self.lastVel)
+    self:addNote(row, k, chan, pitch, self:lastVel())
+    self:playNote(chan, pitch, self:lastVel())
   
     if ( noteGrid[rows*chan+k] ) then
       if ( noteGrid[rows*chan+k] < -1 ) then
@@ -4219,7 +4331,7 @@ function tracker:createNote(inChar, shift)
     if ( note ) then
       -- Note is present, we are good to go!
       local pitch = note + self.transpose * 12
-      self:playNote(chan, pitch, self.lastVel)
+      self:playNote(chan, pitch, self:lastVel())
     end
 
     return
@@ -4250,7 +4362,7 @@ function tracker:createNote(inChar, shift)
     if ( noteToEdit ) then
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToEdit] )
       local newvel = tracker:editVelField( vel, 1, char )
-      self.lastVel = newvel
+      self:setLastVel(newvel)
       reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, nil, newvel, true)
     end
     shouldMove = true
@@ -4258,7 +4370,7 @@ function tracker:createNote(inChar, shift)
     if ( noteToEdit ) then
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToEdit] )
       local newvel = tracker:editVelField( vel, 2, char )
-      self.lastVel = newvel
+      self:setLastVel(newvel)
       reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, nil, newvel, true)
       shouldMove = true
     end
@@ -4329,6 +4441,7 @@ function tracker:createNote(inChar, shift)
     self.lastmodval = newval
     shouldMove = true
   elseif ( ( ftype == 'modtxt1' ) and validHex( char ) ) then
+    -- Set col CC
     local modtypes = data.modtypes
     local modtype, val = self:getCC( self.ypos - 1, modtypes[chan] )
     local newval = self:editCCField( val, 1, char )
@@ -5278,6 +5391,12 @@ function tracker:assignCC2(ppq, modtype, modval)
   local row = math.floor( self.rowPerPpq * ppq + self.eps )
 
   if ( ppq and modval and modtype and ( modtype > 0 ) ) then
+    if (self.tracker_samples == 1) and ((modtype % self.CCjump) == self.sampler_effect_type and (modval == self.stop_cc_effect_value)) then
+      -- There's a CC value that is used to "terminate" effects in sampler mode. This is to prevent effects from
+      -- previous patterns being replayed on top of this pattern when midi cc's are chased.
+      return
+    end
+  
     local col = self:CCToColumn(modtype)
     local hexVal = string.format('%02X', math.floor(modval) )
     data.modtxt1[col*rows+row] = hexVal:sub(1,1)
@@ -5850,7 +5969,7 @@ function tracker:insertCCPt( row, modtype )
       end
     end
   end
-  self:deleteCC_range( self.rows, modtype )
+  self:deleteCC_range( self.rows, self.rows + 1, modtype )
 end
 
 -----------------------
@@ -5989,12 +6108,18 @@ function tracker:addCCPt_channel(row, modtype, value)
 
   -- Is it an actual MIDI event or a Program Change?
   if ( modtype >= self.PCloc ) then
-    modtype = modtype - self.PCloc
-    ch = math.floor(modtype / self.CCjump)
+    local modtype = modtype - self.PCloc
+    local ch = math.floor(modtype / self.CCjump)
     reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 192, ch, value, 0)
   else
-    ch = math.floor(modtype / self.CCjump)
-    reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 176, ch, modtype - ch*self.CCjump, value)
+    local ch = math.floor(modtype / self.CCjump)
+    local cc_type = modtype - ch*self.CCjump
+    reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 176, ch, cc_type, value)
+    if (self.tracker_samples == 1) and cc_type == self.sampler_effect_type then
+      -- There's a CC value that is used to "terminate" effects in sampler mode. This is to prevent effects from
+      -- previous patterns being replayed on top of this pattern when midi cc's are chased.
+      reaper.MIDI_InsertCC(self.take, false, false, ppqStart + math.floor(self:rowToPpq(1/8)), 176, ch, cc_type, self.stop_cc_effect_value)
+    end
   end
 end
 
@@ -6396,13 +6521,25 @@ function tracker:toggleMuteChannel()
   reaper.MIDI_Sort(self.take)  
 end
 
+function tracker:addSamplerCCs(all)
+  -- Preassign the CCs we need for the sampler for convenience
+  if (self.tracker_samples == 1) then
+    for ch = 1,self.channels do
+      local fixed_ccs = {7, 12, 13}
+      for _, cc in pairs(fixed_ccs) do
+        all[512 * ch + cc] = 1
+      end
+    end
+  end
+  return all
+end
+
 --------------------------------------------------------------
 -- Update function
 -- heavy-ish, avoid calling too often (only on MIDI changes)
 --------------------------------------------------------------
 function tracker:update()
   local reaper = reaper
-
   if ( self.debug == 1 ) then
     print( "Updating the grid ..." )
   end
@@ -6456,7 +6593,7 @@ function tracker:update()
       ---------------------------------------------
       local skip = self.CCjump
       if ( self.showMod == 1 ) then
-        local modmode = self.modMode == 1 or self.cfg.channelCCs == 1
+        local modmode = self.modMode == 1 or self.cfg.channelCCs == 1 or (self.tracker_samples == 1)
         if ( modmode ) then
           local all = self:getOpenCC()
           for i=0,ccevtcntOut do
@@ -6465,6 +6602,10 @@ function tracker:update()
 
             all[msg2 + (chan)*skip] = 1
           end
+          
+          -- Preassign the CCs we need for the sampler for convenience
+          all = self:addSamplerCCs(all)
+          
           all[0] = nil
           local indices = {}
           for i in pairs(all) do
@@ -6472,11 +6613,13 @@ function tracker:update()
               table.insert(indices, i)
             end
           end
+          
           table.sort(indices)
           local modtypes = {}
           for i,v in pairs(indices) do
             modtypes[#modtypes+1] = v
           end
+          
           if ( #modtypes > 0 ) then
             tracker:initializeModChannels(modtypes)
             for i=0,ccevtcntOut do
@@ -6608,6 +6751,24 @@ function tracker:setItem( item )
   self.itemStart = reaper.GetMediaItemInfo_Value( self.item, "D_POSITION" )
 end
 
+local function hasSampler(track)
+  -- Check whether hackey trackey sampler is on this track
+  -- NOTE: track has to be a validated track ptr
+  local samplerName = "Hackey Trackey Sample Playback"
+  
+  local fxcnt = reaper.TrackFX_GetCount(track)
+  local foundSampler = 0
+  for fidx = 0, fxcnt - 1 do
+    local retval, str = reaper.TrackFX_GetFXName(track, fidx, "")
+    
+    if string.find(str, samplerName) then
+      foundSampler = 1
+    end
+  end
+  
+  return foundSampler
+end
+
 function tracker:setTake( take )
   -- Only switch if we're actually changing take
   if ( self.take ~= take ) then
@@ -6621,7 +6782,10 @@ function tracker:setTake( take )
       self.take = take
       if self:validateCurrentItem() then      
         self.track = reaper.GetMediaItem_Track(self.item)
-  
+        
+        -- Set flag that we are dealing with a sampler-based track here
+        self.tracker_samples = hasSampler(self.track)
+        
         -- Store note hash (second arg = notes only)
         self.hash = reaper.MIDI_GetHash( self.take, false, "?" )
         self.newRowPerQn = self:getResolution()
@@ -7659,13 +7823,17 @@ end
 function tracker:playNote(chan, pitch, vel)
   self:checkArmed()
   
-  local line_played = self.line_played or {}   
+  local line_played = self.line_played or {}
+  local ch = 1
   if ( self.armed == 1 and not (self.cfg.readfrommidi == 1) ) then
-    local ch = 1
-    
     if self.cfg.releaseNoteOffs == 0 then
       self:stopNote()
-      reaper.StuffMIDIMessage(0, 0x90 + ch - 1, pitch, vel)
+      if self.outChannel == 0 then
+        ch = chan
+      else
+        ch = self.outChannel - 1
+      end
+      reaper.StuffMIDIMessage(0, 0x90 + ch, pitch, vel)
     else
       -- Only create note if it isn't already playing
       local found = false
@@ -7678,13 +7846,13 @@ function tracker:playNote(chan, pitch, vel)
       end
       if not found then
         if self.outChannel == 0 then
-          reaper.StuffMIDIMessage(0, 0x90 + chan - 1, pitch, vel)
+          ch = chan
         else
-          reaper.StuffMIDIMessage(0, 0x90 + self.outChannel - 1, pitch, vel)
+          ch = self.outChannel - 1
         end
+        reaper.StuffMIDIMessage(0, 0x90 + ch, pitch, vel)
       end
     end
-    
     self.lastNote = {ch, pitch, vel}
     
     line_played[ch] = {}
@@ -7699,7 +7867,7 @@ function tracker:stopNote()
   if ( self.armed == 1 ) then
     if ( self.lastNote ) then
       local lastNote = self.lastNote
-      reaper.StuffMIDIMessage(0, 0x80 + lastNote[1] - 1, lastNote[2], lastNote[3])
+      reaper.StuffMIDIMessage(0, 0x80 + lastNote[1], lastNote[2], lastNote[3])
       self.lastNote = nil
     end
   end
@@ -7713,7 +7881,7 @@ function tracker:stopAllNotes()
       local line_played = self.line_played
       for c = 1,self.channels do 
         if self.line_played[c] then
-          reaper.StuffMIDIMessage(0, 0x80 + c - 1, line_played[c][0], line_played[c][1])
+          reaper.StuffMIDIMessage(0, 0x80 + c, line_played[c][0], line_played[c][1])
         end
       end
     end
@@ -7724,10 +7892,15 @@ end
 function tracker:playChord(chord)
   self:checkArmed()
   if ( self.armed == 1 ) then
-    local ch = 1
     self:stopChord()
+    local idx = 1
     for i,v in pairs( chord ) do
-      reaper.StuffMIDIMessage(0, 0x90 + v[1] - 1, v[2], v[3])
+      if self.outChannel == 0 then
+        reaper.StuffMIDIMessage(0, 0x90 + idx, v[2], v[3])
+        idx = idx + 1
+      else
+        reaper.StuffMIDIMessage(0, 0x90 + v[1], v[2], v[3])
+      end
     end
     self.lastChord = chord
   end
@@ -7819,8 +7992,14 @@ function tracker:stopChord()
   self:checkArmed()
   if ( self.armed == 1 ) then
     if ( self.lastChord ) then
+      local idx = 1
       for i,v in pairs( self.lastChord ) do
-        reaper.StuffMIDIMessage(0, 0x80 + v[1] - 1, v[2], v[3])
+        if self.outChannel == 0 then
+          reaper.StuffMIDIMessage(0, 0x80 + idx, v[2], v[3])
+          idx = idx + 1
+        else
+          reaper.StuffMIDIMessage(0, 0x80 + v[1], v[2], v[3])
+        end
       end
       self.lastChord = nil
     end
@@ -8204,15 +8383,15 @@ function tracker:playLine()
     
     if (noteOff) then
       if line_played[c] then
-        reaper.StuffMIDIMessage(0, 0x80 + c - 1, line_played[c][0], line_played[c][1])
+        reaper.StuffMIDIMessage(0, 0x80 + c, line_played[c][0], line_played[c][1])
       end
     elseif noteToEdit then
       if line_played[c] then
-         reaper.StuffMIDIMessage(0, 0x80 + c - 1, line_played[c][0], line_played[c][1])
+         reaper.StuffMIDIMessage(0, 0x80 + c, line_played[c][0], line_played[c][1])
       end
     
       local pitch, vel = table.unpack(notes[noteToEdit])
-      reaper.StuffMIDIMessage(0, 0x90 + c - 1, pitch, vel)
+      reaper.StuffMIDIMessage(0, 0x90 + c, pitch, vel)
       line_played[c] = {}
       line_played[c][0] = pitch
       line_played[c][1] = vel
@@ -8369,7 +8548,7 @@ function tracker:readNotesFromJSFX()
       local ftype, chan, row = self:getLocation()
       if chan then
         if self.cfg.velfrommidi == 1 then
-          self.lastVel = velocity
+          self:setLastVel(velocity)
         end
         self:placeNote(pitch, chan, row)
         self:tab()
@@ -8388,6 +8567,11 @@ local function updateLoop()
   
   local tracker = tracker
   tracker.updateLoop = updateLoop
+
+  if (tracker.tracker_samples == 1) and tracker.outChannel ~= 0 then
+    tracker:setOutChannel(0)
+    tracker.outChannel = 0
+  end
 
   -- Check if the note data or take changed, if so, update the note contents
   tracker:checkArmed()
@@ -8727,7 +8911,7 @@ local function updateLoop()
 
                 for i,v in pairs(chord) do
                   v = v + tracker.transpose * 12 + 11
-                  playChord[i] = { 1, v, 127 }
+                  playChord[i] = { 1, v, tracker:lastVel() }
                 end
 
                 if ( alt == 1 ) then
@@ -9303,11 +9487,17 @@ local function updateLoop()
       if ( tracker.outChannel > 16 ) then
         tracker.outChannel = 0
       end
+      if tracker.tracker_samples == 1 then
+        tracker.outChannel = 0
+      end
       tracker:setOutChannel( tracker.outChannel )
     elseif inputs('outchandown') and tracker.take then
       tracker.outChannel = tracker.outChannel - 1
       if ( tracker.outChannel < 0) then
         tracker.outChannel = 16
+      end
+      if tracker.tracker_samples == 1 then
+        tracker.outChannel = 0
       end
       tracker:setOutChannel( tracker.outChannel )
     elseif inputs('advanceup') and tracker.take then
