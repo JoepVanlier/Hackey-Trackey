@@ -1,3 +1,7 @@
+--[[
+@noindex
+]]--
+
 SAMPLE_HEADER = 64;
 
 function transfer_take()

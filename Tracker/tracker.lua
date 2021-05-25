@@ -3,6 +3,7 @@
 @author: Joep Vanlier
 @provides
   scales.lua
+  hackey_trackey_load_sample.lua
   [main] .
   [effect] Hackey_MIDI_Detector.jsfx
   [effect] Hackey_Sample_Playback.jsfx
@@ -10,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.43
+@version 2.44
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -41,6 +42,8 @@
 
 --[[
  * Changelog:
+ * v2.45 (2021-05-25)
+   + Ship first usable version of HT sampler!
  * v2.44 (2021-05-25)
    + Remember last velocity that was used (a separate one for sampler vs regular MIDI mode).
  * v2.43 (2021-05-24)
