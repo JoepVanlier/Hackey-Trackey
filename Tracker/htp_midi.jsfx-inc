@@ -1,3 +1,4 @@
+noindex: true
 MIDI buffer library
 version: 0.03
 author: Joep Vanlier

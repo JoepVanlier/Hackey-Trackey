@@ -5,6 +5,8 @@
   scales.lua
   [main] .
   [effect] Hackey_MIDI_Detector.jsfx
+  [effect] Hackey_Sample_Playback.jsfx
+  [effect] htp_midi.jsfx-inc
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT

@@ -1,3 +1,4 @@
+noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
 version: 0.32
