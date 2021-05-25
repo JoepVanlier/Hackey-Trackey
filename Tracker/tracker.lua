@@ -12,7 +12,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.81
+@version 2.82
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -43,6 +43,8 @@
 
 --[[
  * Changelog:
+ * v2.82 (2021-09-04)
+  + Implement optional scrub mode.
  * v2.81 (2021-09-04)
   + Add shortcut for muting all rows.
  * v2.80 (2021-08-31)
@@ -549,7 +551,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.81"
+tracker.name = "Hackey Trackey v2.82"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -757,6 +759,7 @@ tracker.cfg.clampToSelection = 1
 tracker.cfg.selectMIDINotes = 0
 tracker.cfg.undoForReassignment = 1
 tracker.cfg.releaseNoteOffs = 0
+tracker.cfg.scrubMode = 0
 tracker.cfg.lastVel = 96
 tracker.cfg.lastVelSample = 1
 
@@ -802,6 +805,7 @@ tracker.binaryOptions = {
     { 'selectMIDINotes', 'Block select selects notes' },
     { 'undoForReassignment', 'Add undo pt for col reassignment' },
     { 'releaseNoteOffs', 'Emit note off on release' },
+    { 'scrubMode', 'Recording acts as scrub mode (plays notes)' },
     }
 
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2", "sink"}
@@ -5900,6 +5904,63 @@ function tracker:addLegato( row, skipMarker )
   end
 end
 
+function tracker:terminateScrubNotes()
+  if self.scrubNotes then
+    local scrubNotes = self.scrubNotes
+    for i in pairs(scrubNotes) do
+      local msg = scrubNotes[i]
+      reaper.StuffMIDIMessage(0, 0x80 + msg[1], msg[2], 0)
+    end
+    self.scrubNotes = nil
+  end
+end
+
+function tracker:scrub()
+  if (tracker.cfg.scrubMode == 1) then
+    self:checkArmed()
+    
+    if (self.armed) then
+      self:terminateScrubNotes()
+      local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+      local loc = reaper.AddProjectMarker(0, 0, mpos + tracker:toSeconds(self.ypos-1), 0, "", -1)
+      reaper.GoToMarker(0, loc, 0)
+      reaper.DeleteProjectMarker(0, loc, 0)
+    
+      local minppq = self:rowToPpq(self.ypos - 1)
+      local maxppq = self:rowToPpq(self.ypos)
+      local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+      
+      local scrubNotes = {}
+      for i=0,notecntOut do
+        local retval, selected, muted, startppqpos, endppqpos, chan, pitch, vel = reaper.MIDI_GetNote(self.take, i)
+        if startppqpos >= minppq and startppqpos < maxppq then
+          if self.outChannel > 0 then
+            chan = self.outChannel - 1
+          end
+          reaper.StuffMIDIMessage(0, 0x90 + chan, pitch, vel)
+          scrubNotes[#scrubNotes + 1] = {chan, pitch, vel}
+        end
+      end
+      
+      for i=0,ccevtcntOut do
+        local retval, selected, muted, ppq, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+        if ppq >= minppq and ppq < maxppq then
+          -- We ignore the CC stopping messages from the sampler
+          local ignore = (self.tracker_samples == 1) and (msg2 == 12) and (msg3 == 102)
+          if not ignore then
+            if self.outChannel > 0 then
+              chan = self.outChannel - 1
+            end
+            reaper.StuffMIDIMessage(0, chanmsg, msg2, msg3)
+          end
+        end
+      end
+      self.scrubNotes = scrubNotes
+    end
+  end
+end
+
+
 function tracker:readLegato( ppqpos, i )
   local data    = self.data
   local row     = self:ppqToRow(ppqpos)
@@ -8101,6 +8162,7 @@ end
 
 function tracker:stopAllNotes()
   self:checkArmed()
+  self:terminateScrubNotes()
   if ( self.armed == 1) then
     self:stopNote()
     if self.line_played then
@@ -9353,15 +9415,19 @@ local function updateLoop()
     if inputs('left') and tracker.take then
       tracker.xpos = tracker.xpos - 1
       tracker:resetShiftSelect()
+      tracker:scrub()
     elseif inputs('right') and tracker.take then
       tracker.xpos = tracker.xpos + 1
       tracker:resetShiftSelect()
+      tracker:scrub()
     elseif inputs('up') and tracker.take then
       tracker.ypos = tracker.ypos - 1
       tracker:resetShiftSelect()
+      tracker:scrub()
     elseif inputs('down') and tracker.take then
       tracker.ypos = tracker.ypos + 1
       tracker:resetShiftSelect()
+      tracker:scrub()
     elseif inputs('upByAdvance') and tracker.take then
       tracker:rewindCursor()
       tracker:resetShiftSelect()
