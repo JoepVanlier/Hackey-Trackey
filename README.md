@@ -8,10 +8,9 @@ action here:
 ![Hackey Trackey in Action](https://j.gifs.com/gLyymG.gif)
 
 ## What is it not?
-A sampler. Hackey-Trackey does not handle sample playback. For this you would 
-need to add an additional VST that handles sample playback. Have a look at 
-ReViSiT or linking a dedicated tracker program such as Renoise to REAPER if 
-this is what you seek.
+While the latest version of Hackey-Trackey does ship with a basic sampler,
+it is not a full tracker. Have a look at ReViSiT or linking a dedicated 
+tracker program such as Renoise to REAPER if this is what you seek.
 
 ## Small disclaimer
 Hackey Trackey is still actively being developed. Not all planned features are 
@@ -202,47 +201,76 @@ update the root note in the harmony helper.
 ### Is this repository reapack compatible?
 Yes. Just add: https://raw.githubusercontent.com/joepvanlier/Hackey-Trackey/master/index.xml
 
-### I'm missing sample offset.
-Sample offsets have to be achieved via the VST or JSFX and mapped onto reaper FX.
+# Sample playback (Pre-alpha!)
 
-#### Kontakt
+The latest version of Hackey Trackey ships with a basic sample playback module 
+in the form of a JSFX that can be added to a track to achieve basic sample playback.
 
-##### Step one.
+To use it, make sure you update to the latest version on reapack and then search your
+effects list for `Hackey Trackey Sample Playback Module`. Putting this on a track 
+will convert that track into a "sampler" track. When you open the tracker on a MIDI
+item on a track that has this module added as an effect, Hackey Trackey will open in 
+a slightly different mode to facilitate this mode.
 
-After loading an instrument hit the edit instrument button. If the instrument is locked then I'm afraid you cannot achieve sample offsets with this instrument.
+![image](https://user-images.githubusercontent.com/19836026/119561157-200e6580-bda5-11eb-839b-0ba06eefbf21.png)
 
-![Edit Instrument](https://i.imgur.com/tETkZzT.png)
+You will notice that there are three columns per channel now. The first is volume, 
+the second is effect and the third corresponds to the value for that effect. Instead 
+of loudness, the velocity column now encodes the sample selection (as it would in a 
+tracker).
 
-##### Step two.
+Unfortunately, some concessions had to be made due to limitations in the MIDI 
+format (127 values instead of 255).
 
-Switch the sampling mode from DFD to sampler. Note that this will increase memory consumption of the instrument as well, so it's best to only do this when you really need it for an instrument.
+The effects available are the following:
 
-![Switch to sampling mode](https://i.imgur.com/nNGHXpA.png)
-
-##### Step three.
-
-Go into the scripts editor and find the first empty script. In this script paste the following code:
-```KSP
-on init
-declare ui_knob $sampleStart (0,1000000,1)
-set_text ($sampleStart, "S. Start")
-set_control_par(get_ui_id($sampleStart),$CONTROL_PAR_AUTOMATION_ID,0) 
-set_control_par_str(get_ui_id($sampleStart),$CONTROL_PAR_AUTOMATION_NAME,"Sample offset")
-end on
-on ui_control ($sampleStart)
-set_knob_label ($sampleStart, $sampleStart/10000)
-end on
-on note
-ignore_event ($EVENT_ID)
-play_note($EVENT_NOTE,$EVENT_VELOCITY,$sampleStart,-1)
-end on
+```
+  01 - Portamento up
+  02 - Portamento down
+    Note that the portamento's behave different from Protracker. In PT you directly
+    perform the portamento based on the period of the signal. Portamento is updated
+    every N times per row (ticks).
+    Here, the portamento slides continuously and the amount is specified in 
+    eigth semitones. This means that 08 is 1 semitone. 10 is 2, etc.
+    00 continues the last portamento.
+  03 - Glide
+    Glide to note. Glide speed is specified in 1/16th notes.
+    00 Continues a previous glide.
+  04 - Vibrato
+    X is pitch depth (value from 0 to 7). They are given in seventh semitones.
+    Y is speed (value from 0 to F).
+      Continue, 128, 64, 32, 24, 16, 12, 8, 6, 5, 4, 3, 2, 1, 0.25, 0.125
+    0 continues the previous value.
+  08 - Panning
+    Panning.
+  09 - Set offset
+    Unlike the classic Protracker, this sets offset as fraction of the sample length.
+    Since 7F (127) is the maximum in MIDI; 40 is the middle of the sample, 20 1/4th etc.
+  0A - Apreggiator
+    Arpeggiate. X and Y are note offsets in semitones. 0 continues previous value.
+  0B - Retrigger
+    Retrigger note.
+    X - Volume reduction per trigger
+    Y - Retrigger count
+  0C - Sample probability
 ```
 
-Don't forget to hit apply!
+Loading samples into the hackey trackey playback module can be done in two ways. They 
+can either be dragged from the media explorer directly (which will open them in their 
+original sample rate) -or- you can import them from the timeline (in which case they 
+will be resampled to 48 kHz). For the latter, find the action named 
+"hackey_trackey_load_sample.lua" in your reaper actions list and bind it to a shortcut
+of your choosing. Now, when hackey trackey sampler is open, select a pad to load the 
+sample in, and press your shortcut. It should now appear into the Hackey Trackey
+sample module.
 
-![Insert script](https://i.imgur.com/U5qRxvE.png)
+![image](https://user-images.githubusercontent.com/19836026/119562997-4a612280-bda7-11eb-9d6f-94d9946ad841.png)
 
-Now offset should be available as an FX in REAPER which you can automate with Hackey Trackey.
+The sampler module also comes with a small sample editor. It allows you to do some 
+basic things like zoom, copy/cut/paste, set loops / remove loops and reverse sections.
+
+In the sampler section, you also see a little control for setting the reference pitch 
+for a particular sample.
 
 ### Options
 Hackey-Trackey has a few options to allow for some customization in workflow. Pressing F11 
