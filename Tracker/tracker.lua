@@ -2462,7 +2462,10 @@ function tracker:updatePlotLink()
   local yloc = {}
   local yheight = {}
   local y = originy
-  for j = 0,math.max(1,math.min(self.rows-1, fov.height-1)) do
+
+  local vrows = self:getVRows()
+
+  for j = 0,math.max(1, vrows-1) do
     yloc[#yloc + 1] = y
     yheight[#yheight + 1] = 0.7 * dy
     y = y + dy
@@ -2489,12 +2492,21 @@ function tracker:normalizePositionToSelf(cpos)
     self.itemStart = loc
     local row = ( cpos - loc ) * self.rowPerSec
     row = row - self.fov.scrolly
-    norm =  row / math.min(self.rows, self.fov.height)
+    local vrows = self:getVRows()
+    norm =  row / vrows
   else
     self:tryPreviousItem()
   end
 
   return norm
+end
+
+function tracker:getVRows()
+  if (tracker.cfg.fixedIndicator == 1) then
+    return self.fov.height
+  end
+
+  return math.min(self.rows, self.fov.height)
 end
 
 -- Used to be self:terminate()
@@ -3415,14 +3427,15 @@ function tracker:printGrid()
     else
       gfx.set(table.unpack(colors.selectcolor))
 
-      local absy = math.floor(playLoc * fov.height) + scrolly + 1
+      local vrows = self:getVRows()
+      local absy = math.floor(playLoc * vrows) + scrolly + 1
 
       if ( absy > 0 and absy <= rows ) then
         if self.cfg.bigLineIndicator == 0 then
           gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * playLoc - itempady - 1, tw, 1)
         else
           gfx.a = .2;
-          playLoc = math.floor(playLoc * fov.height)+1
+          playLoc = math.floor(playLoc * vrows)+1
           if yloc[playLoc] then
             gfx.rect(plotData.xstart - itempadx, yloc[playLoc]-plotData.yshift, tw, yheight[1] + itempady)
           end
