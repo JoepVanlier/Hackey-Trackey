@@ -42,6 +42,8 @@
 
 --[[
  * Changelog:
+ * v2.47 (2021-05-26)
+   + Add play position indicator on the sampler.
  * v2.46 (2021-05-26)
    + Specify hackey trackey sampler sample indices in hex.
  * v2.45 (2021-05-25)
