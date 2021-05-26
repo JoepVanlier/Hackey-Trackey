@@ -11,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.44
+@version 2.46
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,6 +42,8 @@
 
 --[[
  * Changelog:
+ * v2.46 (2021-05-26)
+   + Specify hackey trackey sampler sample indices in hex.
  * v2.45 (2021-05-25)
    + Ship first usable version of HT sampler!
  * v2.44 (2021-05-25)
@@ -462,7 +464,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.42"
+tracker.name = "Hackey Trackey v2.46"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"

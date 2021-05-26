@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.32
+version: 0.33
 author: Joep Vanlier
-changelog: Stop playing samples on init.
+changelog: Change labelling of the samples to be in hexadecimals.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -1111,7 +1111,7 @@ local(length_in_samples, ptr, len, step, ww, hh, fine)
 
   gfx_set(0.1, 0.1, 0.1, 0.7);
   gfx_setfont(SAMPLE_FONT, "Arial", h);
-  sprintf(16, "%d", idx + 1);
+  sprintf(16, "%02X", idx + 1);
   gfx_measurestr(16, ww, hh);
   
   gfx_x = x - 0.5 * ww + 0.5 * w;
