@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.34
+version: 0.35
 author: Joep Vanlier
-changelog: Add play position marker.
+changelog: Draw play indicator main sample view.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -1162,56 +1162,6 @@ loop(ny,
   cy += block_height + block_pad;
 );
 
-function draw_playmarker(sample_idx, rel_pos)
-local(x_pos, y_pos)
-global(nx, ny, gfx_pad, block_pad, block_width, block_height)
-(
-  y_pos = floor(sample_idx / nx);
-  x_pos = sample_idx - y_pos * nx;
-  
-  x_pos = gfx_pad + (block_width + block_pad) * x_pos;
-  y_pos = gfx_pad + (block_height + block_pad) * y_pos;
-  gfx_set(1, 1, 1, .03);
-  gfx_rect(x_pos, y_pos, block_width, block_height);
-  gfx_set(.3, .5, 1, .33);
-  gfx_rect(x_pos + rel_pos * block_width - 1, y_pos, 3, block_height);
-  gfx_set(.5, .5, 1, 1);
-  gfx_rect(x_pos + rel_pos * block_width, y_pos, 1, block_height);
-);
-
-function draw_markers()
-local()
-global(samplelocs)
-instance(sample_idx, current_playback, play0, play1)
-(
-  (current_playback == 0) ? (
-    play0.playing ? (
-      draw_playmarker(sample_idx, 2 * play0.position / samplelocs[sample_idx][]);  
-    );
-  ) : (
-    play1.playing ? (
-      draw_playmarker(sample_idx, 2 * play1.position / samplelocs[sample_idx][]);      
-    );
-  );
-);
-
-chan1.draw_markers();
-chan2.draw_markers();
-chan3.draw_markers();
-chan4.draw_markers();
-chan5.draw_markers();
-chan6.draw_markers();
-chan7.draw_markers();
-chan8.draw_markers();
-chan9.draw_markers();
-chan10.draw_markers();
-chan11.draw_markers();
-chan12.draw_markers();
-chan13.draw_markers();
-chan14.draw_markers();
-chan15.draw_markers();
-chan16.draw_markers();
-
 (selected_sample != last_selected_sample) ? (
   reset_zoom = 1;
   last_selected_sample = selected_sample;
@@ -1603,6 +1553,68 @@ updated_loop ? (
 
 /* Zoomed in waveform */
 close_up.draw_sample_big(gfx_pad, cy, gfx_w - 2 * gfx_pad, sample_edit_size, reset_zoom);
+
+function draw_playmarker(sample_idx, rel_pos)
+local(x_pos, y_pos)
+global(nx, ny, gfx_pad, block_pad, block_width, block_height,
+       selected_sample, cy, gfx_w, gfx_pad, sample_edit_size)
+(
+  y_pos = floor(sample_idx / nx);
+  x_pos = sample_idx - y_pos * nx;
+  
+  x_pos = gfx_pad + (block_width + block_pad) * x_pos;
+  y_pos = gfx_pad + (block_height + block_pad) * y_pos;
+  gfx_set(1, 1, 1, .03);
+  gfx_rect(x_pos, y_pos, block_width, block_height);
+  gfx_set(.3, .5, 1, .33);
+  gfx_rect(x_pos + rel_pos * block_width - 1, y_pos, 3, block_height);
+  gfx_set(.5, .5, 1, 1);
+  gfx_rect(x_pos + rel_pos * block_width, y_pos, 1, block_height);
+  
+  // Also draw in the big preview
+  selected_sample == sample_idx ? (
+    x_pos = gfx_pad;
+    y_pos = cy;
+    gfx_set(.3, .5, 1, .33);
+    gfx_rect(x_pos + rel_pos * (gfx_w - 2 * gfx_pad) - 1, y_pos, 3, sample_edit_size);
+    gfx_set(.5, .5, 1, 1);
+    gfx_rect(x_pos + rel_pos * (gfx_w - 2 * gfx_pad), y_pos, 1, sample_edit_size);
+  );
+);
+
+function draw_markers()
+local()
+global(samplelocs)
+instance(sample_idx, current_playback, play0, play1)
+(
+  (current_playback == 0) ? (
+    play0.playing ? (
+      draw_playmarker(sample_idx, 2 * play0.position / samplelocs[sample_idx][]);
+    );
+  ) : (
+    play1.playing ? (
+      draw_playmarker(sample_idx, 2 * play1.position / samplelocs[sample_idx][]);      
+    );
+  );
+);
+
+chan1.draw_markers();
+chan2.draw_markers();
+chan3.draw_markers();
+chan4.draw_markers();
+chan5.draw_markers();
+chan6.draw_markers();
+chan7.draw_markers();
+chan8.draw_markers();
+chan9.draw_markers();
+chan10.draw_markers();
+chan11.draw_markers();
+chan12.draw_markers();
+chan13.draw_markers();
+chan14.draw_markers();
+chan15.draw_markers();
+chan16.draw_markers();
+preview_channel.draw_markers();
 
 gfx_getdropfile(-1);
 

@@ -11,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.47
+@version 2.48
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,6 +42,8 @@
 
 --[[
  * Changelog:
+ * v2.48 (2021-05-27)
+   + Show play marker on sample editor as well.
  * v2.47 (2021-05-26)
    + Add play position indicator on the sampler.
  * v2.46 (2021-05-26)
@@ -466,7 +468,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.47"
+tracker.name = "Hackey Trackey v2.48"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
