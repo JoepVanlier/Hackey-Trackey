@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.37
+version: 0.38
 author: Joep Vanlier
-changelog: Fix bug not looping near end of sample. Clamp loop the end of sample.
+changelog: Reset zoom when focused sample is overwritten.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -892,6 +892,8 @@ sample_gmem_length > 0 ? (
     ptr += 1;
     cidx += 1;
   );
+  
+  reset_zoom = 1;
 );
 
 
@@ -978,7 +980,7 @@ function process_pad(x, y, w, h, idx, sample_location)
 global(mouse_x, mouse_y, mouse_cap, last_cap, captured,
        file_dropped, DROPPED_FILE_STR,
        preview_channel.play_sample, preview_channel.stop_sample, selected_sample,
-       TINY_FONT)
+       TINY_FONT, reset_zoom)
 local(is_over)
 (
   is_over = mouse_over(x, y, w, h);
@@ -987,6 +989,7 @@ local(is_over)
   // one has to pass the check whether it is dropped on this pad. Any other
   // file will be placed in subsequent positions.
   (((file_dropped == 0) && is_over) || (file_dropped > 0)) ? (
+    (selected_sample == idx) ? reset_zoom = 1;
     load_from_dropped(sample_location);
     file_dropped += 1;
     file_dropped = gfx_getdropfile(file_dropped, DROPPED_FILE_STR) ? file_dropped : -1;
