@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.35
+version: 0.37
 author: Joep Vanlier
-changelog: Draw play indicator main sample view.
+changelog: Fix bug not looping near end of sample. Clamp loop the end of sample.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -251,10 +251,6 @@ local(frac, ism1, is0, is1, is2, id0, id1, id2, id3)
   ) : (
     // Fade out if we're approaching the end of the recorded sample
     fade_level = 1;
-    (read_ptr > fade_start) ? (
-      x_fade_position = - crossfade_samples;
-    );
-    
     (loop_start > 0) ? (
       (loop_type == 0) ? (
         (position > loop_stop) ? position -= (loop_stop - loop_start);
@@ -264,6 +260,10 @@ local(frac, ism1, is0, is1, is2, id0, id1, id2, id3)
         ) : ( position < loop_start ) ? (
           speed = abs(speed);
         );
+      );
+    ) : (
+      (read_ptr > fade_start) ? (
+        x_fade_position = - crossfade_samples;
       );
     );
   );
@@ -1174,7 +1174,7 @@ DRAG_PITCH = 4;
 DRAG_FINE = 5;
 
 function handle_loop_point(cx, cy, ww, hh, sample_start, disp_range_start, disp_range_len, loop_loc, capture_mode)
-local(loop_point, point_in_samples, mul)
+local(loop_point, point_in_samples, mul, new_loopsize)
 global(captured, oldloc, newloc, updated_loop,
        mouse_dx, mouse_x, mouse_y, mouse_cap)
 (
@@ -1192,10 +1192,10 @@ global(captured, oldloc, newloc, updated_loop,
   mul = 1;
   (mouse_cap&4) ? mul = mul * 0.125; /* CTRL */
   (mouse_cap&8) ? mul = mul * 0.125; /* SHIFT */
-    
+  
   (captured == capture_mode) ? (
-//    loop_loc[] = 0.5 * (disp_range_start - sample_start + disp_range_len * max(min((mouse_x - cx) / ww, 1), 0));
-    loop_loc[] += 0.5 * mul * disp_range_len * mouse_dx / ww;
+    new_loopsize = loop_loc[] + 0.5 * mul * disp_range_len * mouse_dx / ww;
+    loop_loc[] = max(0.5*(disp_range_start - sample_start), min(0.5*(disp_range_start + disp_range_len - sample_start), new_loopsize));
     updated_loop = 1;
     mouse_release(1) ? captured = 0;
   );
