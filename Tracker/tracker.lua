@@ -11,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.50
+@version 2.51
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,6 +42,8 @@
 
 --[[
  * Changelog:
+ * v2.51 (2021-05-29)
+   + Store sample names in hackey trackey sample playback.
  * v2.50 (2021-05-29)
    + Reset zoom when focused sample is overwritten.
  * v2.49 (2021-05-28)
