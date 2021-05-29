@@ -11,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.52
+@version 2.53
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,6 +42,8 @@
 
 --[[
  * Changelog:
+ * v2.53 (2021-05-30)
+   + Fix bug that didn't allow selecting the last row with the mouse.
  * v2.52 (2021-05-30)
    + Handle arpeggio and retrigger on a per channel basis. Fix bug where arpeggio wouldn't reset back to root note.
  * v2.51 (2021-05-29)
@@ -477,7 +479,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.52"
+tracker.name = "Hackey Trackey v2.53"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -8767,6 +8769,8 @@ local function updateLoop()
     local fov       = tracker.fov
     local xloc      = plotData.xloc
     local yloc      = plotData.yloc
+    local xwidth    = plotData.xwidth
+    local yheight   = plotData.yheight
 
     -- Mouse on track size indicator?
     local xl, yl, xm, ym = tracker:getSizeIndicatorLocation()
@@ -8828,13 +8832,13 @@ local function updateLoop()
 
     -- Mouse in range of pattern data?
     if ( tracker.take ) then
-      for i=1,#xloc-1 do
-        if ( ( gfx.mouse_x > xloc[i] ) and ( gfx.mouse_x < xloc[i+1] ) ) then
+      for i=1,#xloc do
+        if ( ( gfx.mouse_x > xloc[i] ) and ( gfx.mouse_x < (xloc[i] + xwidth[i]) ) ) then
           Inew = i
         end
       end
-      for i=1,#yloc-1 do
-        if ( ( gfx.mouse_y > yloc[i] ) and ( gfx.mouse_y < yloc[i+1] ) ) then
+      for i=1,#yloc do
+        if ( ( gfx.mouse_y > yloc[i] ) and ( gfx.mouse_y < (yloc[i] + yheight[i]) ) ) then
           Jnew = i
         end
       end
