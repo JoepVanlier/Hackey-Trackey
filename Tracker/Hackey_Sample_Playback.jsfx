@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.40
+version: 0.41
 author: Joep Vanlier
-changelog: Fix issue with multi-channel arpeggio and retrigger. Fix issue with arpeggio not returning to original note.
+changelog: Don't do function call on channel instance that isn't playing anything.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -378,7 +378,8 @@ instance(current_playback, sample_location, speed, offset,
          last_vib_speed, last_vib_depth,
          vol, chan,
          pitch, sample_idx,
-         note_schedule, note_schedule_ptr, next_backlog)
+         note_schedule, note_schedule_ptr, next_backlog,
+         playing)
 global(samples_per_beat, samplelocs, srate)
 local(vol_change,
       portamento_ds, curspeed, portamento_len, count, cv, dt,
@@ -546,6 +547,8 @@ local(vol_change,
     next_backlog = dt;
     note_schedule_ptr = note_schedule;
   );
+  
+  playing = this.play0.playing || this.play1.playing;
 );
 
 function set_offset_raw(offset)
@@ -845,22 +848,22 @@ ssl = ssr = 0;
 
 midi.processMIDISample();
 
-chan1.play_channel();
-chan2.play_channel();
-chan3.play_channel();
-chan4.play_channel();
-chan5.play_channel();
-chan6.play_channel();
-chan7.play_channel();
-chan8.play_channel();
-chan9.play_channel();
-chan10.play_channel();
-chan11.play_channel();
-chan12.play_channel();
-chan13.play_channel();
-chan14.play_channel();
-chan15.play_channel();
-chan16.play_channel();
+chan1.playing ? chan1.play_channel();
+chan2.playing ? chan2.play_channel();
+chan3.playing ? chan3.play_channel();
+chan4.playing ? chan4.play_channel();
+chan5.playing ? chan5.play_channel();
+chan6.playing ? chan6.play_channel();
+chan7.playing ? chan7.play_channel();
+chan8.playing ? chan8.play_channel();
+chan9.playing ? chan9.play_channel();
+chan10.playing ? chan10.play_channel();
+chan11.playing ? chan11.play_channel();
+chan12.playing ? chan12.play_channel();
+chan13.playing ? chan13.play_channel();
+chan14.playing ? chan14.play_channel();
+chan15.playing ? chan15.play_channel();
+chan16.playing ? chan16.play_channel();
 
 preview_channel.play_channel();
 

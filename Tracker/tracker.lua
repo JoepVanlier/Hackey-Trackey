@@ -11,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.53
+@version 2.54
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,6 +42,8 @@
 
 --[[
  * Changelog:
+ * v2.54 (2021-05-30)
+   + Don't perform playback function call on channel in hackey trackey playback if it isn't playing.
  * v2.53 (2021-05-30)
    + Fix bug that didn't allow selecting the last row with the mouse.
  * v2.52 (2021-05-30)
@@ -479,7 +481,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.53"
+tracker.name = "Hackey Trackey v2.54"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
