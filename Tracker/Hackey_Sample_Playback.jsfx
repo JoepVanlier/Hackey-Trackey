@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.41
+version: 0.42
 author: Joep Vanlier
-changelog: Don't do function call on channel instance that isn't playing anything.
+changelog: Add mode to do multiple outputs (via slider for now).
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -54,14 +54,45 @@ options:want_all_kb
 options:no_meter
 in_pin:left input
 in_pin:right input
-out_pin:left output
-out_pin:right output
+out_pin:left output 1
+out_pin:right output 1
+out_pin:left output 2
+out_pin:right output 2
+out_pin:left output 3
+out_pin:right output 3
+out_pin:left output 4
+out_pin:right output 4
+out_pin:left output 5
+out_pin:right output 5
+out_pin:left output 6
+out_pin:right output 6
+out_pin:left output 7
+out_pin:right output 7
+out_pin:left output 8
+out_pin:right output 8
+out_pin:left output 9
+out_pin:right output 9
+out_pin:left output 10
+out_pin:right output 10
+out_pin:left output 11
+out_pin:right output 11
+out_pin:left output 12
+out_pin:right output 12
+out_pin:left output 13
+out_pin:right output 13
+out_pin:left output 14
+out_pin:right output 14
+out_pin:left output 15
+out_pin:right output 15
+out_pin:left output 16
+out_pin:right output 16
 
 import htp_midi.jsfx-inc
 options:maxmem=34000000
 
 slider1:tracker=0<0,1,1{Buzz,Renoise}>-Key mapping
 slider2:kb_layout=0<0,2,1{QWERTY,QWERTZ,AZERTY}>-Keyboard layout
+slider3:multi_out=0<0,1,{Off,On}>-Multi-Out
 
 @init
 SAMPLE_NAMES = 32;
@@ -848,27 +879,50 @@ ssl = ssr = 0;
 
 midi.processMIDISample();
 
-chan1.playing ? chan1.play_channel();
-chan2.playing ? chan2.play_channel();
-chan3.playing ? chan3.play_channel();
-chan4.playing ? chan4.play_channel();
-chan5.playing ? chan5.play_channel();
-chan6.playing ? chan6.play_channel();
-chan7.playing ? chan7.play_channel();
-chan8.playing ? chan8.play_channel();
-chan9.playing ? chan9.play_channel();
-chan10.playing ? chan10.play_channel();
-chan11.playing ? chan11.play_channel();
-chan12.playing ? chan12.play_channel();
-chan13.playing ? chan13.play_channel();
-chan14.playing ? chan14.play_channel();
-chan15.playing ? chan15.play_channel();
-chan16.playing ? chan16.play_channel();
-
-preview_channel.play_channel();
-
-spl0 += ssl;
-spl1 += ssr;
+multi_out ? (
+  /* TODO: clean this up */
+  chan1.playing ? (ssl = ssr = 0; chan1.play_channel(); spl0 = ssl; spl1 = ssr;);
+  chan2.playing ? (ssl = ssr = 0; chan2.play_channel(); spl2 = ssl; spl3 = ssr;);
+  chan3.playing ? (ssl = ssr = 0; chan3.play_channel(); spl4 = ssl; spl5 = ssr;);
+  chan4.playing ? (ssl = ssr = 0; chan4.play_channel(); spl6 = ssl; spl7 = ssr;);
+  chan5.playing ? (ssl = ssr = 0; chan5.play_channel(); spl8 = ssl; spl9 = ssr;);
+  chan6.playing ? (ssl = ssr = 0; chan6.play_channel(); spl10 = ssl; spl11 = ssr);
+  chan7.playing ? (ssl = ssr = 0; chan7.play_channel(); spl12 = ssl; spl13 = ssr;);
+  chan8.playing ? (ssl = ssr = 0; chan8.play_channel(); spl14 = ssl; spl15 = ssr;);
+  chan9.playing ? (ssl = ssr = 0; chan9.play_channel(); spl16 = ssl; spl17 = ssr;);
+  chan10.playing ? (ssl = ssr = 0; chan10.play_channel(); spl18 = ssl; spl19 = ssr;);
+  chan11.playing ? (ssl = ssr = 0; chan11.play_channel(); spl20 = ssl; spl21 = ssr;);
+  chan12.playing ? (ssl = ssr = 0; chan12.play_channel(); spl22 = ssl; spl23 = ssr;);
+  chan13.playing ? (ssl = ssr = 0; chan13.play_channel(); spl24 = ssl; spl25 = ssr;);
+  chan14.playing ? (ssl = ssr = 0; chan14.play_channel(); spl26 = ssl; spl27 = ssr;);
+  chan15.playing ? (ssl = ssr = 0; chan15.play_channel(); spl28 = ssl; spl29 = ssr;);
+  chan16.playing ? (ssl = ssr = 0; chan16.play_channel(); spl30 = ssl; spl31 = ssr;);
+  
+  ssl = ssr = 0; 
+  preview_channel.play_channel();
+  spl0 += ssl;
+  spl1 += ssr;
+) : (
+  chan1.playing ? chan1.play_channel();
+  chan2.playing ? chan2.play_channel();
+  chan3.playing ? chan3.play_channel();
+  chan4.playing ? chan4.play_channel();
+  chan5.playing ? chan5.play_channel();
+  chan6.playing ? chan6.play_channel();
+  chan7.playing ? chan7.play_channel();
+  chan8.playing ? chan8.play_channel();
+  chan9.playing ? chan9.play_channel();
+  chan10.playing ? chan10.play_channel();
+  chan11.playing ? chan11.play_channel();
+  chan12.playing ? chan12.play_channel();
+  chan13.playing ? chan13.play_channel();
+  chan14.playing ? chan14.play_channel();
+  chan15.playing ? chan15.play_channel();
+  chan16.playing ? chan16.play_channel();
+  preview_channel.play_channel();
+  spl0 += ssl;
+  spl1 += ssr;
+);
 
 @gfx
 current_char = gfx_getchar();
@@ -1342,7 +1396,8 @@ function pitch_widget(cx, cy, ww, hh, sample_loc)
 local(button_width, button_height, frac, mul)
 global(BIG_FONT,
        captured, mouse_cap, mouse_dy,
-       DRAG_FINE, DRAG_PITCH)
+       DRAG_FINE, DRAG_PITCH,
+       multi_out)
 instance(dy_sum)
 (
   // Reference pitch
@@ -1378,6 +1433,10 @@ instance(dy_sum)
       sample_loc[2] += ceil(dy_sum);
       dy_sum -= ceil(dy_sum);
     );
+  );
+  
+  (control_rect(cx + ww - 4 * button_width - 4, cy, 2 * button_width, button_height, 0.07 + .5 * multi_out, 0.04, 0.03, 1.0, BIG_FONT, "Multi - Out") && mouse_press(1)) ? (
+    multi_out = 1 - multi_out;
   );
   
   ((captured == DRAG_FINE) || (captured == DRAG_PITCH)) ? (
