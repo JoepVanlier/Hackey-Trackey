@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.39
+version: 0.40
 author: Joep Vanlier
-changelog: Store names coming from media explorer with the samples
+changelog: Fix issue with multi-channel arpeggio and retrigger. Fix issue with arpeggio not returning to original note.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -377,9 +377,9 @@ instance(current_playback, sample_location, speed, offset,
          last_arp_1, last_arp_2,
          last_vib_speed, last_vib_depth,
          vol, chan,
-         pitch, sample_idx)
-global(samples_per_beat, note_schedule, note_schedule_ptr,
-       next_backlog, samplelocs, srate)
+         pitch, sample_idx,
+         note_schedule, note_schedule_ptr, next_backlog)
+global(samples_per_beat, samplelocs, srate)
 local(vol_change,
       portamento_ds, curspeed, portamento_len, count, cv, dt,
       vib_depth, vib_speed)
@@ -503,16 +503,19 @@ local(vol_change,
     
     note_schedule_ptr = note_schedule;
     note_schedule_ptr[] = dt; note_schedule_ptr += 1;
-    note_schedule_ptr[] = chan; note_schedule_ptr += 1; // Channel
     note_schedule_ptr[] = vol; note_schedule_ptr += 1; // Volume
     note_schedule_ptr[] = sample_idx; note_schedule_ptr += 1; // Sample
     note_schedule_ptr[] = - pitch - last_arp_1; note_schedule_ptr += 1; // Pitch
     
     note_schedule_ptr[] = dt; note_schedule_ptr += 1;
-    note_schedule_ptr[] = chan; note_schedule_ptr += 1; // Channel
     note_schedule_ptr[] = vol; note_schedule_ptr += 1; // Volume
     note_schedule_ptr[] = sample_idx; note_schedule_ptr += 1; // Sample
     note_schedule_ptr[] = - pitch - last_arp_2; note_schedule_ptr += 1; // Pitch
+    
+    note_schedule_ptr[] = dt; note_schedule_ptr += 1;
+    note_schedule_ptr[] = vol; note_schedule_ptr += 1; // Volume
+    note_schedule_ptr[] = sample_idx; note_schedule_ptr += 1; // Sample
+    note_schedule_ptr[] = - pitch; note_schedule_ptr += 1; // Pitch
     
     note_schedule_ptr[] = -1337;
     
@@ -530,7 +533,6 @@ local(vol_change,
     cv = vol;
     loop(count,
       note_schedule_ptr[] = dt; note_schedule_ptr += 1;
-      note_schedule_ptr[] = chan; note_schedule_ptr += 1; // Channel
       note_schedule_ptr[] = cv; note_schedule_ptr += 1; // Volume
       cv *= vol_change;
       note_schedule_ptr[] = sample_idx; note_schedule_ptr += 1; // Sample
@@ -538,7 +540,6 @@ local(vol_change,
     );
     // Finalize with the volume after the trigger.
     note_schedule_ptr[] = dt - 1; note_schedule_ptr += 1;
-    note_schedule_ptr[] = chan; note_schedule_ptr += 1;
     note_schedule_ptr[] = vol; note_schedule_ptr += 1;
     note_schedule_ptr[] = -1337;
     
@@ -617,10 +618,39 @@ global(N_SAMPLES)
   );
 );
 
+function processBacklog()
+instance(note_schedule, note_schedule_ptr, next_backlog)
+local(chan, vol, sample_idx)
+global()
+(
+  // Count down to the next item
+  next_backlog -= 1;
+    
+  // FIRE!
+  next_backlog == 0 ? (
+    // What channel is this?
+    note_schedule_ptr += 1; // Go past the count
+    vol = note_schedule_ptr[]; note_schedule_ptr += 1;
+      
+    // Is there a note here or not?
+    sample_idx = note_schedule_ptr[];
+    (sample_idx > -1) ? (
+      note_schedule_ptr += 1;
+      this.play_sample(sample_idx, note_schedule_ptr[], 0);
+      note_schedule_ptr += 1;
+    );
+      
+    // Proceed to the next one
+    next_backlog = note_schedule_ptr[];
+  );
+);
+
 function play_channel()
-instance(vol, cleft, cright, lpan, rpan)
+instance(vol, cleft, cright, lpan, rpan, next_backlog)
 global(ssl, ssr)
 (
+  next_backlog > 0 ? ( this.processBacklog() );
+
   cleft = 0.998 * cleft + 0.002 * lpan * vol;
   cright = 0.998 * cright + 0.002 * rpan * vol;
   
@@ -634,6 +664,16 @@ global(ssl, ssr)
     ssl += this.play1.outL * cleft;
     ssr += this.play1.outR * cright;
   );
+);
+
+function initNoteSchedule(mem)
+local()
+global()
+instance(note_schedule)
+(
+  note_schedule = mem;
+  note_schedule[] = -1337;
+  mem + 256;
 );
 
 freemem = 0;
@@ -651,8 +691,24 @@ freemem = (copyloc = freemem) + MAX_SAMPLE_DURATION;
 
 freemem = (midimem = freemem) + 32768;
 midi.initializeMIDI(midimem, 1, 1);
-freemem = (note_schedule = freemem) + 32768;
-note_schedule[] = -1337;
+//freemem = (note_schedule = freemem) + 256;
+//note_schedule[] = -1337;
+freemem = chan1.initNoteSchedule(freemem);
+freemem = chan2.initNoteSchedule(freemem);
+freemem = chan3.initNoteSchedule(freemem);
+freemem = chan4.initNoteSchedule(freemem);
+freemem = chan5.initNoteSchedule(freemem);
+freemem = chan6.initNoteSchedule(freemem);
+freemem = chan7.initNoteSchedule(freemem);
+freemem = chan8.initNoteSchedule(freemem);
+freemem = chan9.initNoteSchedule(freemem);
+freemem = chan10.initNoteSchedule(freemem);
+freemem = chan11.initNoteSchedule(freemem);
+freemem = chan12.initNoteSchedule(freemem);
+freemem = chan13.initNoteSchedule(freemem);
+freemem = chan14.initNoteSchedule(freemem);
+freemem = chan15.initNoteSchedule(freemem);
+freemem = chan16.initNoteSchedule(freemem);
 
 @slider
 
@@ -706,74 +762,6 @@ midi.processMIDIBlock();
 
 @sample
 samples_per_beat = floor((srate * 60) / tempo / ticks_per_beat);
-
-function processBacklog()
-local(chan, vol, sample_idx)
-global(note_schedule, note_schedule_ptr, next_backlog
-       chan1.vol, chan2.vol, chan3.vol, chan4.vol, chan5.vol, chan6.vol, chan7.vol, chan8.vol,
-       chan9.vol, chan10.vol, chan11.vol, chan12.vol, chan13.vol, chan14.vol, chan15.vol, chan16.vol,
-       chan1.play_sample, chan2.play_sample, chan3.play_sample, chan4.play_sample, 
-       chan5.play_sample, chan6.play_sample, chan7.play_sample, chan8.play_sample,
-       chan9.play_sample, chan10.play_sample, chan11.play_sample, chan12.play_sample, 
-       chan13.play_sample, chan14.play_sample, chan15.play_sample, chan16.play_sample)
-(
-  (next_backlog > 0) ?
-  (
-    // Count down to the next item
-    next_backlog -= 1;
-    
-    // FIRE!
-    next_backlog == 0 ? (
-      // What channel is this?
-      note_schedule_ptr += 1; // Go past the count
-      chan = note_schedule_ptr[]; note_schedule_ptr += 1;
-      vol = note_schedule_ptr[]; note_schedule_ptr += 1;
-      
-      (chan == 1) ? chan1.vol = vol;
-      (chan == 2) ? chan2.vol = vol;
-      (chan == 3) ? chan3.vol = vol;
-      (chan == 4) ? chan4.vol = vol;
-      (chan == 5) ? chan5.vol = vol;
-      (chan == 6) ? chan6.vol = vol;
-      (chan == 7) ? chan7.vol = vol;
-      (chan == 8) ? chan8.vol = vol;
-      (chan == 9) ? chan9.vol = vol;
-      (chan == 10) ? chan10.vol = vol;
-      (chan == 11) ? chan11.vol = vol;
-      (chan == 12) ? chan12.vol = vol;
-      (chan == 13) ? chan13.vol = vol;
-      (chan == 14) ? chan14.vol = vol;
-      (chan == 15) ? chan15.vol = vol;
-      (chan == 16) ? chan16.vol = vol;
-      
-      // Is there a note here or not?
-      sample_idx = note_schedule_ptr[];
-      (sample_idx > -1) ? (
-        note_schedule_ptr += 1;
-        (chan == 1) ? ( chan1.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
-        (chan == 2) ? ( chan2.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
-        (chan == 3) ? ( chan3.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
-        (chan == 4) ? ( chan4.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
-        (chan == 5) ? ( chan5.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
-        (chan == 6) ? ( chan6.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
-        (chan == 7) ? ( chan7.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
-        (chan == 8) ? ( chan8.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
-        (chan == 9) ? ( chan9.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
-        (chan == 10) ? ( chan10.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
-        (chan == 11) ? ( chan11.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
-        (chan == 12) ? ( chan12.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
-        (chan == 13) ? ( chan13.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
-        (chan == 14) ? ( chan14.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
-        (chan == 15) ? ( chan15.play_sample(sample_idx, note_schedule_ptr[], 0); ) :
-        (chan == 16) ? ( chan16.play_sample(sample_idx, note_schedule_ptr[], 0); );
-        note_schedule_ptr += 1;
-      );
-      
-      // Proceed to the next one
-      next_backlog = note_schedule_ptr[];
-    );
-  );
-);
 
 function processMIDISample()
 local(channel)
@@ -855,7 +843,6 @@ instance(notePtr, remainingNotes, nextNote, curSample)
 );
 ssl = ssr = 0;
 
-processBacklog();
 midi.processMIDISample();
 
 chan1.play_channel();

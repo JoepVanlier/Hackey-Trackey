@@ -11,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.51
+@version 2.52
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,6 +42,8 @@
 
 --[[
  * Changelog:
+ * v2.52 (2021-05-30)
+   + Handle arpeggio and retrigger on a per channel basis. Fix bug where arpeggio wouldn't reset back to root note.
  * v2.51 (2021-05-29)
    + Store sample names in hackey trackey sample playback.
  * v2.50 (2021-05-29)
@@ -475,7 +477,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.50"
+tracker.name = "Hackey Trackey v2.52"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
