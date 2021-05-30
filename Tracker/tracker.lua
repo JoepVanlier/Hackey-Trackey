@@ -11,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.56
+@version 2.57
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,6 +42,8 @@
 
 --[[
  * Changelog:
+ * v2.57 (2021-05-31)
+   + Finetune mouse selection. Add left, right mouse combo for selecting a region.
  * v2.56 (2021-05-30)
    + Add option to shift horizontally (shift + ins and shift + backspace).
    + Make copy paste feel less glitchy.
@@ -486,7 +488,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.56"
+tracker.name = "Hackey Trackey v2.57"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -8385,11 +8387,13 @@ end
 mouse_cap = 0
 capture = {}
 local function setCapMode( mode, ref, min, max )
-  mouse_cap = mode
-  capture.lastY = gfx.mouse_y
-  capture.ref = ref
-  capture.min = min
-  capture.max = max
+  if ( mouse_cap == 0 ) then
+    mouse_cap = mode
+    capture.lastY = gfx.mouse_y
+    capture.ref = ref
+    capture.min = min
+    capture.max = max
+  end
 end
 
 local function getCapValue( sensitivity )
@@ -8645,6 +8649,38 @@ function tracker:remove_hori()
   self:move_block(from, self.ypos, #datafields - from, 0, self:seek_notecol(from - 1, -1), self.ypos, "Tracker: Remove horizontal")
 end
 
+function tracker:mouseToPatternCoord(already_dragging)
+  local Inew = nil
+  local Jnew = nil
+  local plotData  = self.plotData
+  local fov       = self.fov
+  local xloc      = plotData.xloc
+  local yloc      = plotData.yloc
+  local xwidth    = plotData.xwidth
+  local yheight   = plotData.yheight
+  
+  if ( tracker.take ) then
+    if ( ( gfx.mouse_x > xloc[#xloc] ) and ( (gfx.mouse_x <= (xloc[#xloc] + xwidth[#xloc])) or already_dragging ) ) then
+      Inew = #xloc + fov.scrollx
+    end
+    for i=1,#xloc-1 do
+      if ( ( gfx.mouse_x > xloc[i] ) and ( gfx.mouse_x <= (xloc[i+1]) ) ) then
+        Inew = i + fov.scrollx
+      end
+    end
+    if ( ( gfx.mouse_y > yloc[#yloc] ) and ( (gfx.mouse_y <= (yloc[#yloc] + yheight[#yloc]) or already_dragging) ) ) then
+      Jnew = #yloc + fov.scrolly
+    end
+    for i=1,#yloc-1 do
+      if ( ( gfx.mouse_y > yloc[i] ) and ( gfx.mouse_y <= (yloc[i+1]) ) ) then
+        Jnew = i + fov.scrolly
+      end
+    end
+  end
+  
+  return Inew, Jnew
+end
+
 ------------------------------
 -- Main update loop
 -----------------------------
@@ -8825,21 +8861,25 @@ local function updateLoop()
         tracker:storeSettings()
       end
     end
+    
+    if (tracker.lastright == 0) and (mouse_cap == 0) then
+      local Inew, Jnew = tracker:mouseToPatternCoord()
+      if ( Inew and Jnew ) then
+        -- Move the cursor pos on initial click
+        tracker:dragBlock(Inew, Jnew)
+      end
+    end
   end
 
   if tracker.cfg.releaseNoteOffs == 1 then
     tracker:listenForNotesToStop()
   end
 
-  if ( left == 1 and mouse_cap == 0 ) then
-    local Inew
-    local Jnew
+  if ( left == 1 and (mouse_cap == 0 or mouse_cap == 6) ) then
     local plotData  = tracker.plotData
     local fov       = tracker.fov
     local xloc      = plotData.xloc
     local yloc      = plotData.yloc
-    local xwidth    = plotData.xwidth
-    local yheight   = plotData.yheight
 
     -- Mouse on track size indicator?
     local xl, yl, xm, ym = tracker:getSizeIndicatorLocation()
@@ -8900,29 +8940,18 @@ local function updateLoop()
     end
 
     -- Mouse in range of pattern data?
-    if ( tracker.take ) then
-      for i=1,#xloc do
-        if ( ( gfx.mouse_x > xloc[i] ) and ( gfx.mouse_x < (xloc[i] + xwidth[i]) ) ) then
-          Inew = i
-        end
-      end
-      for i=1,#yloc do
-        if ( ( gfx.mouse_y > yloc[i] ) and ( gfx.mouse_y < (yloc[i] + yheight[i]) ) ) then
-          Jnew = i
-        end
-      end
-    end
-
+    local Inew, Jnew = tracker:mouseToPatternCoord(mouse_cap == 6)
     if ( Inew and Jnew ) then
       -- Move the cursor pos on initial click
       if ( tracker.lastleft == 0 ) then
+        setCapMode(6)
         tracker:resetShiftSelect()
-        tracker:dragBlock(Inew+fov.scrollx, Jnew+fov.scrolly)
-        tracker.xpos = Inew + fov.scrollx
-        tracker.ypos = Jnew + fov.scrolly
+        tracker:dragBlock(Inew, Jnew)
+        tracker.xpos = Inew
+        tracker.ypos = Jnew
       else
         -- Change selection if it wasn't the initial click
-        tracker:dragBlock(Inew+fov.scrollx, Jnew+fov.scrolly)
+        tracker:dragBlock(Inew, Jnew)
       end
     end
 
