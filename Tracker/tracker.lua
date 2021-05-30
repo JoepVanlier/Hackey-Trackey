@@ -11,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.57
+@version 2.58
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,7 +42,9 @@
 
 --[[
  * Changelog:
- * v2.57 (2021-05-31)
+ * v2.58 (2021-05-30)
+   + Fix whole line copy.
+ * v2.57 (2021-05-30)
    + Finetune mouse selection. Add left, right mouse combo for selecting a region.
  * v2.56 (2021-05-30)
    + Add option to shift horizontally (shift + ins and shift + backspace).
@@ -488,7 +490,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.57"
+tracker.name = "Hackey Trackey v2.58"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -6976,15 +6978,17 @@ function tracker:clearBlock(incp, cleanOffs)
   local xstop = cp.xstop
   if ( cp.all == 1 ) then
     xstart = 1
-    xstop = tracker.displaychannels
+    xstop = #datafields
   end
+  
+  local ystop = math.min(cp.ystop, rows);
 
   -- Cut out the block. Note that this creates 'stops' at the start of the block
   local legatoDone = 0
   for jx = xstart, xstop do
     local chan = idxfields[ jx ]
     if ( datafields[jx] == 'text' ) then
-      for jy = cp.ystart, cp.ystop do
+      for jy = cp.ystart, ystop do
         -- If we are a legato note, make sure that the previous one gets shortened
         -- otherwise things won't fit.
         if ( legatoDone == 0 and chan == 1 and self.legato[jy] and self.legato[jy-1] > -1 ) then
@@ -6994,15 +6998,15 @@ function tracker:clearBlock(incp, cleanOffs)
         self:deleteNoteSimple( chan, jy - 1 )
       end
     elseif ( datafields[jx] == 'legato' ) then
-      for jy = cp.ystart, cp.ystop do
+      for jy = cp.ystart, ystop do
         self:deleteLegato( jy-1 )
       end
     elseif ( ( datafields[jx] == 'fx1' ) or ( datafields[jx] == 'fx2' ) ) then
-      self:deleteEnvPt(chan, self:toSeconds(cp.ystart-1), self:toSeconds(cp.ystop-1)+tracker.eps )
+      self:deleteEnvPt(chan, self:toSeconds(cp.ystart-1), self:toSeconds(ystop-1)+tracker.eps )
     elseif ( ( datafields[jx] == 'mod1' ) or ( datafields[jx] == 'mod2' ) or ( datafields[jx] == 'mod3' ) or ( datafields[jx] == 'mod4' ) ) then
-      self:deleteCC_range( cp.ystart-1, cp.ystop )
+      self:deleteCC_range( cp.ystart-1, ystop )
     elseif ( ( datafields[jx] == 'modtxt1' ) or ( datafields[jx] == 'modtxt2' ) ) then
-      self:deleteCC_range( cp.ystart-1, cp.ystop, data.modtypes[chan] )
+      self:deleteCC_range( cp.ystart-1, ystop, data.modtypes[chan] )
     end
   end
 
@@ -7018,7 +7022,7 @@ function tracker:clearBlock(incp, cleanOffs)
     for jx = cp.xstart, cp.xstop do
       local chan = idxfields[ jx ]
       if ( datafields[jx] == 'text' ) then
-        for jy = cp.ystart, cp.ystop do
+        for jy = cp.ystart, ystop do
           if ( self.debug == 1 ) then
             self:printNote(chan, jy - 1)
           end
@@ -7047,7 +7051,7 @@ function tracker:mendBlock(incp)
   local xstop = cp.xstop
   if ( cp.all == 1 ) then
     xstart = 1
-    xstop = tracker.displaychannels
+    xstop = #datafields
   end
 
   for jx = xstart, xstop do
@@ -7202,9 +7206,14 @@ function tracker:pasteClipboard()
   end
 
   local fieldCount = #channels
-
+  
+  local start_xpos = self.xpos
+  if (clipboard.region.all == 1) then
+    start_xpos = 1
+  end
+  
   -- Check whether we have compatible fields
-  local jx = self.xpos
+  local jx = start_xpos
   for i = 1,fieldCount do
     local chan = idxfields[jx]
     local chtype = datafields[jx]
@@ -7229,11 +7238,11 @@ function tracker:pasteClipboard()
 
   -- Determine the shift we need to apply to the current position to get to the start
   -- of the clipboard
-  local cpShift = self.colref[ datafields[self.xpos] ]
+  local cpShift = self.colref[ datafields[start_xpos] ]
   local region = self.clipboard.region
-  region.xstop = self.xpos + (region.xstop - region.xstart) + cpShift
+  region.xstop = start_xpos + (region.xstop - region.xstart) + cpShift
   region.ystop = self.ypos + (region.ystop - region.ystart)
-  region.xstart = self.xpos + cpShift
+  region.xstart = start_xpos + cpShift
   region.ystart = self.ypos
   self:clearBlock(region)
 
@@ -7242,9 +7251,9 @@ function tracker:pasteClipboard()
   local noteGrid  = data.note
   local notes     = self.notes
   local rows      = self.rows
-
+ 
   -- We should be able to paste the contents now
-  local jx = self.xpos
+  local jx = start_xpos
   for i = 1,fieldCount do
     local chan = idxfields[jx]
     local chtype = datafields[jx]
@@ -7305,7 +7314,7 @@ function tracker:pasteClipboard()
 
   local cp = self.cp
   local xstop = jx
-  local xstart = self.xpos
+  local xstart = start_xpos
   local ystart = self.ypos
   local yend = self.ypos + self.clipboard.maxrow
 
@@ -7375,7 +7384,7 @@ function tracker:copyToClipboard()
   local xstop = cp.xstop
   if ( cp.all == 1 ) then
     xstart = 1
-    xstop = tracker.displaychannels
+    xstop = #datafields
   end
 
   -- All we should be copying is note starts and note stops
