@@ -11,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.55
+@version 2.56
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,6 +42,9 @@
 
 --[[
  * Changelog:
+ * v2.56 (2021-05-30)
+   + Add option to shift horizontally (shift + ins and shift + backspace).
+   + Make copy paste feel less glitchy.
  * v2.55 (2021-05-30)
    + Add multiple output mode.
  * v2.54 (2021-05-30)
@@ -483,7 +486,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.55"
+tracker.name = "Hackey Trackey v2.56"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -1233,6 +1236,8 @@ function tracker:loadKeys( keySet )
     keys.prevTrack      = { 1,    0,  1,    1818584692.0 }  -- CTRL + Shift + <-
     keys.solo           = { 1,    0,  0,    19 }            -- Solo channel
     keys.mute           = { 1,    0,  0,    1 }             -- Mute/Unmute channel    
+    keys.insert_hori    = { 0,    0,  1,    6909555 }       -- SHIFT + Insert
+    keys.remove_hori    = { 0,    0,  1,    8 }             -- SHIFT + Backspace
 
     keys.insertRow      = { 1,    0,  0,    6909555 }       -- Insert row CTRL+Ins
     keys.removeRow      = { 1,    0,  0,    8 }             -- Remove Row CTRL+Backspace
@@ -7194,11 +7199,19 @@ function tracker:pasteClipboard()
     return
   end
 
+  local fieldCount = #channels
+
   -- Check whether we have compatible fields
   local jx = self.xpos
-  for i = 1,#channels do
+  for i = 1,fieldCount do
     local chan = idxfields[jx]
     local chtype = datafields[jx]
+
+    -- Early out if there are no more data fields to paste into.
+    if not chtype then
+      fieldCount = i - 1
+      break
+    end
 
     local found = false
     for j,v in pairs( tracker.colgroups[chtype] ) do
@@ -7230,7 +7243,7 @@ function tracker:pasteClipboard()
 
   -- We should be able to paste the contents now
   local jx = self.xpos
-  for i = 1,#channels do
+  for i = 1,fieldCount do
     local chan = idxfields[jx]
     local chtype = datafields[jx]
     local firstNote = 1
@@ -8580,11 +8593,63 @@ function tracker:readNotesFromJSFX()
   end
 end
 
+function tracker:move_block(from_x, from_y, width, height, to_x, to_y, action_name)
+  local oldx = self.xpos
+  local oldy = self.ypos
+  local cpS = self:saveClipboard()
+  reaper.Undo_BeginBlock2(0)
+  self.cp = {xstart=from_x, ystart=from_y, xstop=from_x + width, ystop=from_y + height}
+  self:cutBlock()
+  self:deleteNow()
+  reaper.MIDI_Sort(self.take)
+  
+  -- Paste block one shifted
+  self.xpos = to_x
+  self.ypos = to_y
+  self:pasteBlock()
+  
+  self:loadClipboard(cpS)
+  tracker:deleteNow()
+  reaper.MIDI_Sort(tracker.take)
+  self.xpos = oldx
+  self.ypos = oldy
+  reaper.Undo_EndBlock2(0, action_name, 4)
+  reaper.MarkProjectDirty(0)
+end
+ 
+function tracker:seek_notecol(xp, dir)
+  local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+  local attempts = 0
+  
+  while(datafields[xp] ~= "text") do
+    xp = xp + dir
+    attempts = attempts + 1
+    
+    if attempts > 60 then
+      return xp
+    end
+  end
+  
+  return xp
+end
+
+function tracker:insert_hori()
+  local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+  local from = self:seek_notecol(self:seek_notecol(self.xpos, - 1), 1)
+  self:move_block(from, self.ypos, #datafields - self.xpos, 0, self:seek_notecol(from + 1, 1), self.ypos, "Tracker: Insert horizontal")
+end
+
+function tracker:remove_hori()
+  local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+  local from = self:seek_notecol(self:seek_notecol(self.xpos + 1, 1), -1)
+  self:move_block(from, self.ypos, #datafields - from, 0, self:seek_notecol(from - 1, -1), self.ypos, "Tracker: Remove horizontal")
+end
+
 ------------------------------
 -- Main update loop
 -----------------------------
 local function updateLoop()
-  updateFontScale();
+  updateFontScale()
   
   local tracker = tracker
   tracker.updateLoop = updateLoop
@@ -9189,6 +9254,12 @@ local function updateLoop()
       tracker:loadClipboard(cpS)
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
+    elseif ( inputs('insert_hori') ) then
+      modified = 1
+      tracker:insert_hori()
+    elseif ( inputs('remove_hori') ) then
+      modified = 1
+      tracker:remove_hori()
     elseif ( inputs('wrapDown') and tracker.take ) then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Wrap down")
@@ -9757,10 +9828,13 @@ local function updateLoop()
     end
   end
 
-  if ( not self.noDraw or self.noDraw == 0 ) then
-    tracker:printGrid()
+  if modified == 0 then
+    if ( not self.noDraw or self.noDraw == 0 ) then
+      tracker:printGrid()
+      gfx.update()
+    end
   end
-  gfx.update()
+  
   tracker:insertNow()
 
   -- Remove duplicates potentially caused by legato system
@@ -9770,6 +9844,9 @@ local function updateLoop()
     tracker:deleteNow()
     reaper.MIDI_Sort(tracker.take)
     tracker.hash = math.random()
+    
+    tracker:update()
+    tracker:printGrid()
   end
 
   tracker:updateNoteSelection()
