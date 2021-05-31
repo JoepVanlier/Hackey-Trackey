@@ -11,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.58
+@version 2.59
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,6 +42,8 @@
 
 --[[
  * Changelog:
+ * v2.59 (2021-05-31)
+   + Fix bug that could cause nil reference when splitting item on which a selection is currently active.
  * v2.58 (2021-05-30)
    + Fix whole line copy.
  * v2.57 (2021-05-30)
@@ -3317,6 +3319,7 @@ function tracker:printGrid()
     
     xma = math.min(xma, #xloc)
     ye = math.min(ye, #yloc)
+    yl = math.min(yl, #yloc)
     
     gfx.set(table.unpack(colors.copypaste))
     if ( cp.all == 0 ) then
