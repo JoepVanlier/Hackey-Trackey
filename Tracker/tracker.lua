@@ -3364,7 +3364,7 @@ function tracker:printGrid()
   -- Scrollbar
   ------------------------------
   tracker.scrollbar:setExtent( fov.scrolly / rows, ( fov.scrolly + fov.height ) / rows, tracker.ypos/rows, rows )
-  if ( tracker.fov.height < self.rows ) then
+  if ( self:shouldShowScrollbars() ) then
     tracker.scrollbar:draw(colors)
   end
 
@@ -3732,6 +3732,10 @@ function tracker:infoString()
   local y = self:getBottom() + yheight
 
   return str, locs, y
+end
+
+function tracker:shouldShowScrollbars()
+  return (self.fov.height < self.rows) or (self.cfg.fixedIndicator == 1)
 end
 
 function tracker:getBottom()
@@ -8894,7 +8898,7 @@ local function updateLoop()
 
   -- Mouse
   local left, right = mouseStatus()
-  if ( tracker.fov.height < tracker.rows ) then
+  if ( tracker:shouldShowScrollbars() ) then
     if ( mouse_cap == 0 ) then
       local loc = tracker.scrollbar:mouseUpdate(gfx.mouse_x, gfx.mouse_y, left)
       if ( loc ) then
