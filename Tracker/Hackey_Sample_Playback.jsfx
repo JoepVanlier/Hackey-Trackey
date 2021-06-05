@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.48
+version: 0.49
 author: Joep Vanlier
-changelog: Allow preview channel playback through, even if the sample is muted.
+changelog: Change doubleclick interval
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -1537,7 +1537,7 @@ global(samplelocs, selected_sample, SAMPLE_HEADER, SAMPLE_DURATION, captured,
     block_start = floor(block_start * 0.5) * 2;
     block_end = floor(block_end * 0.5) * 2;
     
-    ((time_precise() - last_click_time) < 0.5) ? (
+    ((time_precise() - last_click_time) < 0.2) ? (
       block_start = sample_start;
       block_end = sample_start + sample_len; 
       captured = 0;

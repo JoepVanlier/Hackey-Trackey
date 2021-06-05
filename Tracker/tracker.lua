@@ -11,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.63
+@version 2.64
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,6 +42,8 @@
 
 --[[
  * Changelog:
+ * v2.64 (2021-06-06)
+   + Change doubleclick speed HTP.
  * v2.63 (2021-06-05)
    + Allow preview channel through even when the played sample is muted.
  * v2.62 (2021-06-05)
@@ -501,7 +503,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.63"
+tracker.name = "Hackey Trackey v2.64"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
