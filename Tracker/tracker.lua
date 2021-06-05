@@ -11,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.60
+@version 2.61
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,6 +42,8 @@
 
 --[[
  * Changelog:
+ * v2.61 (2021-06-05)
+   + Added per-sample mute and solo options in hackey trackey playback.
  * v2.60 (2021-06-05)
    + Fix issue in hackey trackey playback which could make first sample disappear due to memory clobbering (regression introduced in 2.52).
    + Always load first sample into sample editor when plugin is first opened during a session.
@@ -495,7 +497,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.60"
+tracker.name = "Hackey Trackey v2.61"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
