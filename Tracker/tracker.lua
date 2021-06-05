@@ -11,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.59
+@version 2.60
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,6 +42,9 @@
 
 --[[
  * Changelog:
+ * v2.60 (2021-06-05)
+   + Fix issue in hackey trackey playback which could make first sample disappear due to memory clobbering (regression introduced in 2.52).
+   + Always load first sample into sample editor when plugin is first opened during a session.
  * v2.59 (2021-05-31)
    + Fix bug that could cause nil reference when splitting item on which a selection is currently active.
  * v2.58 (2021-05-30)
@@ -492,7 +495,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.58"
+tracker.name = "Hackey Trackey v2.60"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
