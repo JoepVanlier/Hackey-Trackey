@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.45
+version: 0.47
 author: Joep Vanlier
-changelog: Added mute and solo options for samples.
+changelog: Fix regression sample editor.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -211,6 +211,7 @@ local()
  chan16.chan_default(16);
  preview_channel.chan_default(17);
  initialized = 1;
+ last_selected_sample = -1337;
 );
 
 preview_channel.stop_sample();
@@ -1308,7 +1309,7 @@ loop(ny,
   cy += block_height + block_pad;
 );
 
-((selected_sample != last_selected_sample) || initialized) ? (
+((selected_sample != last_selected_sample) && initialized) ? (
   reset_zoom = 1;
   last_selected_sample = selected_sample;
 );
