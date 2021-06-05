@@ -11,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.62
+@version 2.63
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,6 +42,8 @@
 
 --[[
  * Changelog:
+ * v2.63 (2021-06-05)
+   + Allow preview channel through even when the played sample is muted.
  * v2.62 (2021-06-05)
    + Fix regression zoom sample editor.
  * v2.61 (2021-06-05)
@@ -499,7 +501,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.62"
+tracker.name = "Hackey Trackey v2.63"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"

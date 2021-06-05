@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.47
+version: 0.48
 author: Joep Vanlier
-changelog: Fix regression sample editor.
+changelog: Allow preview channel playback through, even if the sample is muted.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -443,12 +443,12 @@ local(vol_change,
   (got_note > 0) ? (
     sample_location[1] > 90 ? (
       (current_playback == 1) ? (
-        !blocked_samples[sample_idx] ? (
+        (!blocked_samples[sample_idx] || (chan == 17)) ? (
           this.play0.start_playback(sample_location, speed, 0.5 * offset * sample_location[]);
         );
         this.play1.stop_playback();
       ) : (
-        !blocked_samples[sample_idx] ? (
+        (!blocked_samples[sample_idx] || (chan == 17)) ? (
           this.play1.start_playback(sample_location, speed, 0.5 * offset * sample_location[]);
         );
         this.play0.stop_playback();
