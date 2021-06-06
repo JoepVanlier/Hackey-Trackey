@@ -11,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.64
+@version 2.65
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,6 +42,8 @@
 
 --[[
  * Changelog:
+ * v2.65 (2021-06-06)
+   + Add "Fix indicator in view" mode
  * v2.64 (2021-06-06)
    + Change doubleclick speed HTP.
  * v2.63 (2021-06-05)
@@ -503,7 +505,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.64"
+tracker.name = "Hackey Trackey v2.65"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
