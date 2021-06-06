@@ -126,7 +126,7 @@ This mode is best used with "Bigger play indicator" and "Follow song" enabled.
 
 It doesn't have to be positioned centrally either. You may position the indicator
 wherever you like by holding down CTRL + ALT + LMB in the row indicator column.
-![Fix indicator in view](https://i.imgur.com/fY8A5fw.png)
+![Fix indicator in view](https://imgur.com/Ok4HG3H.gif)
 
 ### Can I do step sequencing from my MIDI device?
 Yes you can! Enable track from MIDI in the options. This will inject a JSFX on
