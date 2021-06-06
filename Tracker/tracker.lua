@@ -8768,6 +8768,9 @@ function tracker:mouseToPatternCoord(already_dragging)
         Jnew = i + fov.scrolly
       end
     end
+    if (Jnew) then
+      Jnew = math.max(1, math.min(self.rows, Jnew))
+    end
   end
   
   return Inew, Jnew
@@ -9048,20 +9051,18 @@ local function updateLoop()
     -- Mouse in range of pattern data?
     local Inew, Jnew = tracker:mouseToPatternCoord(mouse_cap == 6)
     if ( Inew and Jnew ) then
-      if (Jnew > 0 and Jnew < tracker.rows) then
-        -- Move the cursor pos on initial click
-        if ( tracker.lastleft == 0 ) then
-          setCapMode(6)
-          tracker:resetShiftSelect()
-          tracker.xpos = Inew
-          if ( tracker.cfg.fixedIndicator ~= 1 ) then
-            tracker:dragBlock(Inew, Jnew)
-            tracker.ypos = Jnew
-          end
-        else
-          -- Change selection if it wasn't the initial click
+      -- Move the cursor pos on initial click
+      if ( tracker.lastleft == 0 ) then
+        setCapMode(6)
+        tracker:resetShiftSelect()
+        tracker.xpos = Inew
+        if ( tracker.cfg.fixedIndicator ~= 1 ) then
           tracker:dragBlock(Inew, Jnew)
+          tracker.ypos = Jnew
         end
+      else
+        -- Change selection if it wasn't the initial click
+        tracker:dragBlock(Inew, Jnew)
       end
     end
 
