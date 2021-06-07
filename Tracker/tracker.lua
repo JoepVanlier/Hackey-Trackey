@@ -11,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.64
+@version 2.65
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,6 +42,8 @@
 
 --[[
  * Changelog:
+ * v2.65 (2021-06-06)
+   + Add "Fix indicator in view" mode
  * v2.64 (2021-06-06)
    + Change doubleclick speed HTP.
  * v2.63 (2021-06-05)
@@ -503,7 +505,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.64"
+tracker.name = "Hackey Trackey v2.65"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -715,6 +717,8 @@ tracker.cfg.lastVel = 96
 tracker.cfg.lastVelSample = 1
 
 tracker.tracker_samples = 0
+tracker.cfg.fixedIndicator = 0
+tracker.cfg.fixedIndLoc = 0.5
 
 -- Defaults
 tracker.cfg.transpose = 3
@@ -727,6 +731,7 @@ tracker.binaryOptions = {
     { 'followSelection', 'Follow Selection' },
     { 'storedSettings', 'Use settings stored in pattern' },
     { 'followSong', 'Follow Song (CTRL + F)' },
+    { 'fixedIndicator', 'Fix indicator position in view' },
     { 'advanceByNote', 'Advance to next note mode (CTRL + T)' },
     { 'clampToSelection', 'Clamp to selection in note mode' },
     { 'stickToBottom', 'Info Sticks to Bottom' },
@@ -1336,6 +1341,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },
       { 'CTRL + Shift + A/P', 'Per channel CC/PC' },
       { 'CTRL + Shift + Click row indicator', 'Change highlighting (RMB resets)' },
+      { 'CTRL + Alt + Click row indicator', 'Change fixed indicator position' },
       { 'CTRL + S / CTRL + A', '(un)Solo / (un)Mute' },   
       { 'CTRL + T', 'Toggle advance to next note mode' },      
       { '', '' },
@@ -1506,6 +1512,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },
       { 'CTRL + Shift + A/P', 'Per channel CC/PC' },
       { 'CTRL + Shift + Click row indicator', 'Change highlighting (RMB resets)' },
+      { 'CTRL + Alt + Click row indicator', 'Change fixed indicator position' },
       { 'CTRL + T', 'Toggle advance to next note mode' },
       { '', '' },
       { 'Harmony helper', '' },
@@ -1689,6 +1696,7 @@ function tracker:loadKeys( keySet )
       { 'F9/F10/F11/F12', 'Goto 0, 25, 50 and 75%%' },
       { 'F8', 'Close tracker' },
       { 'CTRL + Shift + Click row indicator', 'Change highlighting (RMB resets)' },
+      { 'CTRL + Alt + Click row indicator', 'Change fixed indicator position' },
       { '---', '' },
       { 'CTRL + F1/F2', 'Shift pattern down/up' },
       { 'CTRL + Shift + F1/F2', 'Shift column down/up' },
@@ -2456,7 +2464,10 @@ function tracker:updatePlotLink()
   local yloc = {}
   local yheight = {}
   local y = originy
-  for j = 0,math.max(1,math.min(self.rows-1, fov.height-1)) do
+
+  local vrows = self:getVRows()
+
+  for j = 0,math.max(1, vrows-1) do
     yloc[#yloc + 1] = y
     yheight[#yheight + 1] = 0.7 * dy
     y = y + dy
@@ -2483,12 +2494,21 @@ function tracker:normalizePositionToSelf(cpos)
     self.itemStart = loc
     local row = ( cpos - loc ) * self.rowPerSec
     row = row - self.fov.scrolly
-    norm =  row / math.min(self.rows, self.fov.height)
+    local vrows = self:getVRows()
+    norm =  row / vrows
   else
     self:tryPreviousItem()
   end
 
   return norm
+end
+
+function tracker:getVRows()
+  if (tracker.cfg.fixedIndicator == 1) then
+    return self.fov.height
+  end
+
+  return math.min(self.rows, self.fov.height)
 end
 
 -- Used to be self:terminate()
@@ -2636,19 +2656,32 @@ function scrollbar.create( w )
       if ( left == 1 ) then
         if ( ( mx > self.x ) and ( mx < self.x + self.w ) ) or self.dragging then
           if ( ( my > self.y ) and ( my < self.y + self.h ) ) or self.dragging then
-            if ( ( my > (self.y + self.h*self.ymarker-4) ) and ( my < (self.y + self.h*self.ymarker+4) ) ) and not self.dragging then
+            if ( self.ly and my ~= self.ly and not self.dragging ) then
               self.dragging = 1
               self.cdy = 0
             end
-            
+
+            local diff = (self.yend - self.ytop) * tracker.fov.height / (tracker.fov.height - 1)
+            local totLen = 1 + diff
+
             if self.dragging then
-              self.cdy = self.cdy + ((my - self.ly) / self.h)
+              if ( tracker.cfg.fixedIndicator == 1 ) then
+                self.cdy = self.cdy + ((my - self.ly) / self.h) * totLen
+              else
+                self.cdy = self.cdy + ((my - self.ly) / self.h)
+              end
+
               local dy = math.floor(self.cdy*self.nrows)/self.nrows
               self.cdy = self.cdy - dy
               
               self.loc = math.max(0.0, math.min(1.0, self.loc + dy))
             else
-              self.loc = ( my - self.y ) / self.h
+              if ( tracker.cfg.fixedIndicator == 1 ) then
+                local newLoc = (( my - self.y ) / self.h) * totLen - tracker.cfg.fixedIndLoc * diff
+                self.loc = math.max(0.0, math.min(1.0, newLoc))
+              else
+                self.loc = ( my - self.y ) / self.h
+              end
             end            
           end
         end
@@ -2658,7 +2691,7 @@ function scrollbar.create( w )
         self.dragging = nil
       end
     end
-    
+
     self.ly = my
   end
 
@@ -2670,14 +2703,34 @@ function scrollbar.create( w )
     local ytop = self.ytop
     local yend = self.yend
 
-    gfx.set(table.unpack(colors.scrollbar1))
-    gfx.rect(x, y, w, h)
-    gfx.set(table.unpack(colors.scrollbar2))
-    gfx.rect(x+1, y+1, w-2, h-2)
-    gfx.set(table.unpack(colors.scrollbar1))
-    gfx.rect(x+2, y + ytop*h+2, w-4, (yend-ytop)*h-3)
-    gfx.set(table.unpack(colors.scrollbar1))
-    gfx.rect(x-2, y + self.ymarker*h-1, w+4, 2)
+    if ( tracker.cfg.fixedIndicator == 1 ) then
+      gfx.set(table.unpack(colors.scrollbar1))
+      gfx.rect(x, y, w, h)
+      gfx.set(table.unpack(colors.scrollbar2))
+      gfx.rect(x+1, y+1, w-2, h-2)
+
+      local fixedIndLoc = tracker.cfg.fixedIndLoc
+      local diff = (yend - ytop) * tracker.fov.height / (tracker.fov.height - 1)
+      local totLen = 1 + diff
+
+      ytop = (ytop + fixedIndLoc * diff) / totLen
+      yend = (yend + fixedIndLoc * diff) / totLen
+      local ymarker = (self.ymarker + fixedIndLoc * diff) / totLen
+
+      gfx.set(table.unpack(colors.scrollbar1))
+      gfx.rect(x+2, y + ytop*h+2, w-4, (yend-ytop)*h-3)
+      gfx.set(table.unpack(colors.scrollbar1))
+      gfx.rect(x-2, y + ymarker*h-1, w+4, 2)
+    else
+      gfx.set(table.unpack(colors.scrollbar1))
+      gfx.rect(x, y, w, h)
+      gfx.set(table.unpack(colors.scrollbar2))
+      gfx.rect(x+1, y+1, w-2, h-2)
+      gfx.set(table.unpack(colors.scrollbar1))
+      gfx.rect(x+2, y + ytop*h+2, w-4, (yend-ytop)*h-3)
+      gfx.set(table.unpack(colors.scrollbar1))
+      gfx.rect(x-2, y + self.ymarker*h-1, w+4, 2)
+    end
   end
 
   return self
@@ -3084,48 +3137,49 @@ function tracker:printGrid()
   if ( self.take ) then
     for y=1,#yloc do
       local absy = y + scrolly
+      if ( absy > 0 and absy <= rows ) then
+        local c1, c2, tx
+        if ( (((absy-1)/sig) - math.floor((absy-1)/sig)) == 0 ) then
+          c1 = colors.linecolor5
+          c2 = colors.linecolor5s
+          tx = colors.textcolorbar or colors.textcolor
+          fc = colors.bar
+        elseif ( (((absy-1)/(.25*sig)) - math.floor((absy-1)/(.25*sig))) == 0 ) then
+          c1 = colors.linecolor2
+          c2 = colors.linecolor2s
+          tx = colors.textcolorbar or colors.textcolor
+          fc = colors.bar
+        else
+          c1 = colors.linecolor
+          c2 = colors.linecolors
+          tx = colors.textcolor
+          fc = colors.normal
+        end
 
-      local c1, c2, tx
-      if ( (((absy-1)/sig) - math.floor((absy-1)/sig)) == 0 ) then
-        c1 = colors.linecolor5
-        c2 = colors.linecolor5s
-        tx = colors.textcolorbar or colors.textcolor
-        fc = colors.bar
-      elseif ( (((absy-1)/(.25*sig)) - math.floor((absy-1)/(.25*sig))) == 0 ) then
-        c1 = colors.linecolor2
-        c2 = colors.linecolor2s
-        tx = colors.textcolorbar or colors.textcolor
-        fc = colors.bar
-      else
-        c1 = colors.linecolor
-        c2 = colors.linecolors
-        tx = colors.textcolor
-        fc = colors.normal
-      end
+        gfx.y = yloc[y] + extraFontShift
+        gfx.x = xloc[1] - plotData.indicatorShiftX
 
-      gfx.y = yloc[y] + extraFontShift
-      gfx.x = xloc[1] - plotData.indicatorShiftX
+        gfx.set(table.unpack(tx))
+        if tracker.zeroindexed == 1 then
+          gfx.printf("%03d", absy-1)
+        else
+          gfx.printf("%03d", absy)
+        end
+        gfx.set(table.unpack(c1))
+        gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, yheight[1] + itempady)
+        gfx.set(table.unpack(c2))
+        gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, 1)
+        gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, 1, yheight[y])
+        gfx.rect(xloc[1] - itempadx + tw + 0, yloc[y] - yshift, 1, yheight[y] + itempady)
 
-      gfx.set(table.unpack(tx))
-      if tracker.zeroindexed == 1 then
-        gfx.printf("%03d", absy-1)
-      else
-        gfx.printf("%03d", absy)
-      end
-      gfx.set(table.unpack(c1))
-      gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, yheight[1] + itempady)
-      gfx.set(table.unpack(c2))
-      gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, 1)
-      gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, 1, yheight[y])
-      gfx.rect(xloc[1] - itempadx + tw + 0, yloc[y] - yshift, 1, yheight[y] + itempady)
+        for x=1,#xloc do
+          local thisfield = dlink[x]
+          gfx.x = xloc[x]
+          gfx.set(table.unpack(fc[thisfield] or tx))
 
-      for x=1,#xloc do
-        local thisfield = dlink[x]
-        gfx.x = xloc[x]
-        gfx.set(table.unpack(fc[thisfield] or tx))
-
-        local cdata = data[thisfield][rows*xlink[x]+absy-1]
-        self:writeField( cdata, ellipsis, xloc[x], yloc[y], customFont )
+          local cdata = data[thisfield][rows*xlink[x]+absy-1]
+          self:writeField( cdata, ellipsis, xloc[x], yloc[y], customFont )
+        end
       end
     end
 
@@ -3312,7 +3366,7 @@ function tracker:printGrid()
   -- Scrollbar
   ------------------------------
   tracker.scrollbar:setExtent( fov.scrolly / rows, ( fov.scrolly + fov.height ) / rows, tracker.ypos/rows, rows )
-  if ( tracker.fov.height < self.rows ) then
+  if ( self:shouldShowScrollbars() ) then
     tracker.scrollbar:draw(colors)
   end
 
@@ -3374,14 +3428,19 @@ function tracker:printGrid()
       triangle(xc, yc, 5, 1)
     else
       gfx.set(table.unpack(colors.selectcolor))
-      
-      if self.cfg.bigLineIndicator == 0 then
-        gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * playLoc - itempady - 1, tw, 1)
-      else
-        gfx.a = .2;
-        playLoc = math.floor(playLoc * self.rows)+1
-        if yloc[playLoc] then
-          gfx.rect(plotData.xstart - itempadx, yloc[playLoc]-plotData.yshift, tw, yc)
+
+      local vrows = self:getVRows()
+      local absy = math.floor(playLoc * vrows) + scrolly + 1
+
+      if ( absy > 0 and absy <= rows ) then
+        if self.cfg.bigLineIndicator == 0 then
+          gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * playLoc - itempady - 1, tw, 1)
+        else
+          gfx.a = .2;
+          playLoc = math.floor(playLoc * vrows)+1
+          if yloc[playLoc] then
+            gfx.rect(plotData.xstart - itempadx, yloc[playLoc]-plotData.yshift, tw, yheight[1] + itempady)
+          end
         end
       end
     end
@@ -3675,6 +3734,10 @@ function tracker:infoString()
   local y = self:getBottom() + yheight
 
   return str, locs, y
+end
+
+function tracker:shouldShowScrollbars()
+  return (self.fov.height < self.rows) or (self.cfg.fixedIndicator == 1)
 end
 
 function tracker:getBottom()
@@ -5152,16 +5215,24 @@ function tracker:forceCursorInRange(forceY)
     self.ypos = math.floor( self.max_ypos )
   end
 
-  -- Is the cursor off fov?
-  if ( ( yTarget - fov.scrolly ) > self.fov.height ) then
-    self.fov.scrolly = yTarget - self.fov.height
-  end
-  if ( ( yTarget - fov.scrolly ) < 1 ) then
-    self.fov.scrolly = yTarget - 1
-  end
-  
-  if (self.fov.scrolly + self.fov.height) > self.rows then
-    self.fov.scrolly = math.max(0, yTarget - self.fov.height)
+  if ( self.cfg.fixedIndicator == 1 ) then
+    self.fov.scrolly = math.floor(yTarget - self.fov.height * self.cfg.fixedIndLoc)
+  else
+    --Is the cursor off fov?
+    if ( ( yTarget - fov.scrolly ) > self.fov.height ) then
+      self.fov.scrolly = yTarget - self.fov.height
+    end
+    if ( ( yTarget - fov.scrolly ) < 1 ) then
+      self.fov.scrolly = yTarget - 1
+    end
+    
+    if ( ( self.fov.scrolly + self.fov.height ) > self.rows ) then
+      self.fov.scrolly = math.max(0, yTarget - self.fov.height)
+    end
+
+    if ( self.fov.scrolly < 0 ) then
+      self.fov.scrolly = 0
+    end
   end
 
   if ( self.cfg.followRow == 1 ) then
@@ -8699,6 +8770,9 @@ function tracker:mouseToPatternCoord(already_dragging)
         Jnew = i + fov.scrolly
       end
     end
+    if (Jnew) then
+      Jnew = math.max(1, math.min(self.rows, Jnew))
+    end
   end
   
   return Inew, Jnew
@@ -8829,7 +8903,7 @@ local function updateLoop()
 
   -- Mouse
   local left, right = mouseStatus()
-  if ( tracker.fov.height < tracker.rows ) then
+  if ( tracker:shouldShowScrollbars() ) then
     if ( mouse_cap == 0 ) then
       local loc = tracker.scrollbar:mouseUpdate(gfx.mouse_x, gfx.mouse_y, left)
       if ( loc ) then
@@ -8912,21 +8986,26 @@ local function updateLoop()
         tracker.newLength = tostring(tracker.max_ypos)
       else
         local function goto_position(i)
-          tracker.ypos = i + fov.scrolly
-          local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
-          local loc = reaper.AddProjectMarker(0, 0, mpos + tracker:toSeconds(tracker.ypos-1), 0, "", -1)
-          reaper.GoToMarker(0, loc, 0)
-          reaper.DeleteProjectMarker(0, loc, 0)
+          local newY = i + fov.scrolly
+          if ( newY > 0 and newY <= tracker.rows ) then
+            tracker.ypos = newY
+            local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+            local loc = reaper.AddProjectMarker(0, 0, mpos + tracker:toSeconds(tracker.ypos-1), 0, "", -1)
+            reaper.GoToMarker(0, loc, 0)
+            reaper.DeleteProjectMarker(0, loc, 0)
+          end
         end
       
         -- Check where we need to move the play position
-        for i=1,#yloc-1 do
-          if ( ( gfx.mouse_y > yloc[i] ) and ( gfx.mouse_y < yloc[i+1] ) ) then
-            goto_position(i)
+        if ( gfx.mouse_cap & 28 == 0 and ( tracker.cfg.fixedIndicator ~= 1 or tracker.lastleft == 0 ) ) then
+          for i=1,#yloc-1 do
+            if ( ( gfx.mouse_y > yloc[i] ) and ( gfx.mouse_y < yloc[i+1] ) ) then
+              goto_position(i)
+            end
           end
-        end
-        if ( gfx.mouse_y > yloc[#yloc] ) then
-          goto_position(#yloc)
+          if ( gfx.mouse_y > yloc[#yloc] ) then
+            goto_position(#yloc)
+          end
         end
       end
     end
@@ -8962,6 +9041,15 @@ local function updateLoop()
       end
     end
 
+    if ( tracker.cfg.fixedIndicator == 1 ) then
+      if ( ( ( gfx.mouse_cap & 4 ) > 0 ) and ( ( gfx.mouse_cap & 16 ) > 0 ) ) then
+        if ( gfx.mouse_x < xloc[1] ) then
+          tracker.cfg.fixedIndLoc = math.floor((gfx.mouse_y - yloc[1])/(yloc[2]-yloc[1])) / fov.height
+          tracker:saveConfig(tracker.configFile, tracker.cfg)
+        end
+      end
+    end
+
     -- Mouse in range of pattern data?
     local Inew, Jnew = tracker:mouseToPatternCoord(mouse_cap == 6)
     if ( Inew and Jnew ) then
@@ -8969,9 +9057,11 @@ local function updateLoop()
       if ( tracker.lastleft == 0 ) then
         setCapMode(6)
         tracker:resetShiftSelect()
-        tracker:dragBlock(Inew, Jnew)
         tracker.xpos = Inew
-        tracker.ypos = Jnew
+        if ( tracker.cfg.fixedIndicator ~= 1 ) then
+          tracker:dragBlock(Inew, Jnew)
+          tracker.ypos = Jnew
+        end
       else
         -- Change selection if it wasn't the initial click
         tracker:dragBlock(Inew, Jnew)
@@ -10129,7 +10219,7 @@ function tracker:loadConfig(fn, cfg)
       io.input(file)
       local str = io.read()
       while ( str ) do
-        for k, v in string.gmatch(str, "(%w+)=(%w+)") do
+        for k, v in string.gmatch(str, "(%w+)=(%S+)") do
           local no = tonumber(v)
 
           if ( no ) then

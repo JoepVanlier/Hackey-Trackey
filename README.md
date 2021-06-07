@@ -117,6 +117,17 @@ The latest theme is Sink, but it relies on installing a font first which you
 can get here: https://www.dafont.com/bebas.font
 ![Sink](https://imgur.com/mzLQshj.png)
 
+### Can I fix the indicator centrally, like classic Commodore Amiga trackers?
+Yes. If you prefer that the current position is always in the center of the screen,
+similar to classic Amiga trackers such as OctaMED, enable "Fix indicator position
+in view" in the options menu.
+
+This mode is best used with "Bigger play indicator" and "Follow song" enabled.
+
+It doesn't have to be positioned centrally either. You may position the indicator
+wherever you like by holding down CTRL + ALT + LMB in the row indicator column.
+![Fix indicator in view](https://imgur.com/Ok4HG3H.gif)
+
 ### Can I do step sequencing from my MIDI device?
 Yes you can! Enable track from MIDI in the options. This will inject a JSFX on
 the track in question which will track the incoming MIDI and send it to HT.
