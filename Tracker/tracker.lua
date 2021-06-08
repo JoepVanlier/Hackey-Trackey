@@ -11,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.65
+@version 2.66
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,6 +42,8 @@
 
 --[[
  * Changelog:
+ * v2.66 (2021-06-08)
+   + Fix bug that would not release note in numeric row on renoise keymap.
  * v2.65 (2021-06-06)
    + Add "Fix indicator in view" mode
  * v2.64 (2021-06-06)
@@ -7952,7 +7954,6 @@ end
 
 function tracker:playNote(chan, pitch, vel)
   self:checkArmed()
-  
   local line_played = self.line_played or {}
   local ch = 1
   if ( self.armed == 1 and not (self.cfg.readfrommidi == 1) ) then
@@ -8564,8 +8565,7 @@ function tracker:addListener(charToListenTo, pitchChar)
     if self.outChannel > 0 then
       chan = self.outChannel;
     end
-    
-    self.listeners[charToListenTo] = {chan, pitch};
+    self.listeners[string.char(charToListenTo)] = {chan, pitch};
   end
 end
 
@@ -8599,7 +8599,6 @@ function tracker:noteEdit()
       end
     else
       self:createNote(lastChar, false)
-      
       if self.cfg.releaseNoteOffs == 1 then
         self:addListener(lastChar, lastChar);
       end
