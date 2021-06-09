@@ -11,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.66
+@version 2.67
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,6 +42,11 @@
 
 --[[
  * Changelog:
+ * v2.67 (2021-06-09)
+   + More gracefully handle deletion of an item during playback when line follow is on.
+   + Hotfix for issue with button location not being available in narrow mode.
+   + Fix bug with omni channel note not being silenced properly on release.
+   + Fix issue with note stop/starts repeating (regression introduced in 2.66).
  * v2.66 (2021-06-08)
    + Fix bug that would not release note in numeric row on renoise keymap.
  * v2.65 (2021-06-06)
@@ -507,7 +512,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.65"
+tracker.name = "Hackey Trackey v2.67"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -1846,6 +1851,14 @@ local function setKeyboard( choice )
     keys.pitches['9'] = 49-c
     keys.pitches['0'] = 51-c
     keys.pitches['='] = 54-c
+    
+    keys.pitches[2] = 37-c
+    keys.pitches[3] = 39-c
+    keys.pitches[5] = 42-c
+    keys.pitches[6] = 44-c
+    keys.pitches[7] = 46-c
+    keys.pitches[9] = 49-c
+    keys.pitches[0] = 51-c
 
     keys.octaves = {}
   elseif ( tracker.loadCustomKeyboard ) then
@@ -8536,15 +8549,17 @@ end
 function tracker:gotoCurrentPosition()
   -- Check where we are
   local playPos = reaper.GetPlayPosition()
-  local loc = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
-  local loc2 = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")
-  if ( playPos < loc or playPos > ( loc+loc2 ) ) then
-    if ( tracker.track ) then
-      tracker:findTakeAtSongPos()
+  if reaper.ValidatePtr(tracker.item, "MediaItem*") then
+    local loc = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+    local loc2 = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")
+    if ( playPos < loc or playPos > ( loc+loc2 ) ) then
+      if ( tracker.track ) then
+        tracker:findTakeAtSongPos()
+      end
     end
+    local row = math.floor( ( playPos - loc ) * tracker.rowPerSec)
+    tracker:forceCursorInRange(row)
   end
-  local row = math.floor( ( playPos - loc ) * tracker.rowPerSec)
-  tracker:forceCursorInRange(row)
 end
 
 -- Add callbacks to make sure VK notes stop on release
@@ -8555,7 +8570,7 @@ function tracker:addListener(charToListenTo, pitchChar)
   
   if not self.listeners then
     self.listeners = {}
-  end
+  end  
   
   local note = keys.pitches[string.lower(string.char(pitchChar))]
   if ( note ) then
@@ -8563,9 +8578,9 @@ function tracker:addListener(charToListenTo, pitchChar)
     local ftype, chan, row = self:getLocation()
     
     if self.outChannel > 0 then
-      chan = self.outChannel;
+      chan = self.outChannel - 1
     end
-    self.listeners[string.char(charToListenTo)] = {chan, pitch};
+    self.listeners[charToListenTo] = {chan, pitch};
   end
 end
 
@@ -8573,7 +8588,7 @@ function tracker:listenForNotesToStop()
   if self.listeners then
     for i, v in pairs(self.listeners) do
       if gfx.getchar(i) == 0 then
-        reaper.StuffMIDIMessage(0, 0x90 + v[1] - 1, v[2], 0)
+        reaper.StuffMIDIMessage(0, 0x90 + v[1], v[2], 0)
         self.listeners[i] = nil
       end
     end
@@ -9015,15 +9030,16 @@ local function updateLoop()
       if ( gfx.mouse_y > yh and gfx.mouse_y < yh + 10 and gfx.mouse_x < xloc[#xloc] ) then
         -- Calculate the positions
         local strs, locs, yh = tracker:infoString()
+        -- TODO: The way the different locs are handled could use some refactoring.
         if ( gfx.mouse_x > locs[1] ) then
           setCapMode(1, tracker.outChannel, 0, 16) -- Out
-        elseif ( gfx.mouse_x > locs[2] ) then
+        elseif ( #locs > 1 and gfx.mouse_x > locs[2] ) then
           setCapMode(2, tracker.envShape, 0, #tracker.envShapes ) -- Env
-        elseif ( gfx.mouse_x > locs[3] ) then
+        elseif ( #locs > 2 and gfx.mouse_x > locs[3] ) then
           setCapMode(3, tracker.advance, -99, 99) -- Adv
-        elseif ( gfx.mouse_x > locs[4] ) then
+        elseif ( #locs > 3 and gfx.mouse_x > locs[4] ) then
           setCapMode(4, tracker.transpose, tracker.minoct, tracker.maxoct) -- Oct
-        elseif ( gfx.mouse_x > locs[5] ) then
+        elseif ( #locs > 4 and gfx.mouse_x > locs[5] ) then
           setCapMode(5, tracker.newRowPerQn, 1, tracker.maxRowPerQn) -- Res
         elseif ( gfx.mouse_x < plotData.xstart + gfx.measurestr("[Rec]") ) and ( gfx.mouse_x > plotData.xstart ) then
           if ( tracker.lastleft ~= 1 ) then
