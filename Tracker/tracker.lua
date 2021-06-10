@@ -8557,7 +8557,7 @@ function tracker:gotoCurrentPosition()
         tracker:findTakeAtSongPos()
       end
     end
-    local row = math.floor( ( playPos - loc ) * tracker.rowPerSec)
+    local row = math.floor( ( playPos - loc ) * tracker.rowPerSec) + 1
     tracker:forceCursorInRange(row)
   end
 end
