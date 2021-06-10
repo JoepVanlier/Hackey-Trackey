@@ -9979,11 +9979,10 @@ local function updateLoop()
     end
   end
 
-  tracker:forceCursorInRange()
-  if ( tracker.cfg.followSong == 1 ) then
-    if ( reaper.GetPlayState() ~= 0 ) then
-      tracker:gotoCurrentPosition()
-    end
+  if ( tracker.cfg.followSong == 1 and reaper.GetPlayState() ~= 0) then
+    tracker:gotoCurrentPosition()
+  else
+    tracker:forceCursorInRange()
   end
 
   if modified == 0 then
