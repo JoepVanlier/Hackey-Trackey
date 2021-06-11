@@ -8557,7 +8557,7 @@ function tracker:gotoCurrentPosition()
         tracker:findTakeAtSongPos()
       end
     end
-    local row = math.floor( ( playPos - loc ) * tracker.rowPerSec)
+    local row = math.floor( ( playPos - loc ) * tracker.rowPerSec) + 1
     tracker:forceCursorInRange(row)
   end
 end
@@ -9059,7 +9059,8 @@ local function updateLoop()
     if ( tracker.cfg.fixedIndicator == 1 ) then
       if ( ( ( gfx.mouse_cap & 4 ) > 0 ) and ( ( gfx.mouse_cap & 16 ) > 0 ) ) then
         if ( gfx.mouse_x < xloc[1] ) then
-          tracker.cfg.fixedIndLoc = math.floor((gfx.mouse_y - yloc[1])/(yloc[2]-yloc[1])) / fov.height
+          local row = 1 + math.floor((gfx.mouse_y - yloc[1])/(yloc[2]-yloc[1]))
+          tracker.cfg.fixedIndLoc = row / fov.height
           tracker:saveConfig(tracker.configFile, tracker.cfg)
         end
       end
@@ -9978,11 +9979,10 @@ local function updateLoop()
     end
   end
 
-  tracker:forceCursorInRange()
-  if ( tracker.cfg.followSong == 1 ) then
-    if ( reaper.GetPlayState() ~= 0 ) then
-      tracker:gotoCurrentPosition()
-    end
+  if ( tracker.cfg.followSong == 1 and reaper.GetPlayState() ~= 0) then
+    tracker:gotoCurrentPosition()
+  else
+    tracker:forceCursorInRange()
   end
 
   if modified == 0 then
