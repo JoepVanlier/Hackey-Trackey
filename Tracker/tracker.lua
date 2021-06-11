@@ -46,6 +46,7 @@
    + Make scrollbar grab focus.
    + Clearly enumerate mouse capture mode states.
    + Don't toggle things on the harmonizer when something else has focus.
+   + Make channel selection dragging area wider so that it can actually be dragged over the entire width.
  * v2.68 (2021-06-12)
    + Ensured that row index is consistent between edit and play mode.
    + Ensured when setting the fixed position (CTRL+ALT+LMB) that clicked row is chosen, not row above.
@@ -9039,7 +9040,7 @@ local function updateLoop()
     -- Mouse in range of bottom fields?
     if ( tracker.take ) then
       local strs, locs, yh = tracker:infoString()
-      if ( gfx.mouse_y > yh and gfx.mouse_y < yh + 10 and gfx.mouse_x < xloc[#xloc] ) then
+      if ( gfx.mouse_y > yh and gfx.mouse_y < yh + 10 and gfx.mouse_x < plotData.xstart + plotData.totalwidth ) then
         -- Calculate the positions
         local strs, locs, yh = tracker:infoString()
         -- TODO: The way the different locs are handled could use some refactoring.
