@@ -11,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.68
+@version 2.69
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,6 +42,9 @@
 
 --[[
  * Changelog:
+ * v2.69 (2021-06-12)
+   + Make scrollbar grab focus.
+   + Enumerate capmode states.
  * v2.68 (2021-06-12)
    + Ensured that row index is consistent between edit and play mode.
    + Ensured when setting the fixed position (CTRL+ALT+LMB) that clicked row is chosen, not row above.
@@ -516,7 +519,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.68"
+tracker.name = "Hackey Trackey v2.69"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -774,6 +777,17 @@ tracker.binaryOptions = {
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2", "sink"}
 
 noteNames = {}
+
+CaptureModes = 
+{
+  OUT_SELECTOR = 1,
+  ENV_SELECTOR = 2,
+  ADV_SELECTOR = 3,
+  OCT_SELECTOR = 4,
+  RES_SELECTOR = 5,
+  SELECT_BLOCK = 6,
+  SCROLLBAR = 7,
+}
 
 local function print(...)
   if ( not ... ) then
@@ -2676,6 +2690,7 @@ function scrollbar.create( w )
         if ( ( mx > self.x ) and ( mx < self.x + self.w ) ) or self.dragging then
           if ( ( my > self.y ) and ( my < self.y + self.h ) ) or self.dragging then
             if ( self.ly and my ~= self.ly and not self.dragging ) then
+              mouse_cap = CaptureModes.SCROLLBAR
               self.dragging = 1
               self.cdy = 0
             end
@@ -8494,7 +8509,6 @@ function tracker:resizePattern()
   end
 end
 
-
 -- Capture the mouse?
 mouse_cap = 0
 capture = {}
@@ -8922,7 +8936,7 @@ local function updateLoop()
   -- Mouse
   local left, right = mouseStatus()
   if ( tracker:shouldShowScrollbars() ) then
-    if ( mouse_cap == 0 ) then
+    if ( mouse_cap == 0 or mouse_cap == CaptureModes.SCROLLBAR ) then
       local loc = tracker.scrollbar:mouseUpdate(gfx.mouse_x, gfx.mouse_y, left)
       if ( loc ) then
         tracker.ypos = math.floor(loc*(tracker.rows+1))
@@ -8932,25 +8946,18 @@ local function updateLoop()
   end
 
   if ( left == 1 and mouse_cap > 0 ) then
-    if ( mouse_cap == 1 ) then
-      -- Out
+    if ( mouse_cap == CaptureModes.OUT_SELECTOR ) then
       tracker.outChannel = getCapValue( 0.05 )
-    elseif ( mouse_cap == 2 ) then
-      -- Envelope
+    elseif ( mouse_cap == CaptureModes.ENV_SELECTOR ) then
       tracker.envShape = getCapValue( 0.05 )
-    elseif ( mouse_cap == 3 ) then
-      -- Advance
+    elseif ( mouse_cap == CaptureModes.ADV_SELECTOR ) then
       tracker.advance = getCapValue( 0.05 )
-
       tracker:storeSettings()
       tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif ( mouse_cap == 4 ) then
-      -- Octave
+    elseif ( mouse_cap == CaptureModes.OCT_SELECTOR ) then
       tracker.transpose = getCapValue( 0.05 )
-    elseif ( mouse_cap == 5 ) then
-      -- Resolution
+    elseif ( mouse_cap == CaptureModes.RES_SELECTOR ) then
       tracker.newRowPerQn = getCapValue( 0.05 )
-
       if ( right == 1 and tracker.lastright == 0 ) then
         tracker:setResolution( tracker.newRowPerQn )
         tracker:saveConfig(tracker.configFile, tracker.cfg)
@@ -8990,7 +8997,7 @@ local function updateLoop()
     tracker:listenForNotesToStop()
   end
 
-  if ( left == 1 and (mouse_cap == 0 or mouse_cap == 6) ) then
+  if ( left == 1 and (mouse_cap == 0 or mouse_cap == CaptureModes.SELECT_BLOCK) ) then
     local plotData  = tracker.plotData
     local fov       = tracker.fov
     local xloc      = plotData.xloc
@@ -9036,15 +9043,15 @@ local function updateLoop()
         local strs, locs, yh = tracker:infoString()
         -- TODO: The way the different locs are handled could use some refactoring.
         if ( gfx.mouse_x > locs[1] ) then
-          setCapMode(1, tracker.outChannel, 0, 16) -- Out
+          setCapMode(CaptureModes.OUT_SELECTOR, tracker.outChannel, 0, 16) -- Out
         elseif ( #locs > 1 and gfx.mouse_x > locs[2] ) then
-          setCapMode(2, tracker.envShape, 0, #tracker.envShapes ) -- Env
+          setCapMode(CaptureModes.ENV_SELECTOR, tracker.envShape, 0, #tracker.envShapes ) -- Env
         elseif ( #locs > 2 and gfx.mouse_x > locs[3] ) then
-          setCapMode(3, tracker.advance, -99, 99) -- Adv
+          setCapMode(CaptureModes.ADV_SELECTOR, tracker.advance, -99, 99) -- Adv
         elseif ( #locs > 3 and gfx.mouse_x > locs[4] ) then
-          setCapMode(4, tracker.transpose, tracker.minoct, tracker.maxoct) -- Oct
+          setCapMode(CaptureModes.OCT_SELECTOR, tracker.transpose, tracker.minoct, tracker.maxoct) -- Oct
         elseif ( #locs > 4 and gfx.mouse_x > locs[5] ) then
-          setCapMode(5, tracker.newRowPerQn, 1, tracker.maxRowPerQn) -- Res
+          setCapMode(CaptureModes.RES_SELECTOR, tracker.newRowPerQn, 1, tracker.maxRowPerQn) -- Res
         elseif ( gfx.mouse_x < plotData.xstart + gfx.measurestr("[Rec]") ) and ( gfx.mouse_x > plotData.xstart ) then
           if ( tracker.lastleft ~= 1 ) then
             tracker:toggleRec()
@@ -9075,7 +9082,7 @@ local function updateLoop()
     if ( Inew and Jnew ) then
       -- Move the cursor pos on initial click
       if ( tracker.lastleft == 0 ) then
-        setCapMode(6)
+        setCapMode(CaptureModes.SELECT_BLOCK)
         tracker:resetShiftSelect()
         tracker.xpos = Inew
         if ( tracker.cfg.fixedIndicator ~= 1 ) then
