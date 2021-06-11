@@ -44,7 +44,8 @@
  * Changelog:
  * v2.69 (2021-06-12)
    + Make scrollbar grab focus.
-   + Enumerate capmode states.
+   + Clearly enumerate mouse capture mode states.
+   + Don't toggle things on the harmonizer when something else has focus.
  * v2.68 (2021-06-12)
    + Ensured that row index is consistent between edit and play mode.
    + Ensured when setting the fixed position (CTRL+ALT+LMB) that clicked row is chosen, not row above.
@@ -9095,7 +9096,7 @@ local function updateLoop()
       end
     end
 
-    if ( tracker.harmonyActive == 1 ) then
+    if ( tracker.harmonyActive == 1 and mouse_cap == 0 ) then
       local xs, ys, scaleY, keyMapH, scaleW, chordW, noteW, chordAreaY = tracker:chordLocations()
       local scales = scales
       local progressions = scales.progressions
