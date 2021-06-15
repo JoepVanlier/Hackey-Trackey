@@ -11,7 +11,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.69
+@version 2.70
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,6 +42,8 @@
 
 --[[
  * Changelog:
+ * v2.70 (2021-06-15)
+   + Bugfix follow row mode which could lead to invalid dereference when no item is selected.
  * v2.69 (2021-06-12)
    + Make scrollbar grab focus.
    + Clearly enumerate mouse capture mode states.
@@ -5272,8 +5274,10 @@ function tracker:forceCursorInRange(forceY)
   end
 
   if ( self.cfg.followRow == 1 ) then
-    local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
-    reaper.SetEditCurPos2(0, mpos + (self.ypos-1) / self.rowPerSec, true, false)
+    if self.item and reaper.ValidatePtr(self.item, "MediaItem*") then
+      local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+      reaper.SetEditCurPos2(0, mpos + (self.ypos-1) / self.rowPerSec, true, false)
+    end
   end
 
   -- Is the cursor off fov?
