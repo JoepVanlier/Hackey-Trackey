@@ -866,7 +866,6 @@ multi_out ? (
 @gfx
 handle_dropped_files();
 current_char = gfx_getchar();
-
 handle_gmem_imports();
 
 function handle_play_stop(x, y, w, h, idx)
@@ -939,6 +938,7 @@ loop(ny,
   loop(nx,
     draw_wavebox(cx, cy, block_width, block_height, idx, samplelocs[idx]);
     process_pad(cx, cy, block_width, block_height, idx, samplelocs[idx]);
+    process_pad_mute(cx, cy, block_width, block_height, idx, samplelocs[idx]);
     handle_play_stop(cx, cy, block_width, block_height, idx);
     cx += block_width + block_pad;
     idx += 1;

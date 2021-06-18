@@ -39,12 +39,34 @@ In @init:
   Do a function that declares fields similar to what the following function generates:
     init_sample_data_defaults()
 
+  Set up memory the following way:
+    // Sample locations are recorded as [64 byte header (first is length), sampledata]
+    freemem = (samplelocs = freemem) + 128;
+    idx = 0;
+    loop(N_SAMPLES,
+      freemem = (samplelocs[idx] = freemem) + MAX_SAMPLE_DURATION;
+      idx += 1;
+    );
+    
+    freemem = (scratchloc = freemem) + MAX_SAMPLE_DURATION;
+    freemem = (copyloc = freemem) + MAX_SAMPLE_DURATION;
+
+  Set up the fonts as well:
+    SAMPLE_FONT = 5;
+    TINY_FONT = 6;
+    gfx_setfont(TINY_FONT, "Arial", 12);
+    BIG_FONT = 7;
+    gfx_setfont(BIG_FONT, "Arial", 18);
+
 In @serialize:
   serialize_all_samples(file_avail(0) < 0)
 
 In @gfx:
   At the start:
     current_char = gfx_getchar();
+    
+  Followed by:
+    handle_gmem_imports()
 
   handle_dropped_files()
     Uses string 14 for handling file drop handle.
@@ -791,9 +813,8 @@ local(any_solo, idx)
 function process_pad(x, y, w, h, idx, sample_location)
 global(gfx_x, gfx_y, mouse_x, mouse_y, mouse_cap, last_cap, captured,
        file_dropped, SAMPLE_NAME_STR, SAMPLE_NAMES, DROPPED_FILE_STR, selected_sample,
-       TINY_FONT, reset_zoom,
-       blocked_samples, muted_samples, solod_samples)
-local(is_over, ww, hh, bw, bh)
+       reset_zoom)
+local(is_over, ww, hh)
 (
   is_over = mouse_over(x, y, w, h);
   
@@ -818,22 +839,29 @@ local(is_over, ww, hh, bw, bh)
   gfx_x = x + w - ww - 2;
   gfx_y = y + h - hh;
   gfx_printf(SAMPLE_NAME_STR);
-  
+);
+
+function process_pad_mute(x, y, w, h, idx, sample_location)
+global(blocked_samples, muted_samples, solod_samples,
+       mouse_cap, last_cap, captured,
+       TINY_FONT)
+local(bh)
+(
   blocked_samples[idx] == 1 ? (
     gfx_set(0, 0, 0, .5);
     gfx_rect(x, y, w, h);
   );
-  
+
   bh = 14;
   control_rect(x + w - 2 * bh - 1, y + 1, bh, bh, 0.04 + muted_samples[idx] * .8, 0.07, 0.03, 1.0, TINY_FONT, "M") ? (
-    ((last_cap & 1) == 0) && (mouse_cap & 1) && is_over && !captured ? (
+    ((last_cap & 1) == 0) && (mouse_cap & 1) && !captured ? (
       muted_samples[idx] = 1 - muted_samples[idx];
       update_mute_status();
     );
   );
   
   control_rect(x + w - bh - 1, y + 1, bh, bh, 0.04, 0.07 + solod_samples[idx] * .8, 0.03, 1.0, TINY_FONT, "S") ? (
-    ((last_cap & 1) == 0) && (mouse_cap & 1) && is_over && !captured ? (
+    ((last_cap & 1) == 0) && (mouse_cap & 1) && !captured ? (
       solod_samples[idx] = 1 - solod_samples[idx];
       update_mute_status();
     );
