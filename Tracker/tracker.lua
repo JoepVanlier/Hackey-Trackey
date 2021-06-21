@@ -8,10 +8,11 @@
   [effect] Hackey_MIDI_Detector.jsfx
   [effect] Hackey_Sample_Playback.jsfx
   [effect] htp_midi.jsfx-inc
+  [effect] htp_sample_editor.jsfx-inc
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.70
+@version 2.71
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -42,6 +43,10 @@
 
 --[[
  * Changelog:
+ * v2.71 (2021-06-15)
+   + Spin out sample handling into separate library.
+   + Copy/paste names with clipboard actions.
+   + Parse name better using loader script.
  * v2.70 (2021-06-15)
    + Bugfix follow row mode which could lead to invalid dereference when no item is selected.
  * v2.69 (2021-06-12)
@@ -523,7 +528,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.69"
+tracker.name = "Hackey Trackey v2.71"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
