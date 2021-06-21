@@ -5,6 +5,10 @@ license: MIT
 The following variables should be defined:
   font_color_r, font_color_g, font_color_b, font_color_a : font colors
   waveform_r, waveform_g, waveform_b, waveform_a : waveform colors
+  box_rect_color_r, box_rect_color_g, box_rect_color_b : waveform box colors
+  box_edge_color_(r,g,b) : waveform box edge colors
+  selection_color_(r,g,b) : selection colors
+  
   BIG_FONT : font to use in the editor
   TINY_FONT : tiny font
   SAMPLE_FONT : sample font
@@ -74,6 +78,10 @@ In @gfx:
   
   handle_mouse_sample_handler()
     Must be called at the end of gfx.
+    
+  sample_data_gfx_finalize()
+    resets the dropped file list and prints out critical
+    errors related to sample handling.
 
 @init
 // Constants
@@ -93,6 +101,19 @@ function init_sample_data_defaults()
   MAX_SAMPLE_DURATION = 32768 * 16 - SAMPLE_HEADER;
   N_SAMPLES = 36;
   TOTAL_MEM = N_SAMPLES * MAX_SAMPLE_DURATION;
+  initialized = 1;
+);
+
+function sample_data_gfx_finalize()
+(
+  gfx_getdropfile(-1);
+
+  critical_error ? (
+    gfx_x = gfx_y = 0;
+    gfx_set(1, 1, 1, 1);
+    gfx_setfont(3, "Arial", 100);
+    gfx_printf("FATAL PRESET ERROR");
+  );
 );
 
 function handle_mouse_sample_handler()
@@ -432,7 +453,7 @@ instance(dy_sum)
   // Reference pitch
   button_width = 50;
   button_height = 30;
-  control_rect(cx + ww - button_width, cy, button_width, button_height, 0.07, 0.04, 0.03, 1.0, BIG_FONT, 
+  control_rect(cx + ww - button_width - 1, cy + 1, button_width, button_height, 0.07, 0.04, 0.03, 1.0, BIG_FONT, 
   sprintf(8, "+%.2f", sample_loc[2] - floor(sample_loc[2]))) ? (
     mouse_press(1) && !captured ? captured = DRAG_FINE;
   );
@@ -447,7 +468,7 @@ instance(dy_sum)
     sample_loc[2] = floor(sample_loc[2]) + frac;
   );
   
-  control_rect(cx + ww - 2 * button_width - 2, cy, button_width, button_height, 0.07, 0.04, 0.03, 1.0, BIG_FONT, 
+  control_rect(cx + ww - 2 * button_width - 2 - 1, cy + 1, button_width, button_height, 0.07, 0.04, 0.03, 1.0, BIG_FONT, 
   sprintf(8, "%s-%d", midi_pitch_to_note(sample_loc[2]), midi_pitch_to_octave(sample_loc[2]))) ? (
     (mouse_press(1) && !captured) ? captured = DRAG_PITCH;
   );
@@ -464,7 +485,7 @@ instance(dy_sum)
     );
   );
   
-  (control_rect(cx + ww - 4 * button_width - 4, cy, 2 * button_width, button_height, 0.07 + .5 * multi_out, 0.04, 0.03, 1.0, BIG_FONT, "Multi - Out") && mouse_press(1)) ? (
+  (control_rect(cx + ww - 4 * button_width - 4 - 1, cy + 1, 2 * button_width, button_height, 0.07 + .5 * multi_out, 0.04, 0.03, 1.0, BIG_FONT, "Multi - Out") && mouse_press(1)) ? (
     multi_out = 1 - multi_out;
   );
   
@@ -475,9 +496,9 @@ instance(dy_sum)
 
 function draw_box(x, y, w, h)
 (
-  gfx_set(0.02, 0.02, 0.02, 1.0);
+  gfx_set(box_rect_color_r, box_rect_color_g, box_rect_color_b, 1.0);
   gfx_rect(x, y, w, h);
-  gfx_set(0.2, 0.2, 0.2, 0.5);
+  gfx_set(box_edge_color_r, box_edge_color_g, box_edge_color_b, 1);
   gfx_line(x, y, x + w - 1, y);
   gfx_line(x, y + h - 1, x + w, y + h - 1);
   gfx_line(x, y, x, y + h - 1);
@@ -533,13 +554,15 @@ function draw_wavebox(x, y, w, h, idx, sample)
 global(SAMPLE_FONT, TINY_FONT, SAMPLE_HEADER, selected_sample,
        gfx_x, gfx_y,
        font_color_r, font_color_g, font_color_b, font_color_a,
-       draw_box, draw_waveform)
-local(length_in_samples, ptr, len, step, ww, hh, fine)
+       selection_color_r, selection_color_g, selection_color_b, selection_color_a,
+       draw_box, draw_waveform,
+       SAMPLE_NAMES)
+local(length_in_samples, ptr, len, step, ww, hh, fine, SAMPLE_NAME_STR)
 (
   draw_box(x, y, w, h);
   
   selected_sample == idx ? (
-    gfx_set(0.1, 0.1, 0.5, 0.2);
+    gfx_set(selection_color_r, selection_color_g, selection_color_b, selection_color_a);
     gfx_rect(x, y, w, h);
   );
 
@@ -568,6 +591,14 @@ local(length_in_samples, ptr, len, step, ww, hh, fine)
       gfx_printf(", +%.2f", sample[2] - floor(sample[2]));
     );
   );
+  
+  gfx_setfont(TINY_FONT);
+  gfx_set(font_color_r, font_color_g, font_color_b, font_color_a);
+  SAMPLE_NAME_STR = SAMPLE_NAMES + idx;
+  gfx_measurestr(SAMPLE_NAME_STR, ww, hh);
+  gfx_x = x + w - ww - 2;
+  gfx_y = y + h - hh;
+  gfx_printf(SAMPLE_NAME_STR);
 );
 
 function draw_sample_big(cx, cy, ww, hh, reset_zoom)
@@ -833,12 +864,6 @@ local(is_over, ww, hh)
   ((last_cap & 1) == 0) && (mouse_cap & 1) && !captured && is_over ? (
     selected_sample = idx;
   );
-  
-  SAMPLE_NAME_STR = SAMPLE_NAMES + idx;
-  gfx_measurestr(SAMPLE_NAME_STR, ww, hh);
-  gfx_x = x + w - ww - 2;
-  gfx_y = y + h - hh;
-  gfx_printf(SAMPLE_NAME_STR);
 );
 
 function process_pad_mute(x, y, w, h, idx, sample_location)

@@ -98,6 +98,30 @@ slider3:multi_out=0<0,1,{Off,On}>-Multi-Out
 @init
 init_sample_data_defaults();
 
+font_color_r = font_color_g = font_color_b = 0.8;
+font_color_a = 1.0;
+
+SAMPLE_FONT = 5;
+TINY_FONT = 6;
+gfx_setfont(TINY_FONT, "Arial", 12);
+BIG_FONT = 7;
+gfx_setfont(BIG_FONT, "Arial", 18);
+
+waveform_r = .3;
+waveform_g = .4;
+waveform_b = .5;
+waveform_a = 1.0;
+box_rect_color_r = 0.02;
+box_rect_color_g = 0.02;
+box_rect_color_b = 0.02;
+box_edge_color_r = 0.15;
+box_edge_color_g = 0.15;
+box_edge_color_b = 0.15;
+selection_color_r = 0.1;
+selection_color_g = 0.1;
+selection_color_b = 0.5;
+selection_color_a = 0.2;
+
 (ticks_per_beat == 0) ? ticks_per_beat = 4;
 
 function char_to_pitch(ch)
@@ -904,20 +928,6 @@ new_pitch = get_pitch_from_kb(current_char);
   preview_channel.stop_sample();
 );
 
-font_color_r = font_color_g = font_color_b = 0.8;
-font_color_a = 1.0;
-
-SAMPLE_FONT = 5;
-TINY_FONT = 6;
-gfx_setfont(TINY_FONT, "Arial", 12);
-BIG_FONT = 7;
-gfx_setfont(BIG_FONT, "Arial", 18);
-
-waveform_r = .3;
-waveform_g = .4;
-waveform_b = .5;
-waveform_a = 1.0;
-
 gfx_pad = 0.01 * gfx_w;
 
 gfx_set(0, 0, 0, 1);
@@ -1033,14 +1043,7 @@ chan15.draw_markers();
 chan16.draw_markers();
 preview_channel.draw_markers();
 
-gfx_getdropfile(-1);
-
-critical_error ? (
-  gfx_x = gfx_y = 0;
-  gfx_set(1, 1, 1, 1);
-  gfx_setfont(3, "Arial", 100);
-  gfx_printf("FATAL PRESET ERROR");
-);
+sample_data_gfx_finalize();
 
 handle_mouse_sample_handler();
 
