@@ -12,7 +12,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.71
+@version 2.72
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -43,6 +43,8 @@
 
 --[[
  * Changelog:
+ * v2.72 (2021-06-21)
+   + Update to latest sample lib.
  * v2.71 (2021-06-15)
    + Spin out sample handling into separate library.
    + Copy/paste names with clipboard actions.
@@ -528,7 +530,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.71"
+tracker.name = "Hackey Trackey v2.72"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
