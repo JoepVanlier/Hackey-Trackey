@@ -12,7 +12,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.73
+@version 2.74
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -43,6 +43,8 @@
 
 --[[
  * Changelog:
+ * v2.74 (2021-07-01)
+   + Fix bug in sample library that prevented proper initialization of sample playback module.
  * v2.73 (2021-06-30)
    + Make load_sample appear as main script.
  * v2.72 (2021-06-21)
@@ -532,7 +534,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.73"
+tracker.name = "Hackey Trackey v2.74"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"

@@ -101,7 +101,6 @@ function init_sample_data_defaults()
   MAX_SAMPLE_DURATION = 32768 * 16 - SAMPLE_HEADER;
   N_SAMPLES = 36;
   TOTAL_MEM = N_SAMPLES * MAX_SAMPLE_DURATION;
-  initialized = 1;
 );
 
 function sample_data_gfx_finalize()
