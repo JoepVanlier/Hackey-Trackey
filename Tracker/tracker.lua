@@ -3,8 +3,8 @@
 @author: Joep Vanlier
 @provides
   scales.lua
-  hackey_trackey_load_sample.lua
   [main] .
+  [main] hackey_trackey_load_sample.lua
   [effect] Hackey_MIDI_Detector.jsfx
   [effect] Hackey_Sample_Playback.jsfx
   [effect] htp_midi.jsfx-inc
@@ -12,7 +12,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.72
+@version 2.73
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -43,6 +43,8 @@
 
 --[[
  * Changelog:
+ * v2.73 (2021-06-30)
+   + Make load_sample appear as main script.
  * v2.72 (2021-06-21)
    + Update to latest sample lib.
  * v2.71 (2021-06-15)
@@ -530,7 +532,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.72"
+tracker.name = "Hackey Trackey v2.73"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
