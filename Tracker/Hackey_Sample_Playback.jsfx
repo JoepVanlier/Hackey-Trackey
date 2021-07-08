@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.52
+version: 0.53
 author: Joep Vanlier
-changelog: Fix bug that prevented proper initialization.
+changelog: Fix critical issue sample import (could clobber next sample).
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -714,12 +714,12 @@ freemem = 0;
 freemem = (samplelocs = freemem) + 128;
 idx = 0;
 loop(N_SAMPLES,
-  freemem = (samplelocs[idx] = freemem) + MAX_SAMPLE_DURATION;
+  freemem = (samplelocs[idx] = freemem) + SAMPLE_SIZE;
   idx += 1;
 );
 
-freemem = (scratchloc = freemem) + MAX_SAMPLE_DURATION;
-freemem = (copyloc = freemem) + MAX_SAMPLE_DURATION;
+freemem = (scratchloc = freemem) + SAMPLE_SIZE;
+freemem = (copyloc = freemem) + SAMPLE_SIZE;
 
 freemem = (midimem = freemem) + 32768;
 midi.initializeMIDI(midimem, 1, 1);
