@@ -12,7 +12,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.74
+@version 2.75
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -43,6 +43,8 @@
 
 --[[
  * Changelog:
+ * v2.75 (2021-07-09)
+   + Fix issue in Hackey Trackey Playback that could lead to memory clobbering when using long samples.
  * v2.74 (2021-07-01)
    + Fix bug in sample library that prevented proper initialization of sample playback module.
  * v2.73 (2021-06-30)
@@ -534,7 +536,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.74"
+tracker.name = "Hackey Trackey v2.75"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"

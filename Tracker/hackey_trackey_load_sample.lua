@@ -3,6 +3,7 @@
 ]]--
 
 SAMPLE_HEADER = 64;
+SAMPLE_SIZE = 32768 * 16;
 
 function transfer_take()
   local mediaItem = reaper.GetSelectedMediaItem(0, 0);
@@ -26,7 +27,7 @@ function transfer_take()
           return 0
         end
         
-        local len = math.ceil((stop - start) * srate)
+        local len = math.min(math.ceil((stop - start) * srate), SAMPLE_SIZE)
         local remaining = len
         local blockSize = 4096
         
@@ -46,7 +47,7 @@ function transfer_take()
             end
           elseif nChannels == 2 then
             for cp=1,math.min(remaining, blockSize) * nChannels do
-              reaper.gmem_write(gmem_ptr, samplebuffer[cp])
+              reaper.gmem_write(gmem_ptr, samplebuffer[cp]);
               gmem_ptr = gmem_ptr + 1
             end
           end
