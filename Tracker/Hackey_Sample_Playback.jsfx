@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.54
+version: 0.55
 author: Joep Vanlier
-changelog: Workaround for initial sample issue.
+changelog: Serialize mute / solo states.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -753,6 +753,9 @@ writing = file_avail(0) < 0;
 loaded = 1;
 file_var(0, version);
 serialize_all_samples(writing);
+file_mem(0, muted_samples, N_SAMPLES);
+file_mem(0, solod_samples, N_SAMPLES);
+update_mute_status();
 
 @block
 midi.processMIDIBlock();
