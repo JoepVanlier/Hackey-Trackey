@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.53
+version: 0.54
 author: Joep Vanlier
-changelog: Fix critical issue sample import (could clobber next sample).
+changelog: Workaround for initial sample issue.
 license: MIT
 about:
   # Hackey Tracker Sampler
