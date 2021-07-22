@@ -12,7 +12,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.77
+@version 2.78
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -43,6 +43,8 @@
 
 --[[
  * Changelog:
+ * v2.78 (2021-07-22)
+  + Force loop points in hackey trackey playback to be sorted.
  * v2.77 (2021-07-18)
   + Serialize mute/solo state in presets.
  * v2.76 (2021-07-18)
@@ -540,7 +542,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.77"
+tracker.name = "Hackey Trackey v2.78"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
