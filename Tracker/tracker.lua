@@ -12,7 +12,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.78
+@version 2.79
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -43,6 +43,9 @@
 
 --[[
  * Changelog:
+ * v2.79 (2021-07-22)
+  + Fix bug that could lead to clicks when going from bidi to forward or no loop.
+  + Fix bug that could cause click when running past the end of a very long sample whose pitch changed during playback.
  * v2.78 (2021-07-22)
   + Force loop points in hackey trackey playback to be sorted.
  * v2.77 (2021-07-18)

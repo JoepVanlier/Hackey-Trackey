@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.55
+version: 0.57
 author: Joep Vanlier
-changelog: Serialize mute / solo states.
+changelog: Fix bug that could lead to clicks when going from bidi loop to non looping. Fix bug that could allow sample to go past end.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -227,9 +227,12 @@ chan16.stop_sample(16);
 
 function start_playback(buffer_loc, playspeed, offset)
 instance(start_ptr, x_fade_position, playing, fade_start, position, speed,
-         loop_start, loop_stop, loop_type)
+         loop_start, loop_stop, loop_type, stop_position)
 global(crossfade_samples, SAMPLE_HEADER)
+local(len)
 (
+  len = buffer_loc[];
+  stop_position = len / 2 - 2;
   fade_start = buffer_loc + buffer_loc[] + SAMPLE_HEADER - 2 * playspeed * crossfade_samples;
   start_ptr = buffer_loc + SAMPLE_HEADER;
   
@@ -249,6 +252,14 @@ instance(loop_start, loop_stop, loop_type)
   loop_start = buffer_loc[3];
   loop_stop = buffer_loc[4];
   loop_type = buffer_loc[5];
+  
+  // If we are not looping or looping forward, make sure we're not going back
+  // in time (which could happen if we were coming from a bidi loop and would
+  // result in a loud click if we move past the start of the sample (it has
+  // the length there).
+  ((loop_type == 0) || (loop_start == -1)) ? (
+    speed = abs(speed);
+  );
 );
 
 /* Sample play (each channel has two of these guys that alternate) */
@@ -257,7 +268,7 @@ instance(start_ptr, read_ptr, x_fade_position, fade_start,
          outL, outR, playing, fade_level, position, speed,
          loop_start, loop_stop, loop_type,
          portamento_len, portamento_ds, vib_len,
-         vib_depth, vib_speed, vib_phase)
+         vib_depth, vib_speed, vib_phase, stop_position)
 global(crossfade_samples, pi_inv_crossfade_samples, eco, play_state)
 local(frac, ism1, is0, is1, is2, id0, id1, id2, id3)
 (
@@ -269,7 +280,7 @@ local(frac, ism1, is0, is1, is2, id0, id1, id2, id3)
   ) : (x_fade_position < -0.01) ? (
     fade_level = sqrt(0.5 - 0.5 * cos(- x_fade_position * pi_inv_crossfade_samples));
     x_fade_position += 1;
-    (x_fade_position == 0) ? (
+    ((x_fade_position == 0) || (position > stop_position)) ? (
       playing = 0; // Terminate playback
       vib_len = 0;
       portamento_len = 0;
