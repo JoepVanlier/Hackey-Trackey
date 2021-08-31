@@ -12,7 +12,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.79
+@version 2.80
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -43,6 +43,8 @@
 
 --[[
  * Changelog:
+ * v2.80 (2021-08-31)
+  + Allow interpolation for velocities only.
  * v2.79 (2021-07-22)
   + Fix bug that could lead to clicks when going from bidi to forward or no loop.
   + Fix bug that could cause click when running past the end of a very long sample whose pitch changed during playback.
@@ -545,7 +547,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.78"
+tracker.name = "Hackey Trackey v2.80"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -7666,8 +7668,10 @@ function tracker:interpolate()
 
   if ( cp.xstart == cp.xstop ) then
     local jx = cp.xstart
+    local datafield = datafields[jx]
+    
     -- Notes
-    if ( datafields[jx] == 'text' ) then
+    if ( datafield == 'text' ) then
       local chan    = idxfields[ jx ]
       local nStart  = noteStart[ chan*rows + cp.ystart - 1 ]
       local nEnd    = noteStart[ chan*rows + cp.ystop - 1 ]
@@ -7685,8 +7689,8 @@ function tracker:interpolate()
         -- Force a grid update since all the note locations are invalid now
         self:forceUpdate()
 
-        idx = 0
-        notelen = 1
+        local idx = 0
+        local notelen = 1
         for jy = cp.ystart, cp.ystop-1 do
           local loc   = chan * rows + jy
           local pitch = math.floor( (endpitch-startpitch) * (idx / nR) + startpitch )
@@ -7696,8 +7700,30 @@ function tracker:interpolate()
         end
       end
     end
+    
+    if ( datafield == 'vel1' or datafield == 'vel2' ) then
+      local chan    = idxfields[ jx ]
+      local nStart  = noteStart[ chan*rows + cp.ystart - 1 ]
+      local nEnd    = noteStart[ chan*rows + cp.ystop - 1 ]
+       
+      if ( nStart and nEnd ) then
+        local startpitch, startvel = table.unpack( notes[ nStart ] )
+        local endpitch, endvel     = table.unpack( notes[ nEnd ] )
+        local nR = cp.ystop - cp.ystart
 
-    if ( datafields[jx] == 'fx1' or datafields[jx] == 'fx2' ) then
+        local idx = 0
+        for jy = cp.ystart, cp.ystop-1 do
+          local loc = chan * rows + jy - 1
+          if noteStart[loc] then
+            reaper.MIDI_SetNote(self.take, noteStart[loc], nil, nil, nil, nil, nil, nil, math.floor( (endvel-startvel) * (idx / nR) + startvel ), true)
+          end
+          idx = idx + 1
+        end
+        self:forceUpdate()
+      end
+    end
+
+    if ( datafield == 'fx1' or datafield == 'fx2' ) then
       local chan        = idxfields[ jx ]
       local startidx    = cp.ystart - 1
       local endidx      = cp.ystop - 1
@@ -7713,7 +7739,7 @@ function tracker:interpolate()
           idx = idx + 1
         end
       end
-    elseif ( datafields[jx] == 'mod1' or datafields[jx] == 'mod2' or datafields[jx] == 'mod3' or datafields[jx] == 'mod4' ) then
+    elseif ( datafield == 'mod1' or datafield == 'mod2' or datafield == 'mod3' or datafield == 'mod4' ) then
       local startidx    = cp.ystart - 1
       local endidx      = cp.ystop - 1
       local starttype, startval = tracker:getCC( startidx )
@@ -7727,7 +7753,7 @@ function tracker:interpolate()
           idx = idx + 1
         end
       end
-    elseif ( datafields[jx] == 'modtxt1' or datafields[jx] == 'modtxt2' ) then
+    elseif ( datafield == 'modtxt1' or datafield == 'modtxt2' ) then
       local chan        = idxfields[ jx ]
       local modtype     = self.data.modtypes[chan]
       local startidx    = cp.ystart - 1
