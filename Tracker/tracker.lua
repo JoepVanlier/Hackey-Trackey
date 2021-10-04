@@ -12,7 +12,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.80
+@version 2.81
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -43,6 +43,8 @@
 
 --[[
  * Changelog:
+ * v2.81 (2021-09-04)
+  + Add shortcut for muting all rows.
  * v2.80 (2021-08-31)
   + Allow interpolation for velocities only.
  * v2.79 (2021-07-22)
@@ -547,7 +549,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.80"
+tracker.name = "Hackey Trackey v2.81"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -1234,6 +1236,7 @@ function tracker:loadKeys( keySet )
   local keyset = keySet or tracker.cfg.keyset
 
   keys.options2 = { 1, 0, 0, 15 } -- ctrl + o
+  keys.mute_row = { 1, 0, 0, 45 } -- CTRL + -
   if keyset == "default" then
     --                    CTRL    ALT SHIFT Keycode
     keys.left           = { 0,    0,  0,    1818584692 }    -- <-
@@ -1364,7 +1367,7 @@ function tracker:loadKeys( keySet )
     help = {
       { 'Shift + Note', 'Advance column after entry' },
       { 'Insert/Backspace/-', 'Insert/Remove/Note OFF' },
-      { 'CTRL + Insert/Backspace', 'Insert Row/Remove Row' },
+      { 'CTRL + -/Insert/Backspace', 'Mute/Insert Row/Remove Row' },
       { 'CTRL + Shift + Ins/Bksp', 'Wrap Forward/Backward' },
       { 'Del/.', 'Delete' },
       { 'Space/CTRL + Return', 'Play/Play From' },
@@ -1720,7 +1723,7 @@ function tracker:loadKeys( keySet )
       { 'Shift + Note', 'Advance column after entry' },
       { noteOff, 'Note OFF' },
       { 'Insert/Backspace', 'Insert/Remove line' },
-      { 'CTRL + Insert/Backspace', 'Insert Row/Remove Row' },
+      { 'CTRL + -/Insert/Backspace', 'Mute/Insert/Remove Row' },
       { 'Del/Ctrl+Del', 'Delete/Delete Row' },
       { 'CTRL + Shift + Insert/Backspace', 'Wrap Forward/Backward' },
       { 'Space/Shift+Space', 'Play / Play From' },
@@ -4030,75 +4033,81 @@ function tracker:advanceCursor()
 end
 
 function tracker:placeOff()
+  -- Determine fieldtype, channel and row
+  local ftype, chan, row = self:getLocation()
+  
+  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) or ( ftype == 'end1' ) or ( ftype == 'end2' )) then
+    self:placeOffLowLevel(chan, row)
+  end
+  
+  self:advanceCursor()
+end
+
+function tracker:placeOffLowLevel(chan, row)
   local rows      = self.rows
   local notes     = self.notes
   local data      = self.data
   local noteGrid  = data.note
   local noteStart = data.noteStart
 
-  -- Determine fieldtype, channel and row
-  local ftype, chan, row = self:getLocation()
-
   -- Note off is only sensible for note fields
   local idx = chan*rows+row
   local note = noteGrid[idx]
   local start = noteStart[idx]
-  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) or ( ftype == 'end1' ) or ( ftype == 'end2' )) then
-    -- If there is no note here add a marker for the note off event
-    if ( not note ) then
-      ppq = self:rowToPpq(row)
-      self:addNoteOFF(ppq, chan)
-      return
-    else
-      if ( note > -1 ) then
-        -- We need to check whether the note we are about to delete or shorten was already terminated by an OFF
-        -- In this case, we need to add a new OFF symbol at that location to not lose that one.
-        local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
-        local lastend = self:ppqToRow(endppqpos)
-        if ( noteGrid[chan*rows+lastend] and ( noteGrid[chan*rows+lastend] < 0 ) ) then
-          ppq = self:rowToPpq(lastend)
-          self:addNoteOFF(ppq, chan)
-        end
+  
+  -- If there is no note here add a marker for the note off event
+  if ( not note ) then
+    ppq = self:rowToPpq(row)
+    self:addNoteOFF(ppq, chan)
+    return
+  else
+    if ( note > -1 ) then
+      -- We need to check whether the note we are about to delete or shorten was already terminated by an OFF
+      -- In this case, we need to add a new OFF symbol at that location to not lose that one.
+      local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
+      local lastend = self:ppqToRow(endppqpos)
+      if ( noteGrid[chan*rows+lastend] and ( noteGrid[chan*rows+lastend] < 0 ) ) then
+        ppq = self:rowToPpq(lastend)
+        self:addNoteOFF(ppq, chan)
+      end
 
-        if ( start ) then
-          -- If it was the start of a new note previously, that means a legato'd bit may have to be undone
-          if ( chan == 1 ) then
-            if ( row > 0 ) then
-              if ( self.legato[row] > -1 ) then
-                local prevnote = noteGrid[idx-1]
-                if ( prevnote and ( prevnote > -1 ) ) then
-                  local p2, v2, startppq2, endppq2 = table.unpack( notes[prevnote] )
-                  endppq2 = endppq2-self.magicOverlap
-                  reaper.MIDI_SetNote(self.take, prevnote, nil, nil, nil, endppq2, nil, nil, nil, true)
-                end
+      if ( start ) then
+        -- If it was the start of a new note previously, that means a legato'd bit may have to be undone
+        if ( chan == 1 ) then
+          if ( row > 0 ) then
+            if ( self.legato[row] > -1 ) then
+              local prevnote = noteGrid[idx-1]
+              if ( prevnote and ( prevnote > -1 ) ) then
+                local p2, v2, startppq2, endppq2 = table.unpack( notes[prevnote] )
+                endppq2 = endppq2-self.magicOverlap
+                reaper.MIDI_SetNote(self.take, prevnote, nil, nil, nil, endppq2, nil, nil, nil, true)
               end
             end
           end
+        end
 
-          if ( row > 0 ) then
-            local chk = noteGrid[idx-1]
-            if ( not chk or ( chk < 0 ) ) then
-              ppq = self:rowToPpq(row)
-              self:addNoteOFF(ppq, chan)
-            end
-          else
+        if ( row > 0 ) then
+          local chk = noteGrid[idx-1]
+          if ( not chk or ( chk < 0 ) ) then
             ppq = self:rowToPpq(row)
             self:addNoteOFF(ppq, chan)
           end
-
-          -- If there is no note at the end
-          self:deleteNote(chan, row)
         else
-          local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
-
-          -- Make sure that the current note is resized accordingly
           ppq = self:rowToPpq(row)
-          reaper.MIDI_SetNote(self.take, note, nil, nil, startppqpos, ppq, nil, nil, nil, true)
+          self:addNoteOFF(ppq, chan)
         end
+
+        -- If there is no note at the end
+        self:deleteNote(chan, row)
+      else
+        local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
+
+        -- Make sure that the current note is resized accordingly
+        ppq = self:rowToPpq(row)
+        reaper.MIDI_SetNote(self.take, note, nil, nil, startppqpos, ppq, nil, nil, nil, true)
       end
     end
   end
-  self:advanceCursor()
   self:stopNote()
 end
 
@@ -9432,6 +9441,14 @@ local function updateLoop()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
       tracker:advanceCursor()
+    elseif ( inputs('mute_row') and tracker.take ) then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Mute row (Shift + -)")
+      for chan = 1, tracker.displaychannels do
+        tracker:placeOffLowLevel(chan, tracker.ypos - 1)
+      end
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
     elseif ( inputs('deleteRow') and tracker.take ) then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Delete row (Del)")
