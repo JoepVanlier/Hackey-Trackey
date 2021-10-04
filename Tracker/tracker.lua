@@ -45,6 +45,7 @@
  * Changelog:
  * v2.82 (2021-09-04)
   + Implement optional scrub mode.
+  + Fix issue with scrub marker playposition following (unfortunately it interferes with MIDI stuff messages).
  * v2.81 (2021-09-04)
   + Add shortcut for muting all rows.
  * v2.80 (2021-08-31)
@@ -5921,10 +5922,10 @@ function tracker:scrub()
     
     if (self.armed) then
       self:terminateScrubNotes()
-      local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
-      local loc = reaper.AddProjectMarker(0, 0, mpos + tracker:toSeconds(self.ypos-1), 0, "", -1)
-      reaper.GoToMarker(0, loc, 0)
-      reaper.DeleteProjectMarker(0, loc, 0)
+      --local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+      --local loc = reaper.AddProjectMarker(0, 0, mpos + tracker:toSeconds(self.ypos-1), 0, "", -1)
+      --reaper.GoToMarker(0, loc, 0)
+      --reaper.DeleteProjectMarker(0, loc, 0)
     
       local minppq = self:rowToPpq(self.ypos - 1)
       local maxppq = self:rowToPpq(self.ypos)
@@ -9415,11 +9416,9 @@ local function updateLoop()
     if inputs('left') and tracker.take then
       tracker.xpos = tracker.xpos - 1
       tracker:resetShiftSelect()
-      tracker:scrub()
     elseif inputs('right') and tracker.take then
       tracker.xpos = tracker.xpos + 1
       tracker:resetShiftSelect()
-      tracker:scrub()
     elseif inputs('up') and tracker.take then
       tracker.ypos = tracker.ypos - 1
       tracker:resetShiftSelect()
