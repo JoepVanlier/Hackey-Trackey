@@ -12,7 +12,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.82
+@version 2.83
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -43,6 +43,8 @@
 
 --[[
  * Changelog:
+ * v2.83 (2021-10-15)
+  + Don't reset arm status when seeking on same track.
  * v2.82 (2021-09-04)
   + Implement optional scrub mode.
   + Fix issue with scrub marker playposition following (unfortunately it interferes with MIDI stuff messages).
@@ -7026,12 +7028,16 @@ function tracker:setTake( take )
 
       if ( tracker.armed == 1 ) then
         tracker:stopNote()
-        tracker:disarm()
       end
 
       self.take = take
-      if self:validateCurrentItem() then      
-        self.track = reaper.GetMediaItem_Track(self.item)
+      if self:validateCurrentItem() then
+        local new_track = reaper.GetMediaItem_Track(self.item)
+        if tracker.armed and (new_track ~= self.track) then
+          -- Only disarm when seeking a different track
+          tracker:disarm()
+        end
+        self.track = new_track
         
         -- Set flag that we are dealing with a sampler-based track here
         self.tracker_samples = hasSampler(self.track)
