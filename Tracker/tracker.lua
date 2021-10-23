@@ -12,7 +12,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.83
+@version 2.84
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -43,6 +43,8 @@
 
 --[[
  * Changelog:
+ * v2.84 (2021-10-23)
+  + Bugfix: Also advance when entering values in second velocity column on a space without notes.
  * v2.83 (2021-10-15)
   + Don't reset arm status when seeking on same track.
  * v2.82 (2021-09-04)
@@ -554,7 +556,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.82"
+tracker.name = "Hackey Trackey v2.84"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -4557,8 +4559,8 @@ function tracker:createNote(inChar, shift)
       local newvel = tracker:editVelField( vel, 2, char )
       self:setLastVel(newvel)
       reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, nil, newvel, true)
-      shouldMove = true
     end
+    shouldMove = true
   elseif ( ( ftype == 'fx1' ) and validHex( char ) ) then
     local atime, env, shape, tension = tracker:getEnvPt(chan, self:toSeconds(self.ypos-1))
     env = env or self.lastEnv
