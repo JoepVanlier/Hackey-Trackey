@@ -29,7 +29,7 @@ Eventually, the plan is to make the tracker part of the reapack scripts reposito
 - click the ReaScript: `Load` button
 
 ## How do I use it?
-Select a MIDI object and start the script. Note that scripts can be bound to 
+Select a MIDI item and start the script. Note that scripts can be bound to 
 shortcut keys, which I'd recommend if you're going to be using it. This short 
 tutorial assumes the default keymapping, but others are available in the options 
 menu. In the default layout, options can be brought up with F11 and a small help 
