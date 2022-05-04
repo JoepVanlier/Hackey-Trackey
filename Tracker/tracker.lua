@@ -3,6 +3,7 @@
 @author: Joep Vanlier
 @provides
   scales.lua
+  hackey_trackey_tracker.lua
   [main] .
   [main] hackey_trackey_load_sample.lua
   [effect] Hackey_MIDI_Detector.jsfx
@@ -43,6 +44,7 @@
 
 --[[
  * Changelog:
+ * v2.85 (2022-05-23)
  * v2.84 (2021-10-23)
   + Bugfix: Also advance when entering values in second velocity column on a space without notes.
  * v2.83 (2021-10-15)
@@ -7466,7 +7468,7 @@ function tracker:pasteClipboard()
 
   -- Determine the shift we need to apply to the current position to get to the start
   -- of the clipboard
-  local cpShift = self.colref[ datafields[start_xpos] ]
+  local cpShift = self.colref[datafields[start_xpos]]
   local region = self.clipboard.region
   region.xstop = start_xpos + (region.xstop - region.xstart) + cpShift
   region.ystop = self.ypos + (region.ystop - region.ystart)
@@ -8880,7 +8882,7 @@ function tracker:move_block(from_x, from_y, width, height, to_x, to_y, action_na
   reaper.Undo_EndBlock2(0, action_name, 4)
   reaper.MarkProjectDirty(0)
 end
- 
+
 function tracker:seek_notecol(xp, dir)
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
   local attempts = 0
