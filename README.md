@@ -5,13 +5,13 @@ tracker for visualizing and editing MIDI data within REAPER. Originally develope
 to mimick the pattern editor of Jeskola Buzz, this tracker is meant to enable 
 MIDI note entry and effect automation in a tracked manner. You can see it in 
 action here:
+
 ![Hackey Trackey in Action](https://j.gifs.com/gLyymG.gif)
 
 ## What is it not?
-A sampler. Hackey-Trackey does not handle sample playback. For this you would 
-need to add an additional VST that handles sample playback. Have a look at 
-ReViSiT or linking a dedicated tracker program such as Renoise to REAPER if 
-this is what you seek.
+While the latest version of Hackey-Trackey does ship with a basic sampler,
+it is not a full tracker. Have a look at ReViSiT or linking a dedicated 
+tracker program such as Renoise to REAPER if this is what you seek.
 
 ## Small disclaimer
 Hackey Trackey is still actively being developed. Not all planned features are 
@@ -113,6 +113,38 @@ menu.
 Yes, there are various themes to choose from. See the options menu (F11).
 ![Themes](https://i.imgur.com/wxnbQUV.png)
 
+The latest theme is Sink, but it relies on installing a font first which you 
+can get here: https://www.dafont.com/bebas.font
+![Sink](https://imgur.com/mzLQshj.png)
+
+### Can I fix the indicator centrally, like classic Commodore Amiga trackers?
+Yes. If you prefer that the current position is always in the center of the screen,
+similar to classic Amiga trackers such as OctaMED, enable "Fix indicator position
+in view" in the options menu.
+
+This mode is best used with "Bigger play indicator" and "Follow song" enabled.
+
+It doesn't have to be positioned centrally either. You may position the indicator
+wherever you like by holding down CTRL + ALT + LMB in the row indicator column.
+![Fix indicator in view](https://imgur.com/Ok4HG3H.gif)
+
+### Can I do step sequencing from my MIDI device?
+Yes you can! Enable track from MIDI in the options. This will inject a JSFX on
+the track in question which will track the incoming MIDI and send it to HT.
+Note that this will disable any playback preview within Hackey Trackey however,
+as that would otherwise create an infinite loop.
+
+### What is advance to next note mode?
+Advance to next note mode is a mode in which the cursor always advances to the
+next note in on the column you're working in, rather than a fixed number of
+steps. When you get to the end of the pattern, it loops back to the start. This
+allows you to quickly audition different potential melodies for a particular
+rhythm. You can quickly toggle it with CTRL + T. 
+
+Note that an additional feature of advance to next note mode is that if you
+select a region on the pattern, the method will constrain the advance method to
+stay within that region.
+
 ### Can I change the pattern length from the tracker?
 Yes. Click the pattern length indicator in the bottom left of the tracker. You can 
 enter a new value here.
@@ -180,6 +212,77 @@ update the root note in the harmony helper.
 
 ### Is this repository reapack compatible?
 Yes. Just add: https://raw.githubusercontent.com/joepvanlier/Hackey-Trackey/master/index.xml
+
+# Sample playback (Pre-alpha!)
+
+The latest version of Hackey Trackey ships with a basic sample playback module 
+in the form of a JSFX that can be added to a track to achieve basic sample playback.
+
+To use it, make sure you update to the latest version on reapack and then search your
+effects list for `Hackey Trackey Sample Playback Module`. Putting this on a track 
+will convert that track into a "sampler" track. When you open the tracker on a MIDI
+item on a track that has this module added as an effect, Hackey Trackey will open in 
+a slightly different mode to facilitate this mode.
+
+![image](https://user-images.githubusercontent.com/19836026/119561157-200e6580-bda5-11eb-839b-0ba06eefbf21.png)
+
+You will notice that there are three columns per channel now. The first is volume, 
+the second is effect and the third corresponds to the value for that effect. Instead 
+of loudness, the velocity column now encodes the sample selection (as it would in a 
+tracker).
+
+Unfortunately, some concessions had to be made due to limitations in the MIDI 
+format (127 values instead of 255).
+
+The effects available are the following:
+
+```
+  01 - Portamento up
+  02 - Portamento down
+    Note that the portamento's behave different from Protracker. In PT you directly
+    perform the portamento based on the period of the signal. Portamento is updated
+    every N times per row (ticks).
+    Here, the portamento slides continuously and the amount is specified in 
+    eigth semitones. This means that 08 is 1 semitone. 10 is 2, etc.
+    00 continues the last portamento.
+  03 - Glide
+    Glide to note. Glide speed is specified in 1/16th notes.
+    00 Continues a previous glide.
+  04 - Vibrato
+    X is pitch depth (value from 0 to 7). They are given in seventh semitones.
+    Y is speed (value from 0 to F).
+      Continue, 128, 64, 32, 24, 16, 12, 8, 6, 5, 4, 3, 2, 1, 0.25, 0.125
+    0 continues the previous value.
+  08 - Panning
+    Panning.
+  09 - Set offset
+    Unlike the classic Protracker, this sets offset as fraction of the sample length.
+    Since 7F (127) is the maximum in MIDI; 40 is the middle of the sample, 20 1/4th etc.
+  0A - Apreggiator
+    Arpeggiate. X and Y are note offsets in semitones. 0 continues previous value.
+  0B - Retrigger
+    Retrigger note.
+    X - Volume reduction per trigger
+    Y - Retrigger count
+  0C - Sample probability
+```
+
+Loading samples into the hackey trackey playback module can be done in two ways. They 
+can either be dragged from the media explorer directly (which will open them in their 
+original sample rate) -or- you can import them from the timeline (in which case they 
+will be resampled to 48 kHz). For the latter, find the action named 
+"hackey_trackey_load_sample.lua" in your reaper actions list and bind it to a shortcut
+of your choosing. Now, when hackey trackey sampler is open, select a pad to load the 
+sample in, and press your shortcut. It should now appear into the Hackey Trackey
+sample module.
+
+![image](https://user-images.githubusercontent.com/19836026/119562997-4a612280-bda7-11eb-9d6f-94d9946ad841.png)
+
+The sampler module also comes with a small sample editor. It allows you to do some 
+basic things like zoom, copy/cut/paste, set loops / remove loops and reverse sections.
+
+In the sampler section, you also see a little control for setting the reference pitch 
+for a particular sample.
 
 ### Options
 Hackey-Trackey has a few options to allow for some customization in workflow. Pressing F11 

@@ -4,40 +4,338 @@
 @provides
   scales.lua
   [main] .
+  [main] hackey_trackey_load_sample.lua
+  [effect] Hackey_MIDI_Detector.jsfx
+  [effect] Hackey_Sample_Playback.jsfx
+  [effect] htp_midi.jsfx-inc
+  [effect] htp_sample_editor.jsfx-inc
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 1.63
+@version 2.84
 @screenshot https://i.imgur.com/c68YjMd.png
-@about 
+@about
   ### Hackey-Trackey
   #### What is it?
   A lightweight tracker plugin for REAPER 5.x and up. Hackey-Trackey is a small 
   tracker for visualizing and editing MIDI data within REAPER. Designed to mimick 
   the pattern editor of Jeskola Buzz, this tracker is meant to enable MIDI note 
   entry and effect automation in a tracked manner.
-    
+
   ![Using Hackey Trackey](https://i.imgur.com/c68YjMd.png)
-    
+
   #### What is it not?
   A sampler. Hackey-Trackey does not handle sample playback. For this you would 
   need to add an additional VST that handles sample playback.
-  
+
   #### How do I use it?
   Select a MIDI object and start the script. Note that scripts can be bound to 
   shortcut keys, which I'd recommend if you're going to be using it. Hit F1 for 
   help on the keys. For more information, please look [here](https://github.com/joepvanlier/Hackey-Trackey).
-  
+
   If you use this plugin and enjoy it let me/others know. If you run into any bugs
   and figure out a way to reproduce them, please open an issue on the plugin's
   github page [here](https://github.com/JoepVanlier/Hackey-Trackey/issues). I would
   greatly appreciate it!
-  
+
   Happy trackin' :)
 --]]
 
 --[[
  * Changelog:
+ * v2.84 (2021-10-23)
+  + Bugfix: Also advance when entering values in second velocity column on a space without notes.
+ * v2.83 (2021-10-15)
+  + Don't reset arm status when seeking on same track.
+ * v2.82 (2021-09-04)
+  + Implement optional scrub mode.
+  + Fix issue with scrub marker playposition following (unfortunately it interferes with MIDI stuff messages).
+ * v2.81 (2021-09-04)
+  + Add shortcut for muting all rows.
+ * v2.80 (2021-08-31)
+  + Allow interpolation for velocities only.
+ * v2.79 (2021-07-22)
+  + Fix bug that could lead to clicks when going from bidi to forward or no loop.
+  + Fix bug that could cause click when running past the end of a very long sample whose pitch changed during playback.
+ * v2.78 (2021-07-22)
+  + Force loop points in hackey trackey playback to be sorted.
+ * v2.77 (2021-07-18)
+  + Serialize mute/solo state in presets.
+ * v2.76 (2021-07-18)
+  + Workaround for initial sample issue.
+ * v2.75 (2021-07-09)
+   + Fix issue in Hackey Trackey Playback that could lead to memory clobbering when using long samples.
+ * v2.74 (2021-07-01)
+   + Fix bug in sample library that prevented proper initialization of sample playback module.
+ * v2.73 (2021-06-30)
+   + Make load_sample appear as main script.
+ * v2.72 (2021-06-21)
+   + Update to latest sample lib.
+ * v2.71 (2021-06-15)
+   + Spin out sample handling into separate library.
+   + Copy/paste names with clipboard actions.
+   + Parse name better using loader script.
+ * v2.70 (2021-06-15)
+   + Bugfix follow row mode which could lead to invalid dereference when no item is selected.
+ * v2.69 (2021-06-12)
+   + Make scrollbar grab focus.
+   + Clearly enumerate mouse capture mode states.
+   + Don't toggle things on the harmonizer when something else has focus.
+   + Make channel selection dragging area wider so that it can actually be dragged over the entire width.
+ * v2.68 (2021-06-12)
+   + Ensured that row index is consistent between edit and play mode.
+   + Ensured when setting the fixed position (CTRL+ALT+LMB) that clicked row is chosen, not row above.
+   + Minor performance tweak (no observable behaviour change)
+ * v2.67 (2021-06-09)
+   + More gracefully handle deletion of an item during playback when line follow is on.
+   + Hotfix for issue with button location not being available in narrow mode.
+   + Fix bug with omni channel note not being silenced properly on release.
+   + Fix issue with note stop/starts repeating (regression introduced in 2.66).
+ * v2.66 (2021-06-08)
+   + Fix bug that would not release note in numeric row on renoise keymap.
+ * v2.65 (2021-06-06)
+   + Add "Fix indicator in view" mode
+ * v2.64 (2021-06-06)
+   + Change doubleclick speed HTP.
+ * v2.63 (2021-06-05)
+   + Allow preview channel through even when the played sample is muted.
+ * v2.62 (2021-06-05)
+   + Fix regression zoom sample editor.
+ * v2.61 (2021-06-05)
+   + Added per-sample mute and solo options in hackey trackey playback.
+ * v2.60 (2021-06-05)
+   + Fix issue in hackey trackey playback which could make first sample disappear due to memory clobbering (regression introduced in 2.52).
+   + Always load first sample into sample editor when plugin is first opened during a session.
+ * v2.59 (2021-05-31)
+   + Fix bug that could cause nil reference when splitting item on which a selection is currently active.
+ * v2.58 (2021-05-30)
+   + Fix whole line copy.
+ * v2.57 (2021-05-30)
+   + Finetune mouse selection. Add left, right mouse combo for selecting a region.
+ * v2.56 (2021-05-30)
+   + Add option to shift horizontally (shift + ins and shift + backspace).
+   + Make copy paste feel less glitchy.
+ * v2.55 (2021-05-30)
+   + Add multiple output mode.
+ * v2.54 (2021-05-30)
+   + Don't perform playback function call on channel in hackey trackey playback if it isn't playing.
+ * v2.53 (2021-05-30)
+   + Fix bug that didn't allow selecting the last row with the mouse.
+ * v2.52 (2021-05-30)
+   + Handle arpeggio and retrigger on a per channel basis. Fix bug where arpeggio wouldn't reset back to root note.
+ * v2.51 (2021-05-29)
+   + Store sample names in hackey trackey sample playback.
+ * v2.50 (2021-05-29)
+   + Reset zoom when focused sample is overwritten.
+ * v2.49 (2021-05-28)
+   + Fix bug not looping near end of sample.
+   + Clamp loop at the ends of samples.
+ * v2.48 (2021-05-27)
+   + Show play marker on sample editor as well.
+ * v2.47 (2021-05-26)
+   + Add play position indicator on the sampler.
+ * v2.46 (2021-05-26)
+   + Specify hackey trackey sampler sample indices in hex.
+ * v2.45 (2021-05-25)
+   + Ship first usable version of HT sampler!
+ * v2.44 (2021-05-25)
+   + Remember last velocity that was used (a separate one for sampler vs regular MIDI mode).
+ * v2.43 (2021-05-24)
+   + Make sure rec preview can be heard.
+ * v2.42 (2021-05-23)
+   + Force column mode when in sampler mode.
+ * v2.41 (2021-05-23)
+   + Add vibrato.
+ * v2.40 (2021-05-22)
+   + Improve labelling panning.
+ * v2.39 (2021-05-22)
+   + Bugfix termination markers.
+   + Add arpeggiator.
+ * v2.38 (2021-05-22)
+   + Force termination of every effect (workaround to prevent MIDI chase from applying non-needed effects the first row of a loop).
+ * v2.37 (2021-05-17)
+   + Name the effect channels appropriately.
+ * v2.36 (2021-05-17)
+   + Autodetect Hackey Trackey Sampler on the track and convert to tracker mode.
+ * v2.35 (2021-05-16)
+   + Fix issue with CC's not being deleted when "inserted" off the pattern.
+   + Make CC's more readable on sink theme.
+ * v2.34 (2020-10-04)
+   + Bugfix new feature for channels > 1.
+ * v2.33 (2020-10-04)
+   + Add option for note offs on release for record input kbd.
+ * v2.32 (2020-07-25)
+   + Allow to disable making undo points for column reassignments.
+ * v2.31 (2020-06-22)
+   + Fix bug scrollbar that would clamp position back to 0 when updating notes in certain edge cases.
+ * v2.30 (2020-06-11)
+   + Make selection follow block-select when this configuration option is active.
+ * v2.29 (2020-06-11)
+   + Clamp note advance to selection.
+   + Move advance to next note mode higher up.
+ * v2.28 (2020-06-11)
+   + Fixup wraparound.
+ * v2.27 (2020-06-11)
+   + Minor style tweaks.
+   + Bugfix note advance mode.
+ * v2.26 (2020-06-11)
+   + Just realized I'm working from the future.
+   + Added note advance mode that skips to next note instead of moving forward by advance.
+   + Add toggle to enable advance by note mode (CTRL + T)
+   + Add optional bigger line indicator when playing.
+   + Improve ellipsis rendering.
+   + Optionally enable CRT mode for sink theme.
+   + Minor UI fixups (selection used to not quite overlap with cursors).
+ * v2.25 (2020-06-10)
+   + Make MIDI step sequencing respect advance setting.
+ * v2.23 (2020-06-10)
+   + Add optional MIDI step sequencing via global memory / JSFX (BETA).
+ * v2.22 (2020-06-10)
+   + Block operation while recording.
+ * v2.21 (2020-06-09)
+   + Added sink color scheme.
+ * v2.20 (2020-05-09)
+   + Only show pulse warning once.
+   + Add config option that allows delay or note end to always be open as a preference.
+   + Don't let font run off screen.
+ * v2.19 (2020-03-28)
+   + Fix remember position.
+ * v2.18 (2020-03-14)
+   + Add support for lowest midi octave.
+ * v2.17 (2020-03-07)
+   + Bugfix mute status. Make sure added notes respect mute status.
+ * v2.16 (2020-03-07)
+   + Support channel level mutes.
+ * v2.15 (2020-02-23)
+   + Fix note off AZERTY layout Renoise.
+ * v2.14 (2020-02-23)
+   + Minor bugfix scrolling behavior.
+   + Quietly ignore missing keys.
+   + Improve scrollbar behaviour.
+ * v2.13 (2020-02-22)
+   + Added clicking on left column to set position.
+   + Added optional graphical effects.
+   + Added extra validation of item and take.
+   + Fixed issue with duplicate defer loop.
+ * v2.12 (2020-02-22)
+   + Update loop when following selection.
+ * v2.11 (2020-02-20)
+   + Add default channel = 1 option.
+ * v2.10 (2020-02-09)
+   + Disable printkeys
+ * v2.09 (2020-02-09)
+   + Add ctrl + o as secondary key for options.
+ * v2.08 (2020-01-09)
+   + Minor tweaks for larger fonts.
+ * v2.07 (2020-01-06)
+   + Allow different font sizes.
+   + Refactor menu handling to make it a little less horrible.
+   + Bugfix: Make sure key mapping isn't clicked when layout is changed.
+ * v2.06 (2020-01-05)
+   + Bugfix shift functionality. Catch keystrokes that cannot be converted to valid characters.
+ * v2.05 (2019-12-15)
+   + add note names panel
+ * v2.04 (2019-12-08)
+   + make shift + chord behaviour more like renoise: return to first column and advance when shift is released
+   + add advanceDouble and advanceHalve commands
+   + add upByAdvance and downByAdvance commands
+ * v2.03 (2019-10-28)
+   + Minor bugfix shift + note = next column (thanks dri_ft!).
+   + Remove default enter = close.
+ * v2.02 (2019-07-30)
+   + Bugfix pattern deletion.
+ * v2.01 (2019-07-30)
+   + Bugfix item deletion.
+ * v2.00 (2019-07-27)
+   + Bugfix column header colors.
+ * v1.99 (2019-07-27)
+   + Minor tweak header renderposition.
+ * v1.98 (2019-07-27)
+   + Add config option for item color instead of track color (thanks hangnef!).
+   + Invert header color if luminance is too close to item color.
+   + Minor tweaks.
+   + Fix issue with overhanging text fields.
+ * v1.97 (2019-07-27)
+   + Start tracker on first note column properly.
+ * v1.96 (2019-07-27)
+   + Start tracker on first note column.
+ * v1.95 (2019-07-26)
+   + Add ability to start HT without MIDI item selected.
+   + Store whether HT is docked or not.
+ * v1.94 (2019-02-17)
+   + Added check whether a new FX column was added and make it trigger an auto-refresh.
+   + Added support for using track colors.
+   + Added mechanism that allows fallback on nearest track when track is deleted.
+   + Added mechanism that attempts waiting a few cycles when item goes missing (for glueing from arrange).
+ * v1.93 (2019-02-17)
+   + Prevent shift from modifying pitch keys that aren't letters (thanks hangnef).
+ * v1.92 (2019-02-17)
+   + Fix exception when MIDI item is removed by CTRL+Z.
+ * v1.91 (2019-01-27)
+   + Added option to follow location in arrange.
+ * v1.90 (2019-01-27)
+   + Add flag for custom parameter to kill hackey trackey (set the last one to 1)
+   + Make open patterns close HT.
+ * v1.89 (2019-01-27)
+   + Copy target channel when duplicating pattern.
+ * v1.88 (2018-12-05)
+   + Rename reaper-kb.
+ * v1.87 (2018-11-18)
+   + Added optional mode to store row highlighting override in pattern.
+ * v1.86 (2018-11-17)
+   + Added option to override row highlighting.
+ * v1.85 (2018-11-17)
+   + Made sure ticks per beat also highlights beats correctly.
+   + Fetch channel output settings from track.
+ * v1.84 (2018-10-21)
+   + Add maximum height to config file.
+   + Added automatic rescaling of number of rows.
+ * v1.83 (2018-10-20)
+   + Add maxwidth parameter to config file.
+ * v1.82 (2018-10-19)
+   + Added passthrough of commands which are configurable as custom keys.
+ * v1.81 (2018-10-19)
+   + Added option to suppress all automatic resizing of the tracker.
+ * v1.80 (2018-10-13)
+   + Ignore OFF MIDI items when browsing. Do not allow browser to be opened on OFF MIDI Items.
+   + Cleaned up automatic file write.
+ * v1.79 (2018-10-10)
+   + Added option for custom key layouts in external file (userkeys.lua, should be created on script startup).
+   + Added option to remove minimum size constraint
+ * v1.78 (2018-09-10)
+   + Fix issue when not using settings stored in pattern
+ * v1.77 (2018-09-07)
+   + Minor bugfix.
+ * v1.76 (2018-09-07)
+   + Fix typo.
+ * v1.75 (2018-09-07)
+   + Made sure the sequencer can pass row info to HT.
+ * v1.74 (2018-08-13)
+   + Started work on integration with Hackey Machines (receiving config override info).
+ * v1.73 (2018-08-11)
+   + Bugfix pattern duplication due to incorrect usage of CreateNewMIDIItemInProj (Thanks Meta!)
+ * v1.72 (2018-07-11)
+   + Added option to switch track
+ * v1.71 (2018-07-11)
+   + Added option to set loop when tracker is opened
+ * v1.70 (2018-07-11)
+   + Added option to make looped section follow pattern that is active
+ * v1.69 (2018-07-09)
+   + Added optional per channel program change select
+ * v1.68 (2018-07-09)
+   + Made sure CC0 is possible
+ * v1.67 (2018-07-06)
+   + Added option for midi program change column (beta)
+ * v1.66 (2018-07-06)
+   + Added option for swapping y and z for different keyboard layouts
+ * v1.65 (2018-06-11)
+   + Block interpolation without distance
+ * v1.64 (2018-06-10)
+   + Added some extra shortcuts
+   + Insert row (default = CTRL + Ins)
+   + Remove row (default = CTRL + Backspace)
+   + Wrap down  (default = CTRL + Shift + Ins)
+   + Wrap up    (default = CTRL + Shift + Backspace)
  * v1.63 (2018-05-26)
    + Fixed problems with paste behavior (now mends so that we don't get OFFs at the end of the block (can toggle this behavior in options screen)
    + Added shortcut for closing hackey trackey
@@ -94,7 +392,7 @@
    + Fixed bug in pattern length rendering and allow resizing of columns
  * v1.41 (2018-05-02)
    + Added option to follow what MIDI item is selected
- * v1.40 (2018-05-02)   
+ * v1.40 (2018-05-02)
    + Added option to not resize the window when switching patterns
    + Added option to have properties stick to bottom
  * v1.39 (2018-05-02)
@@ -113,8 +411,8 @@
  * v1.33 (2018-03-31)
    + Added option to make transposition somewhat scale aware when harmonic helper is on.
      It will only use notes from the key then and shift accidentals w.r.t. thei root.
-     Note however, that transposition like this will eventually lead to loss of accidentals 
-     due to them snapping to the scale and there being no information whether they are 
+     Note however, that transposition like this will eventually lead to loss of accidentals
+     due to them snapping to the scale and there being no information whether they are
      sharps of flats.
  * v1.32 (2018-03-31)
    + Added inversions (add ALT or SHIFT when clicking chords).
@@ -162,7 +460,7 @@
    + Store which CC tracks are open
    + Named CC tracks where available
  * v1.13 (2018-02-16)
-   + Added multi CC extension (CTRL+ over MOD section switches to column view) 
+   + Added multi CC extension (CTRL+ over MOD section switches to column view)
    + Bugfix CCs
    + Bugfix interpolation on empty FX
  * v1.12 (2018-02-15)
@@ -220,7 +518,7 @@
  * v0.88 (2018-01-25)
    + Bugfix clearBlock
    + Started work on copy behavior
-   + Optional debug output   
+   + Optional debug output
  * v0.87 (2018-01-25)
    + Added mend block
    + Fixed bug in legato system when notes grew in channels larger than one
@@ -248,8 +546,8 @@
 --    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 --    OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 --
---    A simple LUA tracker for REAPER. Simply highlight a MIDI item and start the 
---    script. This will bring up the MIDI item as a tracked sequence. For more 
+--    A simple LUA tracker for REAPER. Simply highlight a MIDI item and start the
+--    script. This will bring up the MIDI item as a tracked sequence. For more
 --    information, please refer to the readme file.
 --
 --    If you use and/or enjoy this plugin or have a suggestion or bug report,
@@ -258,14 +556,21 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v1.63"
+tracker.name = "Hackey Trackey v2.84"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
+tracker.keyFile = "userkeys.lua"
+
+tracker.offTag = "__OFF__"
+
 -- Map output to specific MIDI channel
---   Zero makes the tracker use a separate channel for each column. Column 
---   one being mapped to MIDI channel 2. Any other value forces the output on 
+--   Zero makes the tracker use a separate channel for each column. Column
+--   one being mapped to MIDI channel 2. Any other value forces the output on
 --   a specific channel.
 tracker.outChannel = 1
+
+tracker.CCjump = 512
+tracker.PCloc = 10240
 
 -- MIDI device to play notes over
 -- For me it was 6080 for Virtual MIDI keyboard and 6112 for ALL, but this may
@@ -284,9 +589,9 @@ tracker.showloop = 1
 -- Set this to one if you want to see what keystrokes correspond to which keys
 tracker.printKeys = 0
 
--- Set this to 1 if you want the selected MIDI item in the sequencer view to change 
--- when you change the selected pattern with CTRL + -> or CTRL + <-. This makes it 
--- easier to see which pattern you are editing. 
+-- Set this to 1 if you want the selected MIDI item in the sequencer view to change
+-- when you change the selected pattern with CTRL + -> or CTRL + <-. This makes it
+-- easier to see which pattern you are editing.
 tracker.selectionFollows = 1
 
 -- Field of view
@@ -297,6 +602,7 @@ tracker.fov.height = 32
 
 -- Set this if you want a wider or narrower tracker screen
 tracker.fov.abswidth = 450
+tracker.toosmall = 0
 
 -- Remember settings associated with a specific pattern? (octave, envelope and advance)
 tracker.rememberSettings = 1
@@ -309,16 +615,27 @@ tracker.eps = 1e-3
 tracker.enveps = 1e-4
 
 -- If duplicationBehaviour is set to 1, then MIDI items are duplicated via reaper commands.
--- This means duplicated copies share the same automation pool for the automation takes. 
+-- This means duplicated copies share the same automation pool for the automation takes.
 -- This means that if you change one pattern based on this pool, the other changes as well.
--- If duplicationBehavior is set to any other value, then the MIDI item is explicitly copied 
+-- If duplicationBehavior is set to any other value, then the MIDI item is explicitly copied
 -- and the automation objects are created separately; making sure they have a new pool ID.
 -- This prevents that the pattern automation has to be the same from that point.
 tracker.duplicationBehaviour = 2
 
+
 -- Do we want delays to be shown?
-tracker.showDelays    = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-tracker.showEnd       = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+function updateShown()
+  if tracker.cfg.alwaysShowDelays == 1 then
+    tracker.showDelays    = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }
+  else
+    tracker.showDelays    = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+  end
+  if tracker.cfg.alwaysShowNoteEnd == 1 then
+    tracker.showEnd       = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }
+  else
+    tracker.showEnd       = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+  end
+end
 
 -- Start by default in mono or multi-col CC mode
 -- Mono-col (0) mode shows one column for the CC's that is always displayed
@@ -330,14 +647,30 @@ tracker.channels = 16 -- Max channel (0 is not shown)
 tracker.displaychannels = 15
 
 -- Plotting
-tracker.grid = {}
-tracker.grid.originx   = 35
-tracker.grid.originy   = 35
-tracker.grid.dx        = 8
-tracker.grid.dy        = 20
-tracker.grid.barpad    = 10
-tracker.grid.itempadx  = 5
-tracker.grid.itempady  = 3
+function updateFontScale()
+  local fontScaler = 1
+  if ( tracker.colors.patternFont and tracker.colors.patternFontSize ) then
+    fontScaler = tracker.colors.patternFontSize/14
+    if tracker.colors.customFontWidth then
+      fontScaler = tracker.colors.customFontWidth
+    end
+  end
+  
+  tracker.grid = {}
+  tracker.grid.fontScaler = fontScaler
+  tracker.grid.originx   = 22 + 18*fontScaler  -- 35
+  tracker.grid.originy   = 35
+  tracker.grid.dx        = 8 * fontScaler
+  tracker.grid.dy        = 20 * fontScaler
+  tracker.grid.barpad    = 10 * fontScaler
+  tracker.grid.itempadx  = 5
+  tracker.grid.itempady  = 3
+  
+  tracker.harmonyWidth    = 520 * fontScaler
+  tracker.noteNamesWidth  = 250 * fontScaler
+  tracker.helpwidth       = 400 * fontScaler
+  tracker.optionswidth    = 370 * fontScaler
+end
 
 tracker.scrollbar = {}
 tracker.scrollbar.size = 10
@@ -349,19 +682,17 @@ tracker.xpos = 1
 tracker.ypos = 1
 tracker.xint = 0
 tracker.page = 4
-tracker.lastVel = 96
 tracker.lastEnv = 1
-tracker.rowPerQn = 4
+tracker.rowPerQn = 4 -- The default
 tracker.newRowPerQn = 4
 tracker.maxRowPerQn = 16
 
+tracker.harmonyActive = 0
+tracker.noteNamesActive = 0
 tracker.helpActive = 0
 tracker.optionsActive = 0
-tracker.helpwidth = 380
-tracker.optionswidth = 370
-tracker.scalewidth = 520
 tracker.renaming = 0
-tracker.minoct = 0
+tracker.minoct = -1
 tracker.maxoct = 12
 tracker.onlyListen = 0
 
@@ -380,16 +711,28 @@ tracker.lastmodtype = 1
 tracker.selectionBehavior = 0
 tracker.automationBug = 1 -- This fixes a bug in v5.70
 
+tracker.shiftChordInProgress = false -- is the user currently inputting a chord with the shift key?
+tracker.shiftChordStartXpos = nil -- what column should we return cursor to when shift is released? only set while shiftChordInProgress
+
+keyLayouts = {'QWERTY', 'QWERTZ', 'AZERTY'}
+fontSizes = {12, 14, 16, 18, 20, 22}
+fx1Options = {0, 1, 2, 3}
+fx2Options = {0, 1, 2, 3, 4, 5, 6}
+
 -- Default configuration
 tracker.cfg = {}
 tracker.cfg.colorscheme = "buzz"
-tracker.cfg.keyset = "buzz"
-tracker.cfg.scaleActive = 0
+tracker.cfg.keyset = "default"
+tracker.cfg.fontSize = 14
+tracker.cfg.channelCCs = 0
 tracker.cfg.autoResize = 1
+tracker.cfg.loopFollow = 0
+tracker.cfg.initLoopSet = 0
 tracker.cfg.followSelection = 0
 tracker.cfg.stickToBottom = 0
 tracker.cfg.colResize = 1
 tracker.cfg.alwaysRecord = 0
+tracker.cfg.minimumSize = 1
 tracker.cfg.CRT = 0
 tracker.cfg.keyboard = "buzz"
 tracker.cfg.rowPerQn = 4
@@ -397,25 +740,118 @@ tracker.cfg.storedSettings = 1
 tracker.cfg.followSong = 0
 tracker.cfg.page = tracker.page
 tracker.cfg.oldBlockBehavior = 0
+tracker.cfg.keyLayout = "QWERTY"
+tracker.cfg.noResize = 0
+tracker.cfg.maxWidth = 50000
+tracker.cfg.maxHeight = 50000
+tracker.cfg.rowOverride = 0
+tracker.cfg.overridePerPattern = 1
+tracker.cfg.closeWhenSwitchingToHP = 0
+tracker.cfg.followRow = 0
+tracker.cfg.useItemColors = 0
+tracker.cfg.returnAfterChord = 1
+tracker.cfg.fx1 = 0
+tracker.cfg.fx2 = 0
+tracker.cfg.showedWarning = 0
+tracker.cfg.alwaysShowNoteEnd = 0
+tracker.cfg.alwaysShowDelays = 0
+tracker.cfg.blockWhileRecording = 1
+tracker.cfg.readfrommidi = 0
+tracker.cfg.velfrommidi = 0
+tracker.cfg.advanceByNote = 0
+tracker.cfg.bigLineIndicator = 1
+tracker.cfg.clampToSelection = 1
+tracker.cfg.selectMIDINotes = 0
+tracker.cfg.undoForReassignment = 1
+tracker.cfg.releaseNoteOffs = 0
+tracker.cfg.scrubMode = 0
+tracker.cfg.lastVel = 96
+tracker.cfg.lastVelSample = 1
+
+tracker.tracker_samples = 0
+tracker.cfg.fixedIndicator = 0
+tracker.cfg.fixedIndLoc = 0.5
 
 -- Defaults
 tracker.cfg.transpose = 3
 tracker.cfg.advance = 1
 tracker.cfg.envShape = 1
+tracker.cfg.modMode = 0
 
-tracker.binaryOptions = { 
-    { 'autoResize', 'Auto Resize' }, 
-    { 'followSelection', 'Follow Selection' }, 
+tracker.binaryOptions = {
+    { 'autoResize', 'Auto Resize' },
+    { 'followSelection', 'Follow Selection' },
     { 'storedSettings', 'Use settings stored in pattern' },
     { 'followSong', 'Follow Song (CTRL + F)' },
+    { 'fixedIndicator', 'Fix indicator position in view' },
+    { 'advanceByNote', 'Advance to next note mode (CTRL + T)' },
+    { 'clampToSelection', 'Clamp to selection in note mode' },
     { 'stickToBottom', 'Info Sticks to Bottom' },
     { 'colResize', 'Adjust Column Count to Window' },
-    { 'alwaysRecord', 'Always Enable Recording' },  
+    { 'alwaysRecord', 'Always Enable Recording' },
     { 'CRT', 'CRT mode' },
     { 'oldBlockBehavior', 'Do not mend after paste' },
+    { 'channelCCs', 'Enable CCs for channels > 0' },
+    { 'loopFollow', 'Set loop on pattern switch' },
+    { 'initLoopSet', 'Set loop when tracker is opened' },
+    { 'minimumSize', 'Force minimum size'},
+    { 'noResize', 'Fix plugin size'},
+    { 'overridePerPattern', 'Override per pattern'},
+    { 'closeWhenSwitchingToHP', 'Allow commands to close HT'},
+    { 'followRow', 'Follow row in arrange view' },
+    { 'useItemColors', 'Use item colors in headers' },
+    { 'returnAfterChord', 'Return to first column after chords' },
+    { 'alwaysShowNoteEnd', 'Always show note end' },
+    { 'alwaysShowDelays', 'Always show note delay' },
+    { 'blockWhileRecording', 'Block while recording' },
+    { 'readfrommidi', 'Track from MIDI (BETA)' },
+    { 'velfrommidi', 'Use recorded velocities' },
+    { 'bigLineIndicator', 'Bigger play indicator' },
+    { 'selectMIDINotes', 'Block select selects notes' },
+    { 'undoForReassignment', 'Add undo pt for col reassignment' },
+    { 'releaseNoteOffs', 'Emit note off on release' },
+    { 'scrubMode', 'Recording acts as scrub mode (plays notes)' },
     }
-    
-tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB"}
+
+tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2", "sink"}
+
+noteNames = {}
+
+CaptureModes = 
+{
+  OUT_SELECTOR = 1,
+  ENV_SELECTOR = 2,
+  ADV_SELECTOR = 3,
+  OCT_SELECTOR = 4,
+  RES_SELECTOR = 5,
+  SELECT_BLOCK = 6,
+  SCROLLBAR = 7,
+}
+
+local function print(...)
+  if ( not ... ) then
+    reaper.ShowConsoleMsg("nil value\n")
+    return
+  end
+  reaper.ShowConsoleMsg(...)
+  reaper.ShowConsoleMsg("\n")
+end
+
+function tracker:lastVel()
+  if self.tracker_samples == 1 then
+    return self.cfg.lastVelSample
+  else
+    return self.cfg.lastVel
+  end
+end
+
+function tracker:setLastVel(velocity)
+  if self.tracker_samples == 1 then
+    self.cfg.lastVelSample = velocity
+  else
+    self.cfg.lastVel = velocity
+  end
+end
 
 function tracker:loadColors(colorScheme)
   -- If you come up with a cool alternative color scheme, let me know
@@ -425,14 +861,16 @@ function tracker:loadColors(colorScheme)
   self.colors.patternFont = nil
   self.colors.patternFontSize = nil
   local colorScheme = colorScheme or tracker.cfg.colorscheme
+
   if colorScheme == "default" then
   -- default
+    self.colors.shadercolor  = {.8, .0, .5}
     self.colors.helpcolor    = {.8, .8, .9, 1}
     self.colors.helpcolor2   = {.7, .7, .9, 1}
     self.colors.selectcolor  = {.6, 0, .6, 1}
     self.colors.textcolor    = {.7, .8, .8, 1}
     self.colors.headercolor  = {.5, .5, .8, 1}
-    self.colors.inactive     = {.2, .2, .3, 1}    
+    self.colors.inactive     = {.2, .2, .3, 1}
     self.colors.linecolor    = {.1, .0, .4, .4}
     self.colors.linecolor2   = {.3, .0, .6, .4}
     self.colors.linecolor3   = {.4, .1, 1, 1}
@@ -442,18 +880,19 @@ function tracker:loadColors(colorScheme)
     self.colors.copypaste    = {5.0, .7, 0.1, .2}
     self.colors.scrollbar1   = {.2, .1, .6, 1.0}
     self.colors.scrollbar2   = {.1, .0, .3, 1.0}
-    self.colors.changed      = {1.0, 0.1, 0.1, 1.0} 
-    self.colors.changed2     = {0.0, 0.1, 1.0, .5} -- Only listening    
+    self.colors.changed      = {1.0, 0.1, 0.1, 1.0}
+    self.colors.changed2     = {0.0, 0.1, 1.0, .5} -- Only listening
     self.colors.windowbackground = {0, 0, 0, 1}
     self.crtStrength         = 2
   elseif colorScheme == "hacker" then
+    self.colors.shadercolor  = {.3, .7, .6}
     self.colors.helpcolor    = {0, .4, .2, 1}
     self.colors.helpcolor2   = {0, .7, .3, 1}
     self.colors.selectcolor  = {0, .3, 0, 1}
     self.colors.textcolor    = {0, .8, .4, 1}
-    self.colors.textcolorbar = {0.05, 1.0, .7, 1}    
+    self.colors.textcolorbar = {0.05, 1.0, .7, 1}
     self.colors.headercolor  = {0, .9, .5, 1}
-    self.colors.inactive     = {0, .3, .1, 1}    
+    self.colors.inactive     = {0, .3, .1, 1}
     self.colors.linecolor    = {0, .1, 0, .4}
     self.colors.linecolor2   = {0, .3, .2, .4}
     self.colors.linecolor3   = {0, .2, 0, 1}
@@ -463,20 +902,21 @@ function tracker:loadColors(colorScheme)
     self.colors.copypaste    = {0, .7, .5, .2}
     self.colors.scrollbar1   = {0, .1, 0, 1.0}
     self.colors.scrollbar2   = {0, .0, 0, 1.0}
-    self.colors.changed      = {.4,  1, .4, 1.0} 
-    self.colors.changed2     = {.4,  .5, .4, .5} -- Only listening    
+    self.colors.changed      = {.4,  1, .4, 1.0}
+    self.colors.changed2     = {.4,  .5, .4, .5} -- Only listening
     self.colors.windowbackground = {0, 0, 0, 1}
     self.crtStrength         = 4
     self.colors.ellipsis     = 1
   elseif colorScheme == "buzz" then
     -- Buzz
+    self.colors.shadercolor      = {.55, .55, .54}
     self.colors.helpcolor        = {1/256*159, 1/256*147, 1/256*115, 1} -- the functions
     self.colors.helpcolor2       = {1/256*48, 1/256*48, 1/256*33, 1} -- the keys
     self.colors.selectcolor      = {37/256, 41/256, 54/256, 1} -- the cursor
     self.colors.selecttext       = {207/256, 207/256, 222/256, 1} -- the cursor
     self.colors.textcolor        = {1/256*48, 1/256*48, 1/256*33, 1} -- main pattern data
     self.colors.headercolor      = {1/256*48, 1/256*48, 1/256*33, 1} -- column headers, statusbar etc
-    self.colors.inactive         = {1/256*178, 1/256*174, 1/256*161, 1} -- column headers, statusbar etc    
+    self.colors.inactive         = {1/256*178, 1/256*174, 1/256*161, 1} -- column headers, statusbar etc
     self.colors.linecolor        = {1/256*218, 1/256*214, 1/256*201, 0} -- normal row
     self.colors.linecolor2       = {1/256*181, 1/256*189, 1/256*158, 0.4} -- beats (must not have 100% alpha as it's drawn over the cursor(!))
     self.colors.linecolor3       = {1/256*159, 1/256*147, 1/256*115, 1} -- scroll indicating trangle thingy
@@ -492,12 +932,13 @@ function tracker:loadColors(colorScheme)
     self.crtStrength             = .3
   elseif colorScheme == "it" then
     -- Reapulse Tracker (Impulse Tracker)
+    self.colors.shadercolor      = {1/256*88, 1/256*64, 1/256*60}
     self.colors.helpcolor        = {0, 0, 0, 1} -- the functions
     self.colors.helpcolor2       = {1/256*124, 1/256*88, 1/256*68, 1} -- the keys
     self.colors.selectcolor      = {1, 1, 1, 1} -- the cursor
     self.colors.textcolor        = {1, 1, 1, 1} --{1/256*60, 1/256*105, 1/256*59, 1} -- main pattern data (rows should all be darker & this should be green)
     self.colors.headercolor      = {0, 0, 0, 1} -- column headers, statusbar etc
-    self.colors.inactive         = {.2, .2, .2, 1} -- column headers, statusbar etc    
+    self.colors.inactive         = {.2, .2, .2, 1} -- column headers, statusbar etc
     self.colors.linecolor        = {0,0,0, 0.6} -- normal row
     self.colors.linecolor2       = {1/256*52, 1/256*48, 1/256*44, 0.6} -- beats (must not have 100% alpha as it's drawn over the cursor(!))
     self.colors.linecolor3       = {1/256*180, 1/256*148, 1/256*120, 1} -- scroll indicating trangle thingy
@@ -513,6 +954,7 @@ function tracker:loadColors(colorScheme)
     self.crtStrength             = .5
   elseif colorScheme == "renoise" then
     self.colors.ellipsis         = 1
+    self.colors.shadercolor      = {177/255, 171/255, 116/255, 1.0}
     self.colors.harmonycolor     = {177/255, 171/255, 116/255, 1.0}
     self.colors.harmonyselect    = {183/255, 255/255, 191/255, 1.0}
     self.colors.helpcolor        = {243/255, 171/255, 116/255, 1.0} -- the functions
@@ -522,7 +964,7 @@ function tracker:loadColors(colorScheme)
     self.colors.textcolor        = {148/256, 148/256, 148/256, 1} --{1/256*60, 1/256*105, 1/256*59, 1} -- main pattern data (rows should all be darker & this should be green)
     self.colors.textcolorbar     = {1, 1, 1, 1}
     self.colors.headercolor      = {215/256, 215/256, 215/256, 1} -- column headers, statusbar etc
-    self.colors.inactive         = {115/256, 115/256, 115/256, 1} -- column headers, statusbar etc    
+    self.colors.inactive         = {115/256, 115/256, 115/256, 1} -- column headers, statusbar etc
     self.colors.linecolor        = {18/256,18/256,18/256, 0.6} -- normal row
     self.colors.linecolor2       = {1/256*55, 1/256*55, 1/256*55, 0.6} -- beats (must not have 100% alpha as it's drawn over the cursor(!))
     self.colors.linecolor3       = {1/256*180, 1/256*148, 1/256*120, 1} -- scroll indicating trangle thingy
@@ -535,8 +977,8 @@ function tracker:loadColors(colorScheme)
     self.colors.changed          = {1, 1, 0, 1}
     self.colors.changed2         = {0, .5, 1, .5} -- Only listening
     self.colors.windowbackground = {18/256, 18/256, 18/256, 1}
-    self.crtStrength             = 0   
-    
+    self.crtStrength             = 0
+
     self.colors.normal.mod1      = {243/255, 171/255, 116/255, 1.0}
     self.colors.normal.mod2      = self.colors.normal.mod1
     self.colors.normal.mod3      = self.colors.normal.mod1
@@ -553,7 +995,7 @@ function tracker:loadColors(colorScheme)
     self.colors.normal.fx2       = self.colors.normal.fx1
     self.colors.normal.end1      = {136/255, 80/255, 178/255, 1.0}
     self.colors.normal.end2      = self.colors.normal.end1
-    
+
     self.colors.bar.mod1         = {255/255, 159/255, 88/255, 1.0}
     self.colors.bar.mod2         = self.colors.bar.mod1
     self.colors.bar.mod3         = self.colors.bar.mod1
@@ -565,13 +1007,14 @@ function tracker:loadColors(colorScheme)
     self.colors.bar.vel1         = {171/255, 169/255, 77/255, 1.0}
     self.colors.bar.vel2         = self.colors.bar.vel1
     self.colors.bar.delay1       = {116/255, 162/255, 255/255, 1.0}
-    self.colors.bar.delay2       = self.colors.bar.delay1    
+    self.colors.bar.delay2       = self.colors.bar.delay1
     self.colors.bar.fx1          = {146/255, 255/255, 157/255, 1.0}
-    self.colors.bar.fx2          = self.colors.normal.fx1   
+    self.colors.bar.fx2          = self.colors.bar.fx1
     self.colors.bar.end1         = {136/255, 80/255, 178/255, 1.0}
     self.colors.bar.end2         = self.colors.bar.end1
   elseif colorScheme == "renoiseB" then
     self.colors.ellipsis         = 1
+    self.colors.shadercolor      = {177/255, 171/255, 116/255, 1.0}    
     self.colors.harmonycolor     = {177/255, 171/255, 116/255, 1.0}
     self.colors.harmonyselect    = {183/255, 255/255, 191/255, 1.0}
     self.colors.helpcolor        = {243/255, 171/255, 116/255, 1.0} -- the functions
@@ -581,7 +1024,7 @@ function tracker:loadColors(colorScheme)
     self.colors.textcolor        = {148/256, 148/256, 148/256, 1} --{1/256*60, 1/256*105, 1/256*59, 1} -- main pattern data (rows should all be darker & this should be green)
     self.colors.textcolorbar     = {1, 1, 1, 1}
     self.colors.headercolor      = {215/256, 215/256, 215/256, 1} -- column headers, statusbar etc
-    self.colors.inactive         = {115/256, 115/256, 115/256, 1} -- column headers, statusbar etc    
+    self.colors.inactive         = {115/256, 115/256, 115/256, 1} -- column headers, statusbar etc
     self.colors.linecolor        = {18/256,18/256,18/256, 0.6} -- normal row
     self.colors.linecolor2       = {1/256*55, 1/256*55, 1/256*55, 0.6} -- beats (must not have 100% alpha as it's drawn over the cursor(!))
     self.colors.linecolor3       = {1/256*180, 1/256*148, 1/256*120, 1} -- scroll indicating trangle thingy
@@ -594,8 +1037,8 @@ function tracker:loadColors(colorScheme)
     self.colors.changed          = {1, 1, 0, 1}
     self.colors.changed2         = {0, .5, 1, .5} -- Only listening
     self.colors.windowbackground = {18/256, 18/256, 18/256, 1}
-    self.crtStrength             = 0   
-    
+    self.crtStrength             = 0
+
     self.colors.normal.mod1      = {243/255, 171/255, 116/255, 1.0}
     self.colors.normal.mod2      = self.colors.normal.mod1
     self.colors.normal.mod3      = self.colors.normal.mod1
@@ -612,7 +1055,7 @@ function tracker:loadColors(colorScheme)
     self.colors.normal.fx2       = self.colors.normal.fx1
     self.colors.normal.end1      = {136/255, 80/255, 178/255, 1.0}
     self.colors.normal.end2      = self.colors.normal.end1
-    
+
     self.colors.bar.mod1         = {255/255, 159/255, 88/255, 1.0}
     self.colors.bar.mod2         = self.colors.bar.mod1
     self.colors.bar.mod3         = self.colors.bar.mod1
@@ -624,15 +1067,145 @@ function tracker:loadColors(colorScheme)
     self.colors.bar.vel1         = {171/255, 169/255, 77/255, 1.0}
     self.colors.bar.vel2         = self.colors.bar.vel1
     self.colors.bar.delay1       = {116/255, 162/255, 255/255, 1.0}
-    self.colors.bar.delay2       = self.colors.bar.delay1    
+    self.colors.bar.delay2       = self.colors.bar.delay1
     self.colors.bar.fx1          = {146/255, 255/255, 157/255, 1.0}
-    self.colors.bar.fx2          = self.colors.normal.fx1   
+    self.colors.bar.fx2          = self.colors.bar.fx1
     self.colors.bar.end1         = {136/255, 80/255, 178/255, 1.0}
     self.colors.bar.end2         = self.colors.bar.end1
-    
+
     self.colors.patternFont         = "DejaVu Sans"
-    self.colors.patternFontSize     = 14
-    self.colors.customFontDisplace  = { 8, -3 }
+    self.colors.patternFontSize     = tracker.cfg.fontSize or 14
+    self.colors.customFontDisplace  = { self.colors.patternFontSize-6, -3 }
+  elseif colorScheme == "buzz2" then
+    -- Buzz
+    self.colors.shadercolor      = {.55, .55, .54}
+    self.colors.helpcolor        = {1/256*159, 1/256*147, 1/256*115, 1} -- the functions
+    self.colors.helpcolor2       = {1/256*48, 1/256*48, 1/256*33, 1} -- the keys
+    self.colors.selectcolor      = {37/256, 41/256, 54/256, 1} -- the cursor
+    self.colors.selecttext       = {207/256, 207/256, 222/256, 1} -- the cursor
+    self.colors.textcolor        = {1/256*48, 1/256*48, 1/256*33, 1} -- main pattern data
+    self.colors.headercolor      = {1/256*48, 1/256*48, 1/256*33, 1} -- column headers, statusbar etc
+    self.colors.inactive         = {1/256*178, 1/256*174, 1/256*161, 1} -- column headers, statusbar etc
+    self.colors.linecolor        = {1/256*218, 1/256*214, 1/256*201, 0} -- normal row
+    self.colors.linecolor2       = {1/256*181, 1/256*189, 1/256*158, 0.4} -- beats (must not have 100% alpha as it's drawn over the cursor(!))
+    self.colors.linecolor3       = {1/256*159, 1/256*147, 1/256*115, 1} -- scroll indicating trangle thingy
+    self.colors.linecolor4       = {1, 1, 0, 1} -- Reaper edit cursor
+    self.colors.linecolor5       = {1/256*159, 1/256*147, 1/256*115, 0.4} -- Bar start
+    self.colors.loopcolor        = {1/256*48, 1/256*48, 1/256*33, 1} -- lines surrounding loop
+    self.colors.copypaste        = {1/256*247, 1/256*247, 1/256*244, 0.66}  -- the selection (should be lighter(not alpha blanded) but is drawn over the data)
+    self.colors.scrollbar1       = {1/256*48, 1/256*48, 1/256*33, 1} -- scrollbar handle & outline
+    self.colors.scrollbar2       = {1/256*218, 1/256*214, 1/256*201, 1} -- scrollbar background
+    self.colors.changed          = {1, 1, 0, 1} -- Uncommited resolution changes
+    self.colors.changed2         = {0, .5, 1, .5} -- Only listening
+    self.colors.windowbackground = {1/256*218, 1/256*214, 1/256*201, 1}
+    self.crtStrength             = 0
+
+    self.colors.ellipsis            = 1;
+    self.colors.patternFont         = "DejaVu Sans"
+    self.colors.patternFontSize     = tracker.cfg.fontSize or 14
+    self.colors.customFontDisplace  = { self.colors.patternFontSize-6, -3 }
+  elseif colorScheme == "sink" then
+  
+  --[[gfx.set(table.unpack(colors.textcolorbar or colors.helpcolor2))
+  local selectedColor = colors.harmonyselect or colors.helpcolor2
+  local normalColor = colors.helpcolor
+  local titleColor = colors.textcolorbar or colors.helpcolor2]]--
+  
+    self.colors.ellipsis         = 1
+    self.colors.shadercolor      = {177/255, 171/255, 116/255, 1.0}    
+    self.colors.harmonycolor     = {16/256, 16/256, 16/256, 1.0}
+    self.colors.harmonyselect    = {52/255, 160/255, 232/255, 1.0}
+    self.colors.helpcolor        = {16/255, 16/255, 16/255, 1.0} -- the functions
+    self.colors.helpcolor2       = {32/256, 32/256, 32/256, 1} -- the keys
+    self.colors.selectcolor      = {125/256, 207/256, 255/256, 1} -- the cursor
+    self.colors.selecttext       = {0, 0, 0, 1} -- the cursor
+    self.colors.textcolor        = {16/256, 16/256, 16/256, 1} --{1/256*60, 1/256*105, 1/256*59, 1} -- main pattern data (rows should all be darker & this should be green)
+    self.colors.textcolorbar     = {16/255, 16/255, 16/255, 1}
+    self.colors.headercolor      = {16/256, 16/256, 16/256, 1} -- column headers, statusbar etc
+    self.colors.inactive         = {115/256, 115/256, 115/256, 1} -- column headers, statusbar etc
+    self.colors.linecolor        = {235/256, 235/256, 235/256, 0.6} -- normal row
+    self.colors.linecolor2       = {204/256, 204/256, 204/256, 0.6} -- beats (must not have 100% alpha as it's drawn over the cursor(!))
+    self.colors.linecolor3       = {16/256, 16/256, 16/256, 1} -- scroll indicating trangle thingy
+    self.colors.linecolor4       = {16/256, 16/256, 16/256, 1} -- Reaper edit cursor
+    self.colors.linecolor5       = {179/256, 179/256, 179/256, 1.0} -- Bar start
+    self.colors.loopcolor        = {104/256, 204/256, 256/256, 1} -- lines surrounding loop
+    self.colors.copypaste        = {125/256, 125/256, 155/256, 0.26}  -- the selection (should be lighter(not alpha blanded) but is drawn over the data)
+    self.colors.scrollbar1       = {98/256, 98/256, 98/256, 1} -- scrollbar handle & outline
+    self.colors.scrollbar2       = {19/256, 19/256, 19/256, 1} -- scrollbar background
+    self.colors.changed          = {.5, .8, 1, 1}
+    self.colors.changed2         = {0, .5, 1, .5} -- Only listening
+    self.colors.windowbackground = {235/256, 235/256, 235/256, 1}
+    self.crtStrength             = 0
+    
+    self.colors.normal.mod1      = {16/255, 16/255, 16/255, 1.0}
+    self.colors.normal.mod2      = self.colors.normal.mod1
+    self.colors.normal.mod3      = self.colors.normal.mod1
+    self.colors.normal.mod4      = self.colors.normal.mod1
+    self.colors.normal.modtxt1   = {243/255, 171/255, 116/255, 1.0}
+    self.colors.normal.modtxt2   = self.colors.normal.modtxt1
+    self.colors.normal.modtxt3   = self.colors.normal.modtxt1
+    self.colors.normal.modtxt4   = self.colors.normal.modtxt1
+    self.colors.normal.legato    = {92/255, 92/255, 92/255, 1.0}
+    self.colors.normal.vel1      = {19/255, 102/255, 136/255, 1.0}
+    self.colors.normal.vel2      = self.colors.normal.vel1
+    self.colors.normal.delay1    = {77/255, 77/255, 77/255, 1.0}
+    self.colors.normal.delay2    = self.colors.normal.delay1
+    self.colors.normal.fx1       = {92/255, 160/255, 232/255, 1.0}
+    self.colors.normal.fx2       = self.colors.normal.fx1
+    self.colors.normal.end1      = {52/255, 160/255, 232/255, 1.0}
+    self.colors.normal.end2      = self.colors.normal.end1
+    
+    self.colors.bar.mod1         = {16/255, 16/255, 16/255, 1.0}
+    self.colors.bar.mod2         = self.colors.bar.mod1
+    self.colors.bar.mod3         = self.colors.bar.mod1
+    self.colors.bar.mod4         = self.colors.bar.mod1
+    self.colors.bar.modtxt1      = {55/255, 19/255, 88/255, 1.0}
+    self.colors.bar.modtxt2      = self.colors.bar.modtxt1
+    self.colors.bar.modtxt3      = self.colors.bar.modtxt1
+    self.colors.bar.modtxt4      = self.colors.bar.modtxt1
+    self.colors.bar.legato       = {92/255, 92/255, 92/255, 1.0}
+    self.colors.bar.vel1         = {19/255, 102/255, 136/255, 1.0}
+    self.colors.bar.vel2         = self.colors.bar.vel1
+    self.colors.bar.delay1       = {77/255, 77/255, 77/255, 1.0}
+    self.colors.bar.delay2       = self.colors.bar.delay1
+    self.colors.bar.fx1          = {82/255, 160/255, 232/255, 1.0}
+    self.colors.bar.fx2          = self.colors.bar.fx1
+    self.colors.bar.end1         = {52/255, 160/255, 232/255, 1.0}
+    self.colors.bar.end2         = self.colors.bar.end1
+    self.crtStrength             = 1
+    
+    self.colors.patternFont      = "Bebas"
+    -- Poorly written check whether Bebas is present on the system
+    gfx.setfont(1, self.colors.patternFont, 16)
+    local w1 = gfx.measurechar(65)
+    gfx.setfont(1, self.colors.patternFont, 18)
+    local w2 = gfx.measurechar(65)
+    gfx.setfont(1, self.colors.patternFont, 19)
+    local w3 = gfx.measurechar(65)
+
+    -- Bebas present?
+    if w1 == 6 and w2 == 7 and w3 == 7 then
+      self.colors.patternFontSize     = tracker.cfg.fontSize or 14
+      if self.colors.patternFontSize > 16 then
+        self.colors.customFontDisplace  = { self.colors.patternFontSize-12, -6 }
+        self.colors.customFontWidth     = .7 * self.colors.patternFontSize / 14
+      else
+        self.colors.customFontDisplace  = { self.colors.patternFontSize-8, -5 }
+        self.colors.customFontWidth     = .8 * self.colors.patternFontSize / 14
+      end
+    else
+      self.colors.patternFont = nil
+    end
+  
+  --[[background = light grey RGB(235,235,235)
+  background line1 = light grey RGB(235,235,235)
+  background line2 = RGB(204,204,204)
+  LEGATO text color = RGB(92,92,92)
+  NOTE text color = black RGB(16,16,16)
+  VELOCITY text color = RGB(19,102,136)
+  DELAY text color = RGB(77,77,77)
+  LENGHT text color = RGB(52,160,232)
+  If possible : background line3 (every 8 steps) = RGB(179,179,179)]]--
   end
   -- clear colour is in a different format
   gfx.clear = tracker.colors.windowbackground[1]*256+(tracker.colors.windowbackground[2]*256*256)+(tracker.colors.windowbackground[3]*256*256*256)
@@ -647,10 +1220,32 @@ end
 keysets = { "default", "buzz", "renoise" }
 keys = {}
 
+local function reinitializeWindow(title, iwidth, iheight, id, iwx, iwh)
+  local v, wx, wy, ww, wh
+  local d, wx, wh, ww, wh = gfx.dock(-1, 1, 1, 1, 1)
+
+  if ( iwidth > tracker.cfg.maxWidth ) then
+    iwidth = tracker.cfg.maxWidth
+  end
+  if ( iheight > tracker.cfg.maxHeight ) then
+    iheight = tracker.cfg.maxHeight
+  end
+
+  if ( tracker.cfg.noResize == 0 and not tracker.attemptedReset ) then
+    if ( ww ~= iwidth or wh ~= iheight ) then
+      gfx.quit()
+      gfx.init( title, iwidth, iheight, id, iwx, iwh)
+      tracker.attemptedReset = 1
+    end
+  end
+end
+
 -- You can find the keycodes by setting printKeys to 1 and hitting any key.
 function tracker:loadKeys( keySet )
   local keyset = keySet or tracker.cfg.keyset
-  
+
+  keys.options2 = { 1, 0, 0, 15 } -- ctrl + o
+  keys.mute_row = { 1, 0, 0, 45 } -- CTRL + -
   if keyset == "default" then
     --                    CTRL    ALT SHIFT Keycode
     keys.left           = { 0,    0,  0,    1818584692 }    -- <-
@@ -663,8 +1258,9 @@ function tracker:loadKeys( keySet )
     keys.home           = { 0,    0,  0,    1752132965 }    -- Home
     keys.End            = { 0,    0,  0,    6647396 }       -- End
     keys.toggle         = { 0,    0,  0,    32 }            -- Space
-    keys.playfrom       = { 0,    0,  0,    13 }            -- Enter
-    keys.enter          = { 0,    0,  0,    13 }            -- Enter        
+    keys.playfrom       = { 1,    0,  0,    13 }            -- Ctrl + Enter
+    keys.enter          = { 0,    0,  0,    13 }            -- Enter
+    keys.playline       = { 0,    0,  1,    32 }            -- Ctrl + Space
     keys.insert         = { 0,    0,  0,    6909555 }       -- Insert
     keys.remove         = { 0,    0,  0,    8 }             -- Backspace
     keys.pgup           = { 0,    0,  0,    1885828464 }    -- Page up
@@ -679,7 +1275,7 @@ function tracker:loadKeys( keySet )
     keys.shiftItemUp    = { 0,    0,  1,    43 }            -- SHIFT + Num pad +
     keys.shiftItemDown  = { 0,    0,  1,    45 }            -- SHIFT + Num pad -
     keys.scaleUp        = { 1,    1,  1,    267 }           -- CTRL + SHIFT + ALT + Num pad +
-    keys.scaleDown      = { 1,    1,  1,    269 }           -- CTRL + SHIFT + ALT + Num pad -   
+    keys.scaleDown      = { 1,    1,  1,    269 }           -- CTRL + SHIFT + ALT + Num pad -
     keys.octaveup       = { 1,    0,  0,    30064 }         -- CTRL + /\
     keys.octavedown     = { 1,    0,  0,    1685026670 }    -- CTRL + \/
     keys.envshapeup     = { 1,    0,  1,    30064 }         -- CTRL + SHIFT + /\
@@ -691,7 +1287,8 @@ function tracker:loadKeys( keySet )
     keys.advanceup      = { 0,    0,  0,    26165 }         -- F5
     keys.stop2          = { 0,    0,  0,    26168 }         -- F8
     keys.harmony        = { 0,    0,  0,    26169 }         -- F9
-    keys.options        = { 0,    0,  0,    6697265 }       -- F11    
+    keys.noteNames      = { 0,    0,  0,    6697264 }       -- F10
+    keys.options        = { 0,    0,  0,    6697265 }       -- F11
     keys.panic          = { 0,    0,  0,    6697266 }       -- F12
     keys.setloop        = { 1,    0,  0,    12 }            -- CTRL + L
     keys.setloopstart   = { 1,    0,  0,    17 }            -- CTRL + Q
@@ -715,25 +1312,44 @@ function tracker:loadKeys( keySet )
     keys.showLess       = { 1,    0,  0,    13 }            -- CTRL + -
     keys.addCol         = { 1,    0,  1,    11 }            -- CTRL + Shift + +
     keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -
+    keys.addColAll      = { 1,    0,  1,    1 }             -- CTRL + Shift + A
+    keys.addPatchSelect = { 1,    0,  1,    16 }            -- CTRL + Shift + P
     keys.tab            = { 0,    0,  0,    9 }             -- Tab
     keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
     keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F
     keys.deleteRow      = { 1,    0,  0,    6579564 }       -- Ctrl + Del
     keys.closeTracker   = { 1,    0,  0,    6697266 }       -- Ctrl + F12
+    keys.nextTrack      = { 1,    0,  1,    1919379572.0 }  -- CTRL + Shift + ->
+    keys.prevTrack      = { 1,    0,  1,    1818584692.0 }  -- CTRL + Shift + <-
+    keys.solo           = { 1,    0,  0,    19 }            -- Solo channel
+    keys.mute           = { 1,    0,  0,    1 }             -- Mute/Unmute channel    
+    keys.insert_hori    = { 0,    0,  1,    6909555 }       -- SHIFT + Insert
+    keys.remove_hori    = { 0,    0,  1,    8 }             -- SHIFT + Backspace
+
+    keys.insertRow      = { 1,    0,  0,    6909555 }       -- Insert row CTRL+Ins
+    keys.removeRow      = { 1,    0,  0,    8 }             -- Remove Row CTRL+Backspace
+    keys.wrapDown       = { 1,    0,  1,    6909555 }       -- CTRL + SHIFT + Ins
+    keys.wrapUp         = { 1,    0,  1,    8 }             -- CTRL + SHIFT + Backspace
     
+    keys.toggleNoteMode = { 1,    0,  0,    20 }            -- CTRL + T / Toggle whether advance should move to next note rather than numeric value
+
     keys.m0             = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m25            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m50            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m75            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
-    keys.off2           = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned    
+    keys.off2           = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.renoiseplay    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.shpatdown      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.shpatup        = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.shcoldown      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.shcolup        = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.shblockdown    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
-    keys.shblockup      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned    
-    
+    keys.shblockup      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.upByAdvance    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.downByAdvance  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.advanceDouble  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.advanceHalve   = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+
     keys.cutPattern     = { 1,    0,  0,    500000000000000000000000 }
     keys.cutColumn      = { 1,    0,  1,    500000000000000000000000 }
     keys.cutBlock2      = { 1,    1,  0,    500000000000000000000000 }
@@ -749,17 +1365,21 @@ function tracker:loadKeys( keySet )
     keys.colOctUp       = { 1,    0,  1,    500000000000000000000000.0 }
     keys.blockOctDown   = { 1,    1,  0,    500000000000000000000000.0 }
     keys.blockOctUp     = { 1,    1,  0,    500000000000000000000000.0 }
-    
+
     keys.shiftpgdn      = { 0,    0,  1,    1885824110 }    -- Shift + PgDn
     keys.shiftpgup      = { 0,    0,  1,    1885828464 }    -- Shift + PgUp
     keys.shifthome      = { 0,    0,  1,    1752132965 }    -- Shift + Home
     keys.shiftend       = { 0,    0,  1,    6647396 }       -- Shift + End
-    
+
+    keys.startPat       = { 0,    0,  0,    13,  "Hackey Sequencer/Sequencer/HackeyPatterns_exec.lua", 1 }
+
     help = {
       { 'Shift + Note', 'Advance column after entry' },
-      { 'Insert/Backspace/-', 'Insert/Remove/Note OFF' },   
-      { 'Del/.', 'Delete' }, 
-      { 'Space/Return', 'Play/Play From' },
+      { 'Insert/Backspace/-', 'Insert/Remove/Note OFF' },
+      { 'CTRL + -/Insert/Backspace', 'Mute/Insert Row/Remove Row' },
+      { 'CTRL + Shift + Ins/Bksp', 'Wrap Forward/Backward' },
+      { 'Del/.', 'Delete' },
+      { 'Space/CTRL + Return', 'Play/Play From' },
       { 'CTRL + L', 'Loop pattern' },
       { 'CTRL + Q/W', 'Loop start/end' },
       { 'Shift + +/-', 'Transpose selection' },
@@ -768,31 +1388,39 @@ function tracker:loadKeys( keySet )
       { 'CTRL + C/X/V', 'Copy / Cut / Paste' },
       { 'CTRL + I', 'Interpolate' },
       { 'Shift + Del', 'Delete block' },
-      { 'CTRL + (SHIFT) + Z', 'Undo / Redo' }, 
+      { 'CTRL + (SHIFT) + Z', 'Undo / Redo' },
       { 'SHIFT + Alt + Up/Down', '[Res]olution Up/Down' },
-      { 'SHIFT + Alt + Enter', '[Res]olution Commit' },  
+      { 'SHIFT + Alt + Enter', '[Res]olution Commit' },
       { 'CTRL + Up/Down', '[Oct]ave up/down' },
       { 'CTRL + Shift + Up/Down', '[Env]elope change' },
       { 'F4/F5', '[Adv]ance De/Increase' },
       { 'F2/F3', 'MIDI [out] down/up' },
-      { 'F8/F11/F12', 'Stop / Options / Panic' },
-      { 'CTRL + Left/Right', 'Switch MIDI item' },
+      { 'F8/F12', 'Stop / Panic' },
+      { 'F10/F11', 'Note Names / Options' },
+      { 'CTRL + Left/Right', 'Switch MIDI item/track' },
+      { 'CTRL + Shift + Left/Right', 'Switch Track' },
       { 'CTRL + D', 'Duplicate pattern' },
       { 'CTRL + N', 'Rename pattern' },
       { 'CTRL + R', 'Play notes' },
       { 'CTRL + +/-', 'Advanced col options' },
       { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },
+      { 'CTRL + Shift + A/P', 'Per channel CC/PC' },
+      { 'CTRL + Shift + Click row indicator', 'Change highlighting (RMB resets)' },
+      { 'CTRL + Alt + Click row indicator', 'Change fixed indicator position' },
+      { 'CTRL + S / CTRL + A', '(un)Solo / (un)Mute' },   
+      { 'CTRL + T', 'Toggle advance to next note mode' },      
       { '', '' },
-      { 'Harmony helper', '' },      
+      { 'Harmony helper', '' },
       { 'F9', 'Toggle harmonizer' },
       { 'CTRL + Click', 'Insert chord' },
       { 'Alt', 'Invert first note' },
       { 'Shift', 'Invert second note' },
       { 'CTRL + Shift + Alt + +/-', 'Shift root note' },
     }
-    
+
   elseif keyset == "buzz" then
     --                    CTRL    ALT SHIFT Keycode
+    keys.playline       = { 0,    0,  1,    32 }            -- Ctrl + Space
     keys.left           = { 0,    0,  0,    1818584692 }    -- <-
     keys.right          = { 0,    0,  0,    1919379572 }    -- ->
     keys.up             = { 0,    0,  0,    30064 }         -- /\
@@ -802,11 +1430,12 @@ function tracker:loadKeys( keySet )
     keys.delete2        = { 0,    0,  0,    46 }            -- .
     keys.home           = { 0,    0,  0,    1752132965 }    -- Home
     keys.End            = { 0,    0,  0,    6647396 }       -- End
-    keys.enter          = { 0,    0,  0,    13 }            -- Enter        
+    keys.enter          = { 0,    0,  0,    13 }            -- Enter
     keys.toggle         = { 0,    0,  0,    26165 }         -- f5 = play/pause
-    keys.playfrom       = { 0,    0,  0,    26166 }         -- f6 = play here 
+    keys.playfrom       = { 0,    0,  0,    26166 }         -- f6 = play here
     keys.stop2          = { 0,    0,  0,    26168 }         -- f8 = Stop
     keys.harmony        = { 0,    0,  0,    26169 }         -- f9 = Harmony helper
+    keys.noteNames      = { 0,    0,  0,    6697264 }       -- F10
     keys.options        = { 0,    0,  0,    6697265 }       -- f11 = Options
     keys.panic          = { 0,    0,  0,    6697266 }       -- f12 = MIDI Panic!
     keys.insert         = { 0,    0,  0,    6909555 }       -- Insert
@@ -825,7 +1454,7 @@ function tracker:loadKeys( keySet )
     keys.octaveup       = { 0,    0,  0,    42 }            -- *
     keys.octavedown     = { 0,    0,  0,    47 }            -- /
     keys.scaleUp        = { 1,    1,  1,    267 }           -- CTRL + SHIFT + ALT + Num pad +
-    keys.scaleDown      = { 1,    1,  1,    269 }           -- CTRL + SHIFT + ALT + Num pad -    
+    keys.scaleDown      = { 1,    1,  1,    269 }           -- CTRL + SHIFT + ALT + Num pad -
     keys.envshapeup     = { 1,    0,  1,    30064 }         -- CTRL + SHIFT + /\
     keys.envshapedown   = { 1,    0,  1,    1685026670 }    -- CTRL + SHIFT + /\
     keys.help           = { 0,    0,  0,    26161 }         -- F1
@@ -857,9 +1486,20 @@ function tracker:loadKeys( keySet )
     keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -
     keys.tab            = { 0,    0,  0,    9 }             -- Tab
     keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
-    keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F    
+    keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F
     keys.deleteRow      = { 1,    0,  0,    6579564 }       -- Ctrl + Del
-    
+    keys.addColAll      = { 1,    0,  1,    1 }             -- CTRL + Shift + A
+    keys.addPatchSelect = { 1,    0,  1,    16 }            -- CTRL + Shift + P
+    keys.nextTrack      = { 1,    0,  1,    1919379572.0 }  -- CTRL + Shift + ->
+    keys.prevTrack      = { 1,    0,  1,    1818584692.0 }  -- CTRL + Shift + <-
+
+    keys.insertRow      = { 1,    1,  0,    6909555 }       -- Insert row CTRL+Alt+Ins
+    keys.removeRow      = { 1,    1,  0,    8 }             -- Remove Row CTRL+Alt+Backspace
+    keys.wrapDown       = { 1,    0,  1,    6909555 }       -- CTRL + SHIFT + Ins
+    keys.wrapUp         = { 1,    0,  1,    8 }             -- CTRL + SHIFT + Backspace
+
+    keys.toggleNoteMode = { 1,    0,  0,    20 }            -- CTRL + T / Toggle whether advance should move to next note rather than numeric value
+
     keys.m0             = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m25            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m50            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
@@ -871,8 +1511,12 @@ function tracker:loadKeys( keySet )
     keys.shcoldown      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.shcolup        = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.shblockdown    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
-    keys.shblockup      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned    
-    
+    keys.shblockup      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.upByAdvance    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.downByAdvance  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.advanceDouble  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.advanceHalve   = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+
     keys.cutPattern     = { 1,    0,  0,    500000000000000000000000 }
     keys.cutColumn      = { 1,    0,  1,    500000000000000000000000 }
     keys.cutBlock2      = { 1,    1,  0,    500000000000000000000000 }
@@ -889,19 +1533,26 @@ function tracker:loadKeys( keySet )
     keys.blockOctDown   = { 1,    1,  0,    500000000000000000000000.0 }
     keys.blockOctUp     = { 1,    1,  0,    500000000000000000000000.0 }
     keys.closeTracker   = { 0,    0,  0,    500000000000000000000000 }      -- Unassigned
-    
+    keys.addColAll      = { 1,    0,  1,    1 }             -- CTRL + Shift + A
     keys.shiftpgdn      = { 0,    0,  1,    1885824110 }    -- Shift + PgDn
     keys.shiftpgup      = { 0,    0,  1,    1885828464 }    -- Shift + PgUp
     keys.shifthome      = { 0,    0,  1,    1752132965 }    -- Shift + Home
     keys.shiftend       = { 0,    0,  1,    6647396 }       -- Shift + End
-    
+    keys.solo           = { 1,    0,  0,    19 }            -- Solo channel
+    keys.mute           = { 1,    0,  0,    1 }             -- Mute/Unmute channel
+
+    keys.startPat       = { 0,    0,  0,    13,  "Hackey Sequencer/Sequencer/HackeyPatterns_exec.lua", 1 }
+
     help = {
       { 'Shift + Note', 'Advance column after entry' },
       { '`', 'Note OFF' },
-      { 'Insert/Backspace', 'Insert/Remove line' },   
-      { 'Del/.', 'Delete' }, 
+      { 'Insert/Backspace', 'Insert/Remove line' },
+      { 'CTRL + Alt + Insert/Backspace', 'Insert Row/Remove Row' },
+      { 'CTRL + Shift + Insert/Backspace', 'Wrap Forward/Backward' },
+      { 'Del/.', 'Delete' },
       { 'F5/F6', 'Play/Play from here' },
-      { 'F8/F11/F12', 'Stop / Options / Panic' },
+      { 'F8/F12', 'Stop / Panic' },
+      { 'F10/F11', 'Note Names / Options' },
       { 'CTRL + L', 'Loop pattern' },
       { 'CTRL + Q/W', 'Loop start/end' },
       { 'Shift + +/-', 'Transpose selection' },
@@ -910,29 +1561,38 @@ function tracker:loadKeys( keySet )
       { 'CTRL + C/X/V', 'Copy / Cut / Paste' },
       { 'CTRL + I', 'Interpolate' },
       { 'Shift + Del', 'Delete block' },
-      { 'CTRL + (SHIFT) + Z', 'Undo / Redo' }, 
+      { 'CTRL + (SHIFT) + Z', 'Undo / Redo' },
       { 'SHIFT + Alt + Up/Down', '[Res]olution Up/Down' },
-      { 'SHIFT + Alt + Return', '[Res]olution Commit' },  
-      { '*//', '[Oct]ave Up/Down' },     
+      { 'SHIFT + Alt + Return', '[Res]olution Commit' },
+      { '*//', '[Oct]ave Up/Down' },
       { 'CTRL + Shift + Up/Down', '[Env]elope change' },
       { 'CTRL + F1/F2', '[Adv]ance De/Increase' },
-      { 'CTRL + Up/Down', 'MIDI [out] Up/Down' },  
+      { 'CTRL + Up/Down', 'MIDI [out] Up/Down' },
       { '-/+', 'Switch MIDI item' },
+      { 'CTRL + Shift + Left/Right', 'Switch track' },
       { 'CTRL + Shift + Return', 'Duplicate pattern' },
       { 'CTRL + Backspace', 'Rename pattern' },
       { 'F7', 'Toggle note play' },
       { 'CTRL + +/-', 'Advanced col options' },
       { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },
+      { 'CTRL + Shift + A/P', 'Per channel CC/PC' },
+      { 'CTRL + Shift + Click row indicator', 'Change highlighting (RMB resets)' },
+      { 'CTRL + Alt + Click row indicator', 'Change fixed indicator position' },
+      { 'CTRL + T', 'Toggle advance to next note mode' },
       { '', '' },
-      { 'Harmony helper', '' },      
+      { 'Harmony helper', '' },
       { 'F9', 'Toggle harmonizer' },
       { 'CTRL + Click', 'Insert chord' },
       { 'Alt', 'Invert first note' },
-      { 'Shift', 'Invert second note' },   
+      { 'Shift', 'Invert second note' },
       { 'CTRL + Shift + Alt + +/-', 'Shift root note' },
+      { 'CTRL + S / CTRL + A', '(un)Solo / (un)Mute' },
     }
   elseif keyset == "renoise" then
     --                    CTRL    ALT SHIFT Keycode
+    keys.solo           = { 1,    0,  0,    19 }            -- Solo channel
+    keys.mute           = { 1,    0,  0,    1 }             -- Mute/Unmute channel    
+    keys.playline       = { 0,    0,  1,    32 }            -- Ctrl + Space
     keys.left           = { 0,    0,  0,    1818584692 }    -- <-
     keys.right          = { 0,    0,  0,    1919379572 }    -- ->
     keys.up             = { 0,    0,  0,    30064 }         -- /\
@@ -942,11 +1602,12 @@ function tracker:loadKeys( keySet )
     keys.delete2        = { 0,    0,  0,    6579564 }       -- Del
     keys.home           = { 0,    0,  0,    1752132965 }    -- Home
     keys.End            = { 0,    0,  0,    6647396 }       -- End
-    keys.enter          = { 0,    0,  0,    13 }            -- Enter        
+    keys.enter          = { 0,    0,  0,    13 }            -- Enter
     keys.renoiseplay    = { 0,    0,  0,    32 }            -- Play/pause (space)
     keys.playfrom       = { 0,    0,  1,    32 }            -- Shift + space
     keys.stop2          = { 0,    0,  0,    500000000000000000000000 }  -- Not assigned
     keys.harmony        = { 1,    0,  0,    8  }             -- ctrl+h harmony helper
+    keys.noteNames      = { 1,    0,  0,    13 }            -- CTRL + m
     keys.options        = { 1,    0,  0,    15 }            -- ctrl+o options
     keys.panic          = { 0,    0,  0,    27 }            -- Escape = MIDI Panic!
     keys.insert         = { 0,    0,  0,    6909555 }       -- Insert
@@ -969,7 +1630,7 @@ function tracker:loadKeys( keySet )
     keys.octaveup       = { 0,    0,  0,    42 }            -- *
     keys.octavedown     = { 0,    0,  0,    47 }            -- /
     keys.scaleUp        = { 1,    1,  1,    267 }           -- CTRL + SHIFT + ALT + Num pad +
-    keys.scaleDown      = { 1,    1,  1,    269 }           -- CTRL + SHIFT + ALT + Num pad -    
+    keys.scaleDown      = { 1,    1,  1,    269 }           -- CTRL + SHIFT + ALT + Num pad -
     keys.envshapeup     = { 1,    0,  1,    30064 }         -- CTRL + SHIFT + /\
     keys.envshapedown   = { 1,    0,  1,    1685026670 }    -- CTRL + SHIFT + /\
     keys.help           = { 0,    0,  0,    26161 }         -- F1
@@ -999,23 +1660,32 @@ function tracker:loadKeys( keySet )
     keys.showLess       = { 1,    1,  0,    269 }           -- CTRL + Alt + -
     keys.addCol         = { 1,    0,  1,    11 }            -- CTRL + Shift + +
     keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -
+    keys.addColAll      = { 1,    0,  1,    1 }             -- CTRL + Shift + A
+    keys.addPatchSelect = { 1,    0,  1,    16 }            -- CTRL + Shift + P
     keys.tab            = { 0,    0,  0,    9 }             -- Tab
     keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
     keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F
-    
-    keys.off2           = { 0,    0,  0,    97 }            -- A
-    
+
+    local noteOff = '\\ or A'
+    if tracker.cfg.keyLayout == "AZERTY" then
+      keys.off2           = { 0,    0,  0,    113 }           -- Q
+      keys.off            = { 0,    0,  0,    -1 }
+      noteOff = 'Q'
+    else
+      keys.off2           = { 0,    0,  0,    97 }            -- A
+    end
+
     keys.shpatdown      = { 1,    0,  0,    26161 }         -- CTRL + F1
     keys.shpatup        = { 1,    0,  0,    26162 }         -- CTRL + F2
     keys.shcoldown      = { 1,    0,  1,    26161 }         -- CTRL + SHIFT + F1
     keys.shcolup        = { 1,    0,  1,    26162 }         -- CTRL + SHIFT + F2
     keys.shblockdown    = { 1,    1,  0,    26161 }         -- CTRL + ALT  + F1      same as shiftItemDown
     keys.shblockup      = { 1,    1,  0,    26162 }         -- CTRL + ALT  + F2      same as shiftItemUp
-    
+
     keys.cutPattern     = { 1,    0,  0,    26163 }         -- CTRL + F3
     keys.cutColumn      = { 1,    0,  1,    26163 }         -- CTRL + SHIFT + F3
     keys.cutBlock2      = { 1,    1,  0,    26163 }         -- CTRL + ALT + F3
-    
+
     keys.copyPattern    = { 1,    0,  0,    26164 }         -- CTRL + F4
     keys.copyColumn     = { 1,    0,  1,    26164 }         -- CTRL + SHIFT + F4
     keys.copyBlock2     = { 1,    1,  0,    26164 }         -- CTRL + ALT + F4
@@ -1023,32 +1693,48 @@ function tracker:loadKeys( keySet )
     keys.pastePattern   = { 1,    0,  0,    26165 }         -- CTRL + F5
     keys.pasteColumn    = { 1,    0,  1,    26165 }         -- CTRL + SHIFT + F5
     keys.pasteBlock2    = { 1,    1,  0,    26165 }         -- CTRL + ALT + F5
-    
+
     keys.patternOctDown = { 1,    0,  0,    6697265.0 }     -- CTRL + F11
     keys.patternOctUp   = { 1,    0,  0,    6697266.0 }     -- CTRL + F12
-    
+
     keys.colOctDown     = { 1,    0,  1,    6697265.0 }     -- CTRL + SHIFT + F11
     keys.colOctUp       = { 1,    0,  1,    6697266.0 }     -- CTRL + SHIFT + F12
-    
+
     keys.blockOctDown   = { 1,    1,  0,    6697265.0 }     -- CTRL + ALT + F11
     keys.blockOctUp     = { 1,    1,  0,    6697266.0 }     -- CTRL + ALT + F12
-    
+
     keys.deleteRow      = { 1,    0,  0,    6579564 }       -- Ctrl + Del
-    
-    keys.toggle         = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned    
-    
+
+    keys.toggle         = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.upByAdvance    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.downByAdvance  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.advanceDouble  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.advanceHalve   = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+
     keys.shiftpgdn      = { 0,    0,  1,    1885824110 }    -- Shift + PgDn
     keys.shiftpgup      = { 0,    0,  1,    1885828464 }    -- Shift + PgUp
     keys.shifthome      = { 0,    0,  1,    1752132965 }    -- Shift + Home
     keys.shiftend       = { 0,    0,  1,    6647396 }       -- Shift + End
-    
+
     keys.closeTracker   = { 0,    0,  0,    26168 }         -- F8
-    
+
+    keys.insertRow      = { 1,    0,  0,    6909555 }       -- Insert row CTRL+Ins
+    keys.removeRow      = { 1,    0,  0,    8 }             -- Remove Row CTRL+Backspace
+    keys.wrapDown       = { 1,    0,  1,    6909555 }       -- CTRL + SHIFT + Ins
+    keys.wrapUp         = { 1,    0,  1,    8 }             -- CTRL + SHIFT + Backspace
+
+    keys.nextTrack      = { 1,    0,  1,    1919379572.0 }  -- CTRL + Shift + ->
+    keys.prevTrack      = { 1,    0,  1,    1818584692.0 }  -- CTRL + Shift + <-
+
+    keys.toggleNoteMode = { 1,    0,  0,    20 }            -- CTRL + T / Toggle whether advance should move to next note rather than numeric value
+
     help = {
       { 'Shift + Note', 'Advance column after entry' },
-      { '\\ or A', 'Note OFF' },
-      { 'Insert/Backspace', 'Insert/Remove line' },   
-      { 'Del/Ctrl+Del', 'Delete/Delete Row' }, 
+      { noteOff, 'Note OFF' },
+      { 'Insert/Backspace', 'Insert/Remove line' },
+      { 'CTRL + -/Insert/Backspace', 'Mute/Insert/Remove Row' },
+      { 'Del/Ctrl+Del', 'Delete/Delete Row' },
+      { 'CTRL + Shift + Insert/Backspace', 'Wrap Forward/Backward' },
       { 'Space/Shift+Space', 'Play / Play From' },
       { 'Ctrl + O / Escape', 'Options / Stop all notes' },
       { 'Enter', 'Loop pattern' },
@@ -1059,13 +1745,13 @@ function tracker:loadKeys( keySet )
       { 'CTRL + C/X/V', 'Copy / Cut / Paste' },
       { 'CTRL + I', 'Interpolate' },
       { 'Shift + Del', 'Delete block' },
-      { 'CTRL + (SHIFT) + Z', 'Undo / Redo' }, 
+      { 'CTRL + (SHIFT) + Z', 'Undo / Redo' },
       { 'SHIFT + Alt + Up/Down', '[Res]olution Up/Down' },
-      { 'SHIFT + Alt + Return', '[Res]olution Commit' },  
-      { '*//', '[Oct]ave Up/Down' },     
+      { 'SHIFT + Alt + Return', '[Res]olution Commit' },
+      { '*//', '[Oct]ave Up/Down' },
       { 'CTRL + Shift + Up/Down', '[Env]elope change' },
       { 'CTRL + -/+ | SHIFT + -/=', '[Adv]ance De/Increase' },
-      { '+/-', 'MIDI [out] Up/Down' },  
+      { '+/-', 'MIDI [out] Up/Down' },
       { 'CTRL + Up/Down', 'Switch MIDI item' },
       { 'CTRL + Shift + Return', 'Duplicate pattern' },
       { 'CTRL + SHIFT + N', 'Rename pattern' },
@@ -1074,6 +1760,8 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },
       { 'F9/F10/F11/F12', 'Goto 0, 25, 50 and 75%%' },
       { 'F8', 'Close tracker' },
+      { 'CTRL + Shift + Click row indicator', 'Change highlighting (RMB resets)' },
+      { 'CTRL + Alt + Click row indicator', 'Change fixed indicator position' },
       { '---', '' },
       { 'CTRL + F1/F2', 'Shift pattern down/up' },
       { 'CTRL + Shift + F1/F2', 'Shift column down/up' },
@@ -1082,15 +1770,29 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Shift + F3/F4/F5', 'Cut/Copy/Paste column' },
       { 'CTRL + Alt + F3/F4/F5', 'Cut/Copy/Paste block' },
       { 'CTRL + F11/F12', 'Pattern octave up' },
-      { 'CTRL + Shift + F11/F12', 'Column octave up' },      
-      { 'CTRL + Alt + F11/F12', 'Block octave up' },    
-      { '---', '' },      
+      { 'CTRL + Shift + F11/F12', 'Column octave up' },
+      { 'CTRL + Alt + F11/F12', 'Block octave up' },
+      { 'CTRL + T', 'Toggle advance to next note mode' },
+      { '---', '' },
       { 'CTRL + H', 'Toggle harmonizer' },
       { 'CTRL + Click', 'Insert chord' },
       { 'Alt', 'Invert first note' },
-      { 'Shift', 'Invert second note' },   
+      { 'Shift', 'Invert second note' },
       { 'CTRL + Shift + Alt + +/-', 'Shift root note' },
-    }    
+      { 'CTRL + S / CTRL + A', '(un)Solo / (un)Mute' },      
+    }
+    elseif ( self.loadCustomKeys ) then
+      self:loadKeys("default")
+      self.loadCustomKeys(keyset)
+    else
+      reaper.ShowMessageBox("FATAL ERROR: Something went wrong with loading key layout. Please fix or delete userkeys.lua.", "FATAL ERROR", 0)
+    end
+
+  commandKeys = {}
+  for i,v in pairs( keys ) do
+    if ( ( type(v) == "table" ) and ( #v > 4 ) ) then
+      commandKeys[i] = v
+    end
   end
 end
 
@@ -1110,11 +1812,19 @@ tracker.signed["Width"] = 1
 tracker.armed = 0
 tracker.maxPatternNameSize = 13
 
-tracker.hint = '';
+tracker.hint = ''
 
 tracker.debug = 0
 
 keys.Cbase = 24-12
+
+local function swap( field, name1, name2 )
+    if ( name2 ) then
+      local t = field[name1]
+      keys.pitches[name1] = keys.pitches[name2]
+      keys.pitches[name2] = t
+    end
+end
 
 --- Base pitches
 --- Can customize the 'keyboard' here, if they aren't working for you
@@ -1144,7 +1854,7 @@ local function setKeyboard( choice )
     keys.pitches.i = 48-c
     keys.pitches.o = 50-c
     keys.pitches.p = 52-c
-  
+
     keys.octaves = {}
     keys.octaves['0'] = 0
     keys.octaves['1'] = 1
@@ -1168,16 +1878,16 @@ local function setKeyboard( choice )
     keys.pitches.m = 35-c
     keys.pitches[","] = 36-c
     keys.pitches["."] = 38-c
-    keys.pitches["/"] = 40-c    
-    
+    keys.pitches["/"] = 40-c
+
     keys.pitches.s = 25-c
     keys.pitches.d = 27-c
     keys.pitches.g = 30-c
     keys.pitches.h = 32-c
     keys.pitches.j = 34-c
     keys.pitches.l = 37-c
-    keys.pitches[';'] = 39-c    
-    
+    keys.pitches[';'] = 39-c
+
     keys.pitches.q = 36-c
     keys.pitches.w = 38-c
     keys.pitches.e = 40-c
@@ -1189,8 +1899,8 @@ local function setKeyboard( choice )
     keys.pitches.o = 50-c
     keys.pitches.p = 52-c
     keys.pitches['['] = 53-c
-    keys.pitches[']'] = 55-c    
-    
+    keys.pitches[']'] = 55-c
+
     keys.pitches['2'] = 37-c
     keys.pitches['3'] = 39-c
     keys.pitches['5'] = 42-c
@@ -1200,8 +1910,31 @@ local function setKeyboard( choice )
     keys.pitches['0'] = 51-c
     keys.pitches['='] = 54-c
     
+    keys.pitches[2] = 37-c
+    keys.pitches[3] = 39-c
+    keys.pitches[5] = 42-c
+    keys.pitches[6] = 44-c
+    keys.pitches[7] = 46-c
+    keys.pitches[9] = 49-c
+    keys.pitches[0] = 51-c
+
     keys.octaves = {}
+  elseif ( tracker.loadCustomKeyboard ) then
+    tracker.loadCustomKeyboard(choice)
+  else
+    reaper.ShowMessageBox("FATAL ERROR: Something went wrong with loading keyboard layout. Please fix or delete userkeys.lua.", "FATAL ERROR", 0)
   end
+
+  if ( tracker.cfg.keyLayout == "QWERTZ" ) then
+    swap(keys.pitches, "z", "y")
+  end
+  if ( tracker.cfg.keyLayout == "AZERTY" ) then
+    swap(keys.pitches, "a", "q")
+    swap(keys.pitches, "z", "w")
+    swap(keys.pitches, "m", ";")
+    swap(keys.pitches, ",", ";")
+  end
+
 end
 
 setKeyboard(tracker.cfg.keyboard)
@@ -1262,15 +1995,6 @@ CC[125] = "Omni on"
 CC[126] = "Mono on (Poly off)"
 CC[127] = "Poly on (Mono off)"
 
-local function print(...)
-  if ( not ... ) then
-    reaper.ShowConsoleMsg("nil value\n")
-    return
-  end
-  reaper.ShowConsoleMsg(...)
-  reaper.ShowConsoleMsg("\n")
-end
-
 function alpha(color, a)
   return { color[1], color[2], color[3], color[4] * a }
 end
@@ -1279,19 +2003,68 @@ function tracker:initColors()
   tracker.colors.linecolors  = alpha( tracker.colors.linecolor, 1.3 )
   tracker.colors.linecolor2s = alpha( tracker.colors.linecolor2, 1.3 )
   tracker.colors.linecolor3s = alpha( tracker.colors.linecolor3, 0.5 )
-  tracker.colors.linecolor5s = alpha( tracker.colors.linecolor5, 1.3 )    
+  tracker.colors.linecolor5s = alpha( tracker.colors.linecolor5, 1.3 )
 end
 
 local function get_script_path()
-  local info = debug.getinfo(1,'S');
+  local info = debug.getinfo(1,'S')
   local script_path = info.source:match[[^@?(.*[\/])[^\/]-$]]
   return script_path
+end
+
+local function findCommandID(name)
+  local commandID
+  local lines = {}
+  local fn = reaper.GetResourcePath() .. "/reaper-kb.ini"
+  for line in io.lines(fn) do
+    lines[#lines + 1] = line
+  end
+
+  for i,v in pairs(lines) do
+    if ( v:find(name, 1, true) ) then
+      local startidx = v:find("RS", 1, true)
+      local endidx = v:find(" ", startidx, true)
+      commandID = (v:sub(startidx,endidx-1))
+    end
+  end
+
+  if ( commandID ) then
+    return "_" .. commandID
+  end
+end
+
+function tracker:callScript(scriptName)
+  if ( not scriptName ) then
+    reaper.ShowMessageBox("Error callScript called without specifying a script", "Error", 0)
+    return
+  end
+
+  local cmdID = findCommandID( scriptName )
+
+  if ( cmdID ) then
+    local cmd = reaper.NamedCommandLookup( cmdID )
+    if ( cmd ) then
+      reaper.Main_OnCommand(cmd, 0)
+    else
+      reaper.ShowMessageBox("Failed to load script "..cmd, "Error", 0)
+    end
+  end
+end
+
+-- Flip channels if we are retrieving a program change
+local function encodeProgramChange( chanmsg, msg2, msg3 )
+  if ( chanmsg == 192 ) then
+    msg3 = msg2
+    msg2 = tracker.PCloc
+  end
+
+  return msg2, msg3
 end
 
 -- Print contents of `tbl`, with indentation.
 -- `indent` sets the initial level of indentation.
 function tprint (tbl, indent, maxindent, verbose)
-  if ( type(tbl) == "table" ) then 
+  if ( type(tbl) == "table" ) then
     if not maxindent then maxindent = 2 end
     if not indent then indent = 0 end
     for k, v in pairs(tbl) do
@@ -1317,11 +2090,11 @@ function tprint (tbl, indent, maxindent, verbose)
       end
     end
   else
-    if ( type(tbl) == "function" ) then 
+    if ( type(tbl) == "function" ) then
       print('Function supplied to tprint instead of table')
     end
   end
-end 
+end
 
 local function validHex( char )
   hex = {'A','B','C','D','E','F','a','b','c','d','e','f','0','1','2','3','4','5','6','7','8','9'}
@@ -1339,7 +2112,12 @@ end
 function tracker:generatePitches()
   local notes = { 'C-', 'C#', 'D-', 'D#', 'E-', 'F-', 'F#', 'G-', 'G#', 'A-', 'A#', 'B-' }
   local pitches = {}
-  j = 12
+  j = 0
+  for k,v in pairs(notes) do
+    pitches[j] = v.."M"
+    j = j + 1
+  end
+  
   for i = 0,12 do
     for k,v in pairs(notes) do
       pitches[j] = v..i
@@ -1352,8 +2130,127 @@ end
 function namerep(str)
   str = str:gsub(" / ", "/")
   str = str:gsub("GUI", "")
-  
+
   return str
+end
+
+function tracker:linkCC_channel(modmode, ch, data, master, datafield, idx, colsizes, padsizes, grouplink, headers, headerW, hints)
+  if ( modmode == 0 ) then
+    -- Single CC display
+    master[#master+1]       = 1
+    datafield[#datafield+1] = 'mod1'
+    idx[#idx+1]             = 0
+    colsizes[#colsizes+1]   = 1
+    padsizes[#padsizes+1]   = 0
+    grouplink[#grouplink+1] = {1, 2, 3}
+    headers[#headers+1]     = 'CC'
+    headerW[#headerW+1]     = 4
+    hints[#hints+1]         = "CC type"
+
+    master[#master+1]       = 0
+    datafield[#datafield+1] = 'mod2'
+    idx[#idx+1]             = 0
+    colsizes[#colsizes+1]   = 1
+    padsizes[#padsizes+1]   = 0
+    grouplink[#grouplink+1] = {-1, 1, 2}
+    headers[#headers+1]     = ''
+    headerW[#headerW+1]     = 0
+    hints[#hints+1]         = "CC type"
+
+    master[#master+1]       = 0
+    datafield[#datafield+1] = 'mod3'
+    idx[#idx+1]             = 0
+    colsizes[#colsizes+1]   = 1
+    padsizes[#padsizes+1]   = 0
+    grouplink[#grouplink+1] = {-2, -1, 1}
+    headers[#headers+1]     = ''
+    headerW[#headerW+1]     = 0
+    hints[#hints+1]         = "CC value"
+
+    master[#master+1]       = 0
+    datafield[#datafield+1] = 'mod4'
+    idx[#idx+1]             = 0
+    colsizes[#colsizes+1]   = 1
+    padsizes[#padsizes+1]   = 2
+    grouplink[#grouplink+1] = {-3, -2, -1}
+    headers[#headers+1]     = ''
+    headerW[#headerW+1]     = 0
+    hints[#hints+1]         = "CC value"
+  else
+    -- Display with CC commands separated per column
+    local allmodtypes = data.modtypes
+    if ( not allmodtypes ) then
+      return
+    end
+
+    local isProgramChange = {}
+    local modtypes = {}
+    local idxes = {}
+
+    -- Only show for this channel
+    local skip = self.CCjump
+    if ( ch > -1 ) then
+      local k = 1
+      for j = 1,#allmodtypes do
+        -- Hack to allow mapping Program Changes beyond CC events
+        local isPC = 0
+        if ( allmodtypes[j] > self.PCloc ) then
+          isPC = 1
+        end
+
+        if allmodtypes[j] >= skip*ch + self.PCloc*isPC and allmodtypes[j] < skip*(ch+1) + self.PCloc*isPC then
+          isProgramChange[k] = isPC
+          modtypes[k] = allmodtypes[j]
+          idxes[k] = j
+          k = k + 1
+        end
+      end
+    end
+
+    if ( modtypes ) then
+      for j = 1,#modtypes do
+        master[#master+1]       = 1
+        datafield[#datafield+1] = 'modtxt1'
+        idx[#idx+1]             = idxes[j]
+        colsizes[#colsizes+1]   = 1
+        padsizes[#padsizes+1]   = 0
+        grouplink[#grouplink+1] = {1}
+        headerW[#headerW+1]     = 2
+
+        local actualCC = modtypes[j] - math.floor(modtypes[j] / self.CCjump) * self.CCjump
+        if ( isProgramChange[j] == 1 ) then
+          headers[#headers+1]     = string.format('PC')
+          hints[#hints+1]         = string.format('PC')
+        else
+          headers[#headers+1]     = string.format('CC')
+          if ( CC[actualCC] ) then
+            hints[#hints+1]         = string.format('%s (%d)', CC[actualCC], actualCC)
+          else
+            hints[#hints+1]         = string.format('CC command %2d', actualCC)
+          end
+        end
+
+        master[#master+1]       = 0
+        datafield[#datafield+1] = 'modtxt2'
+        idx[#idx+1]             = idxes[j]
+        colsizes[#colsizes+1]   = 1
+        padsizes[#padsizes+1]   = 1
+        grouplink[#grouplink+1] = {-1}
+        headers[#headers+1]     = ''
+        headerW[#headerW+1]     = 0
+        local actualCC = modtypes[j] - math.floor(modtypes[j] / self.CCjump) * self.CCjump
+        if ( isProgramChange[j] == 1 ) then
+          hints[#hints+1]         = string.format('PC')
+        else
+          if ( CC[actualCC] ) then
+            hints[#hints+1]         = string.format('%s (%d)', CC[actualCC], actualCC)
+          else
+            hints[#hints+1]         = string.format('CC command %2d', actualCC)
+          end
+        end
+      end
+    end
+  end
 end
 
 ------------------------------
@@ -1364,97 +2261,22 @@ function tracker:linkData()
   local data        = self.data
   local showDelays  = self.showDelays
   local showEnd     = self.showEnd
-  
+
   -- Here is where the linkage between the display and the actual data fields in "tracker" is made
   local colsizes  = {}
   local datafield = {}
   local idx       = {}
-  local padsizes  = {}  
+  local padsizes  = {}
   local headers   = {}
   local headerW   = {}
   local grouplink = {}    -- Stores what other columns are linked to this one (some act as groups)
   local hints     = {}
   local master    = {}
-  
+
   if ( self.showMod == 1 ) then
-    if ( self.modMode == 0 ) then
-      -- Single CC display
-      master[#master+1]       = 1
-      datafield[#datafield+1] = 'mod1'
-      idx[#idx+1]             = 0
-      colsizes[#colsizes+1]   = 1
-      padsizes[#padsizes+1]   = 0
-      grouplink[#grouplink+1] = {1, 2, 3}
-      headers[#headers+1]     = 'CC'
-      headerW[#headerW+1]     = 4
-      hints[#hints+1]         = "CC type"
-  
-      master[#master+1]       = 0
-      datafield[#datafield+1] = 'mod2'
-      idx[#idx+1]             = 0
-      colsizes[#colsizes+1]   = 1
-      padsizes[#padsizes+1]   = 0
-      grouplink[#grouplink+1] = {-1, 1, 2}
-      headers[#headers+1]     = ''
-      headerW[#headerW+1]     = 0
-      hints[#hints+1]         = "CC type"
-      
-      master[#master+1]       = 0
-      datafield[#datafield+1] = 'mod3'
-      idx[#idx+1]             = 0
-      colsizes[#colsizes+1]   = 1
-      padsizes[#padsizes+1]   = 0
-      grouplink[#grouplink+1] = {-2, -1, 1}
-      headers[#headers+1]     = ''
-      headerW[#headerW+1]     = 0
-      hints[#hints+1]         = "CC value"
-      
-      master[#master+1]       = 0    
-      datafield[#datafield+1] = 'mod4'
-      idx[#idx+1]             = 0
-      colsizes[#colsizes+1]   = 1
-      padsizes[#padsizes+1]   = 2
-      grouplink[#grouplink+1] = {-3, -2, -1}
-      headers[#headers+1]     = ''
-      headerW[#headerW+1]     = 0
-      hints[#hints+1]         = "CC value"  
-    else
-      -- Display with CC commands separated per column
-      local modtypes = data.modtypes
-        if ( modtypes ) then
-        for j = 1,#modtypes do
-          master[#master+1]       = 1
-          datafield[#datafield+1] = 'modtxt1'
-          idx[#idx+1]             = j
-          colsizes[#colsizes+1]   = 1
-          padsizes[#padsizes+1]   = 0
-          grouplink[#grouplink+1] = {1}
-          headers[#headers+1]     = string.format('CC')
-          headerW[#headerW+1]     = 2
-          if ( CC[modtypes[j]] ) then
-            hints[#hints+1]         = string.format('%s (%d)', CC[modtypes[j]], modtypes[j])
-          else
-            hints[#hints+1]         = string.format('CC command %2d', modtypes[j])
-          end
-        
-          master[#master+1]       = 0
-          datafield[#datafield+1] = 'modtxt2'
-          idx[#idx+1]             = j
-          colsizes[#colsizes+1]   = 1
-          padsizes[#padsizes+1]   = 1
-          grouplink[#grouplink+1] = {-1}
-          headers[#headers+1]     = ''
-          headerW[#headerW+1]     = 0
-          if ( CC[modtypes[j]] ) then
-            hints[#hints+1]         = string.format('%s (%d)', CC[modtypes[j]], modtypes[j])
-          else
-            hints[#hints+1]         = string.format('CC command %2d', modtypes[j])
-          end
-        end
-      end
-    end
+    tracker:linkCC_channel(math.max(self.modMode, self.cfg.channelCCs, self.tracker_samples), 0, data, master, datafield, idx, colsizes, padsizes, grouplink, headers, headerW, hints)
   end
-  
+
   if ( fx.names ) then
     for j = 1,#fx.names do
       master[#master+1]       = 1
@@ -1466,7 +2288,7 @@ function tracker:linkData()
       headers[#headers+1]     = 'FX'
       headerW[#headerW+1]     = 2
       hints[#hints+1]         = namerep(fx.names[j])
-      
+
       master[#master+1]       = 0
       datafield[#datafield+1] = 'fx2'
       idx[#idx+1]             = j
@@ -1478,7 +2300,7 @@ function tracker:linkData()
       hints[#hints+1]         = namerep(fx.names[j])
     end
   end
-  
+
   master[#master+1]       = 1
   datafield[#datafield+1] = 'legato'
   idx[#idx+1]             = 0
@@ -1488,26 +2310,36 @@ function tracker:linkData()
   headers[#headers+1]     = string.format( 'L' )
   headerW[#headerW+1]     = 1
   hints[#hints+1]         = 'Legato toggle'
-  
+
+  -- If we are opening the tracker without an xpos, then set it to the first note field
+  if self.xposunset then
+    self.xpos = #idx+1
+    self.xposunset = nil
+  end
+
   for j = 1,self.displaychannels do
     local hasDelay = self.showDelays[j] or 0
     local hasEnd   = self.showEnd[j] or 0
-    
+
     -- Link up the note fields
     master[#master+1]       = 1
     datafield[#datafield+1] = 'text'
     idx[#idx+1]             = j
-    colsizes[#colsizes + 1] = 3
+    colsizes[#colsizes + 1] = 3 * tracker.grid.fontScaler
     padsizes[#padsizes + 1] = 1
     if ( self.selectionBehavior == 1 ) then
       grouplink[#grouplink+1] = {1, 2}
     else
-      grouplink[#grouplink+1] = {0}    
+      grouplink[#grouplink+1] = {0}
     end
-    headers[#headers + 1]   = string.format('Ch%2d', j)    
+    if self.muted_channels and self.muted_channels[j] then
+      headers[#headers + 1]   = string.format('(Ch%2d)', j)
+    else
+      headers[#headers + 1]   = string.format('Ch%2d', j)
+    end
     headerW[#headerW+1]     = 6 + 3 * hasDelay + 3 * hasEnd
     hints[#hints+1]         = string.format('Note channel %2d', j)
-    
+
     -- Link up the velocity fields
     master[#master+1]       = 0
     datafield[#datafield+1] = 'vel1'
@@ -1521,28 +2353,32 @@ function tracker:linkData()
     end
     headers[#headers + 1]   = ''
     headerW[#headerW+1]     = 2
-    hints[#hints+1]         = string.format('Velocity channel %2d', j) 
-    
+    hints[#hints+1]         = string.format('Velocity channel %2d', j)
+
     -- Link up the velocity fields
     master[#master+1]       = 0
     datafield[#datafield+1] = 'vel2'
     idx[#idx+1]             = j
     colsizes[#colsizes + 1] = 1
-    padsizes[#padsizes + 1] = 2
+    padsizes[#padsizes + 1] = 2 - math.max(self.cfg.channelCCs, self.tracker_samples)
     if ( self.selectionBehavior == 1 ) then
       grouplink[#grouplink+1] = {-2, -1}
-    else       
-      grouplink[#grouplink+1] = {-1}    
+    else
+      grouplink[#grouplink+1] = {-1}
     end
-    headers[#headers + 1]   = ''     
+    headers[#headers + 1]   = ''
     headerW[#headerW+1]     = 0
     hints[#hints+1]         = string.format('Velocity channel %2d', j)
-    
+
+    if ( math.max(self.cfg.channelCCs, self.tracker_samples) == 1 ) then
+      tracker:linkCC_channel(1, j, data, master, datafield, idx, colsizes, padsizes, grouplink, headers, headerW, hints)
+    end
+
     -- Link up the delay fields (if active)
     if ( hasDelay == 1 ) then
       padsizes[#padsizes]     = 1
-      
-      master[#master+1]       = 0    
+
+      master[#master+1]       = 0
       datafield[#datafield+1] = 'delay1'
       idx[#idx+1]             = j
       colsizes[#colsizes + 1] = 1
@@ -1553,30 +2389,30 @@ function tracker:linkData()
         grouplink[#grouplink+1] = {1}
       end
       headers[#headers + 1]   = ''
-      headerW[#headerW+1]     = 0 
-      hints[#hints+1]         = string.format('Note delay channel %2d', j) 
-  
+      headerW[#headerW+1]     = 0
+      hints[#hints+1]         = string.format('Note delay channel %2d', j)
+
       -- Link up the delay fields
-      master[#master+1]       = 0      
+      master[#master+1]       = 0
       datafield[#datafield+1] = 'delay2'
       idx[#idx+1]             = j
       colsizes[#colsizes + 1] = 1
       padsizes[#padsizes + 1] = 2
       if ( self.selectionBehavior == 1 ) then
         grouplink[#grouplink+1] = {-1}
-      else       
-        grouplink[#grouplink+1] = {-1}    
+      else
+        grouplink[#grouplink+1] = {-1}
       end
       headers[#headers + 1]   = ''
-      headerW[#headerW+1]     = 0  
+      headerW[#headerW+1]     = 0
       hints[#hints+1]         = string.format('Note delay channel %2d', j)
     end
-    
+
     -- Link up the delay fields (if active)
     if ( hasEnd == 1 ) then
       padsizes[#padsizes]     = 1
-      
-      master[#master+1]       = 0    
+
+      master[#master+1]       = 0
       datafield[#datafield+1] = 'end1'
       idx[#idx+1]             = j
       colsizes[#colsizes + 1] = 1
@@ -1587,11 +2423,11 @@ function tracker:linkData()
         grouplink[#grouplink+1] = {1}
       end
       headers[#headers + 1]   = ''
-      headerW[#headerW+1]     = 0 
-      hints[#hints+1]         = string.format('Note end channel %2d', j) 
-  
+      headerW[#headerW+1]     = 0
+      hints[#hints+1]         = string.format('Note end channel %2d', j)
+
       -- Link up the delay fields
-      master[#master+1]       = 0      
+      master[#master+1]       = 0
       datafield[#datafield+1] = 'end2'
       idx[#idx+1]             = j
       colsizes[#colsizes + 1] = 1
@@ -1599,14 +2435,14 @@ function tracker:linkData()
       if ( self.selectionBehavior == 1 ) then
         grouplink[#grouplink+1] = {-1}
       else
-        grouplink[#grouplink+1] = {-1}    
+        grouplink[#grouplink+1] = {-1}
       end
       headers[#headers + 1]   = ''
-      headerW[#headerW+1]     = 0  
+      headerW[#headerW+1]     = 0
       hints[#hints+1]         = string.format('Note end channel %2d', j)
     end
   end
-  
+
   local link = {}
   link.datafields = datafield
   link.headers    = headers
@@ -1629,6 +2465,12 @@ end
 -- Establish what is plotted
 ------------------------------
 function tracker:updatePlotLink()
+  if ( self.colors.patternFont and self.colors.patternFontSize ) then
+    gfx.setfont(1, self.colors.patternFont, self.colors.patternFontSize)
+  else
+    gfx.setfont(0)
+  end
+
   local plotData = {}
   local grid = tracker.grid
   local originx = grid.originx
@@ -1646,7 +2488,7 @@ function tracker:updatePlotLink()
   local datafields, padsizes, colsizes, idxfields, headers, headerW, grouplink, hints = self:grabLinkage()
   self.max_xpos = #headers
   self.max_ypos = self.rows
-  
+
   -- Generate x locations for the columns
   local fov = self.fov
   local xloc = {}
@@ -1659,23 +2501,24 @@ function tracker:updatePlotLink()
   local description = {}
   local x = originx
 --  for j = fov.scrollx+1,math.min(#colsizes,fov.width+fov.scrollx) do
-  local q
+  local q = 0
   for j = fov.scrollx+1,#colsizes do
-    xpred = x + colsizes[j] * dx + padsizes[j] * dx
-    if ( xpred > fov.abswidth-dx ) then
-      break;
-    end
     xloc[#xloc + 1] = x
     xwidth[#xwidth + 1] = colsizes[j] * dx + padsizes[j]
     xlink[#xlink + 1] = idxfields[j]
     dlink[#dlink + 1] = datafields[j]
     glink[#glink + 1] = grouplink[j]
     header[#header + 1] = headers[j]
-    headerWidths[#headerWidths + 1] = .5*(headerW[j]-1)*tracker.grid.dx - .25*gfx.measurestr(headers[j])
+    headerWidths[#headerWidths + 1] = math.ceil( .5*(headerW[j])*dx - .5*gfx.measurestr(headers[j].." ") )
     description[#hints + 1] = hints[j]
     x = x + colsizes[j] * dx + padsizes[j] * dx
     q = j
+
+    if ( (x-2*grid.itempadx) > (fov.abswidth-1.5*originx) ) then
+      break
+    end
   end
+  
   fov.width = q-fov.scrollx
   plotData.xloc = xloc
   plotData.xwidth = xwidth
@@ -1694,7 +2537,10 @@ function tracker:updatePlotLink()
   local yloc = {}
   local yheight = {}
   local y = originy
-  for j = 0,math.min(self.rows-1, fov.height-1) do
+
+  local vrows = self:getVRows()
+
+  for j = 0,math.max(1, vrows-1) do
     yloc[#yloc + 1] = y
     yheight[#yheight + 1] = 0.7 * dy
     y = y + dy
@@ -1705,29 +2551,84 @@ function tracker:updatePlotLink()
   plotData.totalheight = y - originy
   plotData.ystart = originy
   plotData.textSize = dx
-  
+
   self.plotData = plotData
-  
-  self.scrollbar:setPos( plotData.xstart + plotData.totalwidth, yloc[1]-plotData.yshift, plotData.totalheight - plotData.itempady )
+  self.scrollbar:setPos( plotData.xstart + plotData.totalwidth, yloc[1] - plotData.yshift, plotData.totalheight - plotData.itempady )
 end
 
 ------------------------------
 -- Cursor and play position
 ------------------------------
 function tracker:normalizePositionToSelf(cpos)
-  local loc = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
-  local loc2 = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH") 
-  local row = ( cpos - loc ) * self.rowPerSec
-  row = row - self.fov.scrolly
-  local norm =  row / math.min(self.rows, self.fov.height)
-  
+  local norm = 0
+  if ( reaper.ValidatePtr2(0, self.item, "MediaItem*") ) then
+    local loc = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+    local loc2 = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
+    self.itemStart = loc
+    local row = ( cpos - loc ) * self.rowPerSec
+    row = row - self.fov.scrolly
+    local vrows = self:getVRows()
+    norm =  row / vrows
+  else
+    self:tryPreviousItem()
+  end
+
   return norm
+end
+
+function tracker:getVRows()
+  if (tracker.cfg.fixedIndicator == 1) then
+    return self.fov.height
+  end
+
+  return math.min(self.rows, self.fov.height)
+end
+
+-- Used to be self:terminate()
+function tracker:lostItem()
+  tracker.track     = nil
+  tracker.take      = nil
+  tracker.rows      = 0
+  tracker.max_xpos  = 8
+  tracker.max_ypos  = 1
+  tracker.renaming  = 0
+  tracker.fov.scrolly = 0
+end
+
+-- This function is called whenever our item goes missing. It has a few heuristics for
+-- finding a new item to focus on. First, see if anything is at the position our last
+-- item just started at. If not, see if our buffer of previous items contains a usable
+-- item (the case which triggers after CTRL+Z), then just find the nearest item on this
+-- track. If even that fails, terminate HT.
+function tracker:tryPreviousItem()
+  if ( reaper.ValidatePtr2(0, self.track, "MediaTrack*") ) then
+    if ( self.itemStart and self:findTakeStartingAtSongPos(self.itemStart) ) then
+      -- This was probably a replacement event.
+      return
+    elseif ( self.lastItem and #self.lastItem > 0 ) then
+      local tryItem = self.lastItem[#self.lastItem]
+      self.lastItem[#self.lastItem] = nil
+      if ( reaper.ValidatePtr2(0, tryItem, "MediaItem*") ) then
+        self:useItem(tryItem)
+      else
+        self:tryPreviousItem()
+      end
+    elseif ( self.itemStart and self:findTakeClosestToSongPos(self.itemStart) ) then
+      -- We switched to a different MIDI item
+      return
+    else
+      self:lostItem()
+    end
+    self.itemStart = nil
+  else
+    self:lostItem()
+  end
 end
 
 function tracker:getLoopLocations()
   local lStart, lEnd = reaper.GetSet_LoopTimeRange2(0, false, 1, 0, 0, false)
   lStart = self:normalizePositionToSelf( lStart )
-  lEnd = self:normalizePositionToSelf( lEnd )    
+  lEnd = self:normalizePositionToSelf( lEnd )
   return lStart, lEnd
 end
 
@@ -1800,27 +2701,74 @@ function scrollbar.create( w )
     self.x = x
     self.y = y
     self.h = h
-    
-    self.ytop = ytop
-    self.yend = yend
-  end
-  self.setExtent = function( self, ytop, yend )
+    self.loc = self.loc or 0
+
     self.ytop = ytop
     self.yend = yend
   end
   
+  self.setExtent = function( self, ytop, yend, ypos, rows )
+    self.ytop = ytop
+    self.yend = yend
+    self.loc = ypos
+    self.ymarker = ytop + (ypos - ytop) - .5 * (self.yend-self.ytop)/rows
+    self.nrows = rows
+  end
+
   self.mouseUpdate = function(self, mx, my, left)
-    local loc
-    if ( left == 1 ) then
-      if ( ( mx > self.x ) and ( mx < self.x + self.w ) ) then
-        if ( ( my > self.y ) and ( my < self.y + self.h ) ) then
-          loc = ( my - self.y ) / self.h
+    if ( behavior == 1 ) then
+      if ( left == 1 ) then
+        if ( ( mx > self.x ) and ( mx < self.x + self.w ) ) then
+          if ( ( my > self.y ) and ( my < self.y + self.h ) ) then
+            self.loc = ( my - self.y ) / self.h
+          end
         end
+        return self.loc
       end
-      return loc
+    else
+      if ( left == 1 ) then
+        if ( ( mx > self.x ) and ( mx < self.x + self.w ) ) or self.dragging then
+          if ( ( my > self.y ) and ( my < self.y + self.h ) ) or self.dragging then
+            if ( self.ly and my ~= self.ly and not self.dragging ) then
+              mouse_cap = CaptureModes.SCROLLBAR
+              self.dragging = 1
+              self.cdy = 0
+            end
+
+            local diff = (self.yend - self.ytop) * tracker.fov.height / (tracker.fov.height - 1)
+            local totLen = 1 + diff
+
+            if self.dragging then
+              if ( tracker.cfg.fixedIndicator == 1 ) then
+                self.cdy = self.cdy + ((my - self.ly) / self.h) * totLen
+              else
+                self.cdy = self.cdy + ((my - self.ly) / self.h)
+              end
+
+              local dy = math.floor(self.cdy*self.nrows)/self.nrows
+              self.cdy = self.cdy - dy
+              
+              self.loc = math.max(0.0, math.min(1.0, self.loc + dy))
+            else
+              if ( tracker.cfg.fixedIndicator == 1 ) then
+                local newLoc = (( my - self.y ) / self.h) * totLen - tracker.cfg.fixedIndLoc * diff
+                self.loc = math.max(0.0, math.min(1.0, newLoc))
+              else
+                self.loc = ( my - self.y ) / self.h
+              end
+            end            
+          end
+        end
+        self.ly = my
+        return self.loc
+      else
+        self.dragging = nil
+      end
     end
+
+    self.ly = my
   end
-  
+
   self.draw = function(self, colors)
     local x = self.x
     local y = self.y
@@ -1828,15 +2776,37 @@ function scrollbar.create( w )
     local h = self.h
     local ytop = self.ytop
     local yend = self.yend
-    
-    gfx.set(table.unpack(colors.scrollbar1))
-    gfx.rect(x, y, w, h)
-    gfx.set(table.unpack(colors.scrollbar2))
-    gfx.rect(x+1, y+1, w-2, h-2)
-    gfx.set(table.unpack(colors.scrollbar1))
-    gfx.rect(x+2, y + ytop*h+2, w-4, (yend-ytop)*h-3)
+
+    if ( tracker.cfg.fixedIndicator == 1 ) then
+      gfx.set(table.unpack(colors.scrollbar1))
+      gfx.rect(x, y, w, h)
+      gfx.set(table.unpack(colors.scrollbar2))
+      gfx.rect(x+1, y+1, w-2, h-2)
+
+      local fixedIndLoc = tracker.cfg.fixedIndLoc
+      local diff = (yend - ytop) * tracker.fov.height / (tracker.fov.height - 1)
+      local totLen = 1 + diff
+
+      ytop = (ytop + fixedIndLoc * diff) / totLen
+      yend = (yend + fixedIndLoc * diff) / totLen
+      local ymarker = (self.ymarker + fixedIndLoc * diff) / totLen
+
+      gfx.set(table.unpack(colors.scrollbar1))
+      gfx.rect(x+2, y + ytop*h+2, w-4, (yend-ytop)*h-3)
+      gfx.set(table.unpack(colors.scrollbar1))
+      gfx.rect(x-2, y + ymarker*h-1, w+4, 2)
+    else
+      gfx.set(table.unpack(colors.scrollbar1))
+      gfx.rect(x, y, w, h)
+      gfx.set(table.unpack(colors.scrollbar2))
+      gfx.rect(x+1, y+1, w-2, h-2)
+      gfx.set(table.unpack(colors.scrollbar1))
+      gfx.rect(x+2, y + ytop*h+2, w-4, (yend-ytop)*h-3)
+      gfx.set(table.unpack(colors.scrollbar1))
+      gfx.rect(x-2, y + self.ymarker*h-1, w+4, 2)
+    end
   end
-  
+
   return self
 end
 
@@ -1851,12 +2821,18 @@ function tracker:getSizeIndicatorLocation()
   if ( self.cfg.stickToBottom == 1 ) then
     yl = self.windowHeight - yheight[1]*2
   else
-    yl = yloc[#yloc] + 1 * yheight[1] + plotData.itempady
+    yl = yloc[#yloc] + yheight[1] + plotData.itempady
   end
   local xm = xl + plotData.textSize*3
-  local ym = yl+yheight[1]-6
-  
+  local ym = yl + yheight[1] - plotData.itempady
+
   return xl, yl, xm, ym
+end
+
+local function draw_ellipsis(x, py)
+  gfx.rect(x,  py, 1, 1)
+  gfx.rect(x+2, py, 1, 1)
+  gfx.rect(x+4, py, 1, 1)
 end
 
 function tracker:writeField(cdata, ellipsis, x, y, customFont)
@@ -1864,24 +2840,18 @@ function tracker:writeField(cdata, ellipsis, x, y, customFont)
     if ( cdata == -1 ) then
       if ( ellipsis == 1 ) then
         local py = y + 6
-        gfx.rect(x,  py, 1, 1)
-        gfx.rect(x+2, py, 1, 1)
-        gfx.rect(x+4, py, 1, 1)            
-        gfx.rect(x+9, py, 1, 1)
-        gfx.rect(x+11, py, 1, 1)
-        gfx.rect(x+13, py, 1, 1) 
-        gfx.rect(x+18, py, 1, 1)
-        gfx.rect(x+20, py, 1, 1)
-        gfx.rect(x+22, py, 1, 1)
+        local delta = customFont and customFont[1] or 9
+        x = x + 2
+        draw_ellipsis(x, py)
+        draw_ellipsis(x + delta, py)
+        draw_ellipsis(x + delta*2, py)
       else
         gfx.printf("...", cdata)
       end
     else
       if ( ellipsis == 1 ) then
         local py = y + 6
-        gfx.rect(x,  py, 1, 1)
-        gfx.rect(x+2, py, 1, 1)
-        gfx.rect(x+4, py, 1, 1)
+        draw_ellipsis(x, py)
       else
         gfx.printf(".", cdata)
       end
@@ -1892,7 +2862,7 @@ function tracker:writeField(cdata, ellipsis, x, y, customFont)
       if ( not cdata ) then
         return
       end
-      
+
       for i=1,#cdata do
         gfx.x = cx
         gfx.y = y + customFont[2]
@@ -1900,7 +2870,279 @@ function tracker:writeField(cdata, ellipsis, x, y, customFont)
         cx = cx + customFont[1]
       end
     else
-      gfx.printf("%s", cdata)    
+      gfx.printf("%s", cdata)
+    end
+  end
+end
+
+function tracker:spirals(mode)
+  self.sim = self.sim or {}
+  self.sim.boost_galaxy = ( self.sim.boost_galaxy or 0 ) + (gfx.mouse_cap & 1 > 0 and 1 or 0)
+  self.sim.boost_galaxy2 = ( self.sim.boost_galaxy2 or 0 ) + (gfx.mouse_cap & 2 > 0 and 1 or 0)
+  
+  local alpha = 0
+  local theta = 0
+  local r = 0
+  local ry = 0
+  local ecc = 1.41
+  local N_particles = 6000
+  
+  local cx, cy
+  if mode < 10 then
+    cx = .5*gfx.w
+    cy = .5*gfx.h
+  end
+  
+  local color = self.colors.shadercolor  
+  gfx.set(color[1], color[2], color[3], .35)
+  
+  local dr = .45 * gfx.h / N_particles
+  
+  local t = 4*math.sin(.00001*reaper.time_precise() + .00001*self.sim.boost_galaxy)
+  local t2 = math.sin(self.sim.boost_galaxy2)
+  gfx.mode = 1
+  alpha = reaper.time_precise();
+  for i=1,N_particles do
+    if mode == 1 then
+      cx = .5*gfx.w + .02*gfx.w*math.sin(alpha+reaper.time_precise())
+      cy = .5*gfx.h + .02*gfx.h*math.cos(alpha+reaper.time_precise())
+    end
+  
+    x = cx + r * math.cos(alpha)*math.cos(theta) - r * ecc * math.sin(alpha)*math.sin(theta)
+    y = cy + r * math.cos(alpha)*math.sin(theta) + r * ecc * math.sin(alpha)*math.cos(theta)
+    
+    r = r + dr;
+    theta = theta + .3 + t2;
+    alpha = alpha + t;
+    gfx.circle(x, y, 1, 1)
+  end
+  gfx.mode = 0
+end
+
+function tracker:simulate_shallow_water(mode, movement)
+ local function create_2d_table(NX, NY)
+    local table = {}
+    for i = 1, (NX*NY + 1)*2 do
+      table[i] = 0;
+    end
+    return table
+  end
+
+  local xs = 8;
+  local sim_w = (gfx.w + xs);
+  local sim_h = (gfx.h + xs);
+  local Nx = math.floor(sim_w/xs);
+  local Ny = math.floor(sim_h/xs);
+  dtg = 9.81*0.1;
+  dth = .4*0.1;
+  
+  local cx, cy;
+  local dUx, dUy, dHx, dHy, h
+  local height = (self.sim and self.sim.height) or create_2d_table(Nx, Ny)
+  local velocity_prediction_x = (self.sim and self.sim.velocity_prediction_x) or create_2d_table(Nx, Ny)
+  local velocity_prediction_y = (self.sim and self.sim.velocity_prediction_y) or create_2d_table(Nx, Ny)
+  local velocity_x = (self.sim and self.sim.velocity_x) or create_2d_table(Nx, Ny)
+  local velocity_y = (self.sim and self.sim.velocity_y) or create_2d_table(Nx, Ny)
+
+  if movement == 0 then
+    cx = math.floor((Nx-4) * math.random() + 2);
+    cy = math.floor((Ny-4) * math.random() + 2);
+    if math.random() > .6 then
+      height[cx * Ny + cy + 1] = 8*(.5+math.random());
+    end
+  else
+    local time = .7 * reaper.time_precise()
+    local sx = ( math.sin(time) + math.sin(3.6*time) ) / 2
+    local sy = ( math.cos(time) + math.sin(2.6*time) ) / 2
+    cx = math.floor(.5*Nx + .4*Nx * sx )
+    cy = math.floor(.5*Ny + .4*Ny * sy )
+    height[cx * Ny + cy + 1] = 6;
+    
+    local time = .7 * reaper.time_precise()
+    local sx = ( math.sin(time) + math.sin(3.5*time) ) / 2
+    local sy = ( math.cos(time) + math.sin(2.5*time) ) / 2
+    cx = math.floor(.5*Nx + .4*Nx * sx )
+    cy = math.floor(.5*Ny + .4*Ny * sy )
+    height[cx * Ny + cy + 1] = 4;
+  end
+  
+  if gfx.mouse_cap > 0 then
+    for dx = -1, 1 do
+      for dy = -1, 1 do
+        cx = math.floor(gfx.mouse_x / xs) + dx;
+        cy = math.floor(gfx.mouse_y / xs) + dy;
+        if cx > 0 and cy > 0 and cx < Nx and cy < Ny then
+            height[cx * Ny + cy + 1] = height[cx * Ny + cy + 1] + 3;
+            if height[cx * Ny + cy + 1] > 5 then
+              height[cx * Ny + cy + 1] = 5
+            end
+        end
+      end
+    end
+  end
+
+  for cx = 1, Nx - 1 do
+    for cy = 1, Ny - 1 do
+      center = cx * Ny + cy + 1;
+    
+      h = height[center];
+      dHx = h - height[center - Ny];
+      dHy = h - height[center - 1];
+  
+      velocity_prediction_x[center] = velocity_x[center] - dtg * dHx;
+      velocity_prediction_y[center] = velocity_y[center] - dtg * dHy;
+    end
+  end
+  
+  -- Boundary conditions
+  cx = 0;
+  for cy = 0, Ny do
+    velocity_prediction_x[cy + 1] = 0;
+    velocity_prediction_x[(Nx-1) * Ny + cy + 1] = 0;
+  end
+  
+  cx = 0;
+  for cy = 0, Ny do
+    velocity_prediction_y[cx * Ny + 1] = 0;
+    velocity_prediction_y[cx * Ny + (Ny-1) + 1] = 0;
+  end
+  
+  cx = 0;
+  local color = self.colors.shadercolor
+  for cx = 1, Nx - 1 do
+    for cy = 1, Ny - 1 do
+      local center = cx * Ny + cy + 1
+      
+      dUx = velocity_prediction_x[center + Ny] - velocity_prediction_x[center];
+      dUy = velocity_prediction_y[center + 1]  - velocity_prediction_y[center];
+    
+      h = height[center];
+      height[center] = h - dth * (dUx + dUy) - .005*h;
+
+      local alpha = h
+      if alpha > 1 then
+        alpha = 1;
+      end
+      
+      if mode == 0 then
+        gfx.set(color[1], color[2], color[3], .7*alpha)
+        gfx.rect(cx*xs, cy*xs, xs-1, xs-1)
+      elseif mode == 1 then
+        gfx.set(color[1], color[2], color[3], alpha)
+        gfx.circle(cx*xs, cy*xs, .25*xs, 0)
+      elseif mode == 2 then
+        gfx.set(color[1], color[2], color[3], alpha)
+        gfx.circle(cx*xs, cy*xs, .25*xs, 1)
+      elseif mode == 3 then
+        gfx.set(color[1], color[2], color[3], alpha)
+        gfx.circle(cx*xs, cy*xs, 3*alpha, 0)      
+      elseif mode == 4 then
+        gfx.set(color[1], color[2], color[3], alpha)
+        gfx.circle(cx*xs, cy*xs, 3*alpha, 1)
+      end
+    end
+  end
+    
+  for cx = 1, Nx - 1 do
+    for cy = 1, Ny - 1 do
+      local center = cx * Ny + cy + 1
+    
+      h = height[center];
+      dHx = h - height[center - Ny];
+      dHy = h - height[center - 1];
+    
+      velocity_x[center] = velocity_x[center] - dtg * dHx;
+      velocity_y[center] = velocity_y[center] - dtg * dHy;
+    end
+  end
+  
+  if mode == 5 or mode == 6 then
+    local spacing = 1
+    if mode == 6 then
+      spacing = 3
+    end
+  
+    gfx.set(color[1], color[2], color[3], .3)
+    for cy = 1, Ny - 1 do
+      lh = 0;
+      local ly = xs * cy
+      for cx = 1, Nx - 1 do
+        local center = cx * Ny + cy + 1
+        h = xs * math.min(height[center], 3);
+        gfx.line(xs*(cx - 1), ly - lh, xs*cx - spacing, ly - h, 1);
+        lh = h;
+      end
+    end
+  end
+  
+  local sim = self.sim or {}
+  
+  sim.height = height
+  sim.velocity_prediction_x = velocity_prediction_x
+  sim.velocity_prediction_y = velocity_prediction_y
+  sim.velocity_x = velocity_x
+  sim.velocity_y = velocity_y
+  
+  self.sim = sim
+end
+
+-- CC values are used to designate tracker FX. They are always terminated _within_ the row
+-- by setting the effect to 102 shortly after.
+tracker.sampler_effect_type = 12  -- The CC value used for setting effects in sampler mode.
+tracker.stop_cc_effect_value = 102 -- The CC used to force a stop after each effect.
+function tracker:customFieldDescription()
+  local sampler_effect_type = self.sampler_effect_type
+  local sampler_effect_value = 13
+
+  local ftype, chan, row = self:getLocation()
+  if (ftype == "modtxt1") or (ftype == "modtxt2") then
+    -- Dealing with a CC event
+    local cc_type = self.data.modtypes[chan] % self.CCjump
+    local channel = math.floor(self.data.modtypes[chan] / self.CCjump)
+    
+    if (cc_type == sampler_effect_type) or (cc_type == sampler_effect_value) then
+      local modtype, cc_value = self:getCC( self.ypos - 1, self.CCjump * channel + sampler_effect_type )
+      local modtype, cc_level = self:getCC( self.ypos - 1, self.CCjump * channel + sampler_effect_value )
+      
+      if not cc_value then
+        return
+      elseif cc_value == 1 then
+        return string.format("Porta Up (%d/8th semitones)", cc_level)
+      elseif cc_value == 2 then
+        return string.format("Porta Down (%d/8th semitones)", cc_level)
+      elseif cc_value == 3 then
+        return string.format("Glide (%d/8th semitones)", cc_level)
+      elseif cc_value == 4 then
+        local vibrato_periods = {"Continue", "32", "24", "16", "12", "8", "6", "5", "4", "3", "2", "3/2", "1", "1/2", "1/4", "1/8"}
+        return string.format("Vibrato (Depth: %d/7 s.t., Period: %s rows)", math.floor(cc_level/16), vibrato_periods[cc_level % 16 + 1])
+      elseif cc_value == 5 then
+        return string.format("Not implemented")
+      elseif cc_value == 6 then
+        return string.format("Not implemented")        
+      --elseif cc_value == 6 then
+      --  return string.format("Auto panning (Speed: %d, Depth: %d)", math.floor(cc_level/16), math.floor(cc_level % 16))
+      --elseif cc_value == 7 then
+      --  return string.format("Tremolo (Speed: %d/7, Depth: %d)", math.floor(cc_level/16), math.floor(cc_level % 16))
+      elseif cc_value == 8 then
+        return string.format("Set Panning (L: %d, R: %d)", math.ceil(100 - 100*cc_level/127), math.floor(100*cc_level/127))
+      elseif cc_value == 9 then
+        return string.format("Play from offset (%d %%)", math.floor(100 * (cc_level / 128)))
+      elseif cc_value == 10 then
+        function to_txt(s)
+          if s == 0 then
+            return "continue"
+          else
+            return s
+          end
+        end
+        return string.format("Arpeggiate (%s, %s semitones)", to_txt(math.floor(cc_level/16)), to_txt(cc_level % 16))
+      elseif cc_value == 11 then
+        return string.format("Retrigger (Vol: %d %%, Count: %d)", math.floor(100 - 100*cc_level/16/8), ((cc_level % 16)))
+      elseif cc_value == 12 then
+        return string.format("Sample probability (%d %%)", math.floor(100 * (cc_level / 127)))
+      else
+        return string.format("Unknown effect (%s)", cc_value)
+      end
     end
   end
 end
@@ -1916,16 +3158,16 @@ function tracker:printGrid()
   local channels  = self.displaychannels
   local rows      = self.rows
   local fov       = self.fov
-  
+
   local plotData  = self.plotData
   local xloc      = plotData.xloc
   local xwidth    = plotData.xwidth
   local yloc      = plotData.yloc
   local yheight   = plotData.yheight
-  
+
   local relx = tracker.xpos-fov.scrollx
   local rely = tracker.ypos-fov.scrolly
-   
+
   local dlink         = plotData.dlink
   local xlink         = plotData.xlink
   local glink         = plotData.glink
@@ -1937,114 +3179,138 @@ function tracker:printGrid()
   local itempady      = plotData.itempady
   local scrolly       = fov.scrolly
   local yshift        = plotData.yshift
-  
+  local headerShift   = 0
+
   local customFont
   local extraFontShift  = 0
-  
+
   if ( colors.patternFont and colors.patternFontSize and colors.customFontDisplace ) then
     gfx.setfont(1, colors.patternFont, colors.patternFontSize)
     customFont = colors.customFontDisplace
     extraFontShift = customFont[2]
   else
     gfx.setfont(0)
+    headerShift = 4
   end
-  
-  -- Render in relative FOV coordinates
-  local data        = self.data
-  for y=1,#yloc do
-    local absy = y + scrolly
-    
-    local c1, c2, tx
-    if ( (((absy-1)/16) - math.floor((absy-1)/16)) == 0 ) then -- TODO This should depend on current time signature
-      c1 = colors.linecolor5
-      c2 = colors.linecolor5s
-      tx = colors.textcolorbar or colors.textcolor
-      fc = colors.bar
-    elseif ( (((absy-1)/4) - math.floor((absy-1)/4)) == 0 ) then
-      c1 = colors.linecolor2
-      c2 = colors.linecolor2s
-      tx = colors.textcolorbar or colors.textcolor
-      fc = colors.bar      
-    else
-      c1 = colors.linecolor
-      c2 = colors.linecolors
-      tx = colors.textcolor
-      fc = colors.normal      
-    end
-    
-    gfx.y = yloc[y] + extraFontShift
-    gfx.x = xloc[1] - plotData.indicatorShiftX
-    
-    gfx.set(table.unpack(tx))    
-    if tracker.zeroindexed == 1 then
-      gfx.printf("%3d", absy-1)
-    else
-      gfx.printf("%3d", absy)
-    end
-    gfx.set(table.unpack(c1))
-    gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, yheight[1] + itempady)
-    gfx.set(table.unpack(c2))
-    gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, 1)
-    gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, 1, yheight[y])
-    gfx.rect(xloc[1] - itempadx + tw + 0, yloc[y] - yshift, 1, yheight[y] + itempady)    
-    
-    for x=1,#xloc do
-      local thisfield = dlink[x]
-      gfx.x = xloc[x]
-      gfx.set(table.unpack(fc[thisfield] or tx))
-      
-      local cdata = data[thisfield][rows*xlink[x]+absy-1]
-      self:writeField( cdata, ellipsis, xloc[x], yloc[y], customFont )
-    end
-  end
-  
-  if ( xloc[relx] and yloc[rely] ) then
-    local absy = rely + scrolly 
-    gfx.set(table.unpack(colors.selectcolor))
-    gfx.rect(xloc[relx]-1, yloc[rely]-plotData.yshift, xwidth[relx], yheight[rely])
-    
-    gfx.x = xloc[relx]
-    gfx.y = yloc[rely]
-    gfx.set(table.unpack(colors.selecttext or colors.textcolor))
 
-    local cdata = data[dlink[relx]][rows*xlink[relx]+absy-1]
-    self:writeField( cdata, ellipsis, xloc[relx], yloc[rely], customFont )
-  end 
-  
-  -- Pattern Length Indicator
-  local xl, yl, xm, ym = self:getSizeIndicatorLocation()
-  gfx.y = yl + extraFontShift
-  gfx.x = xl
-  if ( self.renaming == 3 ) then
-    gfx.set(table.unpack(colors.changed))
-    gfx.printf("%3s", tracker.newLength)
-  else
-    gfx.set(table.unpack(colors.textcolor))
-    gfx.printf("%3d", self.max_ypos)
-  end 
-  
-  gfx.y = yl + extraFontShift
-  gfx.x = xl
-  if ( self.renaming ~= 3 ) then
-    gfx.set(table.unpack(colors.linecolor3s))
-    gfx.printf("%3d", self.max_ypos)
+  if self.cfg.fx1 > 0 then
+    if self.cfg.fx1 < 3 then
+      self:simulate_shallow_water(self.cfg.fx2, self.cfg.fx1-1);
+    else
+      self:spirals(self.cfg.fx2)
+    end
   end
-  
-  gfx.line(xl, yl-2, xm,  yl-2)
-  gfx.line(xl, ym,   xm,  ym)
-  gfx.line(xm, ym,   xm,  yl-2)
+
+  -- Render in relative FOV coordinates
+  local data  = self.data
+  local sig   = self.rowPerQn
+  if ( self.cfg.rowOverride > 0  ) then
+    sig = self.cfg.rowOverride
+  end
+
+  if ( self.take ) then
+    for y=1,#yloc do
+      local absy = y + scrolly
+      if ( absy > 0 and absy <= rows ) then
+        local c1, c2, tx
+        if ( (((absy-1)/sig) - math.floor((absy-1)/sig)) == 0 ) then
+          c1 = colors.linecolor5
+          c2 = colors.linecolor5s
+          tx = colors.textcolorbar or colors.textcolor
+          fc = colors.bar
+        elseif ( (((absy-1)/(.25*sig)) - math.floor((absy-1)/(.25*sig))) == 0 ) then
+          c1 = colors.linecolor2
+          c2 = colors.linecolor2s
+          tx = colors.textcolorbar or colors.textcolor
+          fc = colors.bar
+        else
+          c1 = colors.linecolor
+          c2 = colors.linecolors
+          tx = colors.textcolor
+          fc = colors.normal
+        end
+
+        gfx.y = yloc[y] + extraFontShift
+        gfx.x = xloc[1] - plotData.indicatorShiftX
+
+        gfx.set(table.unpack(tx))
+        if tracker.zeroindexed == 1 then
+          gfx.printf("%03d", absy-1)
+        else
+          gfx.printf("%03d", absy)
+        end
+        gfx.set(table.unpack(c1))
+        gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, yheight[1] + itempady)
+        gfx.set(table.unpack(c2))
+        gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, 1)
+        gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, 1, yheight[y])
+        gfx.rect(xloc[1] - itempadx + tw + 0, yloc[y] - yshift, 1, yheight[y] + itempady)
+
+        for x=1,#xloc do
+          local thisfield = dlink[x]
+          gfx.x = xloc[x]
+          gfx.set(table.unpack(fc[thisfield] or tx))
+
+          local cdata = data[thisfield][rows*xlink[x]+absy-1]
+          self:writeField( cdata, ellipsis, xloc[x], yloc[y], customFont )
+        end
+      end
+    end
+
+    if ( xloc[relx] and yloc[rely] ) then
+      local absy = rely + scrolly
+      gfx.set(table.unpack(colors.selectcolor))
+      gfx.rect(xloc[relx]-1, yloc[rely]-plotData.yshift, xwidth[relx], yheight[rely] + itempady)
+
+      gfx.x = xloc[relx]
+      gfx.y = yloc[rely]
+      gfx.set(table.unpack(colors.selecttext or colors.textcolor))
+
+      local cdata = data[dlink[relx]][rows*xlink[relx]+absy-1]
+      self:writeField( cdata, ellipsis, xloc[relx], yloc[rely], customFont )
+    end
+
+    -- Pattern Length Indicator
+    local xl, yl, xm, ym = self:getSizeIndicatorLocation()
+    gfx.y = yl + extraFontShift
+    gfx.x = xl
+    if ( self.renaming == 3 ) then
+      gfx.set(table.unpack(colors.changed))
+      gfx.printf("%3s", tracker.newLength)
+    else
+      gfx.set(table.unpack(colors.textcolor))
+      gfx.printf("%3d", self.max_ypos)
+    end
+
+    gfx.y = yl + extraFontShift
+    gfx.x = xl
+    if ( self.renaming ~= 3 ) then
+      gfx.set(table.unpack(colors.linecolor3s))
+      gfx.printf("%3d", self.max_ypos)
+    end
+
+    gfx.line(xl, yl-2,   xm,  yl-2)
+    gfx.line(xl, ym-2,   xm,  ym-2)
+    gfx.line(xm, ym-2,   xm,  yl-2)
+  end
 
   ------------------------------
   -- Field descriptions
   ------------------------------
---  gfx.setfont(0)
   local bottom = self:getBottom()
-  
+
   gfx.x = plotData.xstart
   gfx.y = bottom + extraFontShift
   gfx.set(table.unpack(colors.headercolor))
-  if ( tracker.renaming ~= 2 ) then
-    gfx.printf("%s", description[relx])
+  if ( tracker.renaming ~= 2 and tracker.renaming ~= 4 ) then
+    if ( self.take ) then
+      local current_description = description[tracker.xpos]
+      
+      if (self.tracker_samples == 1) then
+        current_description = self:customFieldDescription() or current_description
+      end
+      gfx.printf("%s", current_description)
+    end
   else
       gfx.set(table.unpack(colors.changed))
       if ( self.newCol:len() > 0 ) then
@@ -2053,7 +3319,7 @@ function tracker:printGrid()
         gfx.printf("_")
       end
   end
-  
+
   local patternName
   gfx.set(table.unpack(colors.headercolor))
   gfx.y = bottom + extraFontShift
@@ -2066,99 +3332,142 @@ function tracker:printGrid()
     end
     gfx.x = plotData.xstart + tw - gfx.measurestr(patternName)
     gfx.printf(patternName)
-  else
+  elseif ( self.toosmall == 0 and self.take ) then
     patternName = self.patternName
     gfx.x = plotData.xstart + tw - gfx.measurestr(patternName)
     gfx.printf(patternName)
   end
-   
+
   -- Draw the bottom indicators
   gfx.set(table.unpack(colors.headercolor))
   local strs, locs, yh = tracker:infoString()
   gfx.y = yh + extraFontShift
-  
-  for i=1,#locs-1 do
-    gfx.x = locs[i]
-    gfx.printf(strs[i])
+
+  if ( self.take ) then
+    for i=1,#locs-1 do
+      gfx.x = locs[i]
+      gfx.printf(strs[i])
+    end
+
+    if ( tracker.newRowPerQn ~= tracker.rowPerQn ) then
+      gfx.set(table.unpack(colors.changed))
+    else
+      gfx.set(table.unpack(colors.headercolor))
+    end
+    gfx.x = locs[#locs]
+    gfx.y = bottom + yheight[1] + extraFontShift
+    gfx.printf(strs[#locs])
   end
-  
-  if ( tracker.newRowPerQn ~= tracker.rowPerQn ) then
-    gfx.set(table.unpack(colors.changed))
-  else
-    gfx.set(table.unpack(colors.headercolor))
-  end
-  gfx.x = locs[#locs]
-  gfx.y = bottom + yheight[1] + extraFontShift
-  gfx.printf(strs[#locs])
 
   gfx.set(table.unpack(colors.headercolor))
 
   gfx.x = plotData.xstart
-  if ( self.armed == 1) then
-    if ( self.onlyListen == 1 ) then
-      gfx.set(table.unpack(colors.changed2))    
+  if ( self.take ) then
+    if ( self.armed == 1) then
+      if ( self.onlyListen == 1 ) then
+        gfx.set(table.unpack(colors.changed2))
+      else
+        gfx.set(table.unpack(colors.changed))
+      end
+      gfx.printf("[Rec]")
+      gfx.set(table.unpack(colors.headercolor))
     else
-      gfx.set(table.unpack(colors.changed))
+      gfx.printf("[Rec]")
     end
-    gfx.printf("[Rec]")
-    gfx.set(table.unpack(colors.headercolor))
+
+    local recsize = gfx.measurestr( "[Rec]") + 2
+    if ( self.cfg.followSong == 1 ) then
+      gfx.set(table.unpack(colors.headercolor))
+    else
+      gfx.set(table.unpack(colors.inactive))
+    end
+    gfx.rect( plotData.xstart + recsize, bottom + yheight[1], 3, 3 )
+
+    if ( self.cfg.followSelection == 1 ) then
+      gfx.set(table.unpack(colors.headercolor))
+    else
+      gfx.set(table.unpack(colors.inactive))
+    end
+    gfx.rect( plotData.xstart + recsize, bottom + yheight[1] + 4, 3, 3 )
+ else
+    gfx.y = yloc[1]
+    gfx.printf( "No MIDI item selected..." )
+ end
+
+  -- Color header with track color
+  if ( (self.cfg.useItemColors == 1) and self.item and self.take ) then
+    local cColor = reaper.GetDisplayedMediaItemColor2(self.item, self.take)
+    if ( cColor ~= 0 ) then
+      local r, g, b = reaper.ColorFromNative( cColor )
+      if ( math.max(r,math.max(g,b)) > 0 ) then
+        gfx.set(r/255,g/255,b/255,1)
+        gfx.rect(xloc[1] - itempadx, yloc[1] - plotData.indicatorShiftY, tw, yheight[1] + itempady)
+      end
+
+      local function lumi(r, g, b)
+        return .2126 * r + .7152 * g + .0722 * b
+      end
+
+      -- Check how far the luminance is from the header color
+      local lum = lumi(gfx.r, gfx.g, gfx.b)
+      local headlum = lumi(colors.headercolor[1], colors.headercolor[2], colors.headercolor[3])
+
+      -- Draw the headers so we don't get lost :)
+      if ( math.abs(lum - headlum) > .25 ) then
+        gfx.set(table.unpack(colors.headercolor))
+      else
+        gfx.set(1-colors.headercolor[1], 1-colors.headercolor[2], 1-colors.headercolor[3], colors.headercolor[4])
+      end
+    else
+      gfx.set(table.unpack(colors.headercolor))
+    end
   else
-    gfx.printf("[Rec]")
-  end
-  
-  local recsize = gfx.measurestr( "[Rec]") + 2
-  if ( self.cfg.followSong == 1 ) then
     gfx.set(table.unpack(colors.headercolor))
-  else
-    gfx.set(table.unpack(colors.inactive))  
   end
-  gfx.rect( plotData.xstart + recsize, bottom + yheight[1], 3, 3 )
-  
-  if ( self.cfg.followSelection == 1 ) then
-    gfx.set(table.unpack(colors.headercolor))
-  else    
-    gfx.set(table.unpack(colors.inactive))  
-  end
-  gfx.rect( plotData.xstart + recsize, bottom + yheight[1] + 4, 3, 3 )
- 
-  -- Draw the headers so we don't get lost :)
-  gfx.set(table.unpack(colors.headercolor))
-  gfx.y = yloc[1] - plotData.indicatorShiftY
+
+  gfx.y = yloc[1] - plotData.indicatorShiftY + headerShift
 
   local hws = plotData.headerW
   for x=1,#xloc do
-    gfx.x = xloc[x] + hws[x]
-
-    gfx.drawstr(headers[x])
+    local xc = xloc[x] + hws[x]
+    gfx.x = xc
+    if ( (xc + (hws[x+1] or 0)) < tw ) then
+      gfx.drawstr(headers[x])
+    end
   end
-    
+
   ------------------------------
   -- Scrollbar
   ------------------------------
-  tracker.scrollbar:setExtent( fov.scrolly / rows, ( fov.scrolly + fov.height ) / rows )
-  if ( tracker.fov.height < self.rows ) then
+  tracker.scrollbar:setExtent( fov.scrolly / rows, ( fov.scrolly + fov.height ) / rows, tracker.ypos/rows, rows )
+  if ( self:shouldShowScrollbars() ) then
     tracker.scrollbar:draw(colors)
   end
-  
+
   ------------------------------
   -- Clipboard block drawing
   ------------------------------
   local cp = self.cp
   if ( cp.ystart > 0 ) then
     local xl  = clamp(1, fov.width,  cp.xstart - fov.scrollx)
-    local xe  = clamp(1, fov.width,  cp.xstop  - fov.scrollx)  
+    local xe  = clamp(1, fov.width,  cp.xstop  - fov.scrollx)
     local yl  = clamp(1, fov.height, cp.ystart - fov.scrolly)
     local ye  = clamp(1, fov.height, cp.ystop  - fov.scrolly)
     local xmi = clamp(1, fov.width,  xl + gmin(glink[xl]))
     local xma = clamp(1, fov.width,  xe + gmax(glink[xe]))
-    gfx.set(table.unpack(colors.copypaste))    
+    
+    xma = math.min(xma, #xloc)
+    ye = math.min(ye, #yloc)
+    yl = math.min(yl, #yloc)
+    
+    gfx.set(table.unpack(colors.copypaste))
     if ( cp.all == 0 ) then
-      gfx.rect(xloc[xmi], yloc[yl] - plotData.yshift, xloc[xma] + xwidth[xma] - xloc[xmi], yloc[ye]-yloc[yl]+yheight[ye] )
+      gfx.rect(xloc[xmi]-1, yloc[yl] - plotData.yshift, xloc[xma] + xwidth[xma] - xloc[xmi], yloc[ye]-yloc[yl]+yheight[ye]+itempady )
     else
-      gfx.rect(xloc[1] - itempadx, yloc[yl] - plotData.yshift, tw, yloc[ye]-yloc[yl]+yheight[ye] )
+      gfx.rect(xloc[1] - itempadx-1, yloc[yl] - plotData.yshift, tw, yloc[ye]-yloc[yl]+yheight[ye]+itempady )
     end
   end
-    
+
   ------------------------------
   -- Loop indicator
   ------------------------------
@@ -2173,26 +3482,41 @@ function tracker:printGrid()
       gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * lEnd - 2*itempady - 1, tw, 2)
     end
   end
-  
+
   ------------------------------
   -- Play location indicator
   ------------------------------
   local playLoc = self:getPlayLocation()
   local xc = xloc[1] - .5 * plotData.indicatorShiftX
-  local yc = yloc[1] - .8 * plotData.indicatorShiftY  
-  if ( playLoc < 0 ) then   
-      gfx.set(table.unpack(colors.linecolor3s))     
-      triangle(xc, yc+1, 3, -1)        
+  local yc = yloc[1] - .8 * plotData.indicatorShiftY
+  if ( playLoc < 0 ) then
+      gfx.set(table.unpack(colors.linecolor3s))
+      triangle(xc, yc+1, 3, -1)
       gfx.set(table.unpack(colors.linecolor3))
       triangle(xc, yc, 5, -1)
   else
     if ( playLoc > 1 ) then
       gfx.set(table.unpack(colors.linecolor3s))
-      triangle(xc, yc-1, 3, 1)           
+      triangle(xc, yc-1, 3, 1)
       gfx.set(table.unpack(colors.linecolor3))
-      triangle(xc, yc, 5, 1)    
+      triangle(xc, yc, 5, 1)
     else
-      gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * playLoc - itempady - 1, tw, 1)
+      gfx.set(table.unpack(colors.selectcolor))
+
+      local vrows = self:getVRows()
+      local absy = math.floor(playLoc * vrows) + scrolly + 1
+
+      if ( absy > 0 and absy <= rows ) then
+        if self.cfg.bigLineIndicator == 0 then
+          gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * playLoc - itempady - 1, tw, 1)
+        else
+          gfx.a = .2;
+          playLoc = math.floor(playLoc * vrows)+1
+          if yloc[playLoc] then
+            gfx.rect(plotData.xstart - itempadx, yloc[playLoc]-plotData.yshift, tw, yheight[1] + itempady)
+          end
+        end
+      end
     end
   end
   local markerLoc = self:getCursorLocation()
@@ -2200,60 +3524,34 @@ function tracker:printGrid()
     gfx.set(table.unpack(colors.linecolor4))
     gfx.rect(plotData.xstart - itempadx, plotData.ystart + plotData.totalheight * self:getCursorLocation() - itempady - 1, tw, 1)
   end
-  
-  ----------------------------------
-  -- Help
-  ----------------------------------
-  
-  if ( tracker.helpActive == 1 ) then
-    local scales = scales
-    local help = help
-    local helpwidth = self.helpwidth
-    local ys = plotData.ystart - 1.3*plotData.indicatorShiftY
-    local xs = plotData.xstart + tw
-    if ( self.cfg.scaleActive == 1 ) then
-      xs = xs + self.scalewidth * 1
-    end
-    for i,v in pairs( help ) do
-      gfx.set(table.unpack(colors.helpcolor))
-      gfx.x = xs + 0.5*helpwidth + 4*itempadx
-      gfx.y = ys
-      gfx.printf(v[2])
-      gfx.set(table.unpack(colors.helpcolor2))
-      local lsize = gfx.measurestr( v[1] )
-      gfx.x = xs + helpwidth - lsize - 0.5 * helpwidth + 2*itempadx --8.2 * string.len(v[1])
-      gfx.printf(v[1])      
-      ys = ys + yheight[1]
-    end
-  end
-  
+
   ------------------------------
-  -- Chorder
-  ------------------------------    
-  if ( tracker.cfg.scaleActive == 1 ) then
+  -- Harmony Helper
+  ------------------------------
+  if ( tracker.harmonyActive == 1 ) then
     local xs, ys, scaleY, keyMapH, scaleW, chordW, noteW, chordAreaY, charW = self:chordLocations()
     local xwidth       = plotData.xwidth
     local names        = scales.names
     local progressions = scales.progressions
-    
+
     gfx.set(table.unpack(colors.textcolorbar or colors.textcolor))
-    gfx.x = xs + self.scalewidth - 4 * noteW - 5
+    gfx.x = xs + self.harmonyWidth - 4 * noteW - 5
     gfx.y = ys
     gfx.printf( "Harmony helper" )
-    
+
     gfx.y = ys + keyMapH
     if ( scales.picked and scales.picked.notes ) then
       local s = ''
       for i,v in pairs( scales.picked.notes ) do
         s = s .. scales:pitchToNote(v) .. ","
       end
-      gfx.x = xs + self.scalewidth - (4 + s:len() ) * charW
+      gfx.x = xs + self.harmonyWidth - (4 + s:len() ) * charW
       gfx.printf( "["..s:sub(1,-2).."]" )
     else
-      gfx.x = xs + self.scalewidth - 4 * charW - 5
-      gfx.printf( "[]" )   
+      gfx.x = xs + self.harmonyWidth - 4 * charW - 5
+      gfx.printf( "[]" )
     end
-    
+
     gfx.x = xs
     gfx.y = ys + extraFontShift
     gfx.printf( "Current scale: " .. scales:getScale() .. " " .. scales:getScaleNote(1) .. " (" .. scales:scaleNotes() .. ")"  )
@@ -2270,26 +3568,26 @@ function tracker:printGrid()
         gfx.set(table.unpack(colors.helpcolor))
       end
       gfx.printf( notetxt )
-          
+
       curx = curx + noteW
     end
     gfx.set(table.unpack(colors.helpcolor))
-    
+
     local cury = ys + chordAreaY - keyMapH
     local curx = xs + scaleW
-    
+
     -- Currently marked for major, could choose to incorporate others
     local markings = { 'I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii0', 'VIII' }
     for k = 1,7 do
       gfx.x = curx
       gfx.y = cury+extraFontShift
       gfx.printf( markings[k] )
-          
+
       curx = curx + chordW
-    end    
+    end
     cury = cury + keyMapH
     gfx.set(table.unpack(colors.helpcolor))
-    gfx.line(xs-5, cury-4, xs+self.scalewidth*0.94, cury-5)
+    gfx.line(xs-5, cury-4, xs+self.harmonyWidth*0.94, cury-5)
     gfx.set(table.unpack(colors.textcolor))
     local selectedScale = scales:getScaleValue()
     for i = 1,#names do
@@ -2297,17 +3595,17 @@ function tracker:printGrid()
       gfx.y = cury
       local scaleName = scales.names[i]
       if ( i == selectedScale ) then
-        gfx.set(table.unpack(colors.harmonyselect or colors.textcolor))      
+        gfx.set(table.unpack(colors.harmonyselect or colors.textcolor))
       else
         gfx.set(table.unpack(colors.helpcolor))
       end
       gfx.printf( scaleName )
       gfx.set(table.unpack(colors.textcolor))
-        
+
       local chordmap = progressions[scaleName]
       for j = 1,#(chordmap[i].notes) do
         local curx = xs + scaleW
-        for k = 1,7 do        
+        for k = 1,7 do
           gfx.x = curx
           gfx.y = cury + extraFontShift
           if ( chordmap[k].names[j] ) then
@@ -2315,95 +3613,138 @@ function tracker:printGrid()
             local ccc = colors.harmonycolor or colors.textcolor
             local col = { ccc[1], ccc[2], ccc[3], clamp( 0.1, 1, ccc[4] - 0.4 * score ) }
             gfx.set(table.unpack(col))
-          
+
             gfx.printf( chordmap[k].names[j] )
           end
-          
+
           curx = curx + chordW
         end
         cury = cury + keyMapH
       end
       gfx.set(table.unpack(colors.helpcolor))
-      gfx.line(xs-5, cury-4, xs+self.scalewidth*0.94, cury-5)
+      gfx.line(xs-5, cury-4, xs+self.harmonyWidth*0.94, cury-5)
       gfx.set(table.unpack(colors.textcolor))
     end
   end
-  
-  if ( tracker.optionsActive == 1 ) then
-    local help = help
-    local helpwidth = self.helpwidth
-    
-    local xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, binaryOptionsH = self:optionLocations()
+
+  ----------------------------------
+  -- note names
+  ----------------------------------
+  if tracker.noteNamesActive == 1 then
+    local width = self.noteNamesWidth - 2 * itempadx
+    local ys = plotData.ystart - 1.3 * plotData.indicatorShiftY + yheight[1]
+    local xs = plotData.xstart + tw + 4 * itempadx
+    if self.harmonyActive == 1 then
+      xs = xs + self.harmonyWidth * 1
+    end
+    local noteNamesFound = false;
 
     gfx.set(table.unpack(colors.textcolorbar or colors.helpcolor2))
     gfx.x = xs
     gfx.y = ys
-    gfx.printf( "Options" )
-    
-    xs = themeMapX
-    ys = themeMapY
-    gfx.y = ys
-    gfx.x = xs
-    gfx.printf( "Theme mapping" )
-    
-    for i,v in pairs( tracker.colorschemes ) do
-      ys = ys + keyMapH
-      gfx.y = ys
-      gfx.x = xs + 8.2
-      
-      if ( v == tracker.cfg.colorscheme ) then
-        gfx.set(table.unpack(colors.harmonyselect or colors.helpcolor2))
-      else
+    gfx.printf('Note Names')
+    ys = ys + yheight[1] + 4 * itempady
+
+    for note = 0, 127 do
+      noteName = noteNames[note]
+      if noteName then
+        noteNamesFound = true;
+        pitch = self.pitchTable[note]
         gfx.set(table.unpack(colors.helpcolor))
+        gfx.x = xs + 0.1 * width + 4 * itempadx
+        gfx.y = ys
+        gfx.printf(noteName)
+        gfx.set(table.unpack(colors.helpcolor2))
+        local lsize = gfx.measurestr(pitch) -- align right
+        gfx.x = xs + 0.1 * width - lsize + 2 * itempadx
+        gfx.printf(pitch)
+        ys = ys + yheight[1]
       end
-      gfx.printf(v)
     end
-    
+
+    if not noteNamesFound then
+      local a = 'No note names found'
+      local b = 'for this track'
+      gfx.set(table.unpack(colors.helpcolor))
+      gfx.y = ys
+      gfx.x = xs + 0.5 * width - gfx.measurestr(a) / 2 -- align centre
+      gfx.printf(a)
+      ys = ys + yheight[1]
+      gfx.x = xs + 0.5 * width - gfx.measurestr(b) / 2 --align centre
+      gfx.y = ys
+      gfx.printf(b)
+    end
+
+  end
+
+  ----------------------------------
+  -- Help
+  ----------------------------------
+  if ( tracker.helpActive == 1 ) then
+    local help = help
+    local helpwidth = self.helpwidth
+    local ys = plotData.ystart - 1.3*plotData.indicatorShiftY
+    local xs = plotData.xstart + tw
+    if self.harmonyActive == 1 then
+      xs = xs + self.harmonyWidth * 1
+    end
+    if self.noteNamesActive == 1 then
+      xs = xs + self.noteNamesWidth * 1
+    end
+    for i,v in pairs( help ) do
+      gfx.set(table.unpack(colors.helpcolor))
+      gfx.x = xs + 0.5*helpwidth + 4*itempadx
+      gfx.y = ys
+      gfx.printf(v[2])
+      gfx.set(table.unpack(colors.helpcolor2))
+      local lsize = gfx.measurestr( v[1] ) -- align right
+      gfx.x = xs + helpwidth - lsize - 0.5 * helpwidth + 2*itempadx --8.2 * string.len(v[1])
+      gfx.printf(v[1])
+      ys = ys + yheight[1]
+    end
+  end
+
+  if ( tracker.optionsActive == 1 ) then
+    local themeMenu, keymapMenu, layoutMenu, fontsizeMenu, binaryOptions, fx1Menu, fx2Menu, labelLocation = tracker:optionLocations()
+
     gfx.set(table.unpack(colors.textcolorbar or colors.helpcolor2))
-    xs = keyMapX
-    ys = keyMapY
-    gfx.y = ys
-    gfx.x = xs
-    gfx.printf( "Key mapping" )
-    
-    for i,v in pairs( keysets ) do
-      ys = ys + keyMapH
-      gfx.y = ys
-      gfx.x = xs + 8.2
-      
-      if ( v == tracker.cfg.keyset ) then
-        gfx.set(table.unpack(colors.harmonyselect or colors.helpcolor2))
-      else
-        gfx.set(table.unpack(colors.helpcolor))
-      end
-      gfx.printf(v)
-    end
-    
-    xs = binaryOptionsX
-    ys = binaryOptionsY
-    gfx.x = xs
-    gfx.y = ys
-    
+    gfx.x = labelLocation.x
+    gfx.y = labelLocation.y
+    gfx.printf( "Options" )
+
+    local selectedColor = colors.harmonyselect or colors.helpcolor2
+    local normalColor = colors.helpcolor
+    local titleColor = colors.textcolorbar or colors.helpcolor2
+
+    themeMenu:drawMenu("Theme", tracker.colorschemes, tracker.cfg.colorscheme, titleColor, selectedColor, normalColor)
+    keymapMenu:drawMenu("Map", keysets, tracker.cfg.keyset, titleColor, selectedColor, normalColor)    
+    layoutMenu:drawMenu("Layout", keyLayouts, tracker.cfg.keyLayout, titleColor, selectedColor, normalColor)
+    fontsizeMenu:drawMenu("Font", fontSizes, tracker.cfg.fontSize, titleColor, selectedColor, normalColor)
+    fx1Menu:drawMenu("FX", fx1Options, tracker.cfg.fx1, titleColor, selectedColor, normalColor)
+    fx2Menu:drawMenu("Style", fx2Options, tracker.cfg.fx2, titleColor, selectedColor, normalColor)
+
+    xs = binaryOptions.x
+    ys = binaryOptions.y
     for i=1,#self.binaryOptions do
       gfx.set(table.unpack(colors.textcolorbar or colors.helpcolor2))
       gfx.x = xs + 13
-      local cys = ys + i * binaryOptionsH
+      local cys = ys + i * binaryOptions.h
       gfx.y = cys + extraFontShift
-      
+--c
       gfx.line(xs, cys, xs,  cys+8)
       gfx.line(xs+8, cys, xs+8,  cys+8)
       gfx.line(xs, cys, xs+8,  cys)
       gfx.line(xs, cys+8, xs+8,  cys+8)
-      
-      if ( self.cfg[self.binaryOptions[i][1]] == 1 ) then
+
+      if (self.cfg[self.binaryOptions[i][1]] == 1) then
         gfx.line(xs, cys, xs+8,  cys+8)
-        gfx.line(xs+8, cys, xs,  cys+8)        
+        gfx.line(xs+8, cys, xs,  cys+8)
       end
-      
+
       gfx.printf( "%s", self.binaryOptions[i][2] )
     end
   end
-  
+
   ------------------------------------------
   -- Cheap CRT effect
   ------------------------------------------
@@ -2414,17 +3755,17 @@ function tracker:printGrid()
       local q = math.sin( self.crt_time + .05 * c ) - 0.1
       gfx.set(0, 0, 0, str * 0.05 * ( 1 + 0.7 * q*q*q*q ) )
       gfx.line(0, c, gfx.w,  c)
-      gfx.set(0, 0, 0, str * 0.02 * ( 1 + 0.7 * q*q*q*q ) )      
+      gfx.set(0, 0, 0, str * 0.02 * ( 1 + 0.7 * q*q*q*q ) )
       gfx.line(0, c+1, gfx.w,  c+1)
     end
     for c = 0,gfx.w,4 do
-      gfx.set(1.0, 0, 0, 0.02 * ( 1 + 0.1 * str ) )
+      gfx.set(1.0, 0, 0, 0.01 * str * ( 1 + 0.1 * str ) )
       gfx.line(c, 0, c, gfx.h)
     end
     for c = 3,gfx.w,4 do
-      gfx.set(0, 1.0, 0, 0.02 * ( 1 + 0.1 * str ) )
+      gfx.set(0, 1.0, 0, 0.01 * str * ( 1 + 0.1 * str ) )
       gfx.line(c, 0, c, gfx.h)
-    end    
+    end
   end
 end
 
@@ -2440,22 +3781,37 @@ function tracker:infoString()
 
   local str = {}
   str[4] = string.format( "Oct [%d]", self.transpose )
-  str[3] = string.format( "Adv [%d]", self.advance )
+  if self.cfg.advanceByNote == 1 then
+    str[3] = string.format( "Adv [N]", self.advance )
+  else
+    str[3] = string.format( "Adv [%d]", self.advance )
+  end
   str[2] = string.format( "Env [%s]", tracker.envShapes[tracker.envShape] )
   str[1] = string.format( "Out [%s]", self:outString() )
   str[5] = string.format( "Res [%d]", tracker.newRowPerQn )
 
   local locs = {}
   local xs = plotData.xstart + tw - 5
-  for i=1,#str do
+  local maxi
+  if ( self.toosmall == 0 ) then
+    maxi = #str
+  else
+    maxi = 1
+  end
+
+  for i=1,maxi do
     xs = xs - gfx.measurestr(str[i])
     locs[i] = xs
     xs = xs - gfx.measurestr("p")
   end
-  
+
   local y = self:getBottom() + yheight
 
   return str, locs, y
+end
+
+function tracker:shouldShowScrollbars()
+  return (self.fov.height < self.rows) or (self.cfg.fixedIndicator == 1)
 end
 
 function tracker:getBottom()
@@ -2470,8 +3826,56 @@ function tracker:getBottom()
   else
     bottom = yloc[#yloc] + yheight + itempady
   end
-  
+
   return bottom, yheight
+end
+
+function CreateMenu(_x, _y, _w, _h)
+  return {
+    x=_x, 
+    y=_y, 
+    w=_w, 
+    h=_h,
+    processMouseMenu = function(self)
+      if ( gfx.mouse_x > self.x ) then
+        if ( gfx.mouse_x < self.x+self.w ) then
+          if ( gfx.mouse_y > self.y ) then
+            return math.floor((gfx.mouse_y - self.y)/self.h)
+          end
+        end
+      end
+    end,
+    
+    drawMenu = function(self, title, labels, selection, titleColor, selectedColor, normalColor)
+      gfx.x = self.x
+      gfx.y = self.y
+      
+      gfx.set(table.unpack(titleColor))
+      gfx.printf(title)
+    
+      for i,v in pairs(labels) do
+        gfx.x = self.x
+        gfx.y = gfx.y + self.h
+        if ( v == selection ) then
+          gfx.set(table.unpack(selectedColor))
+        else
+          gfx.set(table.unpack(normalColor))
+        end
+        gfx.printf(v)
+      end
+    end,
+    
+    processSimple = function(self, cfgField, options)
+      sel = self:processMouseMenu()
+      if ( options[sel] ) then
+        if ( options[sel] ~= tracker.cfg[cfgField] ) then
+          changedOptions = 1
+        end
+        tracker.cfg[cfgField] = options[sel]
+      end
+      return changedOptions
+    end
+  }
 end
 
 function tracker:optionLocations()
@@ -2482,29 +3886,52 @@ function tracker:optionLocations()
   local itempady = plotData.itempady
   local yloc     = plotData.yloc
   local yheight  = (yloc[2]-yloc[1])*.8
-  
+
   local xs = plotData.xstart + tw + 4*itempadx
   local ys = plotData.ystart - 1.3*plotData.indicatorShiftY + yheight
-  
-  if ( self.helpActive == 1 ) then
+
+  if self.harmonyActive == 1 then
+    xs = xs + self.harmonyWidth * 1.1
+  end
+  if self.noteNamesActive == 1 then
+    xs = xs + self.noteNamesWidth * 1.1
+  end
+  if self.helpActive == 1 then
     xs = xs + self.helpwidth * 1.1
   end
-  if ( self.cfg.scaleActive == 1 ) then
-    xs = xs + self.scalewidth * 1.1
+  
+  if ( self.colors.patternFont and self.colors.patternFontSize ) then
+    gfx.setfont(1, self.colors.patternFont, self.colors.patternFontSize)
+  else
+    gfx.setfont(0)
   end
+  local xloc = xs + 8.2 * 2
+  local w = gfx.measurestr("Theme!____")
+  local themeMenu = CreateMenu(xloc, ys + yheight * 2, w, yheight)
+
+  xloc = xloc + w;
+  w = gfx.measurestr('Map______')
+  local keymapMenu = CreateMenu(xloc, ys + yheight * 2, w, yheight)
+
+  xloc = xloc + w;
+  w = gfx.measurestr('Layout____')
+  local layoutMenu = CreateMenu(xloc, ys + yheight * 2, w, yheight)
+
+  xloc = xloc + w;
+  w = gfx.measurestr('font__')
+  local fontsizeMenu = CreateMenu(xloc, ys + yheight * 2, w, yheight)
   
-  local buttonwidth = gfx.measurestr("______Theme Mapping!")
-  local keyMapX = xs + 8.2 * 2 + buttonwidth
-  local keyMapY = ys + yheight * 2--* ( 7 + #keysets )
-  local keyMapH = yheight
+  xloc = xloc + w;
+  w = gfx.measurestr('fx1__')
+  local fx1Menu = CreateMenu(xloc, ys + yheight * 2, w, yheight)
   
-  local themeMapX = xs + 8.2 * 2
-  local themeMapY = ys + yheight * 2
-  
-  local binaryOptionsX = xs + 8.2 * 2
-  local binaryOptionsY = ys + yheight * ( 1 + #tracker.colorschemes + #keysets )
-  
-  return xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, keyMapH, buttonwidth
+  xloc = xloc + w;
+  w = gfx.measurestr('fx2__')
+  local fx2Menu = CreateMenu(xloc, ys + yheight * 2, w, yheight)
+
+  local binaryOptions = CreateMenu(xs + 8.2 * 2, ys + yheight * ( 1 + #tracker.colorschemes + #keysets ), w, yheight)
+
+  return themeMenu, keymapMenu, layoutMenu, fontsizeMenu, binaryOptions, fx1Menu, fx2Menu, {x=xs, y=ys}
 end
 
 function tracker:chordLocations()
@@ -2519,20 +3946,20 @@ function tracker:chordLocations()
   local yloc     = plotData.yloc
   local xwidth   = dx
   local yheight  = (yloc[2]-yloc[1])*.8 --plotData.yheight
-  
+
   local xs       = plotData.xstart + tw + 4*itempadx
   local ys       = plotData.ystart - 1.3*plotData.indicatorShiftY + .5 * yheight
-   
+
   local scaleY    = ys + 1.5*yheight
   local keyMapH   = yheight
   local scaleLoc  = ys + 2*yheight
   local scaleW    = xwidth*12
   local chordW    = xwidth*7
   local noteW     = xwidth*4
-  
+
   local themeMapX = xs + xwidth
   local themeMapY = ys + yheight * 2
-  
+
   return xs, ys, scaleY, keyMapH, scaleW, chordW, noteW, ys + keyMapH * 4, dx
 end
 
@@ -2541,82 +3968,156 @@ function tracker:getLocation()
   local plotData  = self.plotData
   local dlink     = plotData.dlink
   local xlink     = plotData.xlink
-  
+
   local relx = tracker.xpos - tracker.fov.scrollx
   return dlink[relx], xlink[relx], tracker.ypos - 1
 end
 
+
+  --  local xl  = clamp(1, fov.width,  cp.xstart - fov.scrollx)
+  --  local xe  = clamp(1, fov.width,  cp.xstop  - fov.scrollx)
+  --  local yl  = clamp(1, fov.height, cp.ystart - fov.scrolly)
+  --  local ye  = clamp(1, fov.height, cp.ystop  - fov.scrolly)
+
+
+function tracker:findNextNote(direction)
+  -- Determine fieldtype, channel and row
+  local ftype, chan, row = self:getLocation()
+  local rows       = self.rows
+  local data       = self.data
+  local noteStart  = data.noteStart
+  local stepsLeft = self.rows
+  
+  if ftype == "fx1" or ftype == "fx2" or ftype == "modtxt1" or ftype == "modtxt2" then
+    chan = 1
+  end
+  
+  local endpos = rows
+  local beginpos = 0
+  
+  if self.cp and self.cfg.clampToSelection == 1 then
+    local cp = self.cp
+    if cp.ystop > cp.ystart then
+      endpos = cp.ystop
+      beginpos = cp.ystart
+    end
+  end
+  
+  local ypos = self.ypos + direction
+  while stepsLeft > 0 do
+    if noteStart[rows*chan+ypos - 1] then
+      return ypos
+    end
+    ypos = ypos + direction
+    if ypos > endpos then
+      ypos = beginpos
+    end
+    if ypos < beginpos then
+      ypos = endpos
+    end
+    
+    stepsLeft = stepsLeft - 1;
+  end
+  
+  return ypos
+end
+
+function tracker:rewindCursor()
+  if self.cfg.advanceByNote == 1 then
+    self.ypos = self:findNextNote(-1)
+  else
+    self.ypos = self.ypos - self.advance
+  end
+end
+
+function tracker:advanceCursor()
+  if self.cfg.advanceByNote == 1 then
+    self.ypos = self:findNextNote(1)
+  else
+    self.ypos = self.ypos + self.advance
+    if self.ypos > self.rows then
+      self.ypos = self.ypos - self.rows
+    end
+  end
+end
+
 function tracker:placeOff()
+  -- Determine fieldtype, channel and row
+  local ftype, chan, row = self:getLocation()
+  
+  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) or ( ftype == 'end1' ) or ( ftype == 'end2' )) then
+    self:placeOffLowLevel(chan, row)
+  end
+  
+  self:advanceCursor()
+end
+
+function tracker:placeOffLowLevel(chan, row)
   local rows      = self.rows
   local notes     = self.notes
   local data      = self.data
   local noteGrid  = data.note
-  local noteStart = data.noteStart 
-  
-  -- Determine fieldtype, channel and row
-  local ftype, chan, row = self:getLocation()
-  
+  local noteStart = data.noteStart
+
   -- Note off is only sensible for note fields
   local idx = chan*rows+row
   local note = noteGrid[idx]
   local start = noteStart[idx]
-  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) or ( ftype == 'end1' ) or ( ftype == 'end2' )) then  
-    -- If there is no note here add a marker for the note off event
-    if ( not note ) then
-      ppq = self:rowToPpq(row)
-      self:addNoteOFF(ppq, chan)
-      return
-    else
-      if ( note > -1 ) then
-        -- We need to check whether the note we are about to delete or shorten was already terminated by an OFF
-        -- In this case, we need to add a new OFF symbol at that location to not lose that one.
-        local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
-        local lastend = self:ppqToRow(endppqpos)
-        if ( noteGrid[chan*rows+lastend] and ( noteGrid[chan*rows+lastend] < 0 ) ) then
-          ppq = self:rowToPpq(lastend)
-          self:addNoteOFF(ppq, chan)
-        end
-               
-        if ( start ) then
-          -- If it was the start of a new note previously, that means a legato'd bit may have to be undone
-          if ( chan == 1 ) then
-            if ( row > 0 ) then
-              if ( self.legato[row] > -1 ) then
-                local prevnote = noteGrid[idx-1]
-                if ( prevnote and ( prevnote > -1 ) ) then
-                  local p2, v2, startppq2, endppq2 = table.unpack( notes[prevnote] )
-                  endppq2 = endppq2-self.magicOverlap
-                  reaper.MIDI_SetNote(self.take, prevnote, nil, nil, nil, endppq2, nil, nil, nil, true)
-                end
+  
+  -- If there is no note here add a marker for the note off event
+  if ( not note ) then
+    ppq = self:rowToPpq(row)
+    self:addNoteOFF(ppq, chan)
+    return
+  else
+    if ( note > -1 ) then
+      -- We need to check whether the note we are about to delete or shorten was already terminated by an OFF
+      -- In this case, we need to add a new OFF symbol at that location to not lose that one.
+      local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
+      local lastend = self:ppqToRow(endppqpos)
+      if ( noteGrid[chan*rows+lastend] and ( noteGrid[chan*rows+lastend] < 0 ) ) then
+        ppq = self:rowToPpq(lastend)
+        self:addNoteOFF(ppq, chan)
+      end
+
+      if ( start ) then
+        -- If it was the start of a new note previously, that means a legato'd bit may have to be undone
+        if ( chan == 1 ) then
+          if ( row > 0 ) then
+            if ( self.legato[row] > -1 ) then
+              local prevnote = noteGrid[idx-1]
+              if ( prevnote and ( prevnote > -1 ) ) then
+                local p2, v2, startppq2, endppq2 = table.unpack( notes[prevnote] )
+                endppq2 = endppq2-self.magicOverlap
+                reaper.MIDI_SetNote(self.take, prevnote, nil, nil, nil, endppq2, nil, nil, nil, true)
               end
             end
           end
-        
-          if ( row > 0 ) then
-            local chk = noteGrid[idx-1]
-            if ( not chk or ( chk < 0 ) ) then
-              ppq = self:rowToPpq(row)
-              self:addNoteOFF(ppq, chan)
-            end
-          else
+        end
+
+        if ( row > 0 ) then
+          local chk = noteGrid[idx-1]
+          if ( not chk or ( chk < 0 ) ) then
             ppq = self:rowToPpq(row)
             self:addNoteOFF(ppq, chan)
           end
-          
-          -- If there is no note at the end
-          self:deleteNote(chan, row)
         else
-          local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
-         
-          -- Make sure that the current note is resized accordingly
-          ppq = self:rowToPpq(row)          
-          reaper.MIDI_SetNote(self.take, note, nil, nil, startppqpos, ppq, nil, nil, nil, true)
+          ppq = self:rowToPpq(row)
+          self:addNoteOFF(ppq, chan)
         end
+
+        -- If there is no note at the end
+        self:deleteNote(chan, row)
+      else
+        local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
+
+        -- Make sure that the current note is resized accordingly
+        ppq = self:rowToPpq(row)
+        reaper.MIDI_SetNote(self.take, note, nil, nil, startppqpos, ppq, nil, nil, nil, true)
       end
     end
   end
-  self.ypos = self.ypos + self.advance
-  tracker:stopNote()
+  self:stopNote()
 end
 
 ---------------------
@@ -2624,20 +4125,20 @@ end
 ---------------------
 function tracker:shiftAt( x, y, shift, scale, onlyNotes )
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
-  local noteStart = self.data.noteStart  
+  local noteStart = self.data.noteStart
   local notes = self.notes
-  
+
   local chan = idxfields[x]
   local selected = noteStart[ chan*self.rows + y - 1 ]
-  
+
   if ( selected ) then
     local note = notes[selected]
     if ( datafields[x] == 'text' ) then
       -- Note
       local pitch, vel, startppqpos, endppqpos = table.unpack( note )
-      
+
       local newPitch = 0
-      if ( self.cfg.scaleActive == 1 ) then
+      if ( self.harmonyActive == 1 ) then
         if ( scale and scale == 1 ) then
           newPitch = scales:shiftRoot(pitch, shift)
         else
@@ -2646,13 +4147,13 @@ function tracker:shiftAt( x, y, shift, scale, onlyNotes )
       else
         newPitch = pitch+shift
       end
-      
-      reaper.MIDI_SetNote(self.take, selected, nil, nil, nil, nil, nil, newPitch, nil, true) 
+
+      reaper.MIDI_SetNote(self.take, selected, nil, nil, nil, nil, nil, newPitch, nil, true)
     elseif ( not onlyNotes ) then
       if ( datafields[x] == 'vel1' ) or ( datafields[x] == 'vel2' ) then
         -- Velocity
         local pitch, vel, startppqpos, endppqpos = table.unpack( note )
-        reaper.MIDI_SetNote(self.take, selected, nil, nil, nil, nil, nil, nil, clamp(0, 127,vel+shift), true)     
+        reaper.MIDI_SetNote(self.take, selected, nil, nil, nil, nil, nil, nil, clamp(0, 127,vel+shift), true)
       elseif ( datafields[x] == 'delay1' ) or ( datafields[x] == 'delay2' ) then
         -- Note delay
         local delay = self:getNoteDelay( selected )
@@ -2664,7 +4165,7 @@ function tracker:shiftAt( x, y, shift, scale, onlyNotes )
       end
     end
   end
-  
+
   if ( not onlyNotes ) then
     if ( ( datafields[x] == 'mod1' ) or ( datafields[x] == 'mod2' ) or ( datafields[x] == 'mod3' ) or ( datafields[x] == 'mod4' ) ) then
       local modtype, val, found = self:getCC( y - 1 )
@@ -2679,7 +4180,7 @@ function tracker:shiftAt( x, y, shift, scale, onlyNotes )
         local newval = clamp( 0, 127, val + shift )
         self:addCCPt_channel( y - 1, modtype, newval )
       end
-    elseif ( ( datafields[x] == 'fx1' ) or ( datafields[x] == 'fx2' ) ) then  
+    elseif ( ( datafields[x] == 'fx1' ) or ( datafields[x] == 'fx2' ) ) then
       local atime, env, shape, tension = tracker:getEnvPt(chan, self:toSeconds(y-1))
       if ( env and shape ) then
         local newEnv = clamp( 0, 1, env + shift/255 )
@@ -2693,7 +4194,7 @@ function tracker:shiftup(incp, onlyNotes, semitones)
   local cp = incp or self.cp
   reaper.Undo_OnStateChange2(0, "Tracker: Shift operation")
   reaper.MarkProjectDirty(0)
-  
+
   if ( cp.ystop == -1 ) then
     self:shiftAt( tracker.xpos, tracker.ypos, semitones or 1, nil, onlyNotes )
   else
@@ -2710,8 +4211,8 @@ function tracker:shiftdown(incp, onlyNotes, semitones)
   local cp = incp or self.cp
   reaper.Undo_OnStateChange2(0, "Tracker: Shift operation")
   reaper.MarkProjectDirty(0)
-  
-  if ( cp.ystop == -1 ) then  
+
+  if ( cp.ystop == -1 ) then
     self:shiftAt( tracker.xpos, tracker.ypos, -(semitones or 1), nil, onlyNotes )
   else
     for jx = cp.xstart, cp.xstop do
@@ -2727,7 +4228,7 @@ function tracker:shiftScaleUp()
   local cp = self.cp
   reaper.Undo_OnStateChange2(0, "Tracker: Shift root operation")
   reaper.MarkProjectDirty(0)
-  
+
   if ( cp.ystop == -1 ) then
     self:shiftAt( tracker.xpos, tracker.ypos, 1, 1 )
   else
@@ -2737,7 +4238,7 @@ function tracker:shiftScaleUp()
       end
     end
   end
-  
+
   scales:switchRoot( scales.root + 1 )
   self:saveConfig(tracker.configFile, self.cfg)
   reaper.MIDI_Sort(self.take)
@@ -2747,8 +4248,8 @@ function tracker:shiftScaleDown()
   local cp = self.cp
   reaper.Undo_OnStateChange2(0, "Tracker: Shift root operation")
   reaper.MarkProjectDirty(0)
-  
-  if ( cp.ystop == -1 ) then  
+
+  if ( cp.ystop == -1 ) then
     self:shiftAt( tracker.xpos, tracker.ypos, -1, 1 )
   else
     for jx = cp.xstart, cp.xstop do
@@ -2757,7 +4258,7 @@ function tracker:shiftScaleDown()
       end
     end
   end
-  
+
   scales:switchRoot( scales.root - 1 )
   self:saveConfig(tracker.configFile,self.cfg)
   reaper.MIDI_Sort(self.take)
@@ -2773,20 +4274,26 @@ function tracker:addNotePpq(startppqpos, endppqpos, chan, pitch, velocity)
     end
   end
 
-  reaper.MIDI_InsertNote( self.take, false, false, startppqpos, endppqpos, chan, pitch, velocity, true )
+  reaper.MIDI_InsertNote( self.take, false, self.muted_channels[chan], startppqpos, endppqpos, chan, pitch, velocity, true )
 end
 
 function tracker:addNote(startrow, endrow, chan, pitch, velocity)
-  local startppqpos = self:rowToPpq(startrow)
-  local endppqpos   = self:rowToPpq(endrow)
+  if ( self.take ) then
+    local startppqpos = self:rowToPpq(startrow)
+    local endppqpos   = self:rowToPpq(endrow)
 
-  if ( chan == 1 ) then
-    if ( self.legato[endrow] > -1 ) then
-      endppqpos = endppqpos + tracker.magicOverlap
+    if ( chan == 1 ) then
+      if ( self.legato[endrow] > -1 ) then
+        endppqpos = endppqpos + tracker.magicOverlap
+      end
+    end
+
+    if self.muted_channels then
+      reaper.MIDI_InsertNote( self.take, false, self.muted_channels[chan], startppqpos, endppqpos, chan, pitch, velocity, true )
+    else
+      reaper.MIDI_InsertNote( self.take, false, false, startppqpos, endppqpos, chan, pitch, velocity, true )
     end
   end
-
-  reaper.MIDI_InsertNote( self.take, false, false, startppqpos, endppqpos, chan, pitch, velocity, true )
 end
 
 ----------------------------
@@ -2851,9 +4358,9 @@ function tracker:endToPpq( ppq, enddiff )
   local singlerow = self:rowToPpq(1)
   local eps = self.eps
   local ppq = self:rowToPpq( self:ppqToRow(ppq - eps) )
-  
+
   if ( enddiff > 250 ) then
-    enddiff = 255;
+    enddiff = 255
   end
   return ppq + singlerow * ( enddiff / 255.0 )
 end
@@ -2870,17 +4377,18 @@ function tracker:showMore()
     else
       local singlerow = math.floor(self:rowToPpq(1))
       if ( ( singlerow / 256 ) ~= math.floor( singlerow/256 ) ) then
-        if ( not self.showedWarning ) then
+        if ( self.cfg.showedWarning == 0 ) then
           reaper.ShowMessageBox("WARNING: This functionality only works reliably when MIDI pulses per row is set to a multiple of 256!\nPreferences > Media/MIDI > Ticks per quarter note for new MIDI items.", "WARNING", 0)
-          self.showedWarning = 1
+          self.cfg.showedWarning = 1
+          tracker:saveConfig(tracker.configFile, tracker.cfg)
         end
       end
-    
+
       self.showDelays[chan] = 1
       self.hash = 0
     end
   end
-  
+
   if ( ( ftype == 'mod1' ) or ( ftype == 'mod2' ) or ( ftype == 'mod3' ) or ( ftype == 'mod4' ) ) then
     tracker.modMode = 1
     self.hash = 0
@@ -2890,7 +4398,7 @@ end
 
 function tracker:showLess()
   local ftype, chan, row = self:getLocation()
-  
+
   if ( ftype == 'end1' ) or ( ftype == 'end2' ) then
     self.showEnd[chan] = 0
     self.hash = 0
@@ -2902,42 +4410,19 @@ function tracker:showLess()
   if ( ( ftype == 'modtxt1' ) or ( ftype == 'modtxt2' ) ) then
     tracker.modMode = 0
     self.hash = 0
-    self:storeSettings()    
+    self:storeSettings()
   end
 end
 
----------------------
--- Add note
----------------------
-function tracker:createNote( inChar )
+-- Place a note, potentially overwriting an existing note, or shortening one that is already here.
+function tracker:placeNote(pitch, chan, row)
+  local rows       = self.rows
+  local data       = self.data  
+  local noteGrid   = data.note
+  local noteStart  = data.noteStart
+  local notes      = self.notes
+  local shouldMove = false
 
-  if ( not inChar or ( inChar > 256 ) ) then
-    return
-  end
- 
-  local char      = string.lower(string.char(inChar))
-  local data      = self.data
-  local notes     = self.notes
-  local noteGrid  = data.note
-  local noteStart = data.noteStart  
-  local rows      = self.rows
-  local singlerow = self:rowToPpq(1)
-
-  -- Determine fieldtype, channel and row
-  local ftype, chan, row = self:getLocation()
-  
-  if ( ( self.armed == 1 ) and ( self.onlyListen == 1 ) ) then
-    local note = keys.pitches[char]
-    if ( note ) then
-      -- Note is present, we are good to go!
-      local pitch = note + tracker.transpose * 12
-      self:playNote(chan, pitch, self.lastVel)
-    end
-    
-    return
-  end
-  
-  local noteToEdit = noteStart[rows*chan+row]
   local noteToInterrupt
   if ( row > 0 ) then
     noteToInterrupt = noteGrid[rows*chan+row-1]
@@ -2945,187 +4430,237 @@ function tracker:createNote( inChar )
     noteToInterrupt = noteGrid[rows*chan+row]
   end
   
+  local noteToEdit = noteStart[rows*chan+row]
+  
+  -- Is there already a note starting here? Simply change the note.
+  if ( noteToEdit ) then
+    reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, pitch, nil, true)
+    local p2, v2 = table.unpack( notes[noteToEdit] )
+    self:playNote(chan, pitch, v2)
+  else
+    -- No note yet? See how long the new note can get. Note that we have to ignore any note
+    -- we might be interrupting (placed in the middle of)
+    local k = row+1
+    while( k < rows ) do
+      if ( noteGrid[rows*chan+k] and not ( noteGrid[rows*chan+k] == noteToInterrupt ) ) then
+        break
+      end
+      k = k + 1
+    end
+  
+    -- Create the new note!
+    self:addNote(row, k, chan, pitch, self:lastVel())
+    self:playNote(chan, pitch, self:lastVel())
+  
+    if ( noteGrid[rows*chan+k] ) then
+      if ( noteGrid[rows*chan+k] < -1 ) then
+        self:deleteNote(chan, k)
+      end
+    end
+  
+    -- If we interrupted a note, that note needs to be shortened / removed!
+    -- If we overwrote an OFF marker that was still here, then it needs to be removed as well.
+    if ( noteToInterrupt ) then
+      -- Note
+      if ( noteToInterrupt > -1 ) then
+        -- Shorten the note we are interrupting
+        local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToInterrupt] )
+        endppqpos = self:rowToPpq(row)
+  
+        -- Check if we are at a legato point. Since we are interrupting a note,
+        -- we have to maintain additional overlap
+        if ( chan == 1 ) then
+          local legato = self.legato
+          if ( legato[row] and ( legato[row] > -1 ) ) then
+            endppqpos = endppqpos + tracker.magicOverlap
+          end
+        end
+  
+        -- Set the new note length
+        reaper.MIDI_SetNote(self.take, noteToInterrupt, nil, nil, nil, endppqpos, nil, nil, nil, true)
+      end
+    end
+  
+    -- Were we overwriting an OFF marker?
+    local idx = rows*chan+row
+    if ( noteGrid[idx] and noteGrid[idx] < -1 ) then
+      self:deleteNote(chan, row)
+    end
+  end
+  shouldMove = true
+  
+  return shouldMove
+end
+
+---------------------
+-- Add note
+---------------------
+function tracker:createNote(inChar, shift)
+
+  if ( not inChar or ( inChar > 256 ) ) then
+    return
+  end
+
+  local char       = string.lower(string.char(inChar))
+  local data       = self.data
+  local notes      = self.notes
+  local noteGrid   = data.note
+  local noteStart  = data.noteStart
+  local rows       = self.rows
+  local singlerow  = self:rowToPpq(1)
+  local shouldMove = false
+
+  -- Determine fieldtype, channel and row
+  local ftype, chan, row = self:getLocation()
+
+  if ( ( self.armed == 1 ) and ( self.onlyListen == 1 ) ) then
+    local note = keys.pitches[char]
+    if ( note ) then
+      -- Note is present, we are good to go!
+      local pitch = note + self.transpose * 12
+      self:playNote(chan, pitch, self:lastVel())
+    end
+
+    return
+  end
+  
+  local noteToEdit = noteStart[rows*chan+row]
+
    -- What are we manipulating here?
   if ( ftype == 'text' ) then
     local note = keys.pitches[char]
     if ( note ) then
       -- Note is present, we are good to go!
-      local pitch = note + tracker.transpose * 12
-      
-      -- Is there already a note starting here? Simply change the note.
-      if ( noteToEdit ) then
-        reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, pitch, nil, true)
-        local p2, v2 = table.unpack( notes[noteToEdit] )
-        self:playNote(chan, pitch, v2)
-      else
-        -- No note yet? See how long the new note can get. Note that we have to ignore any note
-        -- we might be interrupting (placed in the middle of)
-        local k = row+1
-        while( k < rows ) do
-          if ( noteGrid[rows*chan+k] and not ( noteGrid[rows*chan+k] == noteToInterrupt ) ) then
-            break;
-          end
-          k = k + 1
-        end       
-
-        -- Create the new note!
-        self:addNote(row, k, chan, pitch, self.lastVel)
-        self:playNote(chan, pitch, self.lastVel)
-      
-        if ( noteGrid[rows*chan+k] ) then
-          if ( noteGrid[rows*chan+k] < -1 ) then    
-            self:deleteNote(chan, k)
-          end
-        end
-        
-        -- If we interrupted a note, that note needs to be shortened / removed!
-        -- If we overwrote an OFF marker that was still here, then it needs to be removed as well. 
-        if ( noteToInterrupt ) then
-          -- Note
-          if ( noteToInterrupt > -1 ) then
-            -- Shorten the note we are interrupting
-            local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToInterrupt] )
-            endppqpos = self:rowToPpq(row)
-            
-            -- Check if we are at a legato point. Since we are interrupting a note, 
-            -- we have to maintain additional overlap
-            if ( chan == 1 ) then
-              local legato = self.legato
-              if ( legato[row] and ( legato[row] > -1 ) ) then
-                endppqpos = endppqpos + tracker.magicOverlap          
-              end
-            end
-            
-            -- Set the new note length
-            reaper.MIDI_SetNote(self.take, noteToInterrupt, nil, nil, nil, endppqpos, nil, nil, nil, true)
-          end          
-        end
-        
-        -- Were we overwriting an OFF marker?
-        local idx = rows*chan+row
-        if ( noteGrid[idx] and noteGrid[idx] < -1 ) then
-          self:deleteNote(chan, row)
-        end
-      end
-      self.ypos = self.ypos + self.advance
+      local pitch = note + self.transpose * 12
+      shouldMove = self:placeNote(pitch, chan, row)
     else
       local octave = keys.octaves[char]
       if ( octave ) then
         if ( noteToEdit ) then
           local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToEdit] )
-          pitch = pitch - math.floor(pitch/12)*12 + (octave+1) * 12        
+          pitch = pitch - math.floor(pitch/12)*12 + (octave+1) * 12
           reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, pitch, nil, true)
           self:playNote(chan, pitch, vel)
         end
-        self.ypos = self.ypos + self.advance
+        shouldMove = true
       end
     end
   elseif ( ( ftype == 'vel1' ) and validHex( char ) ) then
     if ( noteToEdit ) then
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToEdit] )
       local newvel = tracker:editVelField( vel, 1, char )
-      self.lastVel = newvel
+      self:setLastVel(newvel)
       reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, nil, newvel, true)
     end
-    self.ypos = self.ypos + self.advance
+    shouldMove = true
   elseif ( ( ftype == 'vel2' ) and validHex( char ) ) then
     if ( noteToEdit ) then
-      local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToEdit] )    
-      local newvel = tracker:editVelField( vel, 2, char )      
-      self.lastVel = newvel      
+      local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToEdit] )
+      local newvel = tracker:editVelField( vel, 2, char )
+      self:setLastVel(newvel)
       reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, nil, newvel, true)
-      self.ypos = self.ypos + self.advance
     end
+    shouldMove = true
   elseif ( ( ftype == 'fx1' ) and validHex( char ) ) then
     local atime, env, shape, tension = tracker:getEnvPt(chan, self:toSeconds(self.ypos-1))
     env = env or self.lastEnv
     local newEnv = tracker:editEnvField( env, 1, char )
     self:addEnvPt(chan, self:toSeconds(self.ypos-1), newEnv, self.envShape)
-    self.ypos = self.ypos + self.advance
+    shouldMove = true
     self.lastEnv = newEnv
   elseif ( ( ftype == 'fx2' ) and validHex( char ) ) then
     local atime, env, shape, tension = tracker:getEnvPt(chan, self:toSeconds(self.ypos-1))
-    env = env or self.lastEnv  
+    env = env or self.lastEnv
     local newEnv = tracker:editEnvField( env, 2, char )
-    self:addEnvPt(chan, self:toSeconds(self.ypos-1), newEnv, self.envShape)    
-    self.ypos = self.ypos + self.advance
+    self:addEnvPt(chan, self:toSeconds(self.ypos-1), newEnv, self.envShape)
+    shouldMove = true
     self.lastEnv = newEnv
   elseif ( ( ftype == 'delay1' ) and validHex( char ) ) then
     if ( noteToEdit ) then
       local delay = self:getNoteDelay( noteToEdit )
       local newDelay = self:editCCField( delay, 1, char )
       self:setNoteDelay( noteToEdit, newDelay )
-      self.ypos = self.ypos + self.advance
+      shouldMove = true
     end
   elseif ( ( ftype == 'delay2' ) and validHex( char ) ) then
     if ( noteToEdit ) then
       local delay = self:getNoteDelay( noteToEdit )
       local newDelay = self:editCCField( delay, 2, char )
       self:setNoteDelay( noteToEdit, newDelay )
-      self.ypos = self.ypos + self.advance
+      shouldMove = true
     end
   elseif ( ( ftype == 'end1' ) and validHex( char ) ) then
     if ( noteToEdit ) then
       local oldEnd = self:getNoteEnd( noteToEdit )
       local newEnd = self:editCCField( oldEnd, 1, char )
       self:setNoteEnd( noteToEdit, newEnd )
-      self.ypos = self.ypos + self.advance
+      shouldMove = true
     end
   elseif ( ( ftype == 'end2' ) and validHex( char ) ) then
     if ( noteToEdit ) then
       local oldEnd = self:getNoteEnd( noteToEdit )
       local newEnd = self:editCCField( oldEnd, 2, char )
       self:setNoteEnd( noteToEdit, newEnd )
-      self.ypos = self.ypos + self.advance
+      shouldMove = true
     end
   elseif ( ( ftype == 'mod1' ) and validHex( char ) ) then
     local modtype, val = self:getCC( self.ypos - 1 )
     local newtype = self:editCCField( modtype, 1, char )
     self:addCCPt( self.ypos-1, newtype, val )
     self.lastmodtype = newtype
-    self.ypos = self.ypos + self.advance
+    shouldMove = true
   elseif ( ( ftype == 'mod2' ) and validHex( char ) ) then
     local modtype, val = self:getCC( self.ypos - 1 )
     local newtype = self:editCCField( modtype, 2, char )
     self:addCCPt( self.ypos-1, newtype, val )
     self.lastmodtype = newtype
-    self.ypos = self.ypos + self.advance
+    shouldMove = true
   elseif ( ( ftype == 'mod3' ) and validHex( char ) ) then
     local modtype, val = self:getCC( self.ypos - 1 )
     local newval = self:editCCField( val, 1, char )
     self:addCCPt( self.ypos-1, modtype, newval )
     self.lastmodval = newval
-    self.ypos = self.ypos + self.advance
+    shouldMove = true
   elseif ( ( ftype == 'mod4' ) and validHex( char ) ) then
     local modtype, val = self:getCC( self.ypos - 1 )
     local newval = self:editCCField( val, 2, char )
     self:addCCPt( self.ypos-1, modtype, newval )
     self.lastmodval = newval
-    self.ypos = self.ypos + self.advance
+    shouldMove = true
   elseif ( ( ftype == 'modtxt1' ) and validHex( char ) ) then
+    -- Set col CC
     local modtypes = data.modtypes
     local modtype, val = self:getCC( self.ypos - 1, modtypes[chan] )
     local newval = self:editCCField( val, 1, char )
     self:addCCPt_channel( self.ypos-1, modtype, newval )
     self.lastmodval = newval
-    self.ypos = self.ypos + self.advance
+    shouldMove = true
   elseif ( ( ftype == 'modtxt2' ) and validHex( char ) ) then
-    local modtypes = data.modtypes  
+    local modtypes = data.modtypes
     local modtype, val = self:getCC( self.ypos - 1, modtypes[chan] )
     local newval = self:editCCField( val, 2, char )
     self:addCCPt_channel( self.ypos-1, modtype, newval )
     self.lastmodval = newval
-    self.ypos = self.ypos + self.advance    
+    shouldMove = true
   elseif ( ftype == 'legato' ) then
     if ( char == '1' ) then
       self:addLegato( row )
     elseif ( char == '0' ) then
       self:deleteLegato( row )
     elseif ( char == '.' ) then
-      self:deleteLegato( row )    
+      self:deleteLegato( row )
     end
-    self.ypos = self.ypos + self.advance
-  end  
+    shouldMove = true
+  end
+
+  if shouldMove then
+    if shift then
+      self:tab()
+    else
+      self:advanceCursor()
+    end
+  end
+
 end
 
 --------------------------
@@ -3172,7 +4707,7 @@ function ordereduniquepairs(inTable, order)
   local i = 0
   local last = -1337
   return function()
-    i = i + 1  
+    i = i + 1
     while( inTable[keys[i]] == last ) do
       i = i + 1
     end
@@ -3202,9 +4737,9 @@ function tracker:deleteNow( )
   if ( deleteText ) then
     for i,v in ordereduniquepairs(deleteText) do
       reaper.MIDI_DeleteTextSysexEvt(self.take, v)
-    end    
+    end
   end
-  
+
   self.deleteNotes = {}
   self.deleteText = {}
 end
@@ -3221,7 +4756,7 @@ function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, note
   local offset = shift or 0
   if ( row > 0 ) then
     local noteToResize = noteGrid[rows*chan+row - 1]
-    
+
     -- Was there a note before this?
     if ( noteToResize and ( noteToResize > -1 ) ) then
       local k = row+1
@@ -3238,7 +4773,7 @@ function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, note
               print( 'I (' .. self.pitchTable[pitch2] .. ') am breaking my elongation on an OFF symbol' )
             end
           end
-          break;
+          break
         end
         k = k + 1
       end
@@ -3253,16 +4788,16 @@ function tracker:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, note
         -- we need to take into account that these have forced legato offs.
         if ( chan == 1 ) then
           if ( legatoWasOff ) then
-            magic = self:legatoResize(0, -1, self.legato[k])        
+            magic = self:legatoResize(0, -1, self.legato[k])
           else
             magic = self:legatoResize(0, self.legato[row], self.legato[k])
           end
         end
       end
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToResize] )
-      
+
       reaper.MIDI_SetNote(self.take, noteToResize, nil, nil, startppqpos, newend * singlerow + magic, nil, nil, nil, true)
-      
+
       -- Is there an OFF symbol at this location?
       if ( k < rows ) then
         if ( noteGrid[rows*chan+k] < -1 ) then
@@ -3294,18 +4829,18 @@ function tracker:resizeNote(chan, row, sizeChange)
   local noteGrid  = self.data.note
   local rows      = self.rows
   local note      = noteGrid[ rows * chan + row ]
-  
+
   local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
   local endrow = math.floor( self:ppqToRow( endppqpos ) )
 
   -- Was this a legato note?
   if ( chan == 1 ) then
     local legato = self.legato
-      
+
     -- Check if it's legato at the old end position!
     local oldLegato = legato[endrow]
     local newLegato = legato[endrow+sizeChange]
-    endppqpos = self:legatoResize(endppqpos, oldLegato, newLegato)      
+    endppqpos = self:legatoResize(endppqpos, oldLegato, newLegato)
   end
 
   reaper.MIDI_SetNote(self.take, note, nil, nil, startppqpos, endppqpos + singlerow * sizeChange, nil, nil, nil, true)
@@ -3320,20 +4855,20 @@ function tracker:shrinkNote(chan, row)
   local noteGrid  = self.data.note
   local rows      = self.rows
   local note      = noteGrid[ rows * chan + row ]
-  
+
   local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
   local endrow = math.floor(self:ppqToRow( endppqpos ))
-  
+
   -- Is it the last note with an open end, then stay that way.
   -- There is nothingness outside our pattern! :)
   if ( endppqpos <= self:rowToPpq( self.rows-1 ) ) then
     if ( chan == 1 ) then
       local legato = self.legato
-      
+
       -- Check if it's legato at the old end position!
       local oldLegato = legato[endrow]
       local newLegato = legato[endrow-1]
-      endppqpos = self:legatoResize(endppqpos, oldLegato, newLegato)      
+      endppqpos = self:legatoResize(endppqpos, oldLegato, newLegato)
     end
     reaper.MIDI_SetNote(self.take, note, nil, nil, startppqpos, endppqpos - singlerow, nil, nil, nil, true)
   end
@@ -3348,23 +4883,23 @@ function tracker:growNote(chan, row)
   local noteGrid  = self.data.note
   local rows      = self.rows
   local note      = noteGrid[ rows * chan + row ]
-  
+
   local pitch, vel, startppqpos, endppqpos = table.unpack( notes[note] )
   local endrow = math.floor(self:ppqToRow( endppqpos ))
-  
+
   -- Is it the last note with an open end, then stay that way.
   -- There is nothingness outside our pattern! :)
   if ( endppqpos <= self:rowToPpq( self.rows-1 ) ) then
-  
+
     if ( chan == 1 ) then
       local legato = self.legato
-      
+
       -- Check if it's legato at the old end position!
       local oldLegato = legato[endrow]
       local newLegato = legato[endrow+1]
       endppqpos = self:legatoResize(endppqpos, oldLegato, newLegato)
     end
-    
+
     reaper.MIDI_SetNote(self.take, note, nil, nil, startppqpos, endppqpos + singlerow, nil, nil, nil, true)
   end
 end
@@ -3380,33 +4915,33 @@ function tracker:backspace()
 
   -- Determine fieldtype, channel and row
   local ftype, chan, row = self:getLocation()
-  
+
    -- What are we manipulating here?
   if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) or ( ftype == 'end1' ) or ( ftype == 'end2' ) ) then
     local noteGrid = data.note
-    local noteStart = data.noteStart          
+    local noteStart = data.noteStart
     local lastnote
     local note = noteGrid[rows*chan+row]
     local noteToDelete = noteStart[rows*chan+row]
-    
+
     -- Note == -1 is a natural OFF (based on the previous note), hence note < 0 as criterion
     -- since removing this would lead to a necessary check for elongation of the previous note
-    if ( noteToDelete or ( note and note < 0 ) ) then    
+    if ( noteToDelete or ( note and note < 0 ) ) then
       -- Are we on the start of a note or an OFF symbol? This would mean that the previous note can grow
       -- Check whether there is a note before this, and elongate it until the next blockade
       if ( note < 0 ) then
-        -- OFFs are special, in the sense that they block the legato extension. This means 
+        -- OFFs are special, in the sense that they block the legato extension. This means
         -- that we should set the final flag to one to convey this to checkNoteGrow
         self:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, noteStart[rows*chan+row], 1,   1)
       else
-        self:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, noteStart[rows*chan+row], 1)      
+        self:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, noteStart[rows*chan+row], 1)
       end
     elseif ( note and ( note > -1 ) ) then
       -- We are in the middle of a note, so it must get smaller
       self:shrinkNote(chan, row, 1)
       lastnote = note
-    end         
-          
+    end
+
     -- Everything below this note has to shift one up
     for i = row,rows-1 do
       local note = noteGrid[rows*chan+i]
@@ -3417,7 +4952,7 @@ function tracker:backspace()
       end
       lastnote = note
     end
-    
+
     -- Were we on a note start or a custom OFF? ==> Kill it
     if ( noteToDelete or ( note and ( note < -1 ) ) ) then
       self:deleteNote(chan, row, -1)
@@ -3435,7 +4970,7 @@ function tracker:backspace()
   elseif( ftype == 'mod1' or ftype == 'mod2' or ftype == 'mod3' or ftype == 'mod4' ) then
     self:backspaceCCPt(self.ypos-1)
   elseif( ftype == 'modtxt1' or ftype == 'modtxt2' ) then
-    self:backspaceCCPt(self.ypos-1, data.modtypes[chan])    
+    self:backspaceCCPt(self.ypos-1, data.modtypes[chan])
   else
     print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
     return
@@ -3445,7 +4980,7 @@ end
 ---------------------
 -- Add OFF flag
 ---------------------
-function tracker:addNoteOFF(ppq, channel) 
+function tracker:addNoteOFF(ppq, channel)
   -- Is it within pattern range?
   if ( ppq < self:rowToPpq( self.rows - 1 ) ) then
     reaper.MIDI_InsertTextSysexEvt(self.take, false, false, ppq, 1, string.format('OFF%2d', channel))
@@ -3474,7 +5009,7 @@ function tracker:deleteNoteSimple(channel, row)
   local noteStart = self.data.noteStart
   local shift     = shiftIn or 0
   local singlerow = self:rowToPpq(1)
-  
+
   noteToDelete = noteStart[rows*channel+row]
   offToDelete = noteGrid[rows*channel+row]
   if ( noteToDelete ) then
@@ -3508,30 +5043,30 @@ function tracker:deleteNote(channel, row, shiftIn)
     if ( noteToDelete ) then
       if ( noteToDelete > -1 ) then
         -- We are deleting a note
-  
+
         -- We need a noteOFF iff
         --   - There is no note on the previous row
         local shouldBeEmpty1
-        if ( row > 0 ) then 
+        if ( row > 0 ) then
           shouldBeEmpty1 = noteGrid[rows*channel+row-1]
           shouldBeEmpty1 = shouldBeEmpty1 and ( shouldBeEmpty1 > -1 )
         end
-              
+
         --   - There is no note where the current note currently ends
         local shouldBeEmpty2
         local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToDelete] )
         local endrow = self:ppqToRow(endppqpos)
         shouldBeEmpty2 = noteGrid[rows*channel+endrow]
         shouldBeEmpty2 = shouldBeEmpty2 and ( shouldBeEmpty2 > -1 )
-              
+
         --   - The current note ended before the end of the pattern
         -- This one is automatically fulfilled because events outside of the time range get deleted by reaper
-  
+
         if ( ( not shouldBeEmpty1 ) and ( not shouldBeEmpty2 ) ) then
           -- We need an explicit OFF symbol. We need to store this separately!
-          tracker:addNoteOFF(endppqpos + shift * singlerow, channel)      
+          tracker:addNoteOFF(endppqpos + shift * singlerow, channel)
         end
-        self:SAFE_DeleteNote(self.take, noteToDelete)      
+        self:SAFE_DeleteNote(self.take, noteToDelete)
       else
         -- We are deleting a custom OFF symbol
         if ( noteToDelete < -1 ) then
@@ -3560,12 +5095,12 @@ function tracker:delete()
 
   -- Determine fieldtype, channel and row
   local ftype, chan, row = self:getLocation()
-  
+
   -- What are we manipulating here?
   if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) or ( ftype == 'end1' ) or ( ftype == 'end2' ) ) then
     local noteGrid = data.note
     local noteStart = data.noteStart
-  
+
     -- OFF marker
     if ( noteGrid[rows*chan+row] and ( noteGrid[rows*chan+row] < 0 ) ) then
       -- Check whether the previous note can grow now that this one is gone
@@ -3574,13 +5109,13 @@ function tracker:delete()
         self:deleteNote(chan, row)
       end
     end
-    
+
     -- Note that we look at note start here.
     -- This means that this deleteNote call can never conflict with the deleteNote
     -- call that may arise from deleting an OFF marker.
     local noteToDelete = noteStart[rows*chan+row]
     if ( noteToDelete ) then
-      reaper.MarkProjectDirty(0)    
+      reaper.MarkProjectDirty(0)
       self:checkNoteGrow(notes, noteGrid, rows, chan, row, singlerow, noteToDelete)
       self:deleteNote(chan, row)
     end
@@ -3590,12 +5125,12 @@ function tracker:delete()
     self:deleteEnvPt(chan, self:toSeconds(row) )
   elseif ( ftype == 'mod1' or ftype == 'mod2' or ftype == 'mod3' or ftype == 'mod4' ) then
     self:deleteCC_range(row)
-  elseif ( ftype == 'modtxt1' or ftype == 'modtxt2' ) then  
+  elseif ( ftype == 'modtxt1' or ftype == 'modtxt2' ) then
     self:deleteCC_range(row, row+1, data.modtypes[chan])
   else
     print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
     return
-  end  
+  end
 end
 
 ---------------------
@@ -3610,7 +5145,7 @@ end
 -- WARNING: this function should only be used at the end or when it is guaranteed that no more
 -- MIDI editing will take place, since it will invalidate the notes matrices
 ---------------------------------------------------------------------------------------------------
-function tracker:shiftNote(chan, row, shift) 
+function tracker:shiftNote(chan, row, shift)
   local txtList     = self.txtList
   local singlerow   = self:rowToPpq(1)
   local noteGrid    = self.data.note
@@ -3623,22 +5158,20 @@ function tracker:shiftNote(chan, row, shift)
     local magicOverlap = self.magicOverlap
     local pitch, vel, startppqpos, endppqpos = table.unpack( notes[gridValue] )
     local wasLegatoTransition = self.legato[self:ppqToRow(endppqpos)]
-    local newEnd = endppqpos + shift*singlerow   
+    local newEnd = endppqpos + shift*singlerow
     local isLegatoTransition = self.legato[self:ppqToRow(newEnd)]
-    
+
     -- Is it the last note with an open end, then stay that way.
     -- There is nothingness outside our pattern! :)
     if ( endppqpos > self:rowToPpq( self.rows-1 ) ) then
---      if ( shift < 0 ) then
-        newEnd = endppqpos
---      end
+      newEnd = endppqpos
     else
       -- Is it a legato note?
-      if ( chan == 1 ) then     
+      if ( chan == 1 ) then
         newEnd = self:legatoResize(newEnd, wasLegatoTransition, isLegatoTransition)
       end
     end
-    
+
     if ( row < rows ) then
       reaper.MIDI_SetNote(self.take, gridValue, nil, nil,startppqpos + shift*singlerow, newEnd, nil, nil, nil, true)
     else
@@ -3664,28 +5197,28 @@ function tracker:insert()
   local data      = self.data
   local singlerow = self:rowToPpq(1)
   local rows      = self.rows
-  
+
   -- Determine fieldtype, channel and row
-  local ftype, chan, row = self:getLocation()  
-  
+  local ftype, chan, row = self:getLocation()
+
   -- What are we manipulating here?
   if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) or ( ftype == 'end1' ) or ( ftype == 'end2' ) ) then
     local noteGrid = data.note
-    local noteStart= data.noteStart    
+    local noteStart= data.noteStart
     local notes    = self.notes
-    
+
     local elongate
-    -- Are we inside a note? ==> It needs to be elongated!    
+    -- Are we inside a note? ==> It needs to be elongated!
     if ( not noteStart[rows*chan+row] ) then
       elongate = noteGrid[rows*chan+row]
-      if ( elongate ) then        
+      if ( elongate ) then
         if ( elongate < -1 ) then
           -- It was an explicit OFF. Shift it!
           -- Note that this means that the previous note cannot be an actual note
           -- Note that the deletion is safe, since an insert can at most drop one MIDI element at once
           self:shiftNote(chan, row, 1)
         end
-        
+
         -- Was the previous row a note? Then we must elongate
         if ( row > 0 ) then
           elongate = noteGrid[rows*chan+row - 1]
@@ -3693,7 +5226,7 @@ function tracker:insert()
             -- Let's elongate the note by a row!
             self:growNote( chan, row-1 )
           end
-        end        
+        end
       end
     else
       -- We are at a note start... maybe there is a previous note who wants to be elongated?
@@ -3729,7 +5262,7 @@ function tracker:insert()
   elseif ( ftype == 'mod1' or ftype == 'mod2' or ftype == 'mod3' or ftype == 'mod4' ) then
     self:insertCCPt(self.ypos-1)
   elseif ( ftype == 'modtxt1' or ftype == 'modtxt2' ) then
-    self:insertCCPt(self.ypos-1, data.modtypes[chan])    
+    self:insertCCPt(self.ypos-1, data.modtypes[chan])
   else
     print( "FATAL ERROR IN TRACKER.LUA: unknown field?" )
     return
@@ -3751,7 +5284,7 @@ function tracker:forceCursorInRange(forceY)
   end
   if ( self.ypos < 1 ) then
     self.ypos = 1
-  end  
+  end
   if ( self.xpos > self.max_xpos ) then
     self.xpos = math.floor( self.max_xpos )
   end
@@ -3760,24 +5293,44 @@ function tracker:forceCursorInRange(forceY)
   end
   if ( self.ypos > self.max_ypos ) then
     self.ypos = math.floor( self.max_ypos )
-  end  
-  -- Is the cursor off fov?
-  if ( ( yTarget - fov.scrolly ) > self.fov.height ) then
-    self.fov.scrolly = yTarget - self.fov.height
   end
-  if ( ( yTarget - fov.scrolly ) < 1 ) then
-    self.fov.scrolly = yTarget - 1
-  end
+
+  if ( self.cfg.fixedIndicator == 1 ) then
+    self.fov.scrolly = math.floor(yTarget - self.fov.height * self.cfg.fixedIndLoc)
+  else
+    --Is the cursor off fov?
+    if ( ( yTarget - fov.scrolly ) > self.fov.height ) then
+      self.fov.scrolly = yTarget - self.fov.height
+    end
+    if ( ( yTarget - fov.scrolly ) < 1 ) then
+      self.fov.scrolly = yTarget - 1
+    end
     
+    if ( ( self.fov.scrolly + self.fov.height ) > self.rows ) then
+      self.fov.scrolly = math.max(0, yTarget - self.fov.height)
+    end
+
+    if ( self.fov.scrolly < 0 ) then
+      self.fov.scrolly = 0
+    end
+  end
+
+  if ( self.cfg.followRow == 1 ) then
+    if self.item and reaper.ValidatePtr(self.item, "MediaItem*") then
+      local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+      reaper.SetEditCurPos2(0, mpos + (self.ypos-1) / self.rowPerSec, true, false)
+    end
+  end
+
   -- Is the cursor off fov?
-  if ( ( self.xpos - fov.scrollx ) > self.fov.width ) then
-    self.fov.scrollx = self.xpos - self.fov.width
+  if ( ( self.xpos - fov.scrollx ) > fov.width ) then
+    self.fov.scrollx = self.xpos - fov.width
     self:updatePlotLink()
   end
   if ( ( self.xpos - fov.scrollx ) < 1 ) then
     self.fov.scrollx = self.xpos - 1
     self:updatePlotLink()
-  end    
+  end
 end
 
 function tracker:toSeconds(row)
@@ -3809,12 +5362,11 @@ function tracker:toQn(seconds)
 end
 
 function tracker:getResolution( reso )
-
-  -- Determine Row per Qn for this MIDI item
+ -- Determine Row per Qn for this MIDI item
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   for i=0,textsyxevtcntOut do
     local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
-    
+
     if ( string.sub(msg,1,3) == 'ROW' ) then
       local rpq = tonumber( string.sub(msg,4,5) )
       if ( rpq ) then
@@ -3822,36 +5374,43 @@ function tracker:getResolution( reso )
       end
     end
   end
-  
+
   return tracker.cfg.rowPerQn
 end
 
 function tracker:getSettings( )
-  local oct, adv, env, modMode
+  local oct, adv, env, modMode, rowOverride
   local foundOpt = 0
   if ( tracker.cfg.storedSettings == 1 ) then
-    local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
-    for i=0,textsyxevtcntOut do
-      local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
-      
-      if ( string.sub(msg,1,3) == 'OPT' ) then
-        if ( foundOpt == 0 ) then
-          oct = tonumber( string.sub(msg,4,5) )
-          adv = tonumber( string.sub(msg,6,7) )
-          env = tonumber( string.sub(msg,8,9) )
-          modMode = tonumber( string.sub(msg,10,10) )
-          foundOpt = 1
-        else
-          self:SAFE_DeleteText(self.take, i)
+    if ( self.take ) then
+      local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+      for i=0,textsyxevtcntOut do
+        local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
+
+        if ( string.sub(msg,1,3) == 'OPT' ) then
+          if ( foundOpt == 0 ) then
+            oct = tonumber( string.sub(msg,4,5) )
+            adv = tonumber( string.sub(msg,6,7) )
+            env = tonumber( string.sub(msg,8,9) )
+            modMode = tonumber( string.sub(msg,10,10) )
+            rowOverride = tonumber( string.sub(msg,11,12) )
+            foundOpt = 1
+          else
+            self:SAFE_DeleteText(self.take, i)
+          end
         end
       end
     end
-    
-    self.transpose  = oct or self.transpose or tracker.cfg.transpose
-    self.advance    = adv or self.advance or tracker.cfg.advance
-    self.envShape   = env or self.envShape or tracker.cfg.envShape
-    self.modMode    = modMode or self.modMode
   end
+
+  self.transpose          = oct         or self.transpose       or tracker.cfg.transpose
+  self.advance            = adv         or self.advance         or tracker.cfg.advance
+  self.envShape           = env         or self.envShape        or tracker.cfg.envShape
+  self.modMode            = modMode     or self.modMode         or tracker.cfg.modMode
+  if ( self.cfg.overridePerPattern == 1 ) then
+    self.cfg.rowOverride    = rowOverride or self.cfg.rowOverride
+  end
+
   self:deleteNow()
 end
 
@@ -3860,13 +5419,13 @@ function tracker:storeSettings( )
     local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
     for i=0,textsyxevtcntOut do
       local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
-      
+
       if ( string.sub(msg,1,3) == 'OPT' ) then
         reaper.MIDI_DeleteTextSysexEvt(self.take, i)
       end
     end
-    
-    reaper.MIDI_InsertTextSysexEvt(self.take, false, false, 0, 1, string.format( 'OPT%2d%2d%2d%d', self.transpose, self.advance, self.envShape, self.modMode ) )
+
+    reaper.MIDI_InsertTextSysexEvt(self.take, false, false, 0, 1, string.format( 'OPT%2d%2d%2d%d%2d', self.transpose, self.advance, self.envShape, self.modMode, self.cfg.rowOverride ) )
   end
 end
 
@@ -3875,18 +5434,18 @@ function tracker:storeOpenCC( )
     local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
     for i=0,textsyxevtcntOut do
       local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
-      
+
       if ( string.sub(msg,1,3) == 'CCC' ) then
         reaper.MIDI_DeleteTextSysexEvt(self.take, i)
       end
     end
-    
+
     if ( #(self.data.modtypes) > 0 ) then
       local str = 'CCC'
       for i,v in pairs(self.data.modtypes) do
-        str = str .. string.format( '%3d ', v )
+        str = str .. string.format( '%5d ', v )
       end
-    
+
       reaper.MIDI_InsertTextSysexEvt(self.take, false, false, 0, 1, str )
     end
   end
@@ -3899,7 +5458,7 @@ function tracker:getOpenCC()
     local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
     for i=0,textsyxevtcntOut do
       local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
-      
+
       if ( string.sub(msg,1,3) == 'CCC' ) then
         if ( foundOpt == 0 ) then
           -- Parse the channels that were open
@@ -3911,9 +5470,9 @@ function tracker:getOpenCC()
           end
         end
       end
-    end     
+    end
   end
-  
+
   return all
 end
 
@@ -3921,12 +5480,12 @@ function tracker:setResolution( reso )
   local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   for i=0,textsyxevtcntOut do
     local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
-    
+
     if ( string.sub(msg,1,3) == 'ROW' ) then
       reaper.MIDI_DeleteTextSysexEvt(self.take, i)
     end
   end
-  
+
   reaper.MIDI_InsertTextSysexEvt(self.take, false, false, 0, 1, string.format( 'ROW%2d', reso ) )
 end
 
@@ -3935,41 +5494,51 @@ end
 -- returns true if something changed
 ------------------------------
 function tracker:getRowInfo()
-
+  if ( self:validateCurrentItem() ) then
     self.rowPerQn = self:getResolution()
 
     -- How many rows do we need?
-    local ppqPerQn = reaper.MIDI_GetPPQPosFromProjQN(self.take, 1) - reaper.MIDI_GetPPQPosFromProjQN(self.take, 0)
-    local ppqPerSec = 1.0 / ( reaper.MIDI_GetProjTimeFromPPQPos(self.take, 1) - reaper.MIDI_GetProjTimeFromPPQPos(self.take, 0) )
+    local ppqPerQn    = reaper.MIDI_GetPPQPosFromProjQN(self.take, 1) - reaper.MIDI_GetPPQPosFromProjQN(self.take, 0)
+    local ppqPerSec   = 1.0 / ( reaper.MIDI_GetProjTimeFromPPQPos(self.take, 1) - reaper.MIDI_GetProjTimeFromPPQPos(self.take, 0) )
     local mediaLength = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
-    
-    self.length   = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
-    self.position = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
-    
-    self.maxppq   = ppqPerSec * self.length
-    self.minppq   = ppqPerSec * self.position
-    
-    self.qnCount = mediaLength * ppqPerSec / ppqPerQn
-    self.rowPerPpq = self.rowPerQn / ppqPerQn
-    self.ppqPerRow = 1 / self.rowPerPpq
-    self.rowPerSec = ppqPerSec * self.rowPerQn / ppqPerQn
-    self.ppqPerSec = ppqPerSec
-    local rows = math.floor( self.rowPerQn * self.qnCount + 0.5 )
-    
+
+    self.length       = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
+    self.position     = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+
+    self.maxppq       = ppqPerSec * self.length
+    self.minppq       = ppqPerSec * self.position
+
+    local qnCount      = mediaLength * ppqPerSec / ppqPerQn
+    self.rowPerPpq    = self.rowPerQn / ppqPerQn
+    self.ppqPerRow    = 1 / self.rowPerPpq
+    self.rowPerSec    = ppqPerSec * self.rowPerQn / ppqPerQn
+    self.ppqPerSec    = ppqPerSec
+    local rows        = math.floor( self.rowPerQn * qnCount + 0.5 )
+
     -- Do not allow zero rows in the tracker!
     if ( rows < self.eps ) then
       reaper.SetMediaItemInfo_Value(self.item, "D_LENGTH", self:toSeconds(1) )
       rows = 1
     end
-    
+
     if ( ( self.rows ~= rows ) or ( self.ppqPerQn ~= ppqPerQn ) ) then
       self.rows = rows
-      self.qnPerPpq = 1 / ppqPerQn      
+      self.qnPerPpq = 1 / ppqPerQn
       self.ppqPerQn = ppqPerQn
       return true
     else
       return false
     end
+  else
+    self.length     = 0
+    self.position   = 0
+    self.maxppq     = 0
+    self.minppq     = 0
+    self.rowPerPpq  = 0
+    self.ppqPerRow  = 0
+    self.rowPerSec  = 0
+    self.ppqPerSec  = 0
+  end
 end
 
 ------------------------------
@@ -4004,7 +5573,7 @@ function tracker:assignCC(ppq, modtype, modval)
 
   if ( ppq and modval and modtype and ( modtype > 0 ) ) then
     local hexType = string.format('%02X', math.floor(modtype) )
-    local hexVal = string.format('%02X', math.floor(modval) )    
+    local hexVal = string.format('%02X', math.floor(modval) )
     data.mod1[row] = hexType:sub(1,1)
     data.mod2[row] = hexType:sub(2,2)
     data.mod3[row] = hexVal:sub(1,1)
@@ -4019,8 +5588,14 @@ function tracker:assignCC2(ppq, modtype, modval)
   local row = math.floor( self.rowPerPpq * ppq + self.eps )
 
   if ( ppq and modval and modtype and ( modtype > 0 ) ) then
+    if (self.tracker_samples == 1) and ((modtype % self.CCjump) == self.sampler_effect_type and (modval == self.stop_cc_effect_value)) then
+      -- There's a CC value that is used to "terminate" effects in sampler mode. This is to prevent effects from
+      -- previous patterns being replayed on top of this pattern when midi cc's are chased.
+      return
+    end
+  
     local col = self:CCToColumn(modtype)
-    local hexVal = string.format('%02X', math.floor(modval) )    
+    local hexVal = string.format('%02X', math.floor(modval) )
     data.modtxt1[col*rows+row] = hexVal:sub(1,1)
     data.modtxt2[col*rows+row] = hexVal:sub(2,2)
   end
@@ -4030,21 +5605,21 @@ end
 function tracker:assignFromMIDI(channel, idx)
   local pitchTable = self.pitchTable
   local rows = self.rows
-  
+
   local notes = self.notes
   local starts = self.noteStarts
-  local pitch, vel, startppqpos, endppqpos = table.unpack( notes[idx] ) 
+  local pitch, vel, startppqpos, endppqpos = table.unpack( notes[idx] )
   local ystart = math.floor( startppqpos * self.rowPerPpq + self.eps )
 
   -- Is this a legato note? Pretend it is shorter.
   if ( channel == 1 ) then
-    local endrow = math.floor( endppqpos * self.rowPerPpq ) 
+    local endrow = math.floor( endppqpos * self.rowPerPpq )
     if ( self.legato[endrow] and self.legato[endrow] > -1 ) then
       endppqpos = endppqpos - tracker.magicOverlap
     end
   end
   local yend = math.floor( endppqpos * self.rowPerPpq - self.eps )
-  
+
   -- This note is not actually present
   if ( ystart > self.rows-1 ) then
     return true
@@ -4055,24 +5630,24 @@ function tracker:assignFromMIDI(channel, idx)
   if ( yend > self.rows - 1 ) then
     yend = self.rows
   end
-  
+
   -- Add the note if there is space on this channel, otherwise return false
   local data = self.data
   if ( self:isFree( channel, ystart, yend ) ) then
     data.text[rows*channel+ystart]      = pitchTable[pitch]
     data.vel1[rows*channel+ystart]      = self:velToField(vel, 1)
-    data.vel2[rows*channel+ystart]      = self:velToField(vel, 2)    
+    data.vel2[rows*channel+ystart]      = self:velToField(vel, 2)
 
     if ( self.showDelays[ channel ] == 1 ) then
       local delay = self:ppqToDelay( startppqpos )
       data.delay1[rows*channel+ystart]  = self:velToField(delay, 1)
-      data.delay2[rows*channel+ystart]  = self:velToField(delay, 2)    
+      data.delay2[rows*channel+ystart]  = self:velToField(delay, 2)
     end
-    
+
     if ( self.showEnd[ channel ] == 1 ) then
       local curEnd = self:ppqToEnd( endppqpos )
       data.end1[rows*channel+ystart]  = self:velToField(curEnd, 1)
-      data.end2[rows*channel+ystart]  = self:velToField(curEnd, 2)    
+      data.end2[rows*channel+ystart]  = self:velToField(curEnd, 2)
     end
 
     data.noteStart[rows*channel+ystart] = idx
@@ -4088,7 +5663,7 @@ function tracker:assignFromMIDI(channel, idx)
     return true
   else
     return false
-  end  
+  end
 end
 
 -- Assign off locations
@@ -4096,7 +5671,7 @@ function tracker:assignOFF(channel, idx)
   local data = self.data
   local rows = self.rows
   local txtList = self.txtList
-  
+
   local ppq = table.unpack( txtList[idx] )
   local row = math.floor( ppq * self.rowPerPpq )
   data.text[rows*channel + row] = 'OFC'
@@ -4141,6 +5716,11 @@ function tracker:floatToByte( floatval )
 end
 
 function tracker:editEnvField( vel, id, val )
+  -- NaN guard
+  if ( vel ~= vel ) then
+    vel = 0
+  end
+
   -- Convert to Hex first
   local newvel = string.format('%02X', self:floatToByte( vel ) )
   -- Replace the digit in question
@@ -4187,7 +5767,7 @@ function tracker:initializeModChannels(modtypes)
       local cidx = x*rows+y
       data.modch[cidx]   = modtypes[x]
       data.modtxt1[cidx] = '.'
-      data.modtxt2[cidx] = '.'      
+      data.modtxt2[cidx] = '.'
     end
   end
 end
@@ -4206,7 +5786,7 @@ function tracker:initializeGrid()
   data.delay1 = {}
   data.delay2 = {}
   data.end1 = {}
-  data.end2 = {}    
+  data.end2 = {}
   data.legato = {}
   self.legato = {}
   data.fx1 = {}
@@ -4225,15 +5805,15 @@ function tracker:initializeGrid()
       data.vel2[rows*x+y]   = '.'
       if ( self.showDelays[x] == 1 ) then
         data.delay1[rows*x+y] = '.'
-        data.delay2[rows*x+y] = '.'        
+        data.delay2[rows*x+y] = '.'
       end
       if ( self.showEnd[x] == 1 ) then
         data.end1[rows*x+y] = '.'
-        data.end2[rows*x+y] = '.'        
+        data.end2[rows*x+y] = '.'
       end
     end
   end
-  
+
   if ( self.fx.names ) then
     for y=0,rows-1 do
       for x=1,#self.fx.names do
@@ -4242,26 +5822,26 @@ function tracker:initializeGrid()
       end
     end
   end
-  
+
   for y=0,rows-1 do
     data.mod1[y] = -2
     data.mod2[y] = -2
     data.mod3[y] = -2
     data.mod4[y] = -2
   end
-  
+
   for y=0,rows do
     self.legato[y] = -1
-    data.legato[y] = '.' 
+    data.legato[y] = '.'
   end
-  
+
   self.data = data
 end
 
 function tracker:deleteLegato( row, skipMarker )
   local data      = self.data
   local noteGrid  = data.note
-  local noteStart = data.noteStart  
+  local noteStart = data.noteStart
   local notes     = self.notes
   local rows      = self.rows
 
@@ -4272,20 +5852,20 @@ function tracker:deleteLegato( row, skipMarker )
     local npos = rows+row - 1
     local noteOfInterest = noteGrid[npos]
     if ( noteOfInterest and noteStart[npos+1] ) then
-      if ( ( noteOfInterest > -1 ) and ( noteStart[npos+1] > -1 ) ) then      
+      if ( ( noteOfInterest > -1 ) and ( noteStart[npos+1] > -1 ) ) then
         local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteOfInterest] )
         if ( tracker.debug == 1 ) then
           print( "Removing legato." )
           print( "Shortening note with pitch " .. self.pitchTable[pitch] )
         end
-        
+
         reaper.MIDI_SetNote(self.take, noteOfInterest, nil, nil, nil, endppqpos - tracker.magicOverlap, nil, nil, nil, true)
       end
     end
     if ( not skipMarker ) then
       self:SAFE_DeleteText(self.take, idx)
     end
-    
+
     self.legato[row] = -1
   end
 end
@@ -4302,7 +5882,7 @@ end
 function tracker:addLegato( row, skipMarker )
   local data      = self.data
   local noteGrid  = data.note
-  local noteStart = data.noteStart  
+  local noteStart = data.noteStart
   local notes     = self.notes
   local rows      = self.rows
 
@@ -4317,17 +5897,74 @@ function tracker:addLegato( row, skipMarker )
         reaper.MIDI_SetNote(self.take, noteOfInterest, nil, nil, nil, endppqpos + tracker.magicOverlap, nil, nil, nil, true)
       end
     end
-    
+
     if ( not skipMarker ) then
       -- Mark it
       local ppq = self:rowToPpq(row)
       self:SAFE_InsertTextSysexEvt(ppq, 1, 'LEG')
     end
-    
+
     -- This is a temporary flag to indicate legato; but which has no reference yet
     self.legato[row] = 5000
   end
 end
+
+function tracker:terminateScrubNotes()
+  if self.scrubNotes then
+    local scrubNotes = self.scrubNotes
+    for i in pairs(scrubNotes) do
+      local msg = scrubNotes[i]
+      reaper.StuffMIDIMessage(0, 0x80 + msg[1], msg[2], 0)
+    end
+    self.scrubNotes = nil
+  end
+end
+
+function tracker:scrub()
+  if (tracker.cfg.scrubMode == 1) then
+    self:checkArmed()
+    
+    if (self.armed) then
+      self:terminateScrubNotes()
+      --local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+      --local loc = reaper.AddProjectMarker(0, 0, mpos + tracker:toSeconds(self.ypos-1), 0, "", -1)
+      --reaper.GoToMarker(0, loc, 0)
+      --reaper.DeleteProjectMarker(0, loc, 0)
+    
+      local minppq = self:rowToPpq(self.ypos - 1)
+      local maxppq = self:rowToPpq(self.ypos)
+      local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+      
+      local scrubNotes = {}
+      for i=0,notecntOut do
+        local retval, selected, muted, startppqpos, endppqpos, chan, pitch, vel = reaper.MIDI_GetNote(self.take, i)
+        if startppqpos >= minppq and startppqpos < maxppq then
+          if self.outChannel > 0 then
+            chan = self.outChannel - 1
+          end
+          reaper.StuffMIDIMessage(0, 0x90 + chan, pitch, vel)
+          scrubNotes[#scrubNotes + 1] = {chan, pitch, vel}
+        end
+      end
+      
+      for i=0,ccevtcntOut do
+        local retval, selected, muted, ppq, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+        if ppq >= minppq and ppq < maxppq then
+          -- We ignore the CC stopping messages from the sampler
+          local ignore = (self.tracker_samples == 1) and (msg2 == 12) and (msg3 == 102)
+          if not ignore then
+            if self.outChannel > 0 then
+              chan = self.outChannel - 1
+            end
+            reaper.StuffMIDIMessage(0, chanmsg, msg2, msg3)
+          end
+        end
+      end
+      self.scrubNotes = scrubNotes
+    end
+  end
+end
+
 
 function tracker:readLegato( ppqpos, i )
   local data    = self.data
@@ -4337,32 +5974,86 @@ function tracker:readLegato( ppqpos, i )
   legato[row] = i
 end
 
+function tracker:updateNoteSelection()
+  if self.cfg.selectMIDINotes == 1 then
+    local cp = self.cp
+    if self.cp.changed then
+      self.cp.changed = nil
+  
+      if ( reaper.ValidatePtr2(0, self.take, "MediaItem_Take*") ) then
+      
+        local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+        local data      = self.data
+        local noteGrid  = data.note
+        local noteStart = data.noteStart
+        local notes     = self.notes
+        local txtList   = self.txtList
+        local rows      = self.rows
+        
+      
+        local chanmin = 1000
+        local chanmax = -1000
+        for jx = cp.xstart, cp.xstop do
+          if ( datafields[jx] == 'text' ) then
+            if chanmin > idxfields[jx] then
+              chanmin = idxfields[jx]
+            end
+            if chanmax < idxfields[jx] then
+              chanmax = idxfields[jx]
+            end      
+          end
+        end
+      
+        -- ystart starts counting at 1
+        local minppq = self:rowToPpq(cp.ystart-1)
+        local maxppq = self:rowToPpq(cp.ystop)
+        
+        local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+        for i=0,notecntOut do
+          local retval, selected, muted, startppqpos, endppqpos, chan, pitch, vel = reaper.MIDI_GetNote(self.take, i)
+ 
+          local selected = chan >= chanmin and chan <= chanmax and startppqpos >= minppq and startppqpos < maxppq
+          reaper.MIDI_SetNote(self.take, i, selected, muted, -1, -1, -1, -1, -1, true)
+        end
+        
+        reaper.MIDI_Sort(self.take)
+      end
+    end
+  end
+end
+
 -----------------------------
 -- Merge problematic overlaps
 -----------------------------
 function tracker:mergeOverlaps()
-  -- Grab the notes and store them in channels
-  local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+  if ( not reaper.ValidatePtr2(0, self.take, "MediaItem_Take*") ) then
+    self:tryPreviousItem()
+  end
 
-  lastpitch = -1;
-  
-  -- Fetch the notes
-  -- We only have potential mergers in channel 1 (the legato channel) and at most one.
-  -- Only adjacent notes will be merged.
-  local ch1notes = {}
-  for i=0,notecntOut do
-    local retval, selected, muted, startppqpos, endppqpos, chan, pitch, vel = reaper.MIDI_GetNote(self.take, i)
-    if ( retval == true ) then
-      if ( chan == 1 ) then
-        if ( lastpitch == pitch ) then
-          if ( startppqpos < lastend ) then
-            -- Kill this one
-            reaper.MIDI_SetNote(self.take, i-1, nil, nil, nil, endppqpos, nil, nil, nil, true)
-            tracker:SAFE_DeleteNote( self.take, i )
+  if ( reaper.ValidatePtr2(0, self.take, "MediaItem_Take*") ) then
+    -- Grab the notes and store them in channels
+    local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+
+    lastpitch = -1
+
+    -- Fetch the notes
+    -- We only have potential mergers in channel 1 (the legato channel) and at most one.
+    -- Only adjacent notes will be merged.
+    local ch1notes = {}
+    for i=0,notecntOut do
+      local retval, selected, muted, startppqpos, endppqpos, chan, pitch, vel = reaper.MIDI_GetNote(self.take, i)
+      if ( retval == true ) then
+        if ( chan == 1 ) then
+          if ( lastpitch == pitch ) then
+            if ( startppqpos < lastend ) then
+              -- Kill this one
+              reaper.MIDI_SetNote(self.take, i-1, nil, nil, nil, endppqpos, nil, nil, nil, true)
+              tracker:SAFE_DeleteNote( self.take, i )
+            end
           end
+          lastpitch = pitch
+          lastend = endppqpos
         end
-        lastpitch = pitch;
-        lastend = endppqpos;
       end
     end
   end
@@ -4415,7 +6106,7 @@ function tracker:deleteEnvPt(fxid, t1, t2)
   else
     tend  = tstart + self:toSeconds(1)
   end
-  
+
   reaper.DeleteEnvelopePointRangeEx(envidx, autoidx, tstart - tracker.enveps, tend - tracker.enveps)
 end
 
@@ -4448,7 +6139,7 @@ function tracker:insertEnvPt(fxid, t1)
       reaper.SetEnvelopePointEx(envidx, autoidx, ptidx, envtime, nil, nil, nil, nil, true)
     end
   end
-  
+
   reaper.Envelope_SortPointsEx(envidx, autoidx)
 end
 
@@ -4480,7 +6171,7 @@ function tracker:backspaceEnvPt(fxid, t1)
       reaper.SetEnvelopePointEx(envidx, autoidx, ptidx, envtime, nil, nil, nil, nil, true)
     end
   end
-  
+
   reaper.Envelope_SortPointsEx(envidx, autoidx)
 end
 
@@ -4493,7 +6184,7 @@ function tracker:getEnvIdx(fxid, time)
   local autoidx = fx.autoidx[fxid]
   local loc = time or .1
   loc = loc + self.position
-  
+
   local ptidx = reaper.GetEnvelopePointByTimeEx(envidx, autoidx, loc+tracker.enveps)
 
   -- Are we close enough to consider this our envelope point?
@@ -4512,23 +6203,27 @@ end
 -- Insert MIDI CC event
 -----------------------
 function tracker:insertCCPt( row, modtype )
+  local ch = 0
+
   local rowsize = self:rowToPpq(1)
   local ppqStart = self:rowToPpq(row)
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   for i=ccevtcntOut,0,-1 do
     local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+    msg2, msg3 = encodeProgramChange( chanmsg, msg2, msg3 )
     if ( ppqpos >= ppqStart ) then
       local moveIt = true
+      msg2 = msg2 + chan * self.CCjump
       if ( modtype and ( modtype ~= msg2 ) ) then
         moveIt = false
       end
-      
+
       if ( moveIt ) then
-        reaper.MIDI_SetCC(self.take, i, nil, nil, ppqpos + rowsize, nil, nil, nil, nil, true)  
+        reaper.MIDI_SetCC(self.take, i, nil, nil, ppqpos + rowsize, nil, nil, nil, nil, true)
       end
     end
   end
-  self:deleteCC_range( self.rows )
+  self:deleteCC_range( self.rows, self.rows + 1, modtype )
 end
 
 -----------------------
@@ -4540,8 +6235,9 @@ function tracker:backspaceCCPt( row, modtype )
   self:deleteCC_range( row, row + 1, modtype )
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   for i=ccevtcntOut,0,-1 do
-    local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)   
-    
+    local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+    msg2, msg3 = encodeProgramChange( chanmsg, msg2, msg3 )
+    msg2 = msg2 + chan * self.CCjump
     if ( ppqpos >= ppqStart ) then
       local moveIt = true
       if ( modtype and ( modtype ~= msg2 ) ) then
@@ -4554,23 +6250,33 @@ function tracker:backspaceCCPt( row, modtype )
   end
 end
 
-
 -------------------
 -- Remove MIDI CC range
 -------------------
 function tracker:deleteCC_range(rowstart, rowend, modtype)
   local ppqStart = self:rowToPpq(rowstart)
   local ppqEnd = self:rowToPpq( rowend or rowstart + 1 ) - self.eps
-  
+
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   for i=ccevtcntOut,0,-1 do
     local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+    msg2, msg3 = encodeProgramChange( chanmsg, msg2, msg3 )
+    msg2 = msg2 + chan * self.CCjump
     if ( ppqpos >= ppqStart and ppqpos < ppqEnd ) then
       local deleteIt = true
-      if ( modtype and ( modtype ~= msg2 ) ) then
-        deleteIt = false
+
+      if ( modtype ) then
+        -- If a modtype is provided then we know which CC command / channel we are looking to delete
+        if ( modtype ~= msg2 ) then
+          deleteIt = false
+        end
+      else
+        -- If not, then this means that we must be looking at channel 0 (default big first column)
+        if ( chan ~= 0 ) then
+          deleteIt = false
+        end
       end
-    
+
       if ( deleteIt == true ) then
         reaper.MIDI_DeleteCC(self.take, i)
       end
@@ -4582,23 +6288,49 @@ end
 -- Grab MIDI CC point
 -------------------
 function tracker:getCC( row, modtype )
+  local ch = 0
+  local isPC = false
+
+  -- Decode the channel from the modtype
+  if ( modtype ) then
+    local ccJump = self.CCjump
+    -- Is it a program change rather than a regular MIDI event?
+    if ( modtype >= self.PCloc ) then
+      ch = math.floor((modtype- self.PCloc) / ccJump)
+      isPC = true
+    else
+      ch = math.floor(modtype / ccJump)
+    end
+  end
+
   local ppqStart = self:rowToPpq(row)
   local ppqEnd = self:rowToPpq( row + 1 ) - self.eps
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   for i=0,ccevtcntOut do
     local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
+    msg2, msg3 = encodeProgramChange( chanmsg, msg2, msg3 )
+
+    -- Regular MIDI CC
+    if ( ch ) then
+      msg2 = msg2 + chan*self.CCjump
+    end
     if ( ppqpos >= ppqStart and ppqpos < ppqEnd ) then
       local fetchIt = true
+      if ( isPC ~= ( chanmsg == 192 ) ) then
+        fetchIt = false
+      end
       if ( modtype and ( modtype ~= msg2 ) ) then
         fetchIt = false
       end
-      
+      if ( chan ~= ch ) then
+        fetchIt = false
+      end
       if ( fetchIt == true ) then
         return msg2, msg3, 1
       end
     end
   end
-  
+
   return modtype or self.lastmodtype, self.lastmodval
 end
 
@@ -4607,8 +6339,18 @@ end
 -------------------
 function tracker:addCCPt(row, modtype, value)
   self:deleteCC_range(row)
-  local ppqStart = self:rowToPpq(row)
-  reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 176, 0, modtype, value)
+  local ch
+  local ppqStart = self:rowToPpq(row, row+1, modtype)
+
+  -- Is it an actual MIDI event or a Program Change?
+  if ( modtype >= self.PCloc ) then
+    modtype = modtype - self.PCloc
+    ch = math.floor(modtype / self.CCjump)
+    reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 192, ch, value, 0)
+  else
+    ch = math.floor(modtype / self.CCjump)
+    reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 176, ch, modtype - ch*self.CCjump, value)
+  end
 end
 
 -------------------
@@ -4617,7 +6359,22 @@ end
 function tracker:addCCPt_channel(row, modtype, value)
   self:deleteCC_range(row, row + 1, modtype)
   local ppqStart = self:rowToPpq(row)
-  reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 176, 0, modtype, value)
+
+  -- Is it an actual MIDI event or a Program Change?
+  if ( modtype >= self.PCloc ) then
+    local modtype = modtype - self.PCloc
+    local ch = math.floor(modtype / self.CCjump)
+    reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 192, ch, value, 0)
+  else
+    local ch = math.floor(modtype / self.CCjump)
+    local cc_type = modtype - ch*self.CCjump
+    reaper.MIDI_InsertCC(self.take, false, false, ppqStart, 176, ch, cc_type, value)
+    if (self.tracker_samples == 1) and cc_type == self.sampler_effect_type then
+      -- There's a CC value that is used to "terminate" effects in sampler mode. This is to prevent effects from
+      -- previous patterns being replayed on top of this pattern when midi cc's are chased.
+      reaper.MIDI_InsertCC(self.take, false, false, ppqStart + math.floor(self:rowToPpq(1/8)), 176, ch, cc_type, self.stop_cc_effect_value)
+    end
+  end
 end
 
 -------------------
@@ -4633,15 +6390,15 @@ function tracker:addEnvPt(fxid, time, value, shape)
     print("FATAL: FX channel does not exist?")
     return
   end
-  
+
   local val = value or 5
   local envShape = shape or 0
   local envTension = nil
-  
+
   if ( envShape == 4 ) then
     envShape = 6
   end
-  
+
   -- The 0.5 shift is to get 80 at the true center (analogously to buzz)
   -- even though 256 values do not have an actual center. This results in
   -- having to deal with val == 1 separately as well.
@@ -4650,14 +6407,14 @@ function tracker:addEnvPt(fxid, time, value, shape)
       val = (val - 0.5/255)*2.0 - 1.0
     end
   end
-  
+
   ptidx, loc = self:getEnvIdx(fxid, time)
   if ( ptidx ) then
     reaper.SetEnvelopePointEx(envidx, autoidx, ptidx, loc, val, envShape, envTension, false, true)
   else
-    reaper.InsertEnvelopePointEx(envidx, autoidx, loc, val, envShape, 0.5, false, true)     
+    reaper.InsertEnvelopePointEx(envidx, autoidx, loc, val, envShape, 0.5, false, true)
   end
-  
+
   reaper.Envelope_SortPointsEx(envidx, autoidx)
 end
 ---------------------------------
@@ -4670,11 +6427,11 @@ function tracker:getEnvPt(fxid, time)
   local envidx = fx.envelopeidx[fxid]
   local autoidx = fx.autoidx[fxid]
   local signed = fx.signed[fxid]
-  
+
   ptidx = self:getEnvIdx(fxid, time)
   if ( ptidx ) then
     local retval, atime, value, shape, tension = reaper.GetEnvelopePointEx(envidx, autoidx, ptidx)
-    
+
     -- The 0.5 shift is to get 80 at the true center (analogously to buzz)
     -- even though 256 values do not have an actual center. This results in
     -- having to deal with val == 1 separately as well.
@@ -4683,7 +6440,7 @@ function tracker:getEnvPt(fxid, time)
         value = value*0.5 + 0.5 + 0.5/255
       end
     end
-    
+
     return atime, value, shape, tension, ptidx
   end
 end
@@ -4695,43 +6452,45 @@ function tracker:getTakeEnvelopes()
 
   self.fx = {}
   if ( self.trackFX == 1 ) then
-    local autoidxs = {}
-    local envelopeidxs = {}
-    local signed = {}
-    local names = {}
-  
-    local cnt = reaper.CountTrackEnvelopes(self.track)
-    local autoidx = nil
-    for i = 0,cnt-1 do;
-      local envelope = reaper.GetTrackEnvelope(self.track, i)
-      local retval, name = reaper.GetEnvelopeName(envelope, '')
-      
-      autoidx = self:findMyAutomation( envelope )
-      if ( not autoidx ) then
-        autoidx = reaper.InsertAutomationItem(envelope, -1, self.position, self.length)
-        
-        -- Consolidate all automation curves into this one and clean up
-      end     
-      
-      -- Check the scaling of the envelope
-      --number reaper.ScaleFromEnvelopeMode(integer scaling_mode, number val)
-      local retval, str = reaper.GetEnvelopeName(envelope, ' ')
-      if ( tracker.signed[str] ) then
-        signed[#signed + 1] = 1
-      else
-        signed[#signed + 1] = 0
+    if ( self.track ) then
+      local autoidxs = {}
+      local envelopeidxs = {}
+      local signed = {}
+      local names = {}
+
+      local cnt = reaper.CountTrackEnvelopes(self.track)
+      local autoidx = nil
+      for i = 0,cnt-1 do
+        local envelope = reaper.GetTrackEnvelope(self.track, i)
+        local retval, name = reaper.GetEnvelopeName(envelope, '')
+
+        autoidx = self:findMyAutomation( envelope )
+        if ( not autoidx ) then
+          autoidx = reaper.InsertAutomationItem(envelope, -1, self.position, self.length)
+
+          -- Consolidate all automation curves into this one and clean up
+        end
+
+        -- Check the scaling of the envelope
+        --number reaper.ScaleFromEnvelopeMode(integer scaling_mode, number val)
+        local retval, str = reaper.GetEnvelopeName(envelope, ' ')
+        if ( tracker.signed[str] ) then
+          signed[#signed + 1] = 1
+        else
+          signed[#signed + 1] = 0
+        end
+
+        envelopeidxs[#envelopeidxs + 1] = envelope
+        autoidxs[#autoidxs + 1] = autoidx
+        names[#names + 1] = name
       end
-      
-      envelopeidxs[#envelopeidxs + 1] = envelope
-      autoidxs[#autoidxs + 1] = autoidx
-      names[#names + 1] = name
+
+      self.fx.envelopeidx = envelopeidxs
+      self.fx.autoidx     = autoidxs
+      self.fx.names       = names
+      self.fx.signed      = signed
     end
-    
-    self.fx.envelopeidx = envelopeidxs
-    self.fx.autoidx     = autoidxs
-    self.fx.names       = names
-    self.fx.signed      = signed
-  end 
+  end
 end
 
 -------------------
@@ -4745,10 +6504,10 @@ function tracker:updateEnvelopes()
   if ( self.fx.names ) then
     for ch=1,#self.fx.names do
       for i=0,rows-1 do
-        local atime, value, shape, tension = self:getEnvPt(ch, self:toSeconds(i))       
-        
-        if ( value ) then        
-          local hexEnv = string.format('%02X', self:floatToByte(value) )          
+        local atime, value, shape, tension = self:getEnvPt(ch, self:toSeconds(i))
+
+        if ( value and ( value == value ) ) then
+          local hexEnv = string.format('%02X', self:floatToByte(value) )
           data.fx1[rows*ch+i] = hexEnv:sub(1,1)
           data.fx2[rows*ch+i] = hexEnv:sub(2,2)
         end
@@ -4768,13 +6527,20 @@ function tracker:addCol()
   end
 end
 
+function tracker:addColAll()
+  if ( self.showMod == 1 ) then
+    tracker.renaming = 4
+    tracker.newCol = ''
+  end
+end
+
 function tracker:createCCCol()
   local data = self.data
-  
+
   if ( not data.modtypes ) then
     data.modtypes = {}
   end
-  
+
   local modtypes = data.modtypes
   if ( pcall( function () tonumber( tracker.newCol ) end ) ) then
     local newCol = tonumber( tracker.newCol )
@@ -4787,28 +6553,81 @@ function tracker:createCCCol()
   end
 end
 
+function tracker:createCCColAll()
+  local data = self.data
+
+  if ( not data.modtypes ) then
+    data.modtypes = {}
+  end
+
+  if ( pcall( function () tonumber( tracker.newCol ) end ) ) then
+    local newCol = tonumber( tracker.newCol )
+    if ( newCol and ( newCol > -1 ) ) then
+      for i=1,15 do
+        data.modtypes[#data.modtypes+1] = newCol + self.CCjump * i
+      end
+      self:storeOpenCC()
+    end
+  else
+    print("Passed invalid number")
+  end
+end
+
+function tracker:addPatchSelect()
+  local data = self.data
+
+  if ( not data.modtypes ) then
+    data.modtypes = {}
+  end
+
+  for i=1,15 do
+    data.modtypes[#data.modtypes+1] = self.PCloc + self.CCjump * i
+  end
+  self:storeOpenCC()
+end
+
+
 function tracker:remCol()
+  local data = self.data
   if ( self.showMod == 1 ) then
-    if ( self.modMode == 1 ) then  
+    if ( data.modtypes ) then
       local data = self.data
-      local modtypes = data.modtypes  
+      local modtypes = data.modtypes
       local ftype, chan, row = self:getLocation()
-      local modtype, val = self:getCC( self.ypos - 1, modtypes[chan] )    
-    
+      local modtype, val = self:getCC( self.ypos - 1, modtypes[chan] )
+
       for i,v in pairs( modtypes ) do
         if ( v == modtype ) then
           self:deleteCC_range(0, self.rows, modtype)
           modtypes[i] = nil
         end
       end
-  
+
       self:storeOpenCC()
       self.hash = 0
     end
   end
 end
 
+-- Seek tracker view to take starting at song position
+function tracker:findTakeStartingAtSongPos(overridePosition)
+  local playPos = overridePosition or reaper.GetPlayPosition()
+  local nItems = reaper.GetTrackNumMediaItems(self.track)
+  for i=0,nItems-1 do
+    local item = reaper.GetTrackMediaItem(self.track, i)
+    local loc = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
 
+    if ( playPos == loc ) then
+      if ( self:tryTake(i) == true ) then
+        self:update()
+        self:resetShiftSelect()
+        return 1
+      end
+    end
+  end
+end
+
+-- Seek tracker view to take that contains song position
 function tracker:findTakeAtSongPos()
   local playPos = reaper.GetPlayPosition()
   local nItems = reaper.GetTrackNumMediaItems(self.track)
@@ -4821,9 +6640,152 @@ function tracker:findTakeAtSongPos()
       if ( self:tryTake(i) == true ) then
         self:update()
         self:resetShiftSelect()
+        return 1
       end
     end
   end
+end
+
+-- Check if a media item has MIDI
+function tracker:hasMIDI(item)
+  if ( item ) then
+    local take = reaper.GetActiveTake(item)
+    if ( take ) then
+      if ( reaper.TakeIsMIDI( take ) == true ) then
+        return true
+      end
+    end
+  end
+end
+
+function tracker:useItem(item)
+  local take = reaper.GetActiveTake(item)
+  if ( take ) then
+    if ( reaper.TakeIsMIDI( take ) == true ) then
+      tracker:setItem( item )
+      tracker:setTake( take )
+      self:update()
+      self:resetShiftSelect()
+      return true
+    end
+  end
+end
+
+function tracker:findTakeClosestToSongPos(overridePos)
+
+  local playPos
+  if ( reaper.GetPlayState() > 0 ) then
+    playPos = reaper.GetPlayPosition()
+  else
+    playPos = reaper.GetCursorPosition()
+  end
+  playPos = overridePos or playPos
+
+  local nItems = reaper.GetTrackNumMediaItems  (self.track)
+  local lastItem
+
+  for i=0,nItems-1 do
+    local item = reaper.GetTrackMediaItem(self.track, i)
+
+    -- Is this a MIDI item that is usable to us?
+    if ( self:hasMIDI(item) ) then
+      local loc = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
+      local loc2 = reaper.GetMediaItemInfo_Value(item, "D_LENGTH")
+
+      -- Does the block we are looking at end beyond the play position?
+      if ( (loc+loc2) > playPos ) then
+
+        -- Did the block start before the play position?
+        if ( loc <= playPos ) then
+          self:useItem(item)
+          return 1
+
+        -- No? then if there is a last one, just take that one
+        elseif (lastItem) then
+          self:useItem(lastItem)
+          return 1
+        else
+          self:useItem(item)
+          return 1
+        end
+      end
+      lastItem = item
+    end
+  end
+
+  return nil
+end
+
+function tracker:setChannelMute(muteChannel, muteStatus)
+  local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+  for i=0,notecntOut do
+    local retval, selected, muted, startppqpos, endppqpos, chan, pitch, vel = reaper.MIDI_GetNote(self.take, i)
+    if retval and chan == muteChannel then
+      reaper.MIDI_SetNote(self.take, i, nil, muteStatus, nil, nil, nil, nil, nil, true)
+    end
+  end
+  self.muted_channels[muteChannel] = muteStatus
+end
+
+function tracker:toggleSoloChannel()
+  if not self.take then
+    return
+  end
+
+  local _, soloChannel, _ = self:getLocation()
+  
+  -- Check if we are the only channel playing
+  local isSolo = true
+  for i=0,#self.muted_channels do
+    if i == soloChannel then
+      if self.muted_channels[i] then
+        isSolo = false
+      end
+    else
+      if not self.muted_channels[i] then
+        isSolo = false
+      end
+    end
+  end
+
+  if isSolo then
+    for i=0,#self.muted_channels do    
+      self:setChannelMute(i, false)
+    end
+  else
+    for i=0,#self.muted_channels do
+      if i == soloChannel then
+        self:setChannelMute(i, false)
+      else
+        self:setChannelMute(i, true)
+      end
+    end
+  end
+  
+  reaper.MIDI_Sort(self.take)
+end
+
+function tracker:toggleMuteChannel()
+  if not self.take then
+    return
+  end
+
+  local _, muteChannel, _ = self:getLocation()
+  self:setChannelMute(muteChannel, not self.muted_channels[muteChannel])
+  reaper.MIDI_Sort(self.take)  
+end
+
+function tracker:addSamplerCCs(all)
+  -- Preassign the CCs we need for the sampler for convenience
+  if (self.tracker_samples == 1) then
+    for ch = 1,self.channels do
+      local fixed_ccs = {7, 12, 13}
+      for _, cc in pairs(fixed_ccs) do
+        all[512 * ch + cc] = 1
+      end
+    end
+  end
+  return all
 end
 
 --------------------------------------------------------------
@@ -4832,30 +6794,30 @@ end
 --------------------------------------------------------------
 function tracker:update()
   local reaper = reaper
-  
-  if ( self.take and self.item ) then 
-    if ( self.debug == 1 ) then
-      print( "Updating the grid ..." )
-    end
+  if ( self.debug == 1 ) then
+    print( "Updating the grid ..." )
+  end
 
-    self:getRowInfo()
-    self:getSettings()
-    self:getTakeEnvelopes()
-    self:initializeGrid()
-    self:updateEnvelopes()
-    self:updateNames()
-    
+  self:getRowInfo()
+  self:getSettings()
+  self:getTakeEnvelopes()
+  self:initializeGrid()
+  self:updateEnvelopes()
+  self:updateNames()
+
+  if ( self.take and self.item ) then
+
     -- Remove duplicates potentially caused by legato system
     self:clearDeleteLists()
     self:mergeOverlaps()
     self:deleteNow()
     reaper.MIDI_Sort(self.take)
-    
+
     -- Grab the notes and store them in channels
     local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
     local i
-    
-    if ( retval > 0 ) then   
+
+    if ( retval > 0 ) then
       -- Find the OFF markers and place them first. They could have only come from the tracker sytem
       -- so don't worry too much.
       local offs = {}
@@ -4879,17 +6841,25 @@ function tracker:update()
           end
         end
       end
-       
+
       ---------------------------------------------
       -- CC EVENTS
       ---------------------------------------------
+      local skip = self.CCjump
       if ( self.showMod == 1 ) then
-        if ( self.modMode == 1 ) then
+        local modmode = self.modMode == 1 or self.cfg.channelCCs == 1 or (self.tracker_samples == 1)
+        if ( modmode ) then
           local all = self:getOpenCC()
           for i=0,ccevtcntOut do
             local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
-            all[msg2] = 1
+            msg2, msg3 = encodeProgramChange( chanmsg, msg2, msg3 )
+
+            all[msg2 + (chan)*skip] = 1
           end
+          
+          -- Preassign the CCs we need for the sampler for convenience
+          all = self:addSamplerCCs(all)
+          
           all[0] = nil
           local indices = {}
           for i in pairs(all) do
@@ -4897,36 +6867,48 @@ function tracker:update()
               table.insert(indices, i)
             end
           end
+          
           table.sort(indices)
           local modtypes = {}
           for i,v in pairs(indices) do
-            if( i > 0 ) then
-              modtypes[#modtypes+1] = v
-            end
+            modtypes[#modtypes+1] = v
           end
+          
           if ( #modtypes > 0 ) then
             tracker:initializeModChannels(modtypes)
             for i=0,ccevtcntOut do
               local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
-              self:assignCC2( ppqpos, msg2, msg3 )
+              msg2, msg3 = encodeProgramChange( chanmsg, msg2, msg3 )
+              self:assignCC2( ppqpos, msg2 + (chan)*skip, msg3 )
             end
             self:storeOpenCC()
           else
             self:storeSettings()
           end
         end
-        if ( self.modMode == 0 ) then
+        if ( modmode == false ) then
           for i=0,ccevtcntOut do
             local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
-            self:assignCC( ppqpos, msg2, msg3 )
+            --msg2, msg3 = encodeProgramChange( chanmsg, msg2, msg3 )
+            if ( chanmsg ~= 192 and chan == 0 ) then
+              self:assignCC( ppqpos, msg2, msg3 )
+            end
           end
         end
       end
-    
+
       ---------------------------------------------
       -- NOTES
       ---------------------------------------------
       local channels = {}
+      local muted_channels = self.muted_channels
+      if not self.muted_channels then
+        muted_channels = {}
+        for i = 0,self.channels do
+          muted_channels[i] = false
+        end
+      end
+      
       channels[0] = {}
       local notes = {}
       for i=0,notecntOut do
@@ -4937,10 +6919,15 @@ function tracker:update()
           end
           notes[i] = {pitch, vel, startppqpos, endppqpos}
           channels[chan][#(channels[chan])+1] = i
+          
+          if muted then
+            muted_channels[chan] = true
+          end
         end
       end
       self.notes = notes
-    
+      self.muted_channels = muted_channels
+
       -- Assign the tracker assigned channels first
       local failures = {}
       for channel=1,self.channels do
@@ -4953,18 +6940,20 @@ function tracker:update()
           end
         end
       end
-      
+
       -- Things in channel zero are new and need to be reassigned!
       for i,note in pairs( channels[0] ) do
         failures[#failures + 1] = note
       end
-      
+
       if ( #failures > 0 ) then
         -- We are going to be changing the data, so add an undo point
-        reaper.Undo_OnStateChange2(0, "Tracker: Channel reassignment")
+        if tracker.cfg.undoForReassignment == 1 then
+          reaper.Undo_OnStateChange2(0, "Tracker: Channel reassignment")
+        end
         reaper.MarkProjectDirty(0)
       end
-      
+
       -- Attempt to find a channel for them
       local ok = 0
       local maxChannel = self.channels
@@ -4982,7 +6971,7 @@ function tracker:update()
               print("Warning: A note that should have been assigned was shifted")
             end
             targetChannel = targetChannel + 1
-            if ( targetChannel > maxChannel ) then 
+            if ( targetChannel > maxChannel ) then
               done = true
             end
           end
@@ -4993,13 +6982,13 @@ function tracker:update()
       if ( ok < #failures ) then
         print( "WARNING: FAILED TO PLACE SOME OF THE NOTES IN THE TRACKER" )
       end
-      
+
       if ( channels[0] ) then
         reaper.MIDI_Sort(self.take)
       end
     end
   end
-  
+
   self:linkData()
   self:updatePlotLink()
 end
@@ -5008,31 +6997,73 @@ end
 -- Selection management
 -----------------------------
 function tracker:setItem( item )
+  if not self.lastItem then
+    self.lastItem = {}
+  end
+  self.lastItem[#self.lastItem + 1] = self.item
   self.item = item
+  self.itemStart = reaper.GetMediaItemInfo_Value( self.item, "D_POSITION" )
+end
+
+local function hasSampler(track)
+  -- Check whether hackey trackey sampler is on this track
+  -- NOTE: track has to be a validated track ptr
+  local samplerName = "Hackey Trackey Sample Playback"
+  
+  local fxcnt = reaper.TrackFX_GetCount(track)
+  local foundSampler = 0
+  for fidx = 0, fxcnt - 1 do
+    local retval, str = reaper.TrackFX_GetFXName(track, fidx, "")
+    
+    if string.find(str, samplerName) then
+      foundSampler = 1
+    end
+  end
+  
+  return foundSampler
 end
 
 function tracker:setTake( take )
   -- Only switch if we're actually changing take
   if ( self.take ~= take ) then
     if ( reaper.TakeIsMIDI( take ) == true ) then
-    
+
       if ( tracker.armed == 1 ) then
         tracker:stopNote()
-        tracker:disarm()
       end
-    
+
       self.take = take
-      self.track = reaper.GetMediaItem_Track(self.item)
-      -- Store note hash (second arg = notes only)
-      self.hash = reaper.MIDI_GetHash( self.take, false, "?" )
-      self.newRowPerQn = self:getResolution()
-      self:update()
-      
-      if ( self.cfg.alwaysRecord == 1 ) then
-        tracker:arm()
+      if self:validateCurrentItem() then
+        local new_track = reaper.GetMediaItem_Track(self.item)
+        if tracker.armed and (new_track ~= self.track) then
+          -- Only disarm when seeking a different track
+          tracker:disarm()
+        end
+        self.track = new_track
+        
+        -- Set flag that we are dealing with a sampler-based track here
+        self.tracker_samples = hasSampler(self.track)
+        
+        -- Store note hash (second arg = notes only)
+        self.hash = reaper.MIDI_GetHash( self.take, false, "?" )
+        self.newRowPerQn = self:getResolution()
+        self.outChannel = self:getOutChannel()
+        self:update()
+  
+        if ( self.cfg.alwaysRecord == 1 ) then
+          tracker:arm()
+        end
+  
+        if tracker.noteNamesActive == 1 then
+          tracker:getNoteNames()
+        end
+        
+        self.muted_channels = nil
+        return true
+        
+      else
+        return false
       end
-      
-      return true
     end
   end
   return false
@@ -5051,17 +7082,46 @@ end
 -----------------------------
 function tracker:checkChange()
   local take
-  if not pcall( self.testGetTake ) then
-    return false
-  end
-  
-  if ( self.cfg.followSelection == 1 ) then
+
+  -- If we have no take active at the moment, any take is better, so switch even when
+  -- follow selection is off.
+  if ( self.cfg.followSelection == 1 or not self.take ) then
     tracker:grabActiveItem()
+    if ( tracker.cfg.loopFollow == 1 ) then
+      tracker:setLoopToPattern()
+    end
   end
-  
+
+  -- Did our take disappear?
+  -- This can have many causes.
+  if not pcall( self.testGetTake ) then
+
+    -- Defer to the next update cycle (we may be glueing an object right now)
+    -- When glueing from the arrange view, the item disappears and it takes a
+    -- short while before the item is back.
+    if ( not self.itemMissingDelay or self.itemMissingDelay < 10 ) then
+      --reaper.defer(self.updateLoop)
+      self.itemMissingDelay = (self.itemMissingDelay or 0) + 1
+      return false
+    else
+      -- Try to find a new take
+      self:tryPreviousItem()
+
+      -- Try if we have a take now, if not, terminate...
+      if not pcall( self.testGetTake ) then
+        -- If it fails, we can't recover from the situation
+        return false
+      else
+        -- If we do, make sure we reset the flag in case we glue more in the future
+        self.itemMissingDelay = nil
+        return true
+      end
+    end
+  end
+
   take = reaper.GetActiveTake(self.item)
   self.track = reaper.GetMediaItem_Track(self.item)
-  
+
   if ( not take ) then
     return false
   end
@@ -5070,16 +7130,18 @@ function tracker:checkChange()
       -- Take did not change, but did the note data?
       local retval, currentHash = reaper.MIDI_GetHash( self.take, false, "?" )
       if ( retval == true ) then
-        if ( ( currentHash ~= self.hash ) or ( self.modified == 1 ) ) then
+        local envelopeCount = reaper.CountTrackEnvelopes(self.track)
+        if ( ( currentHash ~= self.hash ) or ( self.modified == 1 ) or ( self.lastEnvelopeCount ~= envelopeCount ) ) then
           self.hash = currentHash
           self:update()
+          self.lastEnvelopeCount = envelopeCount
         end
       end
     end
   else
     return false
   end
-  
+
   return true
 end
 
@@ -5089,11 +7151,11 @@ function tracker:selectMIDIItems()
   --40011  Edit: paste
   --40012  Edit: Cut
   --40214  Edit: unselect all
-  
+
   -- MAIN WINDOW
   -- 40698  Edit -> Copy items
   -- 40699  Edit -> Cut items
-  
+
   -- Deselect all
   reaper.MIDI_SelectAll(self.take, false)
 end
@@ -5106,7 +7168,7 @@ function serializeTable(val, name, depth)
     if name then tmp = tmp .. name .. " = " end
 
     if type(val) == "table" then
-        tmp = tmp .. "{" 
+        tmp = tmp .. "{"
         for k, v in pairs(val) do
             tmp =  tmp .. serializeTable(v, k, depth + 1) .. ","
         end
@@ -5137,22 +7199,24 @@ function tracker:clearBlock(incp, cleanOffs)
   local cp        = incp or self.cp
 
   if ( self.debug == 1 ) then
-    print( "Clearing block [" .. cp.xstart .. ", " .. cp.xstop .. "] [" .. cp.ystart .. ", " .. cp.ystop .. "]" );
+    print( "Clearing block [" .. cp.xstart .. ", " .. cp.xstop .. "] [" .. cp.ystart .. ", " .. cp.ystop .. "]" )
   end
 
   local xstart = cp.xstart
-  local xstop = cp.xstop  
+  local xstop = cp.xstop
   if ( cp.all == 1 ) then
     xstart = 1
-    xstop = tracker.displaychannels
+    xstop = #datafields
   end
+  
+  local ystop = math.min(cp.ystop, rows);
 
   -- Cut out the block. Note that this creates 'stops' at the start of the block
-  local legatoDone = 0 
+  local legatoDone = 0
   for jx = xstart, xstop do
     local chan = idxfields[ jx ]
-    if ( datafields[jx] == 'text' ) then 
-      for jy = cp.ystart, cp.ystop do
+    if ( datafields[jx] == 'text' ) then
+      for jy = cp.ystart, ystop do
         -- If we are a legato note, make sure that the previous one gets shortened
         -- otherwise things won't fit.
         if ( legatoDone == 0 and chan == 1 and self.legato[jy] and self.legato[jy-1] > -1 ) then
@@ -5162,31 +7226,31 @@ function tracker:clearBlock(incp, cleanOffs)
         self:deleteNoteSimple( chan, jy - 1 )
       end
     elseif ( datafields[jx] == 'legato' ) then
-      for jy = cp.ystart, cp.ystop do
+      for jy = cp.ystart, ystop do
         self:deleteLegato( jy-1 )
       end
     elseif ( ( datafields[jx] == 'fx1' ) or ( datafields[jx] == 'fx2' ) ) then
-      self:deleteEnvPt(chan, self:toSeconds(cp.ystart-1), self:toSeconds(cp.ystop-1)+tracker.eps )
+      self:deleteEnvPt(chan, self:toSeconds(cp.ystart-1), self:toSeconds(ystop-1)+tracker.eps )
     elseif ( ( datafields[jx] == 'mod1' ) or ( datafields[jx] == 'mod2' ) or ( datafields[jx] == 'mod3' ) or ( datafields[jx] == 'mod4' ) ) then
-      self:deleteCC_range( cp.ystart-1, cp.ystop )
+      self:deleteCC_range( cp.ystart-1, ystop )
     elseif ( ( datafields[jx] == 'modtxt1' ) or ( datafields[jx] == 'modtxt2' ) ) then
-      self:deleteCC_range( cp.ystart-1, cp.ystop, data.modtypes[chan] )
+      self:deleteCC_range( cp.ystart-1, ystop, data.modtypes[chan] )
     end
   end
-  
+
   self:deleteNow()
   self:forceUpdate()
-  
+
   -- This has to be refetched since the array gets remade completely
   noteGrid = self.data.note
-  
+
   -- Make sure that there are no spurious note offs in the deleted region afterwards
   -- These are removed so that mendBlock can grow into this region
   if ( cleanOffs ) then
     for jx = cp.xstart, cp.xstop do
       local chan = idxfields[ jx ]
       if ( datafields[jx] == 'text' ) then
-        for jy = cp.ystart, cp.ystop do
+        for jy = cp.ystart, ystop do
           if ( self.debug == 1 ) then
             self:printNote(chan, jy - 1)
           end
@@ -5204,18 +7268,18 @@ function tracker:mendBlock(incp)
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
   local data      = self.data
   local noteGrid  = data.note
-  local noteStart = data.noteStart  
+  local noteStart = data.noteStart
   local notes     = self.notes
   local txtList   = self.txtList
   local rows      = self.rows
   local singlerow = self:rowToPpq(1)
-  local cp        = incp or self.cp 
-  
+  local cp        = incp or self.cp
+
   local xstart = cp.xstart
-  local xstop = cp.xstop  
+  local xstop = cp.xstop
   if ( cp.all == 1 ) then
     xstart = 1
-    xstop = tracker.displaychannels
+    xstop = #datafields
   end
 
   for jx = xstart, xstop do
@@ -5299,11 +7363,11 @@ function tracker:getAdvance( chtype, ch, extraShift )
   elseif ( chtype == 'mod3' ) then
     return 2
   elseif ( chtype == 'mod4' ) then
-    return 1    
+    return 1
   elseif ( chtype == 'modtxt1' ) then
     return 2
   elseif ( chtype == 'modtxt2' ) then
-    return 1    
+    return 1
   elseif ( chtype == 'delay1' ) then
     return 2
   elseif ( chtype == 'delay2' ) then
@@ -5311,7 +7375,7 @@ function tracker:getAdvance( chtype, ch, extraShift )
   elseif ( chtype == 'end1' ) then
     return 2
   elseif ( chtype == 'end2' ) then
-    return 1    
+    return 1
   else
     return 1
   end
@@ -5355,57 +7419,70 @@ tracker.colref['legato'] = 0
 
 function tracker:pasteClipboard()
   local clipboard = self.clipboard
-  
+
   if ( not clipboard ) then
     return
   end
-  
+
   local channels  = clipboard.channels
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
   local refrow    = self.ypos - 1
   local refppq    = self:rowToPpq( self.ypos - 1 ) - clipboard.refppq
-  
+
   if ( not clipboard ) then
     return
   end
+
+  local fieldCount = #channels
+  
+  local start_xpos = self.xpos
+  if (clipboard.region.all == 1) then
+    start_xpos = 1
+  end
   
   -- Check whether we have compatible fields
-  local jx = self.xpos
-  for i = 1,#channels do
+  local jx = start_xpos
+  for i = 1,fieldCount do
     local chan = idxfields[jx]
     local chtype = datafields[jx]
-    
+
+    -- Early out if there are no more data fields to paste into.
+    if not chtype then
+      fieldCount = i - 1
+      break
+    end
+
     local found = false
     for j,v in pairs( tracker.colgroups[chtype] ) do
       found = found or ( channels[i].fieldtype == v )
     end
-    
+
     if ( found == false ) then
       return
     end
-    
+
     jx = jx + self:getAdvance(chtype)
   end
 
   -- Determine the shift we need to apply to the current position to get to the start
   -- of the clipboard
-  local cpShift = self.colref[ datafields[self.xpos] ]
-  local region = self.clipboard.region 
-  region.xstop = self.xpos + (region.xstop - region.xstart) + cpShift
+  local cpShift = self.colref[ datafields[start_xpos] ]
+  local region = self.clipboard.region
+  region.xstop = start_xpos + (region.xstop - region.xstart) + cpShift
   region.ystop = self.ypos + (region.ystop - region.ystart)
-  region.xstart = self.xpos + cpShift
+  region.xstart = start_xpos + cpShift
   region.ystart = self.ypos
   self:clearBlock(region)
-  
+
   -- Grab references here, since clearblock calls update and regenerates them
   local data      = self.data
   local noteGrid  = data.note
   local notes     = self.notes
   local rows      = self.rows
-  
+ 
   -- We should be able to paste the contents now
-  local jx = self.xpos
-  for i = 1,#channels do
+  local jx = start_xpos
+  for i = 1,fieldCount do
     local chan = idxfields[jx]
     local chtype = datafields[jx]
     local firstNote = 1
@@ -5418,7 +7495,7 @@ function tracker:pasteClipboard()
             if ( ( firstNote == 1 ) and ( self.ypos > 0 ) and ( note and ( note > -1 ) ) ) then
               -- If the location where the paste happens started with a note, then shorten it!
               local pitch, vel, startppqpos, endppqpos = table.unpack( notes[ note ] )
-              
+
               local resize = self:ppqToRow(data[4]+refppq-endppqpos+self.magicOverlap)
               if ( resize ~= 0 ) then
                 self:resizeNote(chan, self:ppqToRow(startppqpos), resize )
@@ -5446,7 +7523,7 @@ function tracker:pasteClipboard()
             --self:addLegato( self:ppqToRow(data[2] + refppq) )
             self:setLegato( self:ppqToRow(data[2] + refppq), true )
           elseif ( data[1] == 'FX' ) then
-            -- 'FX', ppqposition   
+            -- 'FX', ppqposition
             self:addEnvPt( chan, self:ppqToSeconds(data[2] + refppq), data[3], data[4] )
           elseif ( data[1] == 'CC' ) then
             -- 'MOD'
@@ -5454,7 +7531,7 @@ function tracker:pasteClipboard()
           elseif ( data[1] == 'CCC' ) then
             -- 'MOD'
             local targetMod = self.data.modtypes[chan]
-            self:addCCPt_channel( data[2]+refrow, targetMod, data[3] )            
+            self:addCCPt_channel( data[2]+refrow, targetMod, data[3] )
         else
           print( "FATAL ERROR, unknown field in clipboard" )
         end
@@ -5462,10 +7539,10 @@ function tracker:pasteClipboard()
     end
     jx = jx + self:getAdvance(chtype)
   end
-  
+
   local cp = self.cp
   local xstop = jx
-  local xstart = self.xpos
+  local xstart = start_xpos
   local ystart = self.ypos
   local yend = self.ypos + self.clipboard.maxrow
 
@@ -5481,22 +7558,22 @@ function tracker:pasteClipboard()
         end
       end
     end
-  
+
     -- Now the whole block will end with note offs
     self:insertNow()
     self:deleteNow()
     self:clearDeleteLists()
     self:clearInsertLists()
-    
+
     reaper.MIDI_Sort(self.take)
     self:forceUpdate()
-    
+
     local data      = self.data
     local noteGrid  = data.note
-    
+
     for jx = xstart,xstop do
       local chan = idxfields[ jx ]
-      
+
       if ( datafields[jx] == 'text' ) then
         -- If the last note is a note and it wasn't covered by a note off at first, then we need to do mending //and noteGrid[chan * rows + yend-1] and noteGrid[chan * rows + yend-1] > 0
         if ( noteGrid[chan * rows + yend]  ) then
@@ -5526,16 +7603,16 @@ function tracker:copyToClipboard()
   local txtList   = self.txtList
   local rows      = self.rows
   local cp        = self.cp
-  
+
   newclipboard.refppq = self:rowToPpq( cp.ystart - 1 )
   local maxppq    = self:rowToPpq(cp.ystop)
   newclipboard.maxrow = cp.ystop - cp.ystart
 
   local xstart = cp.xstart
-  local xstop = cp.xstop  
+  local xstop = cp.xstop
   if ( cp.all == 1 ) then
     xstart = 1
-    xstop = tracker.displaychannels
+    xstop = #datafields
   end
 
   -- All we should be copying is note starts and note stops
@@ -5543,7 +7620,7 @@ function tracker:copyToClipboard()
   while ( jx <= xstop ) do
     self:addChannelToClipboard( newclipboard, datafields[jx] )
     local chan = idxfields[jx]
-    local chtype = datafields[jx]  
+    local chtype = datafields[jx]
     local firstNote = 1
     for jy = cp.ystart, cp.ystop do
       if ( ( chtype == 'text' ) or ( chtype == 'vel1' ) or ( chtype == 'vel2' ) ) then
@@ -5551,11 +7628,11 @@ function tracker:copyToClipboard()
         if ( noteStart[ loc ] ) then
           -- A note
           local pitch, vel, startppqpos, endppqpos = table.unpack( notes[ noteStart[loc] ] )
-          
+
           -- Store the legato state of the note that we are copying
           if ( chan == 1 ) then
             local lpos = self:ppqToRow(endppqpos)
-            if ( legato[lpos] > -1 ) then
+            if ( legato[lpos] and legato[lpos] > -1 ) then
               if ( noteStart[rows+lpos] ) then
                 -- Undo the legato
                 endppqpos = endppqpos - self.magicOverlap
@@ -5605,13 +7682,13 @@ function tracker:copyToClipboard()
         local modtype, val, gotvalue = tracker:getCC( jy-1, mtype )
         if ( gotvalue ) then
           self:addDataToClipboard( newclipboard, { 'CCC', jy-1-cp.ystart+1, val } )
-        end        
+        end
       end
     end
-    
+
     jx = jx + self:getAdvance(chtype)
   end
-  
+
   self.clipboard = newclipboard
   self.clipboard.region = deepcopy( cp )
 end
@@ -5628,12 +7705,12 @@ function tracker:printNote(chan, row)
         local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteOfInterest] )
         print( "Channel " .. chan .. " Row " .. row .. " Pitch " .. self.pitchTable[pitch] )
       elseif( noteOfInterest == -1 ) then
-        print( "Channel " .. chan .. " Row " .. row .. " OFF" )    
+        print( "Channel " .. chan .. " Row " .. row .. " OFF" )
       elseif( noteOfInterest < -1 ) then
-        print( "Channel " .. chan .. " Row " .. row .. " OFC" )          
+        print( "Channel " .. chan .. " Row " .. row .. " OFC" )
       end
     else
-        print( "Channel " .. chan .. " Row " .. row .. " EMPTY" )              
+        print( "Channel " .. chan .. " Row " .. row .. " EMPTY" )
     end
   end
 end
@@ -5658,20 +7735,26 @@ function tracker:interpolate()
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
   local data      = self.data
   local noteGrid  = data.note
-  local noteStart = data.noteStart  
+  local noteStart = data.noteStart
   local notes     = self.notes
   local txtList   = self.txtList
   local rows      = self.rows
   local cp        = self.cp
-  
+
+  if ( cp.ystart == cp.ystop ) then
+    return
+  end
+
   if ( cp.xstart == cp.xstop ) then
     local jx = cp.xstart
+    local datafield = datafields[jx]
+    
     -- Notes
-    if ( datafields[jx] == 'text' ) then    
+    if ( datafield == 'text' ) then
       local chan    = idxfields[ jx ]
       local nStart  = noteStart[ chan*rows + cp.ystart - 1 ]
       local nEnd    = noteStart[ chan*rows + cp.ystop - 1 ]
-      
+
       if ( nStart and nEnd ) then
         local startpitch, startvel = table.unpack( notes[ nStart ] )
         local endpitch, endvel     = table.unpack( notes[ nEnd ] )
@@ -5681,29 +7764,51 @@ function tracker:interpolate()
           self:deleteNoteSimple(chan, jy - 1)
         end
         self:deleteNow()
-        
+
         -- Force a grid update since all the note locations are invalid now
         self:forceUpdate()
 
-        idx = 0
-        notelen = 1
+        local idx = 0
+        local notelen = 1
         for jy = cp.ystart, cp.ystop-1 do
           local loc   = chan * rows + jy
-          local pitch = math.floor( (endpitch-startpitch) * (idx / nR) + startpitch ) 
+          local pitch = math.floor( (endpitch-startpitch) * (idx / nR) + startpitch )
           local vel   = math.floor( (endvel-startvel) * (idx / nR) + startvel )
-          self:addNote( jy - 1, jy, chan, pitch, vel)         
+          self:addNote( jy - 1, jy, chan, pitch, vel)
           idx = idx + 1
         end
       end
     end
     
-    if ( datafields[jx] == 'fx1' or datafields[jx] == 'fx2' ) then
+    if ( datafield == 'vel1' or datafield == 'vel2' ) then
+      local chan    = idxfields[ jx ]
+      local nStart  = noteStart[ chan*rows + cp.ystart - 1 ]
+      local nEnd    = noteStart[ chan*rows + cp.ystop - 1 ]
+       
+      if ( nStart and nEnd ) then
+        local startpitch, startvel = table.unpack( notes[ nStart ] )
+        local endpitch, endvel     = table.unpack( notes[ nEnd ] )
+        local nR = cp.ystop - cp.ystart
+
+        local idx = 0
+        for jy = cp.ystart, cp.ystop-1 do
+          local loc = chan * rows + jy - 1
+          if noteStart[loc] then
+            reaper.MIDI_SetNote(self.take, noteStart[loc], nil, nil, nil, nil, nil, nil, math.floor( (endvel-startvel) * (idx / nR) + startvel ), true)
+          end
+          idx = idx + 1
+        end
+        self:forceUpdate()
+      end
+    end
+
+    if ( datafield == 'fx1' or datafield == 'fx2' ) then
       local chan        = idxfields[ jx ]
       local startidx    = cp.ystart - 1
       local endidx      = cp.ystop - 1
-         
+
       local time, startenv, startshape, starttension = tracker:getEnvPt(chan, self:toSeconds(startidx))
-      local time, endenv,   endshape,   endtension   = tracker:getEnvPt(chan, self:toSeconds(endidx))            
+      local time, endenv,   endshape,   endtension   = tracker:getEnvPt(chan, self:toSeconds(endidx))
       if ( startenv and endenv and startidx and endidx ) then
         local dydx = (endenv-startenv)/(endidx-startidx)
         self.hash = 0
@@ -5713,11 +7818,11 @@ function tracker:interpolate()
           idx = idx + 1
         end
       end
-    elseif ( datafields[jx] == 'mod1' or datafields[jx] == 'mod2' or datafields[jx] == 'mod3' or datafields[jx] == 'mod4' ) then
+    elseif ( datafield == 'mod1' or datafield == 'mod2' or datafield == 'mod3' or datafield == 'mod4' ) then
       local startidx    = cp.ystart - 1
       local endidx      = cp.ystop - 1
       local starttype, startval = tracker:getCC( startidx )
-      local endtype,   endval   = tracker:getCC( endidx )      
+      local endtype,   endval   = tracker:getCC( endidx )
       if ( startval and endval and startidx and endidx ) then
         local dydx = (endval-startval)/(endidx-startidx)
         self.hash = 0
@@ -5727,13 +7832,13 @@ function tracker:interpolate()
           idx = idx + 1
         end
       end
-    elseif ( datafields[jx] == 'modtxt1' or datafields[jx] == 'modtxt2' ) then
+    elseif ( datafield == 'modtxt1' or datafield == 'modtxt2' ) then
       local chan        = idxfields[ jx ]
       local modtype     = self.data.modtypes[chan]
       local startidx    = cp.ystart - 1
       local endidx      = cp.ystop - 1
       local starttype, startval = tracker:getCC( startidx, modtype )
-      local endtype,   endval   = tracker:getCC( endidx,   modtype )     
+      local endtype,   endval   = tracker:getCC( endidx,   modtype )
       if ( startval and endval and startidx and endidx ) then
         local dydx = (endval-startval)/(endidx-startidx)
         self.hash = 0
@@ -5750,6 +7855,11 @@ end
 function tracker:resetShiftSelect()
   local cp = self.cp
   self:forceCursorInRange()
+  
+  if cp.ystart > -1 then
+    cp.changed = 1
+  end
+  
   if ( cp.lastShiftCoord ) then
     cp.lastShiftCoord = nil
     self:resetBlock()
@@ -5766,7 +7876,7 @@ function tracker:dragBlock(cx, cy)
     xp = cx
     yp = cy
   end
-  
+
   if ( not cp.lastShiftCoord ) then
     cp.lastShiftCoord = {}
     cp.lastShiftCoord.x = xp
@@ -5787,12 +7897,13 @@ function tracker:dragBlock(cx, cy)
     ystart  = yp
     yend    = cp.lastShiftCoord.y
   end
-  
+
   cp.xstart  = xstart
   cp.xstop   = xend
   cp.all     = 0
   cp.ystart  = ystart
   cp.ystop   = yend
+  cp.changed = 1
 end
 
 function tracker:beginBlock()
@@ -5801,14 +7912,14 @@ function tracker:beginBlock()
     cp.all = 1 - cp.all
   end
   cp.xstart = self.xpos
-  cp.ystart = self.ypos  
+  cp.ystart = self.ypos
   if ( cp.ystart > cp.ystop ) then
     cp.ystop  = self.ypos
   end
   if ( cp.xstart > cp.xstop ) then
     cp.xstop  = self.xpos
   end
-  
+
   cp.lastShiftCoord = nil
 end
 
@@ -5820,9 +7931,9 @@ function tracker:endBlock()
   if ( ( cp.ystop == self.ypos ) and ( cp.xstop == self.xpos ) ) then
     cp.all = 1 - cp.all
   end
-  cp.xstop = self.xpos  
+  cp.xstop = self.xpos
   cp.ystop = self.ypos
-  
+
   cp.lastShiftCoord = nil
 end
 
@@ -5853,20 +7964,20 @@ end
 local function isPlaying()
   --local state = 0
   --local HasState = reaper.HasExtState("PlayPauseToggle", "ToggleValue")
-  
+
   --if HasState == 1 then
   --  state = reaperGetExtState("PlayPauseToggle", "ToggleValue")
   --end
-  
+
   return reaper.GetPlayState()
 end
 
 local function togglePlayPause()
   local reaper = reaper
-    
+
   reaper.Main_OnCommand(40044, 0)
 --  if ( isPlaying() == 0 ) then
---    
+--
 --  else
 --    reaper.Main_OnCommand(40073, 0)
 --  end
@@ -5875,23 +7986,25 @@ end
 local function inputs( name )
   -- Bitmask oddly enough doesn't behave as expected
   local control = gfx.mouse_cap & 4
-  if ( control > 0 ) then control = 1 end  
+  if ( control > 0 ) then control = 1 end
   local shift   = gfx.mouse_cap & 8
   if ( shift > 0 ) then shift = 1 end
   local alt     = gfx.mouse_cap & 16
   if ( alt > 0 ) then alt = 1 end
 
   local checkMask = keys[name]
-  if ( checkMask[1] == control ) then
-    if ( checkMask[2] == alt ) then
-      if ( checkMask[3] == shift ) then
-        if ( lastChar == checkMask[4] ) then
-          return true
+  if checkMask then
+    if ( checkMask[1] == control ) then
+      if ( checkMask[2] == alt ) then
+        if ( checkMask[3] == shift ) then
+          if ( lastChar == checkMask[4] ) then
+            return true
+          end
         end
       end
     end
   end
-  
+
   return false
 end
 
@@ -5924,52 +8037,125 @@ function tracker:setOutChannel( ch )
     else
       if ( string.find( str, "OUTCH" ) ) then
         local strOut = string.gsub(str, "\nOUTCH [-]*%d+", "")
+        
         reaper.SetItemStateChunk( self.item, strOut )
+        self:seen_item()
       end
     end
   end
 end
 
+function tracker:seen_item(ch)
+  local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+  for i=0,textsyxevtcntOut do
+    local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
+
+    if ( string.sub(msg,1,7) == 'HT_SEEN' ) then
+      return true
+    end
+  end
+  
+  reaper.MIDI_InsertTextSysexEvt(self.take, false, false, 0, 1, 'HT_SEEN' )
+  return false
+end
+
+function tracker:getOutChannel( ch )
+  if not pcall( self.testGetTake ) then
+    return false
+  end
+
+  local chOut
+  local retval, str = reaper.GetItemStateChunk( self.item, "")
+  if ( not str:find("OUTCH") ) then
+    if ( self:seen_item() ) then
+      chOut = 0
+    else
+      chOut = tracker.outChannel
+    end
+  else
+    chOut = tonumber(str:match("\nOUTCH ([-]*%d+)", 1))
+  end
+
+  return chOut
+end
+
 function tracker:arm()
   reaper.ClearAllRecArmed()
-  self.oldarm     = reaper.GetMediaTrackInfo_Value(self.track, "I_RECARM")  
-  self.oldinput   = reaper.GetMediaTrackInfo_Value(self.track, "I_RECINPUT") 
+  self.oldarm     = reaper.GetMediaTrackInfo_Value(self.track, "I_RECARM")
+  self.oldinput   = reaper.GetMediaTrackInfo_Value(self.track, "I_RECINPUT")
   self.oldmonitor = reaper.GetMediaTrackInfo_Value(self.track, "I_RECMON")
   reaper.SetMediaTrackInfo_Value(self.track, "I_RECARM", 1)
-  reaper.SetMediaTrackInfo_Value(self.track, "I_RECMON", 1)  
+  reaper.SetMediaTrackInfo_Value(self.track, "I_RECMON", 1)
   reaper.SetMediaTrackInfo_Value(self.track, "I_RECINPUT", 6112)
   self.armed = 1
 end
 
 function tracker:checkArmed()
-  if ( self.armed == 1 ) then
-    local recinput = reaper.GetMediaTrackInfo_Value(self.track, "I_RECINPUT")
-    local recarm = reaper.GetMediaTrackInfo_Value(self.track, "I_RECARM")
-    local recmonitor = reaper.GetMediaTrackInfo_Value(self.track, "I_RECMON")
-    local ready = ( recinput == tracker.playNoteCh ) and ( recarm == 1 ) and ( recmonitor == 1 )
-    if ( not ready ) then
-      self.armed = 0
+  if reaper.ValidatePtr(self.track, "MediaTrack*") then
+    if ( self.armed == 1 and self.track ) then
+      local recinput = reaper.GetMediaTrackInfo_Value(self.track, "I_RECINPUT")
+      local recarm = reaper.GetMediaTrackInfo_Value(self.track, "I_RECARM")
+      local recmonitor = reaper.GetMediaTrackInfo_Value(self.track, "I_RECMON")
+      local ready = ( recinput == tracker.playNoteCh ) and ( recarm == 1 ) and ( recmonitor == 1 )
+      if ( not ready ) then
+        self.armed = 0
+      end
     end
+  else
+    self.armed = 0
   end
 end
 
 function tracker:disarm()
-  reaper.SetMediaTrackInfo_Value(self.track, "I_RECARM",   self.oldarm)
-  reaper.SetMediaTrackInfo_Value(self.track, "I_RECINPUT", self.oldinput)
-  reaper.SetMediaTrackInfo_Value(self.track, "I_RECMON",   self.oldmonitor)
-  self.armed = 0
-  self.hash = 0
-  self:update()
+  if ( self.track ) then
+    reaper.SetMediaTrackInfo_Value(self.track, "I_RECARM",   self.oldarm)
+    reaper.SetMediaTrackInfo_Value(self.track, "I_RECINPUT", self.oldinput)
+    reaper.SetMediaTrackInfo_Value(self.track, "I_RECMON",   self.oldmonitor)
+    self.armed = 0
+    self.hash = 0
+    self:update()
+  end
 end
 
 function tracker:playNote(chan, pitch, vel)
   self:checkArmed()
-  if ( self.armed == 1 ) then
-    local ch = 1
-    self:stopNote()
-    reaper.StuffMIDIMessage(0, 0x90 + ch - 1, pitch, vel)
+  local line_played = self.line_played or {}
+  local ch = 1
+  if ( self.armed == 1 and not (self.cfg.readfrommidi == 1) ) then
+    if self.cfg.releaseNoteOffs == 0 then
+      self:stopNote()
+      if self.outChannel == 0 then
+        ch = chan
+      else
+        ch = self.outChannel - 1
+      end
+      reaper.StuffMIDIMessage(0, 0x90 + ch, pitch, vel)
+    else
+      -- Only create note if it isn't already playing
+      local found = false
+      if self.listeners then
+        for i,v in pairs(self.listeners) do
+          if (v[1] == ch) and (v[2] == pitch) then
+            found = 1
+          end
+        end
+      end
+      if not found then
+        if self.outChannel == 0 then
+          ch = chan
+        else
+          ch = self.outChannel - 1
+        end
+        reaper.StuffMIDIMessage(0, 0x90 + ch, pitch, vel)
+      end
+    end
     self.lastNote = {ch, pitch, vel}
+    
+    line_played[ch] = {}
+    line_played[ch][0] = pitch
+    line_played[ch][1] = vel
   end
+  self.line_played = line_played
 end
 
 function tracker:stopNote()
@@ -5977,8 +8163,24 @@ function tracker:stopNote()
   if ( self.armed == 1 ) then
     if ( self.lastNote ) then
       local lastNote = self.lastNote
-      reaper.StuffMIDIMessage(0, 0x80 + lastNote[1] - 1, lastNote[2], lastNote[3])
+      reaper.StuffMIDIMessage(0, 0x80 + lastNote[1], lastNote[2], lastNote[3])
       self.lastNote = nil
+    end
+  end
+end
+
+function tracker:stopAllNotes()
+  self:checkArmed()
+  self:terminateScrubNotes()
+  if ( self.armed == 1) then
+    self:stopNote()
+    if self.line_played then
+      local line_played = self.line_played
+      for c = 1,self.channels do 
+        if self.line_played[c] then
+          reaper.StuffMIDIMessage(0, 0x80 + c, line_played[c][0], line_played[c][1])
+        end
+      end
     end
   end
 end
@@ -5987,10 +8189,15 @@ end
 function tracker:playChord(chord)
   self:checkArmed()
   if ( self.armed == 1 ) then
-    local ch = 1
     self:stopChord()
+    local idx = 1
     for i,v in pairs( chord ) do
-      reaper.StuffMIDIMessage(0, 0x90 + v[1] - 1, v[2], v[3])
+      if self.outChannel == 0 then
+        reaper.StuffMIDIMessage(0, 0x90 + idx, v[2], v[3])
+        idx = idx + 1
+      else
+        reaper.StuffMIDIMessage(0, 0x90 + v[1], v[2], v[3])
+      end
     end
     self.lastChord = chord
   end
@@ -5998,20 +8205,20 @@ end
 
 function tracker:insertChord(chord)
   --reaper.StuffMIDIMessage(0, 0x90 + v[1] - 1, v[2], v[3])
-  
+
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
-   
+
   -- Grab references here, since clearblock calls update and regenerates them
   local data      = self.data
   local notes     = self.notes
-  local noteGrid  = data.note  
-  local noteStart = data.noteStart    
-  
+  local noteGrid  = data.note
+  local noteStart = data.noteStart
+
   -- We should be able to paste the contents now
   local jx        = self.xpos
   local rows      = self.rows
   local chtype, chan, origrow = self:getLocation()
-  
+
   -- Don't insert chords if we are at an invalid location
   if ( chtype ~= 'text' ) then
     return
@@ -6019,7 +8226,7 @@ function tracker:insertChord(chord)
 
   for i=1,#chord do
     local row = origrow
-    
+
     -- 'NOTE' (1), pitch (2), velocity (3), startppq (4), endppq (5)
     local note = noteGrid[chan*rows+row-1]
     local noteToEdit = noteStart[rows*chan+row]
@@ -6030,7 +8237,7 @@ function tracker:insertChord(chord)
       noteToInterrupt = noteGrid[rows*chan+row-1]
     else
       noteToInterrupt = noteGrid[rows*chan+row]
-    end    
+    end
 
     -- If the location where the paste happens started with a note, then shorten it!
     if ( ( self.ypos > 1 ) and ( note and ( note > -1 ) ) ) then
@@ -6051,7 +8258,7 @@ function tracker:insertChord(chord)
         local k = row+1
         while( k < rows ) do
           if ( noteGrid[rows*chan+k] and not ( noteGrid[rows*chan+k] == noteToInterrupt ) ) then
-            break;
+            break
           end
           k = k + 1
         end
@@ -6065,15 +8272,15 @@ function tracker:insertChord(chord)
             local offidx = self:gridValueToOFFidx( noteGrid[idx] )
             self:SAFE_DeleteText(self.take, offidx)
           end
-        end             
+        end
     end
-    
+
     -- Were we overwriting an OFF marker?
     local curNote = noteGrid[rows*chan+row]
     if ( curNote and ( curNote < -1 ) ) then
       self:deleteNote(chan, row)
     end
-    
+
     chan = chan + 1
   end
 end
@@ -6082,18 +8289,42 @@ function tracker:stopChord()
   self:checkArmed()
   if ( self.armed == 1 ) then
     if ( self.lastChord ) then
+      local idx = 1
       for i,v in pairs( self.lastChord ) do
-        reaper.StuffMIDIMessage(0, 0x80 + v[1] - 1, v[2], v[3])
+        if self.outChannel == 0 then
+          reaper.StuffMIDIMessage(0, 0x80 + idx, v[2], v[3])
+          idx = idx + 1
+        else
+          reaper.StuffMIDIMessage(0, 0x80 + v[1], v[2], v[3])
+        end
       end
       self.lastChord = nil
     end
   end
 end
 
+function tracker:validateCurrentItem()
+  local valid = reaper.ValidatePtr(self.take, "MediaItem_Take*") and reaper.ValidatePtr(self.item, "MediaItem*")
+  if not valid then
+    self.item = nil
+    self.take = nil
+    self:tryPreviousItem()
+  end
+  return valid
+end
+
+function tracker:setLoopToPattern()
+  if self:validateCurrentItem() then
+    local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+    local mlen = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
+    reaper.GetSet_LoopTimeRange2(0, true, true, mpos, mpos+mlen, true)
+  end
+end
+
 function tracker:setLoopStart()
     local mPos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
     local lPos, lEnd = reaper.GetSet_LoopTimeRange2(0, false, 1, 0, 0, false)
-    
+
     lPos = mPos + tracker:toSeconds(tracker.ypos-1)
     if ( lPos > lEnd ) then
       lEnd = lPos + tracker:toSeconds(1)
@@ -6104,12 +8335,12 @@ end
 function tracker:setLoopEnd()
     local mPos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
     local lPos, lEnd = reaper.GetSet_LoopTimeRange2(0, false, 1, 0, 0, false)
-    
+
     lEnd = mPos + tracker:toSeconds(tracker.ypos)
     if ( lPos > lEnd ) then
       lPos = lEnd - tracker:toSeconds(1)
     end
-    reaper.GetSet_LoopTimeRange2(0, true, true, lPos, lEnd, true)    
+    reaper.GetSet_LoopTimeRange2(0, true, true, lPos, lEnd, true)
 end
 
 function tracker:tryTake(i)
@@ -6118,6 +8349,11 @@ function tracker:tryTake(i)
     local take = reaper.GetActiveTake(item)
     if ( take ) then
       if ( reaper.TakeIsMIDI( take ) == true ) then
+        local retval, str = reaper.GetSetMediaItemTakeInfo_String(take, "P_NAME", "", false)
+        if ( str == tracker.offTag ) then
+          return false
+        end
+
         tracker:setItem( item )
         tracker:setTake( take )
         return true
@@ -6140,13 +8376,13 @@ function tracker:selectCurrent()
   reaper.SelectAllMediaItems(0, false)
   reaper.SetMediaItemSelected(tracker.item, true)
 end
-    
+
 function tracker:duplicate()
   local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
-  local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")  
+  local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")
 
   if ( tracker.duplicationBehaviour == 1 ) then
-    -- Duplicate using reaper commands (quick 'n dirty, but can be annoying because automation 
+    -- Duplicate using reaper commands (quick 'n dirty, but can be annoying because automation
     -- gets put in the same pool)
     reaper.SelectAllMediaItems(0, false)
     reaper.SetMediaItemSelected(tracker.item, true)
@@ -6154,20 +8390,18 @@ function tracker:duplicate()
     reaper.SetEditCurPos2(0, mpos+mlen, false, false)
     reaper.Main_OnCommand(40058, 0) -- Paste
   else
+
     -- Duplicate explicitly (this makes sure that we get a new automation pool for every pattern)
-    local newItem = reaper.CreateNewMIDIItemInProj(self.track, mpos+mlen, mlen, false)
+    local newItem = reaper.CreateNewMIDIItemInProj(self.track, mpos+mlen, mpos+2*mlen, false)
     local newTake = reaper.GetActiveTake(newItem)
-    
-    -- For some reason the new midi item doesn't simply accept being created with the length given
-    reaper.SetMediaItemInfo_Value(newItem, "D_LENGTH", mlen)
 
     -- Grab the notes and store them in channels
     local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
     local i
     if ( retval > 0 ) then
-      for i=0,notecntOut do      
+      for i=0,notecntOut do
         local retval, selected, muted, startppqpos, endppqpos, chan, pitch, vel = reaper.MIDI_GetNote(self.take, i)
-        reaper.MIDI_InsertNote(newTake, selected, muted, startppqpos, endppqpos, chan, pitch, vel, true)        
+        reaper.MIDI_InsertNote(newTake, selected, muted, startppqpos, endppqpos, chan, pitch, vel, true)
       end
       for i=0,ccevtcntOut do
         local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
@@ -6179,10 +8413,10 @@ function tracker:duplicate()
       end
     end
     reaper.MIDI_Sort(newTake)
-    
+
     -- Clear whatever automation we are going to overlap with
     self:clearEnvelopeRange(mpos+mlen, mpos+2*mlen)
-    
+
     --[[--
     Sadly, it's not possible (yet) to delete automation items it seems.
     local eps = tracker.automationeps
@@ -6195,7 +8429,7 @@ function tracker:duplicate()
       end
     end
     --]]--
-        
+
     local cnt = reaper.CountTrackEnvelopes(self.track)
     local autoidx = nil
     for i = 0,cnt-1 do
@@ -6203,14 +8437,14 @@ function tracker:duplicate()
       autoidx = self:findMyAutomation( envidx )
       if ( autoidx ) then
         local newautoidx = reaper.InsertAutomationItem(envidx, -1, self.position+self.length, self.length)
-  
+
         local npoints
         if ( self.automationBug == 1 ) then
           npoints = 2 * self.rows
         else
           npoints = reaper.CountEnvelopePointsEx(envidx, autoidx)
         end
-        
+
         for ptidx=0,npoints do
           local retval, envtime, value, shape, tension, selected = reaper.GetEnvelopePointEx(envidx, autoidx, ptidx)
           if ( retval ) then
@@ -6220,17 +8454,19 @@ function tracker:duplicate()
         end
         reaper.Envelope_SortPointsEx(envidx, autoidx)
       end
-    end    
+    end
   end
-  
+
+  local targetChannel = tracker.outChannel
   tracker:seekMIDI(1)
+  tracker.outChannel = targetChannel
   tracker:setOutChannel( tracker.outChannel )
 end
 
 function tracker:seekMIDI( dir )
   self.track = reaper.GetMediaItem_Track(self.item)
   local nItems = reaper.GetTrackNumMediaItems(self.track)
-    
+
   -- Find me first
   local cur
   for i=0,nItems do
@@ -6239,7 +8475,7 @@ function tracker:seekMIDI( dir )
       cur = i
     end
   end
-  
+
   if ( dir > 0 ) then
     for i=cur+1,nItems do
       if ( self:tryTake(i) ) then
@@ -6256,11 +8492,106 @@ function tracker:seekMIDI( dir )
           self:selectCurrent()
         end
         return
-      end   
-    end  
+      end
+    end
   else
     print( "Fatal error: Invalid direction given" )
-  end  
+  end
+end
+
+function tracker:setPos(cpos)
+  local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+  local mlen = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
+  self.ypos = math.floor( ( ( cpos - mpos ) / mlen ) * self.rows )
+  self.fov.scrolly = 0
+  self:forceCursorInRange()
+end
+
+function tracker:seekTrack( dir )
+  local eps = 0.0001
+  local oldtrack = self.track
+
+  -- Find the location of the cursor
+  local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+  local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")
+  local cpos = mpos + mlen * tracker.ypos / tracker.rows
+
+  local trackidx
+  local thisTrack = reaper.GetMediaItem_Track(self.item)
+  for i=0,reaper.GetNumTracks() do
+    if ( thisTrack == reaper.GetTrack(0, i) ) then
+      trackidx = i
+    end
+  end
+  local ntracks = reaper.GetNumTracks()
+
+  -- Try ntracks times to find a new one (skips over empty tracks)
+  local curTrack = trackidx
+  for q = 1,ntracks do
+    curTrack = curTrack + dir
+    local ntracks = reaper.GetNumTracks()
+    if ( curTrack < 0 ) then
+      curTrack = ntracks-1
+    elseif ( curTrack > ntracks-1 ) then
+      curTrack = 0
+    end
+    self.track = reaper.GetTrack(0,curTrack)
+    local nItems = reaper.GetTrackNumMediaItems(self.track)
+
+    -- Attempt to find one we actually overlap with first
+    local cur
+    for i=0,nItems-1 do
+      local mediaItem = reaper.GetTrackMediaItem(self.track, i)
+      local item = reaper.GetTrackMediaItem(self.track, i)
+      local mpos = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
+      local mlen = reaper.GetMediaItemInfo_Value(item, "D_LENGTH")
+      local mend = mpos + mlen
+      if ( cpos > ( mpos - eps ) ) and ( cpos < ( mend + eps ) ) then
+        if ( self:tryTake(i) ) then
+          if ( self.selectionFollows == 1 ) then
+            self:selectCurrent()
+          end
+          self.track = proposedTrack
+          tracker:setPos(cpos)
+          return
+        end
+      end
+    end
+
+    -- Loop over all and find the distances to the cursor position
+    local distances = {}
+    for i=0,nItems-1 do
+
+      local item = reaper.GetTrackMediaItem(self.track, i)
+      local mpos = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
+      local mlen = reaper.GetMediaItemInfo_Value(item, "D_LENGTH")
+      local mend = mpos + mlen
+      local dist
+
+      -- One we are considering is before the end
+      if ( mend < cpos ) then
+        dist = cpos - mend
+      else
+        dist = mpos - cpos
+      end
+
+      distances[i+1] = {i, dist}
+    end
+
+    table.sort(distances, function(a,b) return a[2] < b[2] end)
+    for i,v in ipairs(distances) do
+      if ( self:tryTake(v[1]) ) then
+        if ( self.selectionFollows == 1 ) then
+          self:selectCurrent()
+        end
+        self.track = proposedTrack
+        tracker:setPos(cpos)
+        return
+      end
+    end
+  end
+
+  self.track = oldtrack
 end
 
 function tracker:resizePattern()
@@ -6268,12 +8599,12 @@ function tracker:resizePattern()
   if ( newLen and ( newLen > 0 ) ) then
     local glueCmd = 40362
     local newLenS = newLen / self.rowPerSec
-    
+
     -- Select the correct items
     reaper.SelectAllMediaItems(0, false)
     -- Deselect everything
     reaper.Main_OnCommand(40289, 0)
-    
+
     -- Select my take and automation stuff
     reaper.SetMediaItemSelected(tracker.item, true)
     local cnt = reaper.CountTrackEnvelopes(self.track)
@@ -6285,15 +8616,15 @@ function tracker:resizePattern()
         reaper.GetSetAutomationItemInfo(envidx, autoidx, "D_UISEL", 1, true)
       end
     end
-    
+
     -- Glue it (prevents unpredictable loops that were outside the pattern range)
     reaper.Main_OnCommand(glueCmd, 0)
     reaper.Main_OnCommand(42089, 0)
-    
+
     -- Make sure we have the correct item
     self:grabActiveItem()
     reaper.SetMediaItemInfo_Value(self.item, "D_LENGTH", newLenS )
-    
+
     -- Resize it
     local cnt = reaper.CountTrackEnvelopes(self.track)
     local autoidx = nil
@@ -6303,8 +8634,8 @@ function tracker:resizePattern()
       if ( autoidx ) then
         local len = reaper.GetSetAutomationItemInfo(envidx, autoidx, "D_LENGTH", newLenS, true)
       end
-    end    
-    
+    end
+
     -- Glue it again
     reaper.Main_OnCommand(glueCmd, 0)
     reaper.Main_OnCommand(42089, 0)
@@ -6312,65 +8643,361 @@ function tracker:resizePattern()
   end
 end
 
-
 -- Capture the mouse?
 mouse_cap = 0
 capture = {}
 local function setCapMode( mode, ref, min, max )
-  mouse_cap = mode
-  capture.lastY = gfx.mouse_y;
-  capture.ref = ref;
-  capture.min = min;
-  capture.max = max;
+  if ( mouse_cap == 0 ) then
+    mouse_cap = mode
+    capture.lastY = gfx.mouse_y
+    capture.ref = ref
+    capture.min = min
+    capture.max = max
+  end
 end
 
 local function getCapValue( sensitivity )
   local movement = math.floor( sensitivity * ( capture.lastY - gfx.mouse_y ) )
-  local value = capture.ref + movement;
+  local value = capture.ref + movement
 
   return ( ( value - capture.min ) % (capture.max - capture.min + 1) ) + capture.min
 end
 
-function tracker:noteEdit()
-      reaper.Undo_OnStateChange2(0, "Tracker: Add note / Edit volume")
-      reaper.MarkProjectDirty(0)
-      local shift = gfx.mouse_cap & 8
-      
-      if ( shift > 0 ) then
-        local oldAdvance = tracker.advance
-        tracker.advance = 0
-        tracker:createNote(lastChar+32)
-        tracker:tab()
-        tracker.advance = oldAdvance
-      else
-        tracker:createNote(lastChar)
+function tracker:playLine()
+  if ( self.armed == 0 ) then
+     self:arm()
+  end
+     
+  local line_played = self.line_played or {} 
+  local data      = self.data
+  local rows      = self.rows
+  local notes     = self.notes
+  local noteStart = data.noteStart
+  local noteGrid  = data.note
+  local ftype, chan, row = self:getLocation()
+  for c = 1,self.channels do  
+    local noteToEdit = noteStart[rows*c+row]
+    local noteOff = noteGrid[rows*c+row] and noteGrid[rows*c+row] == -1
+    
+    if (noteOff) then
+      if line_played[c] then
+        reaper.StuffMIDIMessage(0, 0x80 + c, line_played[c][0], line_played[c][1])
       end
+    elseif noteToEdit then
+      if line_played[c] then
+         reaper.StuffMIDIMessage(0, 0x80 + c, line_played[c][0], line_played[c][1])
+      end
+    
+      local pitch, vel = table.unpack(notes[noteToEdit])
+      reaper.StuffMIDIMessage(0, 0x90 + c, pitch, vel)
+      line_played[c] = {}
+      line_played[c][0] = pitch
+      line_played[c][1] = vel
+    end
+  end
+  self.line_played = line_played
+end
+
+function tracker:gotoCurrentPosition()
+  -- Check where we are
+  local playPos = reaper.GetPlayPosition()
+  if reaper.ValidatePtr(tracker.item, "MediaItem*") then
+    local loc = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+    local loc2 = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")
+    if ( playPos < loc or playPos > ( loc+loc2 ) ) then
+      if ( tracker.track ) then
+        tracker:findTakeAtSongPos()
+      end
+    end
+    local row = math.floor( ( playPos - loc ) * tracker.rowPerSec) + 1
+    tracker:forceCursorInRange(row)
+  end
+end
+
+-- Add callbacks to make sure VK notes stop on release
+function tracker:addListener(charToListenTo, pitchChar)
+  if ( not pitchChar or ( pitchChar > 256 ) ) then
+    return
+  end
+  
+  if not self.listeners then
+    self.listeners = {}
+  end  
+  
+  local note = keys.pitches[string.lower(string.char(pitchChar))]
+  if ( note ) then
+    local pitch = note + self.transpose * 12
+    local ftype, chan, row = self:getLocation()
+    
+    if self.outChannel > 0 then
+      chan = self.outChannel - 1
+    end
+    self.listeners[charToListenTo] = {chan, pitch};
+  end
+end
+
+function tracker:listenForNotesToStop()
+  if self.listeners then
+    for i, v in pairs(self.listeners) do
+      if gfx.getchar(i) == 0 then
+        reaper.StuffMIDIMessage(0, 0x90 + v[1], v[2], 0)
+        self.listeners[i] = nil
+      end
+    end
+  end
+end
+
+function tracker:noteEdit()
+  if self.take then
+    reaper.Undo_OnStateChange2(0, "Tracker: Add note / Edit volume")
+    reaper.MarkProjectDirty(0)
+    local shift = gfx.mouse_cap & 8 > 0
+    
+    local ok, char = pcall(function () return string.char(lastChar) end)
+    if shift and string.match(char,"[^%w]") == nil then
+      if not self.shiftChordInProgress then
+        self.shiftChordInProgress = true
+        self.shiftChordStartXpos = tracker.xpos
+      end
+      self:createNote(lastChar + 32, true)
       
-      tracker:deleteNow()
-      reaper.MIDI_Sort(tracker.take)
+      if self.cfg.releaseNoteOffs == 1 then
+        self:addListener(lastChar, lastChar + 32);
+      end
+    else
+      self:createNote(lastChar, false)
+      if self.cfg.releaseNoteOffs == 1 then
+        self:addListener(lastChar, lastChar);
+      end
+    end
+
+    tracker:deleteNow()
+    reaper.MIDI_Sort(tracker.take)
+  end
+end
+
+local function findFXByGUID(track, targetGUID, recFX)
+  local i, offset = 0, recFX and 0x1000000 or 0
+  local guid = reaper.TrackFX_GetFXGUID(track, offset + i)
+
+  while guid do
+    if guid == targetGUID then
+      return i
+    end
+
+    i = i + 1
+    guid = reaper.TrackFX_GetFXGUID(track, offset + i)
+  end
+end
+
+function killJSFX()
+  if not jsfx or not reaper.ValidatePtr2(0, jsfx.track, 'MediaTrack*') then return end
+  
+  local index = findFXByGUID(jsfx.track, jsfx.guid, true)
+  if index then
+    reaper.TrackFX_Delete(jsfx.track, index | 0x1000000)
+  end
+  
+  jsfx = nil
+end
+
+function tracker:addJSFX()
+  if not reaper.ValidatePtr2(0, self.track, "MediaTrack*") then
+    return false
+  end
+  
+  if jsfx and self.track == jsfx.track then return true end
+  
+  reaper.Undo_BeginBlock2(0)
+  killJSFX()
+  
+  local index = reaper.TrackFX_AddByName(self.track, "Hackey_MIDI_Detector.jsfx", true, 1)
+
+  jsfx = {
+    guid  = reaper.TrackFX_GetFXGUID(self.track, index | 0x1000000),
+    track = self.track,
+    index = index
+  }
+  reaper.Undo_EndBlock2(0, "Add HT recording JSFX to input FX",  2)
+  
+  reaper.atexit(function()
+    killJSFX()
+    reaper.gmem_write(0, 0) -- disable the global note buffer
+  end)
+end
+
+function tracker:readNotesFromJSFX()
+  reaper.gmem_attach('saike_HT_detect');
+  local notes = reaper.gmem_read(0);
+  
+  self:addJSFX();
+  
+  reaper.gmem_write(0, 0);
+  
+  if notes > 0 then
+    local idx = 1;
+    local xpos = self.xpos
+    for i = 0, notes-1 do
+      channel = reaper.gmem_read(idx);
+      pitch = reaper.gmem_read(idx + 1);
+      velocity = reaper.gmem_read(idx + 2);
+      idx = idx + 4;
+      
+      local ftype, chan, row = self:getLocation()
+      if chan then
+        if self.cfg.velfrommidi == 1 then
+          self:setLastVel(velocity)
+        end
+        self:placeNote(pitch, chan, row)
+        self:tab()
+      end
+    end
+    self.xpos = xpos
+    self:advanceCursor()
+  end
+end
+
+function tracker:move_block(from_x, from_y, width, height, to_x, to_y, action_name)
+  local oldx = self.xpos
+  local oldy = self.ypos
+  local cpS = self:saveClipboard()
+  reaper.Undo_BeginBlock2(0)
+  self.cp = {xstart=from_x, ystart=from_y, xstop=from_x + width, ystop=from_y + height}
+  self:cutBlock()
+  self:deleteNow()
+  reaper.MIDI_Sort(self.take)
+  
+  -- Paste block one shifted
+  self.xpos = to_x
+  self.ypos = to_y
+  self:pasteBlock()
+  
+  self:loadClipboard(cpS)
+  tracker:deleteNow()
+  reaper.MIDI_Sort(tracker.take)
+  self.xpos = oldx
+  self.ypos = oldy
+  reaper.Undo_EndBlock2(0, action_name, 4)
+  reaper.MarkProjectDirty(0)
+end
+ 
+function tracker:seek_notecol(xp, dir)
+  local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+  local attempts = 0
+  
+  while(datafields[xp] ~= "text") do
+    xp = xp + dir
+    attempts = attempts + 1
+    
+    if attempts > 60 then
+      return xp
+    end
+  end
+  
+  return xp
+end
+
+function tracker:insert_hori()
+  local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+  local from = self:seek_notecol(self:seek_notecol(self.xpos, - 1), 1)
+  self:move_block(from, self.ypos, #datafields - self.xpos, 0, self:seek_notecol(from + 1, 1), self.ypos, "Tracker: Insert horizontal")
+end
+
+function tracker:remove_hori()
+  local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+  local from = self:seek_notecol(self:seek_notecol(self.xpos + 1, 1), -1)
+  self:move_block(from, self.ypos, #datafields - from, 0, self:seek_notecol(from - 1, -1), self.ypos, "Tracker: Remove horizontal")
+end
+
+function tracker:mouseToPatternCoord(already_dragging)
+  local Inew = nil
+  local Jnew = nil
+  local plotData  = self.plotData
+  local fov       = self.fov
+  local xloc      = plotData.xloc
+  local yloc      = plotData.yloc
+  local xwidth    = plotData.xwidth
+  local yheight   = plotData.yheight
+  
+  if ( tracker.take ) then
+    if ( ( gfx.mouse_x > xloc[#xloc] ) and ( (gfx.mouse_x <= (xloc[#xloc] + xwidth[#xloc])) or already_dragging ) ) then
+      Inew = #xloc + fov.scrollx
+    end
+    for i=1,#xloc-1 do
+      if ( ( gfx.mouse_x > xloc[i] ) and ( gfx.mouse_x <= (xloc[i+1]) ) ) then
+        Inew = i + fov.scrollx
+      end
+    end
+    if ( ( gfx.mouse_y > yloc[#yloc] ) and ( (gfx.mouse_y <= (yloc[#yloc] + yheight[#yloc]) or already_dragging) ) ) then
+      Jnew = #yloc + fov.scrolly
+    end
+    for i=1,#yloc-1 do
+      if ( ( gfx.mouse_y > yloc[i] ) and ( gfx.mouse_y <= (yloc[i+1]) ) ) then
+        Jnew = i + fov.scrolly
+      end
+    end
+    if (Jnew) then
+      Jnew = math.max(1, math.min(self.rows, Jnew))
+    end
+  end
+  
+  return Inew, Jnew
 end
 
 ------------------------------
 -- Main update loop
 -----------------------------
 local function updateLoop()
+  updateFontScale()
+  
   local tracker = tracker
+  tracker.updateLoop = updateLoop
+
+  if (tracker.tracker_samples == 1) and tracker.outChannel ~= 0 then
+    tracker:setOutChannel(0)
+    tracker.outChannel = 0
+  end
 
   -- Check if the note data or take changed, if so, update the note contents
-  if ( not tracker:checkChange() ) then
-    gfx.quit()
+  tracker:checkArmed()
+  if (reaper.GetPlayState() & 4 == 0) or (self.armed == 0) or (tracker.cfg.blockWhileRecording == 0) then
+    if ( not tracker:checkChange() ) then
+      tracker:lostItem()
+    end
+  else
+    tracker:printGrid()
+    gfx.set(0, 0, 0, .5)
+    gfx.rect(0, 0, gfx.w, gfx.h);
+    gfx.update()
+    
+    gfx.setfont(2, "Arial", 100);
+    local ww, hh = gfx.measurestr("Recording ...")
+    gfx.x = .5*gfx.w - .5*ww;
+    gfx.y = .5*gfx.h - hh;
+    gfx.printf("Recording ...")
+  
+    if lastChar ~= -1 then
+      reaper.defer(updateLoop)
+    end
     return
+  end
+
+  -- Auto resize y
+  if ( gfx.h > 1 ) then
+    local grid = tracker.grid
+    local newRows = math.floor(gfx.h / grid.dy)-3
+    if ( newRows ~= self.rows and newRows > 2) then
+      self.rows = newRows
+      tracker.fov.height = newRows
+      tracker:resetBlock()
+      tracker:update()
+    end
   end
 
   if ( tracker.cfg.colResize == 1 ) then
     tracker:autoResize()
     tracker:computeDims(tracker.rows)
-    
     if ( tracker.fov.abswidth ~= tracker.fov.lastabswidth ) then
-      if ( tracker.fov.abswidth < 450 ) then
-        tracker.fov.abswidth = 450
-      end
-    
       tracker.fov.lastabswidth = tracker.fov.abswidth
       tracker:update()
     end
@@ -6380,12 +9007,11 @@ local function updateLoop()
   tracker:clearInsertLists()
 
   tracker:resizeWindow()
-  tracker:checkArmed()
 
   -- Maintain the loop until the window is closed or escape is pressed
   prevChar = lastChar
   lastChar = gfx.getchar()
-  
+
   -- Check if the length changed, if so, update the time data
   if ( tracker:getRowInfo() == true ) then
     tracker:update()
@@ -6395,18 +9021,56 @@ local function updateLoop()
     if ( lastChar ~= 0 ) then
       print(lastChar)
       local control = gfx.mouse_cap & 4
-      if ( control > 0 ) then print("ctrl") end  
+      if ( control > 0 ) then print("ctrl") end
       local shift   = gfx.mouse_cap & 8
       if ( shift > 0 ) then  print("shift") end
       local alt     = gfx.mouse_cap & 16
       if ( alt > 0 ) then  print("alt") end
+      
+      -- Bitmask oddly enough doesn't behave as expected
+      local control = gfx.mouse_cap & 4
+      if ( control > 0 ) then control = 1 end
+      local shift   = gfx.mouse_cap & 8
+      if ( shift > 0 ) then shift = 1 end
+      local alt     = gfx.mouse_cap & 16
+      if ( alt > 0 ) then alt = 1 end
+      
+      local exists = nil;
+      for keyName, checkMask in pairs(keys) do
+        if checkMask then
+          if type(checkMask) == "table" then
+            if ( checkMask[1] == control ) then
+              if ( checkMask[2] == alt ) then
+                if ( checkMask[3] == shift ) then
+                  if ( lastChar == checkMask[4] ) then
+                    exists = keyName;
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+      if exists then
+        print("Already taken in this keyset by " .. exists);
+      end
     end
-  end  
+  end
+
+  -- if they were inputting a chord with shift but have just released it:
+  if tracker.shiftChordInProgress and gfx.mouse_cap & 8 == 0 then
+    tracker.shiftChordInProgress = false
+    if tracker.cfg.returnAfterChord == 1 then
+      tracker.xpos = tracker.shiftChordStartXpos
+      tracker:advanceCursor()
+      tracker.shiftChordStartXpos = nil
+    end
+  end
 
   -- Mouse
   local left, right = mouseStatus()
-  if ( tracker.fov.height < tracker.rows ) then
-    if ( mouse_cap == 0 ) then
+  if ( tracker:shouldShowScrollbars() ) then
+    if ( mouse_cap == 0 or mouse_cap == CaptureModes.SCROLLBAR ) then
       local loc = tracker.scrollbar:mouseUpdate(gfx.mouse_x, gfx.mouse_y, left)
       if ( loc ) then
         tracker.ypos = math.floor(loc*(tracker.rows+1))
@@ -6414,30 +9078,23 @@ local function updateLoop()
       end
     end
   end
-  
+
   if ( left == 1 and mouse_cap > 0 ) then
-    if ( mouse_cap == 1 ) then
-      -- Out
+    if ( mouse_cap == CaptureModes.OUT_SELECTOR ) then
       tracker.outChannel = getCapValue( 0.05 )
-    elseif ( mouse_cap == 2 ) then
-      -- Envelope
+    elseif ( mouse_cap == CaptureModes.ENV_SELECTOR ) then
       tracker.envShape = getCapValue( 0.05 )
-    elseif ( mouse_cap == 3 ) then
-      -- Advance
+    elseif ( mouse_cap == CaptureModes.ADV_SELECTOR ) then
       tracker.advance = getCapValue( 0.05 )
-      
       tracker:storeSettings()
       tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif ( mouse_cap == 4 ) then
-      -- Octave
-      tracker.transpose = getCapValue( 0.05 )      
-    elseif ( mouse_cap == 5 ) then
-      -- Resolution
+    elseif ( mouse_cap == CaptureModes.OCT_SELECTOR ) then
+      tracker.transpose = getCapValue( 0.05 )
+    elseif ( mouse_cap == CaptureModes.RES_SELECTOR ) then
       tracker.newRowPerQn = getCapValue( 0.05 )
-      
       if ( right == 1 and tracker.lastright == 0 ) then
         tracker:setResolution( tracker.newRowPerQn )
-        tracker:saveConfig(tracker.configFile, tracker.cfg)      
+        tracker:saveConfig(tracker.configFile, tracker.cfg)
         self.hash = math.random()
       end
     end
@@ -6449,78 +9106,132 @@ local function updateLoop()
     end
     mouse_cap = 0
   end
-  
-  if ( left == 1 and mouse_cap == 0 ) then
-    local Inew
-    local Jnew
+
+  if ( right == 1 ) then
+    local plotData  = tracker.plotData
+    local xloc      = plotData.xloc
+    local yloc      = plotData.yloc
+    if ( ( ( gfx.mouse_cap & 4 ) > 0 ) and ( ( gfx.mouse_cap & 8 ) > 0 ) ) then
+      if ( gfx.mouse_x < xloc[1] ) then
+        tracker.cfg.rowOverride = 0
+        tracker:storeSettings()
+      end
+    end
+    
+    if (tracker.lastright == 0) and (mouse_cap == 0) then
+      local Inew, Jnew = tracker:mouseToPatternCoord()
+      if ( Inew and Jnew ) then
+        -- Move the cursor pos on initial click
+        tracker:dragBlock(Inew, Jnew)
+      end
+    end
+  end
+
+  if tracker.cfg.releaseNoteOffs == 1 then
+    tracker:listenForNotesToStop()
+  end
+
+  if ( left == 1 and (mouse_cap == 0 or mouse_cap == CaptureModes.SELECT_BLOCK) ) then
     local plotData  = tracker.plotData
     local fov       = tracker.fov
     local xloc      = plotData.xloc
-    local yloc      = plotData.yloc  
-    
+    local yloc      = plotData.yloc
+
     -- Mouse on track size indicator?
     local xl, yl, xm, ym = tracker:getSizeIndicatorLocation()
-    if ( gfx.mouse_y > yl ) then
-      if ( gfx.mouse_y < ym ) then
-        if ( gfx.mouse_x > xl ) then
-          if ( gfx.mouse_x < xm ) then
-            tracker.renaming = 3
-            tracker.newLength = tostring(tracker.max_ypos)
+    if ( gfx.mouse_x > xl ) and ( gfx.mouse_x < xm ) and ( gfx.mouse_y < ym ) then
+      if ( gfx.mouse_y > yl ) then
+        tracker.renaming = 3
+        tracker.newLength = tostring(tracker.max_ypos)
+      else
+        local function goto_position(i)
+          local newY = i + fov.scrolly
+          if ( newY > 0 and newY <= tracker.rows ) then
+            tracker.ypos = newY
+            local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
+            local loc = reaper.AddProjectMarker(0, 0, mpos + tracker:toSeconds(tracker.ypos-1), 0, "", -1)
+            reaper.GoToMarker(0, loc, 0)
+            reaper.DeleteProjectMarker(0, loc, 0)
+          end
+        end
+      
+        -- Check where we need to move the play position
+        if ( gfx.mouse_cap & 28 == 0 and ( tracker.cfg.fixedIndicator ~= 1 or tracker.lastleft == 0 ) ) then
+          for i=1,#yloc-1 do
+            if ( ( gfx.mouse_y > yloc[i] ) and ( gfx.mouse_y < yloc[i+1] ) ) then
+              goto_position(i)
+            end
+          end
+          if ( gfx.mouse_y > yloc[#yloc] ) then
+            goto_position(#yloc)
           end
         end
       end
     end
-    
+
     -- Mouse in range of bottom fields?
-    local strs, locs, yh = tracker:infoString()
-    if ( gfx.mouse_y > yh and gfx.mouse_y < yh + 10 and gfx.mouse_x < xloc[#xloc] ) then
-      -- Calculate the positions
+    if ( tracker.take ) then
       local strs, locs, yh = tracker:infoString()
-      if ( gfx.mouse_x > locs[1] ) then
-        setCapMode(1, tracker.outChannel, 0, 16) -- Out
-      elseif ( gfx.mouse_x > locs[2] ) then
-        setCapMode(2, tracker.envShape, 0, #tracker.envShapes ) -- Env     
-      elseif ( gfx.mouse_x > locs[3] ) then
-        setCapMode(3, tracker.advance, -99, 99) -- Adv   
-      elseif ( gfx.mouse_x > locs[4] ) then
-        setCapMode(4, tracker.transpose, tracker.minoct, tracker.maxoct) -- Oct             
-      elseif ( gfx.mouse_x > locs[5] ) then
-        setCapMode(5, tracker.newRowPerQn, 1, tracker.maxRowPerQn) -- Res
-      elseif ( gfx.mouse_x < plotData.xstart + gfx.measurestr("[Rec]") ) and ( gfx.mouse_x > plotData.xstart ) then
-        if ( tracker.lastleft ~= 1 ) then
-          tracker:toggleRec()
+      if ( gfx.mouse_y > yh and gfx.mouse_y < yh + 10 and gfx.mouse_x < plotData.xstart + plotData.totalwidth ) then
+        -- Calculate the positions
+        local strs, locs, yh = tracker:infoString()
+        -- TODO: The way the different locs are handled could use some refactoring.
+        if ( gfx.mouse_x > locs[1] ) then
+          setCapMode(CaptureModes.OUT_SELECTOR, tracker.outChannel, 0, 16) -- Out
+        elseif ( #locs > 1 and gfx.mouse_x > locs[2] ) then
+          setCapMode(CaptureModes.ENV_SELECTOR, tracker.envShape, 0, #tracker.envShapes ) -- Env
+        elseif ( #locs > 2 and gfx.mouse_x > locs[3] ) then
+          setCapMode(CaptureModes.ADV_SELECTOR, tracker.advance, -99, 99) -- Adv
+        elseif ( #locs > 3 and gfx.mouse_x > locs[4] ) then
+          setCapMode(CaptureModes.OCT_SELECTOR, tracker.transpose, tracker.minoct, tracker.maxoct) -- Oct
+        elseif ( #locs > 4 and gfx.mouse_x > locs[5] ) then
+          setCapMode(CaptureModes.RES_SELECTOR, tracker.newRowPerQn, 1, tracker.maxRowPerQn) -- Res
+        elseif ( gfx.mouse_x < plotData.xstart + gfx.measurestr("[Rec]") ) and ( gfx.mouse_x > plotData.xstart ) then
+          if ( tracker.lastleft ~= 1 ) then
+            tracker:toggleRec()
+          end
         end
       end
     end
-    
+
+    if ( ( ( gfx.mouse_cap & 4 ) > 0 ) and ( ( gfx.mouse_cap & 8 ) > 0 ) ) then
+      if ( gfx.mouse_x < xloc[1] ) then
+        tracker.cfg.rowOverride = math.floor((gfx.mouse_y - yloc[1])/(yloc[2]-yloc[1]))
+        tracker:storeSettings()
+      end
+    end
+
+    if ( tracker.cfg.fixedIndicator == 1 ) then
+      if ( ( ( gfx.mouse_cap & 4 ) > 0 ) and ( ( gfx.mouse_cap & 16 ) > 0 ) ) then
+        if ( gfx.mouse_x < xloc[1] ) then
+          local row = 1 + math.floor((gfx.mouse_y - yloc[1])/(yloc[2]-yloc[1]))
+          tracker.cfg.fixedIndLoc = row / fov.height
+          tracker:saveConfig(tracker.configFile, tracker.cfg)
+        end
+      end
+    end
+
     -- Mouse in range of pattern data?
-    for i=1,#xloc-1 do
-      if ( ( gfx.mouse_x > xloc[i] ) and ( gfx.mouse_x < xloc[i+1] ) ) then
-        Inew = i
-      end
-    end
-    for i=1,#yloc-1 do
-      if ( ( gfx.mouse_y > yloc[i] ) and ( gfx.mouse_y < yloc[i+1] ) ) then
-        Jnew = i
-      end
-    end
-    
-    if ( Inew and Jnew ) then        
+    local Inew, Jnew = tracker:mouseToPatternCoord(mouse_cap == 6)
+    if ( Inew and Jnew ) then
       -- Move the cursor pos on initial click
       if ( tracker.lastleft == 0 ) then
+        setCapMode(CaptureModes.SELECT_BLOCK)
         tracker:resetShiftSelect()
-        tracker:dragBlock(Inew+fov.scrollx, Jnew+fov.scrolly)
-        tracker.xpos = Inew + fov.scrollx
-        tracker.ypos = Jnew + fov.scrolly
+        tracker.xpos = Inew
+        if ( tracker.cfg.fixedIndicator ~= 1 ) then
+          tracker:dragBlock(Inew, Jnew)
+          tracker.ypos = Jnew
+        end
       else
         -- Change selection if it wasn't the initial click
-        tracker:dragBlock(Inew+fov.scrollx, Jnew+fov.scrolly)
+        tracker:dragBlock(Inew, Jnew)
       end
     end
-    
-    if ( tracker.cfg.scaleActive == 1 ) then
-      local xs, ys, scaleY, keyMapH, scaleW, chordW, noteW, chordAreaY = tracker:chordLocations()    
-      local scales = scales      
+
+    if ( tracker.harmonyActive == 1 and mouse_cap == 0 ) then
+      local xs, ys, scaleY, keyMapH, scaleW, chordW, noteW, chordAreaY = tracker:chordLocations()
+      local scales = scales
       local progressions = scales.progressions
 
       if ( gfx.mouse_y > scaleY ) then
@@ -6538,7 +9249,7 @@ local function updateLoop()
         end
       end
 
-      if ( gfx.mouse_y > chordAreaY ) then      
+      if ( gfx.mouse_y > chordAreaY ) then
         -- Figure out which scale we are clicking
         yCoord = ( gfx.mouse_y - chordAreaY ) / keyMapH
 
@@ -6558,42 +9269,42 @@ local function updateLoop()
           scaleRows = #(progressions[scaleName][1].notes)
           chordrow = math.floor(yCoord - row - .5)
           i = i + 1
-          if ( ( chordrow < scaleRows ) or ( i > #scales.names ) ) then    
+          if ( ( chordrow < scaleRows ) or ( i > #scales.names ) ) then
             done = 1
           else
             row = row + scaleRows
           end
         end
-        
+
         -- Select different scale?
         if ( gfx.mouse_x > xs ) then
           if ( gfx.mouse_x < xs + scaleW ) then
             scales:setScale( scaleIdx )
             tracker:saveConfig(tracker.configFile, tracker.cfg)
           end
-          
+
           -- Selected a chord?
           if ( chordrow < scaleRows ) then
             local tone = math.floor( ( gfx.mouse_x - xs - scaleW ) / chordW ) + 1
             if ( ( tone > 0 ) and ( tone < 8 ) ) then
               local chord = scales:pickChord( scaleName, tone, chordrow+1 )
-              
+
               if ( chord ) then
                 local playChord = {}
-                
+
                 -- Get modifiers
                 local control = gfx.mouse_cap & 4
-                if ( control > 0 ) then control = 1 end  
+                if ( control > 0 ) then control = 1 end
                 local shift   = gfx.mouse_cap & 8
                 if ( shift > 0 ) then shift = 1 end
                 local alt     = gfx.mouse_cap & 16
                 if ( alt > 0 ) then alt = 1 end
-                
+
                 for i,v in pairs(chord) do
                   v = v + tracker.transpose * 12 + 11
-                  playChord[i] = { 1, v, 127 }
+                  playChord[i] = { 1, v, tracker:lastVel() }
                 end
-                
+
                 if ( alt == 1 ) then
                   if ( playChord[1][2] ) then
                     playChord[1][2] = playChord[1][2] + 12
@@ -6609,7 +9320,7 @@ local function updateLoop()
                   tracker:insertChord( playChord )
                   tracker:deleteNow()
                 end
-                
+
                 if ( (change == 1) or (not tracker.lastChord) ) then
                   tracker:playChord( playChord )
                 end
@@ -6619,66 +9330,74 @@ local function updateLoop()
         end
       end
     end
-    
+
     -- Mouse in range of options?
     if ( tracker.optionsActive == 1 ) then
       local changedOptions = 0
-      local xs, ys, keyMapX, keyMapY, keyMapH, themeMapX, themeMapY, binaryOptionsX, binaryOptionsY, binaryOptionsH, buttonwidth = tracker:optionLocations()    
-      
-      -- Color themes
-      if ( gfx.mouse_x > themeMapX ) then
-        if ( gfx.mouse_x < themeMapX + buttonwidth ) then
-          if ( gfx.mouse_y > themeMapY + keyMapH ) then
-            local sel = math.floor((gfx.mouse_y - themeMapY)/keyMapH)
-            if ( tracker.colorschemes[sel] ) then
-              if ( tracker.colorschemes[sel] ~= tracker.cfg.colorscheme ) then
+      local themeMenu, keymapMenu, layoutMenu, fontsizeMenu, binaryOptions, fx1Menu, fx2Menu = tracker:optionLocations()
+
+      if not tracker.holding then
+        local sel
+        -- Color schemes
+        sel = themeMenu:processMouseMenu()
+        if ( tracker.colorschemes[sel] ) then
+          if ( tracker.colorschemes[sel] ~= tracker.cfg.colorscheme ) then
+            changedOptions = 1
+          end
+          tracker.cfg.colorscheme = tracker.colorschemes[sel]
+        end
+  
+        -- Key mappings
+        sel = keymapMenu:processMouseMenu()
+        if ( keysets[sel] ) then
+          if ( keysets[sel] ~= tracker.cfg.keyset ) then
+            changedOptions = 1
+          end
+          tracker.cfg.keyset = keysets[sel]
+          setKeyboard(tracker.cfg.keyset)
+        end
+  
+        -- Key Layout
+        sel = layoutMenu:processMouseMenu()
+        if ( keyLayouts[sel] ) then
+          if ( keyLayouts[sel] ~= tracker.cfg.keyLayout ) then
+            changedOptions = 1
+          end
+          tracker.cfg.keyLayout = keyLayouts[sel]
+          setKeyboard(tracker.cfg.keyset)
+        end
+        
+        changedOptions = fontsizeMenu:processSimple("fontSize", fontSizes) or changedOptions
+        changedOptions = fx1Menu:processSimple("fx1", fx1Options) or changedOptions
+        changedOptions = fx2Menu:processSimple("fx2", fx2Options) or changedOptions
+        
+        -- Binary options
+        if ( gfx.mouse_x > binaryOptions.x ) then
+          if ( gfx.mouse_y > binaryOptions.y ) then
+            for i=1,#tracker.binaryOptions do
+              local xs = binaryOptions.x
+              local ys = binaryOptions.y + i * binaryOptions.h
+              local xm = xs + 8
+              local ym = ys + 8
+              if ( ( gfx.mouse_x > xs ) and  ( gfx.mouse_x < xm ) and ( gfx.mouse_y > ys ) and ( gfx.mouse_y < ym ) ) then
+                tracker.cfg[tracker.binaryOptions[i][1]] = 1 - tracker.cfg[tracker.binaryOptions[i][1]]
                 changedOptions = 1
+                tracker.holding = 1
               end
-              tracker.cfg.colorscheme = tracker.colorschemes[sel]
             end
           end
         end
-      end
-      
-      -- Key mappings
-      if ( gfx.mouse_x > keyMapX ) then
-        if ( gfx.mouse_x < keyMapX + buttonwidth ) then
-          if ( gfx.mouse_y > keyMapY + keyMapH ) then
-            local sel = math.floor((gfx.mouse_y - keyMapY)/keyMapH)
-            if ( keysets[sel] ) then
-              if ( keysets[sel] ~= tracker.cfg.keyset ) then
-                changedOptions = 1
-              end
-              tracker.cfg.keyset = keysets[sel]
-              setKeyboard(tracker.cfg.keyset)
-            end
-          end
-        end
-      end
-      
-      -- Binary options
-      if ( gfx.mouse_x > binaryOptionsX ) then
-        if ( gfx.mouse_y > binaryOptionsY ) then        
-          for i=1,#tracker.binaryOptions do
-            local xs = binaryOptionsX
-            local ys = binaryOptionsY + i * binaryOptionsH
-            local xm = xs + 8
-            local ym = ys + 8
-            if ( ( gfx.mouse_x > xs ) and  ( gfx.mouse_x < xm ) and ( gfx.mouse_y > ys ) and ( gfx.mouse_y < ym ) and not tracker.holding ) then
-              tracker.cfg[tracker.binaryOptions[i][1]] = 1 - tracker.cfg[tracker.binaryOptions[i][1]]
-              changedOptions = 1
-              tracker.holding = 1
-            end
-          end
-        end
-      end      
-      
+      end  
+
       if ( changedOptions == 1 ) then
+        tracker.holding = 1
         local cfg = tracker.cfg
         tracker:saveConfig(tracker.configFile, cfg)
         tracker:loadColors(cfg.colorscheme)
         tracker:initColors()
         tracker:loadKeys(cfg.keyset)
+        tracker:forceUpdate()
+        updateShown()
       end
     end
   else
@@ -6686,134 +9405,275 @@ local function updateLoop()
       tracker:stopChord()
     end
     tracker.holding = nil
-  end 
+  end
   tracker.lastleft = left
   tracker.lastright = right
-  
+
   if ( gfx.mouse_wheel ~= 0 ) then
     tracker.ypos = tracker.ypos - math.floor( gfx.mouse_wheel / 120 )
     tracker:resetShiftSelect()
     gfx.mouse_wheel = 0
-  end 
+  end
+  
+  if tracker.cfg.readfrommidi == 1 then
+    tracker:readNotesFromJSFX();
+  end
   
   local modified = 0
   if ( tracker.renaming == 0 ) then
-    if inputs('left') then
+    if inputs('left') and tracker.take then
       tracker.xpos = tracker.xpos - 1
       tracker:resetShiftSelect()
-    elseif inputs('right') then
+    elseif inputs('right') and tracker.take then
       tracker.xpos = tracker.xpos + 1
       tracker:resetShiftSelect()
-    elseif inputs('up') then
+    elseif inputs('up') and tracker.take then
       tracker.ypos = tracker.ypos - 1
       tracker:resetShiftSelect()
-    elseif inputs('down') then
+      tracker:scrub()
+    elseif inputs('down') and tracker.take then
       tracker.ypos = tracker.ypos + 1
       tracker:resetShiftSelect()
-    elseif inputs('shiftleft') then
+      tracker:scrub()
+    elseif inputs('upByAdvance') and tracker.take then
+      tracker:rewindCursor()
+      tracker:resetShiftSelect()
+    elseif inputs('downByAdvance') and tracker.take then
+      tracker:advanceCursor()
+      tracker:resetShiftSelect()
+    elseif inputs('shiftleft') and tracker.take then
       tracker:dragBlock()
       tracker.xpos = tracker.xpos - 1
       tracker:forceCursorInRange()
       tracker:dragBlock()
-    elseif inputs('shiftright') then
+    elseif inputs('shiftright') and tracker.take then
       tracker:dragBlock()
       tracker.xpos = tracker.xpos + 1
       tracker:forceCursorInRange()
       tracker:dragBlock()
-    elseif inputs('shiftup') then
+    elseif inputs('shiftup') and tracker.take then
       tracker:dragBlock()
       tracker.ypos = tracker.ypos - 1
       tracker:forceCursorInRange()
       tracker:dragBlock()
-    elseif inputs('shiftdown') then
+    elseif inputs('shiftdown') and tracker.take then
       tracker:dragBlock()
       tracker.ypos = tracker.ypos + 1
       tracker:forceCursorInRange()
       tracker:dragBlock()
-    elseif inputs('shiftpgdn') then
+    elseif inputs('shiftpgdn') and tracker.take then
       tracker:dragBlock()
       tracker.ypos = tracker.ypos + tracker.cfg.page
       tracker:forceCursorInRange()
       tracker:dragBlock()
-    elseif inputs('shiftpgup') then
+    elseif inputs('shiftpgup') and tracker.take then
       tracker:dragBlock()
       tracker.ypos = tracker.ypos - tracker.cfg.page
       tracker:forceCursorInRange()
       tracker:dragBlock()
-    elseif inputs('shifthome') then
+    elseif inputs('shifthome') and tracker.take then
       tracker:dragBlock()
       tracker.ypos = 0
       tracker:forceCursorInRange()
       tracker:dragBlock()
-    elseif inputs('shiftend') then
+    elseif inputs('shiftend') and tracker.take then
       tracker:dragBlock()
       tracker.ypos = tracker.rows
       tracker:forceCursorInRange()
-      tracker:dragBlock()      
-    elseif inputs('off') then
+      tracker:dragBlock()
+    elseif inputs('off') and tracker.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Place OFF")
-      reaper.MarkProjectDirty(0)    
+      reaper.MarkProjectDirty(0)
       tracker:placeOff()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('off2') then
+    elseif inputs('off2') and tracker.take then
       local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
-      
+
       if ( datafields[tracker.xpos] == "text" ) then
-        modified = 1      
+        modified = 1
         reaper.Undo_OnStateChange2(0, "Tracker: Place OFF")
-        reaper.MarkProjectDirty(0)    
+        reaper.MarkProjectDirty(0)
         tracker:placeOff()
         tracker:deleteNow()
         reaper.MIDI_Sort(tracker.take)
       else
         tracker:noteEdit()
       end
-    elseif ( inputs('delete') ) then
+    elseif ( inputs('delete') and tracker.take ) then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Delete (Del)")
       tracker:delete()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
-    elseif ( inputs('delete2') ) then
+    elseif ( inputs('delete2') and tracker.take ) then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Delete (Del)")
       tracker:delete()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
-      tracker.ypos = tracker.ypos + tracker.advance
-    elseif ( inputs('deleteRow') ) then
+      tracker:advanceCursor()
+    elseif ( inputs('mute_row') and tracker.take ) then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Mute row (Shift + -)")
+      for chan = 1, tracker.displaychannels do
+        tracker:placeOffLowLevel(chan, tracker.ypos - 1)
+      end
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+    elseif ( inputs('deleteRow') and tracker.take ) then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Delete row (Del)")
       local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
       tracker:clearBlock({xstart=1, ystart=tracker.ypos, xstop=#datafields, ystop=tracker.ypos})
-      tracker:mendBlock({xstart=1, ystart=tracker.ypos, xstop=#datafields, ystop=tracker.ypos})      
+      tracker:mendBlock({xstart=1, ystart=tracker.ypos, xstop=#datafields, ystop=tracker.ypos})
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
-      tracker.ypos = tracker.ypos + tracker.advance
-    elseif inputs('home') then
-      tracker.ypos = 0
-    elseif inputs('End') then
+      tracker:advanceCursor()
+    elseif ( inputs('insertRow') and tracker.take ) then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Insert Row")
+      local cpS = tracker:saveClipboard()
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+      tracker.cp = {xstart=1, ystart=tracker.ypos, xstop=#datafields, ystop=tracker.rows-1}
+      reaper.MarkProjectDirty(0)
+      tracker:cutBlock()
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+      local oldx = tracker.xpos
+      tracker.xpos = 1
+      tracker.ypos = tracker.ypos + 1
+      tracker:pasteBlock()
+      tracker.xpos = oldx
+      tracker.ypos = tracker.ypos - 1
+      tracker:loadClipboard(cpS)
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+    elseif ( inputs('removeRow') and tracker.take ) then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Remove Row")
+      local cpS = tracker:saveClipboard()
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+      tracker.cp = {xstart=1, ystart=tracker.ypos+1, xstop=#datafields, ystop=tracker.rows}
+      reaper.MarkProjectDirty(0)
+      tracker:cutBlock()
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+      local oldx = tracker.xpos
+      tracker.xpos = 1
+      tracker:pasteBlock()
+      tracker.xpos = oldx
+      tracker:loadClipboard(cpS)
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+    elseif ( inputs('insert_hori') ) then
+      modified = 1
+      tracker:insert_hori()
+    elseif ( inputs('remove_hori') ) then
+      modified = 1
+      tracker:remove_hori()
+    elseif ( inputs('wrapDown') and tracker.take ) then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Wrap down")
+      local oldx = tracker.xpos
+      local oldy = tracker.ypos
+      local cpS = tracker:saveClipboard()
+
+      -- Cut  last line to a special clipboard
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+      tracker.cp = {xstart=1, ystart=tracker.rows, xstop=#datafields, ystop=tracker.rows}
+      reaper.MarkProjectDirty(0)
+      tracker:cutBlock()
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+      local lastLineClipboard = tracker.clipboard
+
+      -- Shift block
+      tracker.cp = {xstart=1, ystart=1, xstop=#datafields, ystop=tracker.rows-1}
+      reaper.MarkProjectDirty(0)
+      tracker:cutBlock()
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+
+      -- Paste block one shifted
+      tracker.ypos = 2
+      tracker.xpos = 1
+      tracker:pasteBlock()
+
+      -- Restore clipboard and paste line that fell off
+      tracker.clipboard = lastLineClipboard
+      tracker.ypos = 1
+      tracker.xpos = 1
+      tracker:pasteBlock()
+
+      tracker:loadClipboard(cpS)
+      tracker.xpos = oldx
+      tracker.ypos = oldy
+    elseif ( inputs('wrapUp') and tracker.take ) then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Wrap up")
+      local oldx  = tracker.xpos
+      local oldy  = tracker.ypos
+      local cpS   = tracker:saveClipboard()
+
+      -- Cut block to special clipboard
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+      tracker.cp = {xstart=1, ystart=2, xstop=#datafields, ystop=tracker.rows}
+      reaper.MarkProjectDirty(0)
+      tracker:cutBlock()
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+      local chunk = tracker.clipboard
+
+      -- Cut  first line to a special clipboard
+      tracker.cp = {xstart=1, ystart=1, xstop=#datafields, ystop=1}
+      reaper.MarkProjectDirty(0)
+      tracker:cutBlock()
+      tracker:deleteNow()
+      reaper.MIDI_Sort(tracker.take)
+
+      -- Paste line that fell off
+      tracker.xpos = 1
       tracker.ypos = tracker.rows
-    elseif inputs('m0') then
+      tracker:pasteBlock()
+
+      -- Paste block one shifted up
+      tracker.xpos = 1
+      tracker.ypos = 1
+      tracker.clipboard = chunk
+      tracker:pasteBlock()
+      tracker:deleteNow()
+      tracker:insertNow()
+      reaper.MIDI_Sort(tracker.take)
+
+
+      tracker:loadClipboard(cpS)
+      tracker.xpos = oldx
+      tracker.ypos = oldy
+
+    elseif inputs('home') and tracker.take then
       tracker.ypos = 0
-    elseif inputs('m25') then
+    elseif inputs('End') and tracker.take then
+      tracker.ypos = tracker.rows
+    elseif inputs('m0') and tracker.take then
+      tracker.ypos = 0
+    elseif inputs('m25') and tracker.take then
       tracker.ypos = math.ceil(tracker.rows * 0.25)+1
-    elseif inputs('m50') then
+    elseif inputs('m50') and tracker.take then
       tracker.ypos = math.ceil(tracker.rows * 0.5)+1
-    elseif inputs('m75') then
+    elseif inputs('m75') and tracker.take then
       tracker.ypos = math.ceil(tracker.rows * 0.75)+1
     elseif inputs('toggle') then
       togglePlayPause()
-    elseif inputs('renoiseplay') then
+    elseif inputs('renoiseplay') and tracker.take then
       local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
       local loc = reaper.AddProjectMarker(0, 0, mpos + tracker:toSeconds(0), 0, "", -1)
       reaper.GoToMarker(0, loc, 0)
       reaper.DeleteProjectMarker(0, loc, 0)
       togglePlayPause()
-    elseif inputs('playfrom') then
-      if ( isPlaying() > 0 ) then      
+    elseif inputs('playfrom') and tracker.take then
+      if ( isPlaying() > 0 ) then
         -- Determine where we stopped relative to the current media object
         local playpos = reaper.GetPlayPosition()
         local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
@@ -6822,66 +9682,66 @@ local function updateLoop()
           tracker.ypos = math.floor( (playpos-mpos) / mlen * tracker.rows ) + 1
         end
       end
-    
+
       local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
       local loc = reaper.AddProjectMarker(0, 0, mpos + tracker:toSeconds(tracker.ypos-1), 0, "", -1)
       reaper.GoToMarker(0, loc, 0)
       reaper.DeleteProjectMarker(0, loc, 0)
       togglePlayPause()
-    elseif inputs('insert') then
+    elseif inputs('insert') and tracker.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Insert")
       reaper.MarkProjectDirty(0)
       tracker:insert()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('remove') then
+    elseif inputs('remove') and tracker.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Backspace")
-      reaper.MarkProjectDirty(0)  
+      reaper.MarkProjectDirty(0)
       tracker:backspace()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('pgup') then
+    elseif inputs('pgup') and tracker.take then
       tracker.ypos = tracker.ypos - tracker.cfg.page
-    elseif inputs('pgdown') then
-      tracker.ypos = tracker.ypos + tracker.cfg.page  
-    elseif inputs('undo') then
+    elseif inputs('pgdown') and tracker.take then
+      tracker.ypos = tracker.ypos + tracker.cfg.page
+    elseif inputs('undo') and tracker.take then
       modified = 1
-      reaper.Undo_DoUndo2(0) 
-    elseif inputs('redo') then
-      modified = 1  
+      reaper.Undo_DoUndo2(0)
+    elseif inputs('redo') and tracker.take then
+      modified = 1
       reaper.Undo_DoRedo2(0)
-    elseif inputs('deleteBlock') then
+    elseif inputs('deleteBlock') and tracker.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Delete block")
       reaper.MarkProjectDirty(0)
       tracker:deleteBlock()
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('beginBlock') then
+    elseif inputs('beginBlock') and tracker.take then
       tracker:beginBlock()
-    elseif inputs('endBlock') then
+    elseif inputs('endBlock') and tracker.take then
       tracker:endBlock()
-    elseif inputs('copyBlock') or inputs('copyBlock2') then
+    elseif ( inputs('copyBlock') or inputs('copyBlock2') ) and tracker.take then
       tracker:copyBlock()
-    elseif inputs('copyColumn') then
+    elseif inputs('copyColumn') and tracker.take then
       local oldcp = tracker.cp
       tracker.cp = {xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows}
       tracker:copyBlock()
       tracker.cp = oldcp
-    elseif inputs('copyPattern') then
+    elseif inputs('copyPattern') and tracker.take then
       local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
       local oldcp = tracker.cp
       tracker.cp = {xstart=1, ystart=1, xstop=#datafields, ystop=tracker.rows}
       tracker:copyBlock()
       tracker.cp = oldcp
-    elseif inputs('cutBlock') or inputs('cutBlock2') then
+    elseif ( inputs('cutBlock') or inputs('cutBlock2') ) and tracker.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Cut block")
       reaper.MarkProjectDirty(0)
       tracker:cutBlock()
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('cutColumn') then
+    elseif inputs('cutColumn') and tracker.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Cut column")
       local oldcp = tracker.cp
@@ -6890,23 +9750,23 @@ local function updateLoop()
       tracker:cutBlock()
       tracker.cp = oldcp
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('cutPattern') then
+    elseif inputs('cutPattern') and tracker.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Cut pattern")
       local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
       local oldcp = tracker.cp
-      tracker.cp = {xstart=1, ystart=1, xstop=#datafields, ystop=tracker.rows}     
+      tracker.cp = {xstart=1, ystart=1, xstop=#datafields, ystop=tracker.rows}
       reaper.MarkProjectDirty(0)
       tracker:cutBlock()
       tracker.cp = oldcp
-      reaper.MIDI_Sort(tracker.take)      
-    elseif inputs('pasteBlock') or inputs('pasteBlock2') then
+      reaper.MIDI_Sort(tracker.take)
+    elseif ( inputs('pasteBlock') or inputs('pasteBlock2') ) and tracker.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Paste block")
       reaper.MarkProjectDirty(0)
       tracker:pasteBlock()
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('pasteColumn') then
+    elseif inputs('pasteColumn') and tracker.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Paste column")
       reaper.MarkProjectDirty(0)
@@ -6915,7 +9775,7 @@ local function updateLoop()
       tracker:pasteBlock()
       tracker.ypos = oldpos
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('pastePattern') then
+    elseif inputs('pastePattern') and tracker.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Paste pattern")
       reaper.MarkProjectDirty(0)
@@ -6927,209 +9787,259 @@ local function updateLoop()
       tracker.xpos = oldx
       tracker.ypos = oldy
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('shiftItemUp') or inputs('shblockup') then
+    elseif ( inputs('shiftItemUp') or inputs('shblockup') ) and tracker.take then
       modified = 1
       tracker:shiftup()
-    elseif inputs('shiftItemDown') or inputs('shblockdown') then
+    elseif ( inputs('shiftItemDown') or inputs('shblockdown') ) and tracker.take then
       modified = 1
       tracker:shiftdown()
-    elseif inputs('shcoldown') then
+    elseif inputs('shcoldown') and tracker.take then
       modified = 1
       tracker:shiftdown({xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows})
-    elseif inputs('shcolup') then
+    elseif inputs('shcolup') and tracker.take then
       modified = 1
       tracker:shiftup({xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows})
-    elseif inputs('shpatdown') then
+    elseif inputs('shpatdown') and tracker.take then
       modified = 1
       local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
       local x = 1
       while ( x < #datafields ) do
         if ( datafields[x] == 'text' ) then
-          break;
-        end
-        x = x + 1
-      end      
-      tracker:shiftdown({xstart=x, ystart=1, xstop=#datafields, ystop=tracker.rows}, 1)   
-    elseif inputs('shpatup') then
-      modified = 1
-      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
-      local x = 1
-      while ( x < #datafields ) do
-        if ( datafields[x] == 'text' ) then
-          break;
+          break
         end
         x = x + 1
       end
-      tracker:shiftup({xstart=x, ystart=1, xstop=#datafields, ystop=tracker.rows}, 1)      
-    elseif inputs('colOctDown') then
-      modified = 1
-      tracker:shiftdown({xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows}, 1, 12)
-    elseif inputs('colOctUp') then
-      modified = 1
-      tracker:shiftup({xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows}, 1, 12)
-    elseif inputs('patternOctDown') then
+      tracker:shiftdown({xstart=x, ystart=1, xstop=#datafields, ystop=tracker.rows}, 1)
+    elseif inputs('shpatup') and tracker.take then
       modified = 1
       local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
       local x = 1
       while ( x < #datafields ) do
         if ( datafields[x] == 'text' ) then
-          break;
+          break
         end
         x = x + 1
-      end      
-      tracker:shiftdown({xstart=x, ystart=1, xstop=#datafields, ystop=tracker.rows}, 1, 12)
-    elseif inputs('patternOctUp') then
+      end
+      tracker:shiftup({xstart=x, ystart=1, xstop=#datafields, ystop=tracker.rows}, 1)
+    elseif inputs('colOctDown') and tracker.take then
+      modified = 1
+      tracker:shiftdown({xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows}, 1, 12)
+    elseif inputs('colOctUp') and tracker.take then
+      modified = 1
+      tracker:shiftup({xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows}, 1, 12)
+    elseif inputs('patternOctDown') and tracker.take then
       modified = 1
       local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
       local x = 1
       while ( x < #datafields ) do
         if ( datafields[x] == 'text' ) then
-          break;
+          break
+        end
+        x = x + 1
+      end
+      tracker:shiftdown({xstart=x, ystart=1, xstop=#datafields, ystop=tracker.rows}, 1, 12)
+    elseif inputs('patternOctUp') and tracker.take then
+      modified = 1
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+      local x = 1
+      while ( x < #datafields ) do
+        if ( datafields[x] == 'text' ) then
+          break
         end
         x = x + 1
       end
       tracker:shiftup({xstart=x, ystart=1, xstop=#datafields, ystop=tracker.rows}, 1, 12)
-    elseif inputs('blockOctUp') then
+    elseif inputs('blockOctUp') and tracker.take then
       modified = 1
       tracker:shiftup(nil, 1, 12)
-    elseif inputs('blockOctDown') then
+    elseif inputs('blockOctDown') and tracker.take then
       modified = 1
       tracker:shiftdown(nil, 1, 12)
-    elseif inputs('scaleUp') then
+    elseif inputs('scaleUp') and tracker.take then
       modified = 1
       tracker:shiftScaleUp()
-    elseif inputs('scaleDown') then
+    elseif inputs('scaleDown') and tracker.take then
       modified = 1
       tracker:shiftScaleDown()
-    elseif inputs('octaveup') then
+    elseif inputs('octaveup') and tracker.take then
       tracker.transpose = tracker.transpose + 1
       if ( tracker.transpose > tracker.maxoct ) then
         tracker.transpose = tracker.maxoct
-      end      
+      end
       tracker:storeSettings()
       tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('octavedown') then
+    elseif inputs('octavedown') and tracker.take then
       tracker.transpose = tracker.transpose - 1
       if ( tracker.transpose < tracker.minoct ) then
         tracker.transpose = tracker.minoct
       end
       tracker:storeSettings()
       tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('envshapeup') then
+    elseif inputs('envshapeup') and tracker.take then
       tracker.envShape = tracker.envShape + 1
       if ( tracker.envShape > #tracker.envShapes ) then
         tracker.envShape = 0
       end
       tracker:storeSettings()
       tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('envshapedown') then
+    elseif inputs('envshapedown') and tracker.take then
       tracker.envShape = tracker.envShape - 1
       if ( tracker.envShape < 0 ) then
         tracker.envShape = #tracker.envShapes
       end
       tracker:storeSettings()
       tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('outchanup') then
+    elseif inputs('outchanup') and tracker.take then
       tracker.outChannel = tracker.outChannel + 1
       if ( tracker.outChannel > 16 ) then
         tracker.outChannel = 0
       end
+      if tracker.tracker_samples == 1 then
+        tracker.outChannel = 0
+      end
       tracker:setOutChannel( tracker.outChannel )
-    elseif inputs('outchandown') then
+    elseif inputs('outchandown') and tracker.take then
       tracker.outChannel = tracker.outChannel - 1
       if ( tracker.outChannel < 0) then
         tracker.outChannel = 16
       end
+      if tracker.tracker_samples == 1 then
+        tracker.outChannel = 0
+      end
       tracker:setOutChannel( tracker.outChannel )
-    elseif inputs('advanceup') then
+    elseif inputs('advanceup') and tracker.take then
       tracker.advance = tracker.advance + 1
       tracker:storeSettings()
       tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('advancedown') then
-      tracker.advance = tracker.advance - 1
-      if ( tracker.advance < 0 ) then
-        tracker.advance = 0
-      end
+    elseif inputs('advancedown') and tracker.take then
+      tracker.advance = math.max(tracker.advance - 1, 0)
       tracker:storeSettings()
-      tracker:saveConfig(tracker.configFile, tracker.cfg)      
-    elseif inputs('resolutionUp') then
+      tracker:saveConfig(tracker.configFile, tracker.cfg)
+    elseif inputs('advanceDouble') and tracker.take then
+      -- max() with 1 because if they are doubling from 0 they probably
+      -- want it to actually increase and not just stay there
+      tracker.advance = math.max(tracker.advance * 2, 1)
+      tracker:storeSettings()
+      tracker:saveConfig(tracker.configFile, tracker.cfg)
+    elseif inputs('advanceHalve') and tracker.take then
+      tracker.advance = math.ceil(tracker.advance / 2)
+      tracker:storeSettings()
+      tracker:saveConfig(tracker.configFile, tracker.cfg)
+    elseif inputs('resolutionUp') and tracker.take then
       if ( prevChar ~= lastChar ) then
         tracker.newRowPerQn = tracker.newRowPerQn + 1
         if ( tracker.newRowPerQn > tracker.maxRowPerQn ) then
           tracker.newRowPerQn = 1
         end
       end
-    elseif inputs('resolutionDown') then  
+    elseif inputs('resolutionDown') and tracker.take then
       if ( prevChar ~= lastChar ) then
         tracker.newRowPerQn = tracker.newRowPerQn - 1
         if ( tracker.newRowPerQn < 1 ) then
           tracker.newRowPerQn = tracker.maxRowPerQn
         end
       end
+    elseif inputs('toggleNoteMode') then
+      tracker.cfg.advanceByNote = 1.0 - tracker.cfg.advanceByNote
+      tracker:saveConfig(tracker.configFile, tracker.cfg)      
     elseif inputs('stop2') then
       reaper.Main_OnCommand(1016, 0)
     elseif inputs('panic') then
       reaper.Main_OnCommand(40345, 0)
+    elseif inputs('harmony') then
+      tracker.harmonyActive = 1-(tracker.harmonyActive or 0)
+      tracker:resizeWindow()
+      tracker:saveConfig(tracker.configFile, tracker.cfg)
+    elseif inputs('noteNames') then
+      if tracker.noteNamesActive == 0 then
+        tracker:getNoteNames()
+        tracker.noteNamesActive = 1
+      else
+        tracker.noteNamesActive = 0
+      end
+      tracker:resizeWindow()
     elseif inputs('help') then
       tracker.helpActive = 1-tracker.helpActive
       tracker:resizeWindow()
-    elseif inputs('options') then
-      tracker.optionsActive = 1-tracker.optionsActive    
+    elseif inputs('options') or inputs('options2') then
+      tracker.optionsActive = 1-tracker.optionsActive
       tracker:resizeWindow()
-    elseif inputs('harmony') then
-      tracker.cfg.scaleActive = 1-(tracker.cfg.scaleActive or 0)
-      tracker:resizeWindow()
-      tracker:saveConfig(tracker.configFile, tracker.cfg)
     elseif inputs('nextMIDI') then
       tracker:seekMIDI(1)
       tracker:resizeWindow()
-    elseif inputs('prevMIDI') then  
+      if ( tracker.cfg.loopFollow == 1 ) then
+        tracker:setLoopToPattern()
+      end
+    elseif inputs('prevMIDI') then
       tracker:seekMIDI(-1)
       tracker:resizeWindow()
-    elseif inputs('duplicate') then
+      if ( tracker.cfg.loopFollow == 1 ) then
+        tracker:setLoopToPattern()
+      end
+    elseif inputs('nextTrack') then
+      tracker:seekTrack(1)
+      tracker:resizeWindow()
+      if ( tracker.cfg.loopFollow == 1 ) then
+        tracker:setLoopToPattern()
+      end
+    elseif inputs('prevTrack') then
+      tracker:seekTrack(-1)
+      tracker:resizeWindow()
+      if ( tracker.cfg.loopFollow == 1 ) then
+        tracker:setLoopToPattern()
+      end
+    elseif inputs('duplicate') and tracker.take then
       reaper.Undo_OnStateChange2(0, "Tracker: Duplicate pattern")
-      reaper.MarkProjectDirty(0) 
+      reaper.MarkProjectDirty(0)
       tracker:duplicate()
-    elseif inputs('commit') then
+    elseif inputs('commit') and tracker.take then
       tracker:setResolution( tracker.newRowPerQn )
-      tracker:saveConfig(tracker.configFile, tracker.cfg)      
+      tracker:saveConfig(tracker.configFile, tracker.cfg)
       self.hash = math.random()
-    elseif inputs('setloop') then
-      local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
-      local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")      
-      reaper.GetSet_LoopTimeRange2(0, true, true, mpos, mpos+mlen, true)
-    elseif inputs('setloopstart') then
-      tracker:setLoopStart()  
-    elseif inputs('setloopend') then
+    elseif inputs('setloop') and tracker.take then
+      tracker:setLoopToPattern()
+    elseif inputs('setloopstart') and tracker.take then
+      tracker:setLoopStart()
+    elseif inputs('setloopend') and tracker.take then
       tracker:setLoopEnd()
-    elseif inputs('follow') then
+    elseif inputs('follow') and tracker.take then
       tracker.cfg.followSong = 1 - tracker.cfg.followSong
       tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('interpolate') then
+    elseif inputs('interpolate') and tracker.take then
       reaper.Undo_OnStateChange2(0, "Tracker: Interpolate")
-      reaper.MarkProjectDirty(0)  
+      reaper.MarkProjectDirty(0)
       tracker:interpolate()
       tracker:deleteNow()
       reaper.MIDI_Sort(tracker.take)
-    elseif inputs('showMore') then
+    elseif inputs('showMore') and tracker.take then
       tracker:showMore()
-    elseif inputs('showLess') then
+    elseif inputs('showLess') and tracker.take then
       tracker:showLess()
-    elseif inputs('tab') then
+    elseif inputs('tab') and tracker.take then
       tracker:tab()
-    elseif inputs('shifttab') then
+    elseif inputs('shifttab') and tracker.take then
       tracker:shifttab()
-    elseif inputs('addCol') then
+    elseif inputs('addCol') and tracker.take then
       tracker:addCol()
-    elseif inputs('remCol') then
-      tracker:remCol()            
-    elseif inputs('rename') then
+    elseif inputs('addColAll') and tracker.take then
+      tracker:addColAll()
+    elseif inputs('addPatchSelect') and tracker.take then
+      tracker:addPatchSelect()
+    elseif inputs('remCol') and tracker.take then
+      tracker:remCol()
+    elseif inputs('rename') and tracker.take then
       tracker.oldMidiName = tracker.midiName
       tracker.midiName = ''
       tracker.renaming = 1
       tracker:updateMidiName()
+    elseif inputs('playline') then
+      tracker:playLine()
     elseif inputs('toggleRec') then
       tracker:toggleRec()
+    elseif inputs('mute') then
+      tracker:toggleMuteChannel()
+    elseif inputs('solo') then
+      tracker:toggleSoloChannel()
     elseif( inputs('closeTracker') ) then
       tracker:terminate()
     elseif inputs('escape') then
@@ -7138,9 +10048,23 @@ local function updateLoop()
       end
     elseif ( lastChar == 0 ) then
       -- No input
-    elseif ( lastChar == -1 ) then      
+    elseif ( lastChar == -1 ) then
       -- Closed window
     else
+      for i,v in pairs( commandKeys ) do
+        if ( inputs(i) ) then
+          local cmd = reaper.NamedCommandLookup( v[5] )
+          if ( cmd and ( cmd > 0 ) ) then
+            reaper.Main_OnCommand(cmd, 0)
+          else
+            tracker.callScript( tracker, v[5] )
+            if ( v[6] and v[6] == 1 and tracker.cfg.closeWhenSwitchingToHP == 1 ) then
+              tracker:terminate()
+            end
+          end
+        end
+      end
+
       -- Notes here
       modified = 1
       tracker:noteEdit()
@@ -7156,7 +10080,7 @@ local function updateLoop()
     elseif inputs( 'remove' ) then
       tracker.midiName = tracker.midiName:sub(1, tracker.midiName:len()-1)
       tracker:updateMidiName()
-    else    
+    else
       if ( pcall( function () string.char(lastChar) end ) ) then
         local str = string.char( lastChar )
         tracker.midiName = string.format( '%s%s', tracker.midiName, str )
@@ -7193,41 +10117,53 @@ local function updateLoop()
         tracker.newLength = string.format( '%s%s', tracker.newLength:sub(1,2), str )
       end
     end
-  end
-  
-  tracker:forceCursorInRange()
-  if ( tracker.cfg.followSong == 1 ) then
-    if ( reaper.GetPlayState() ~= 0 ) then
-      -- Check where we are
-      local playPos = reaper.GetPlayPosition()
-      local loc = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
-      local loc2 = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")
-      if ( playPos < loc or playPos > ( loc+loc2 ) ) then
-        if ( tracker.track ) then
-          tracker:findTakeAtSongPos()
-        end
+  elseif ( tracker.renaming == 4 ) then
+    -- Adding column to all patterns
+    if inputs( 'enter' ) then
+      tracker.renaming = 0
+      tracker:createCCColAll()
+    elseif( inputs( 'escape' ) ) then
+      tracker.renaming = 0
+    elseif( inputs( 'remove' ) ) then
+      tracker.newCol = tracker.newCol:sub(1, tracker.newCol:len()-1)
+    elseif ( lastChar > 0 ) then
+      if ( pcall( function () string.char( lastChar ) tonumber(lastChar) end ) ) then
+        local str = string.char( lastChar )
+        tracker.newCol = string.format( '%s%s', tracker.newCol, str )
       end
-      local row = math.floor( ( playPos - loc ) * tracker.rowPerSec)
-      tracker:forceCursorInRange(row)
     end
   end
 
-  if ( not self.noDraw or self.noDraw == 0 ) then
-    tracker:printGrid()
+  if ( tracker.cfg.followSong == 1 and reaper.GetPlayState() ~= 0) then
+    tracker:gotoCurrentPosition()
+  else
+    tracker:forceCursorInRange()
   end
-  gfx.update()
-  tracker:insertNow()
+
+  if modified == 0 then
+    if ( not self.noDraw or self.noDraw == 0 ) then
+      tracker:printGrid()
+      gfx.update()
+    end
+  end
   
+  tracker:insertNow()
+
   -- Remove duplicates potentially caused by legato system
-  if ( modified == 1 ) then
+  if ( modified == 1 and tracker.take and not tracker.terminated ) then
     tracker:clearDeleteLists()
     tracker:mergeOverlaps()
     tracker:deleteNow()
     reaper.MIDI_Sort(tracker.take)
     tracker.hash = math.random()
-  end  
-  
-  --lastChar ~= 27 and 
+    
+    tracker:update()
+    tracker:printGrid()
+  end
+
+  tracker:updateNoteSelection()
+
+  --lastChar ~= 27 and
   if lastChar ~= -1 then
     reaper.defer(updateLoop)
   else
@@ -7235,12 +10171,36 @@ local function updateLoop()
   end
 end
 
+function tracker:saveClipboard()
+  local storage = {}
+  storage.oldcp = self.cp
+  storage.oldcpcontent = self.clipboard
+  return storage
+end
+
+function tracker:loadClipboard(storage)
+  self.cp         = storage.oldcp
+  self.clipboard  = storage.oldcpcontent
+end
+
 function tracker:terminate()
-  tracker:stopNote()
-    
-  local d, x, y, w, h = gfx.dock(nil,1,1,1,1)
-  tracker:saveConfigFile("_wpos.cfg", {d=d, x=x, y=y, w=w, h=h, helpActive = tracker.helpActive, optionsActive = tracker.optionsActive})
-        
+  self:stopAllNotes()
+  self.terminated = 1
+
+  local d, x, y, w, h = gfx.dock(-1,1,1,1,1)
+  tracker:saveConfigFile("_wpos.cfg", {
+    d=d,
+    x=x,
+    y=y,
+    w=w,
+    h=h,
+    harmonyActive=tracker.harmonyActive,
+    noteNamesActive=tracker.noteNamesActive,
+    helpActive=tracker.helpActive,
+    optionsActive=tracker.optionsActive,
+  })
+  tracker:saveConfig(tracker.configFile, tracker.cfg)
+
   gfx.quit()
 end
 
@@ -7255,77 +10215,111 @@ end
 
 function tracker:autoResize()
   local siz = gfx.w
+  if ( tracker.harmonyActive == 1 ) then
+    siz = siz - self.harmonyWidth
+  end
+  if ( tracker.noteNamesActive == 1 ) then
+    siz = siz - self.noteNamesWidth
+  end
   if ( tracker.helpActive == 1 ) then
     siz = siz - self.helpwidth
   end
   if ( tracker.optionsActive == 1 ) then
     siz = siz - self.optionswidth
   end
-  if ( tracker.cfg.scaleActive == 1 ) then
-    siz = siz - self.scalewidth
+
+  gfx.setfont(1, self.colors.patternFont, self.colors.patternFontSize)
+  local minsize = gfx.measurestr("Res [88] Oct [88] Adv [88] Env [Fst] Out [88] [Rec] 8888888888 ")
+  self.toosmall = 0
+  if ( tracker.cfg.minimumSize == 1) then
+    if ( siz < minsize ) then
+      siz = minsize
+      local v, wx, wy, ww, wh
+      local d, wx, wh = gfx.dock(-1, 1, 1, nil, nil)
+      reinitializeWindow(self.windowTitle, width, height, d, wx, wh)
+    end
+  elseif ( siz < 130 ) then
+    siz = 130
+    self.toosmall = 1
+    local v, wx, wy, ww, wh
+    local d, wx, wh = gfx.dock(-1, 1, 1, nil, nil)
+    reinitializeWindow(self.windowTitle, width, height, d, wx, wh)
+  elseif ( siz < minsize ) then
+    self.toosmall = 1
   end
+
   tracker.fov.abswidth = siz
 end
 
 -- To do: Automatic width estimation
 function tracker:computeDims(inRows)
   local rows = inRows
-  
+
   if ( rows > tracker.fov.height ) then
     rows = tracker.fov.height
-  end  
-  
+  end
+
   width = self.fov.abswidth
-  if ( tracker.helpActive == 1 ) then
-    width = width + self.helpwidth
-    if ( rows < 16 ) then
-      rows = 16
-    end
-  end
-  if ( tracker.optionsActive == 1 ) then
-    width = width + self.optionswidth
-    if ( rows < 16 ) then
-      rows = 16
-    end
-  end
-  if ( tracker.cfg.scaleActive == 1 ) then
-    width = width + self.scalewidth
-    if ( rows < 26 ) then
+  if tracker.harmonyActive == 1 then
+    width = width + self.harmonyWidth
+    if rows < 26 then
       rows = 26
     end
   end
-  
+  if tracker.noteNamesActive == 1 then
+    width = width + self.noteNamesWidth
+    if rows < 16 then
+      rows = 16
+    end
+  end
+  if tracker.helpActive == 1 then
+    width = width + self.helpwidth
+    if rows < 16 then
+      rows = 16
+    end
+  end
+  if tracker.optionsActive == 1 then
+    width = width + self.optionswidth
+    if rows < 16 then
+      rows = 16
+    end
+  end
+
   local grid = tracker.grid
-  height = grid.originy + (rows+1) * grid.dy + 2*grid.itempady  
-  
+  height = grid.originy + (rows+1) * grid.dy + 2*grid.itempady
+
   if ( tracker.helpActive == 1 ) then
-    local mhelp = #help * 14 + 10
+    local mhelp = #help * 14 + 12
     if ( height < mhelp ) then
       height = mhelp
     end
   end
-  
+
   if ( tracker.cfg.autoResize == 0 ) then
     if ( self.lastY ) then
       height = self.lastY
+    else
+      local wpos = tracker:loadConfig("_wpos.cfg", {})
+      height = wpos.h
+      width = wpos.w
     end
   end
-  
+
   local changed
-  if ( not self.lastY or ( self.lastY ~= height) or not self.lastX or ( self.lastX ~= width ) ) then    
+  if ( not self.lastY or ( self.lastY ~= height ) or not self.lastX or ( self.lastX ~= width ) ) then
     self:resetBlock()
-    
+
     changed = 1
     if ( not self.lastX or ( self.lastX ~= width ) ) then
       changed = 2
     end
-    
+
     self.lastY = height
     self.lastX = width
   else
     changed = 0
   end
-  
+
   return width, height, changed
 end
 
@@ -7334,8 +10328,7 @@ function tracker:resizeWindow()
   if ( ( changed == 1 and ( tracker.cfg.autoResize == 1 ) ) or ( changed == 2 ) ) then
     local v, wx, wy, ww, wh
     local d, wx, wh = gfx.dock(-1, 1, 1, nil, nil)
-    gfx.quit()
-    gfx.init( self.windowTitle, width, height, d, wx, wh)
+    reinitializeWindow( self.windowTitle, width, height, d, wx, wh )
     self.windowHeight = height
   end
 end
@@ -7348,33 +10341,57 @@ end
 function tracker:updateNames()
   local maxsize = self.maxPatternNameSize
   if ( self.track ) then
-    local retval, trackName = reaper.GetTrackName(self.track, stringbuffer)  
+    local retval, trackName = reaper.GetTrackName(self.track, stringbuffer)
     self.trackName = trackName
   end
-  if ( self.take ) then    
+  if ( self.take ) then
     self.midiName = reaper.GetTakeName(self.take)
   else
     self.midiName = ''
   end
-  
-  self.windowTitle = string.format('%s [%s], ', self.name, self.trackName)
+
+  if ( self.trackName ) then
+    self.windowTitle = string.format('%s [%s], ', self.name, self.trackName)
+  else
+    self.windowTitle = string.format('%s', self.name)
+  end
   if ( self.midiName:len() > maxsize ) then
     self.patternName = string.format('%s/%s>', self.trackName, self.midiName:sub(1,maxsize))
   else
-    self.patternName = string.format('%s/%s', self.trackName, self.midiName:sub(1,maxsize))  
+    self.patternName = string.format('%s/%s', self.trackName, self.midiName:sub(1,maxsize))
+  end
+end
+
+function tracker:getNoteNames()
+  if tracker.track then
+    -- track_num as returned here is one-indexed, but as used by GetTrackMIDINoteName, it's zero-indexed (christ)
+    local track_num = reaper.GetMediaTrackInfo_Value(tracker.track, 'IP_TRACKNUMBER') - 1
+
+    -- can't actually tell whether channel makes a difference here?
+    -- sorta seems like it does not, but whatever
+
+    -- GetTrackMIDINoteName takes a channel to query, and note names can be set for a particular channel, at least in theory
+    -- but it seems that in practice they're generally just set for all channels, so here we just query channel zero instead of bothering to query the tracker's specific channel
+    -- if it turns out to matter, we can get the channel from tracker.outChannel
+    local channel = 0
+
+    -- start at 12 because notes 0-11 are octave -1, which isn't in pitchTable
+    for note = 12, 127 do
+      noteNames[note] = reaper.GetTrackMIDINoteName(track_num, note, channel)
+    end
   end
 end
 
 function tracker:loadConfig(fn, cfg)
     local file = io.open(get_script_path()..fn, "r")
-    
+
     if ( file ) then
       io.input(file)
       local str = io.read()
       while ( str ) do
-        for k, v in string.gmatch(str, "(%w+)=(%w+)") do
+        for k, v in string.gmatch(str, "(%w+)=(%S+)") do
           local no = tonumber(v)
-        
+
           if ( no ) then
             cfg[k] = no
           else
@@ -7384,8 +10401,8 @@ function tracker:loadConfig(fn, cfg)
         str = io.read()
       end
       io.close(file)
-    end    
-    
+    end
+
     return cfg
 end
 
@@ -7396,15 +10413,15 @@ function tracker:saveConfig(fn, cfg)
   cfg.transpose = tracker.transpose
   cfg.advance   = tracker.advance
   cfg.envShape  = tracker.envShape
-  
+
   tracker:saveConfigFile( fn, cfg )
 end
-  
+
 function tracker:saveConfigFile(fn, cfg)
   local dir = get_script_path()
   local filename = dir..fn
   local file = io.open(filename, "w+")
-  
+
   if ( file ) then
     io.output(file)
     for i,v in pairs(cfg) do
@@ -7414,71 +10431,360 @@ function tracker:saveConfigFile(fn, cfg)
   end
 end
 
+function tracker:readInt(var)
+  local ok, v = reaper.GetProjExtState(0, "MVJV001", var)
+  if ( ok ) then v = tonumber( v ) end
+  return v
+end
+
 function tracker:grabActiveItem()
-    local item = reaper.GetSelectedMediaItem(0, 0)
-    if ( item ) then
-      local take = reaper.GetActiveTake(item)
-      if ( reaper.TakeIsMIDI( take ) == true ) then
-        tracker:setItem( item )
-        tracker:setTake( take )
-        return 1
+    -- Check if there is an override going on
+    local v = self:readInt("initialiseAtTrack")
+    local v2 = self:readInt("initialiseAtRow")
+    reaper.SetProjExtState(0, "MVJV001", "initialiseAtTrack", "")
+    reaper.SetProjExtState(0, "MVJV001", "initialiseAtRow", "")
+    if ( v ) then
+      self.track = reaper.GetTrack(0,v)
+      return self:findTakeClosestToSongPos(v2)
+    else
+      local item = reaper.GetSelectedMediaItem(0, 0)
+      if ( item ) then
+        local take = reaper.GetActiveTake(item)
+        if ( reaper.TakeIsMIDI( take ) == true ) then
+          tracker:setItem( item )
+          tracker:setTake( take )
+          return 1
+        end
       end
     end
 end
 
+local function file_exists(name)
+   local f=io.open(name,"r")
+   if f~=nil then io.close(f) return true else return false end
+end
+
 local function Main()
-  local tracker = tracker  
+  local tracker = tracker
   local reaper = reaper
-  if ( reaper.CountSelectedMediaItems(0) > 0 ) then
+
+  local kfn = get_script_path()..tracker.keyFile
+  if ( not file_exists(kfn) ) then
+    local fhandle = io.open(kfn, "w")
+    io.output(fhandle)
+    io.write("  -- This file can be used to define own custom keysets. Every keyset needs to be declared in\n")
+    io.write("  -- extrakeysets. The actual keyset can then be defined in an if-statement in loadCustomKeys().\n")
+    io.write("  -- This file will not be overwritten when hackey trackey updates, so your keysets are safe.\n")
+    io.write("  -- Note that if new keys get added in the future, that you will have to update this file manually\n")
+    io.write("  -- or else the new keys will revert to their defaults.\n")
+    io.write("  --\n")
+    io.write("  -- Missing keys will be taken from the default set.\n")
+    io.write("\n")
+    io.write("  extrakeysets = { \"custom\" }\n")
+    io.write("\n")
+    io.write("  function loadCustomKeys(keyset)\n")
+    io.write("    if keyset == \"custom\" then\n")
+    io.write("    --                    CTRL    ALT SHIFT Keycode\n")
+    io.write("    keys.left           = { 0,    0,  0,    1818584692 }    -- <-\n")
+    io.write("    keys.right          = { 0,    0,  0,    1919379572 }    -- ->\n")
+    io.write("    keys.up             = { 0,    0,  0,    30064 }         -- /\\\n")
+    io.write("    keys.down           = { 0,    0,  0,    1685026670 }    -- \\/\n")
+    io.write("    keys.off            = { 0,    0,  0,    45 }            -- -\n")
+    io.write("    keys.delete         = { 0,    0,  0,    6579564 }       -- Del\n")
+    io.write("    keys.delete2        = { 0,    0,  0,    46 }            -- .\n")
+    io.write("    keys.home           = { 0,    0,  0,    1752132965 }    -- Home\n")
+    io.write("    keys.End            = { 0,    0,  0,    6647396 }       -- End\n")
+    io.write("    keys.toggle         = { 0,    0,  0,    32 }            -- Space\n")
+    io.write("    keys.playfrom       = { 0,    0,  0,    13 }            -- Enter\n")
+    io.write("    keys.enter          = { 0,    0,  0,    13 }            -- Enter\n")
+    io.write("    keys.insert         = { 0,    0,  0,    6909555 }       -- Insert\n")
+    io.write("    keys.remove         = { 0,    0,  0,    8 }             -- Backspace\n")
+    io.write("    keys.pgup           = { 0,    0,  0,    1885828464 }    -- Page up\n")
+    io.write("    keys.pgdown         = { 0,    0,  0,    1885824110 }    -- Page down\n")
+    io.write("    keys.undo           = { 1,    0,  0,    26 }            -- CTRL + Z\n")
+    io.write("    keys.redo           = { 1,    0,  1,    26 }            -- CTRL + SHIFT + Z\n")
+    io.write("    keys.beginBlock     = { 1,    0,  0,    2 }             -- CTRL + B\n")
+    io.write("    keys.endBlock       = { 1,    0,  0,    5 }             -- CTRL + E\n")
+    io.write("    keys.cutBlock       = { 1,    0,  0,    24 }            -- CTRL + X\n")
+    io.write("    keys.pasteBlock     = { 1,    0,  0,    22 }            -- CTRL + V\n")
+    io.write("    keys.copyBlock      = { 1,    0,  0,    3 }             -- CTRL + C\n")
+    io.write("    keys.shiftItemUp    = { 0,    0,  1,    43 }            -- SHIFT + Num pad +\n")
+    io.write("    keys.shiftItemDown  = { 0,    0,  1,    45 }            -- SHIFT + Num pad -\n")
+    io.write("    keys.scaleUp        = { 1,    1,  1,    267 }           -- CTRL + SHIFT + ALT + Num pad +\n")
+    io.write("    keys.scaleDown      = { 1,    1,  1,    269 }           -- CTRL + SHIFT + ALT + Num pad -\n")
+    io.write("    keys.octaveup       = { 1,    0,  0,    30064 }         -- CTRL + /\\\n")
+    io.write("    keys.octavedown     = { 1,    0,  0,    1685026670 }    -- CTRL + \\/\n")
+    io.write("    keys.envshapeup     = { 1,    0,  1,    30064 }         -- CTRL + SHIFT + /\\\n")
+    io.write("    keys.envshapedown   = { 1,    0,  1,    1685026670 }    -- CTRL + SHIFT + /\\\n")
+    io.write("    keys.help           = { 0,    0,  0,    26161 }         -- F1\n")
+    io.write("    keys.outchandown    = { 0,    0,  0,    26162 }         -- F2\n")
+    io.write("    keys.outchanup      = { 0,    0,  0,    26163 }         -- F3\n")
+    io.write("    keys.advancedown    = { 0,    0,  0,    26164 }         -- F4\n")
+    io.write("    keys.advanceup      = { 0,    0,  0,    26165 }         -- F5\n")
+    io.write("    keys.stop2          = { 0,    0,  0,    26168 }         -- F8\n")
+    io.write("    keys.harmony        = { 0,    0,  0,    26169 }         -- F9\n")
+    io.write("    keys.noteNames      = { 0,    0,  0,    6697264 }       -- F10\n")
+    io.write("    keys.options        = { 0,    0,  0,    6697265 }       -- F11\n")
+    io.write("    keys.panic          = { 0,    0,  0,    6697266 }       -- F12\n")
+    io.write("    keys.setloop        = { 1,    0,  0,    12 }            -- CTRL + L\n")
+    io.write("    keys.setloopstart   = { 1,    0,  0,    17 }            -- CTRL + Q\n")
+    io.write("    keys.setloopend     = { 1,    0,  0,    23 }            -- CTRL + W\n")
+    io.write("    keys.interpolate    = { 1,    0,  0,    9 }             -- CTRL + I\n")
+    io.write("    keys.shiftleft      = { 0,    0,  1,    1818584692 }    -- Shift + <-\n")
+    io.write("    keys.shiftright     = { 0,    0,  1,    1919379572 }    -- Shift + ->\n")
+    io.write("    keys.shiftup        = { 0,    0,  1,    30064 }         -- Shift + /\\\n")
+    io.write("    keys.shiftdown      = { 0,    0,  1,    1685026670 }    -- Shift + \\/\n")
+    io.write("    keys.deleteBlock    = { 0,    0,  1,    6579564 }       -- Shift + Del\n")
+    io.write("    keys.resolutionUp   = { 0,    1,  1,    30064 }         -- SHIFT + Alt + Up\n")
+    io.write("    keys.resolutionDown = { 0,    1,  1,    1685026670 }    -- SHIFT + Alt + Down\n")
+    io.write("    keys.commit         = { 0,    1,  1,    13 }            -- SHIFT + Alt + Enter\n")
+    io.write("    keys.nextMIDI       = { 1,    0,  0,    1919379572.0 }  -- CTRL + ->\n")
+    io.write("    keys.prevMIDI       = { 1,    0,  0,    1818584692.0 }  -- CTRL + <-\n")
+    io.write("    keys.duplicate      = { 1,    0,  0,    4 }             -- CTRL + D\n")
+    io.write("    keys.rename         = { 1,    0,  0,    14 }            -- CTRL + N\n")
+    io.write("    keys.escape         = { 0,    0,  0,    27 }            -- Escape\n")
+    io.write("    keys.toggleRec      = { 1,    0,  0,    18 }            -- CTRL + R\n")
+    io.write("    keys.showMore       = { 1,    0,  0,    11 }            -- CTRL + +\n")
+    io.write("    keys.showLess       = { 1,    0,  0,    13 }            -- CTRL + -\n")
+    io.write("    keys.addCol         = { 1,    0,  1,    11 }            -- CTRL + Shift + +\n")
+    io.write("    keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -\n")
+    io.write("    keys.addColAll      = { 1,    0,  1,    1 }             -- CTRL + Shift + A\n")
+    io.write("    keys.addPatchSelect = { 1,    0,  1,    16 }            -- CTRL + Shift + P\n")
+    io.write("    keys.tab            = { 0,    0,  0,    9 }             -- Tab\n")
+    io.write("    keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab\n")
+    io.write("    keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F\n")
+    io.write("    keys.deleteRow      = { 1,    0,  0,    6579564 }       -- Ctrl + Del\n")
+    io.write("    keys.closeTracker   = { 1,    0,  0,    6697266 }       -- Ctrl + F12\n")
+    io.write("    keys.nextTrack      = { 1,    0,  1,    1919379572.0 }  -- CTRL + Shift + ->\n")
+    io.write("    keys.prevTrack      = { 1,    0,  1,    1818584692.0 }  -- CTRL + Shift + <-\n")
+    io.write("\n")
+    io.write("    keys.insertRow      = { 1,    0,  0,    6909555 }       -- Insert row CTRL+Ins\n")
+    io.write("    keys.removeRow      = { 1,    0,  0,    8 }             -- Remove Row CTRL+Backspace\n")
+    io.write("    keys.wrapDown       = { 1,    0,  1,    6909555 }       -- CTRL + SHIFT + Ins\n")
+    io.write("    keys.wrapUp         = { 1,    0,  1,    8 }             -- CTRL + SHIFT + Backspace\n")
+    io.write("\n")
+    io.write("    keys.m0             = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
+    io.write("    keys.m25            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
+    io.write("    keys.m50            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
+    io.write("    keys.m75            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
+    io.write("    keys.off2           = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
+    io.write("    keys.renoiseplay    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
+    io.write("    keys.shpatdown      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
+    io.write("    keys.shpatup        = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
+    io.write("    keys.shcoldown      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
+    io.write("    keys.shcolup        = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
+    io.write("    keys.shblockdown    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
+    io.write("    keys.shblockup      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
+    io.write("    keys.upByAdvance    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
+    io.write("    keys.downByAdvance  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
+    io.write("    keys.advanceDouble  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
+    io.write("    keys.advanceHalve   = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
+    io.write("\n")
+    io.write("    keys.cutPattern     = { 1,    0,  0,    500000000000000000000000 }\n")
+    io.write("    keys.cutColumn      = { 1,    0,  1,    500000000000000000000000 }\n")
+    io.write("    keys.cutBlock2      = { 1,    1,  0,    500000000000000000000000 }\n")
+    io.write("    keys.copyPattern    = { 1,    0,  0,    500000000000000000000000 }\n")
+    io.write("    keys.copyColumn     = { 1,    0,  1,    500000000000000000000000 }\n")
+    io.write("    keys.copyBlock2     = { 1,    1,  0,    500000000000000000000000 }\n")
+    io.write("    keys.pastePattern   = { 1,    0,  0,    500000000000000000000000 }\n")
+    io.write("    keys.pasteColumn    = { 1,    0,  1,    500000000000000000000000 }\n")
+    io.write("    keys.pasteBlock2    = { 1,    1,  0,    500000000000000000000000 }\n")
+    io.write("    keys.patternOctDown = { 1,    0,  0,    500000000000000000000000.0 }\n")
+    io.write("    keys.patternOctUp   = { 1,    0,  0,    500000000000000000000000.0 }\n")
+    io.write("    keys.colOctDown     = { 1,    0,  1,    500000000000000000000000.0 }\n")
+    io.write("    keys.colOctUp       = { 1,    0,  1,    500000000000000000000000.0 }\n")
+    io.write("    keys.blockOctDown   = { 1,    1,  0,    500000000000000000000000.0 }\n")
+    io.write("    keys.blockOctUp     = { 1,    1,  0,    500000000000000000000000.0 }\n")
+    io.write("\n")
+    io.write("    keys.shiftpgdn      = { 0,    0,  1,    1885824110 }    -- Shift + PgDn\n")
+    io.write("    keys.shiftpgup      = { 0,    0,  1,    1885828464 }    -- Shift + PgUp\n")
+    io.write("    keys.shifthome      = { 0,    0,  1,    1752132965 }    -- Shift + Home\n")
+    io.write("    keys.shiftend       = { 0,    0,  1,    6647396 }       -- Shift + End\n")
+    io.write("\n")
+    io.write("    help = {\n")
+    io.write("      { 'Shift + Note', 'Advance column after entry' },\n")
+    io.write("      { 'Insert/Backspace/-', 'Insert/Remove/Note OFF' },\n")
+    io.write("      { 'CTRL + Insert/Backspace', 'Insert Row/Remove Row' },\n")
+    io.write("      { 'CTRL + Shift + Ins/Bksp', 'Wrap Forward/Backward' },\n")
+    io.write("      { 'Del/.', 'Delete' },\n")
+    io.write("      { 'Space/Return', 'Play/Play From' },\n")
+    io.write("      { 'CTRL + L', 'Loop pattern' },\n")
+    io.write("      { 'CTRL + Q/W', 'Loop start/end' },\n")
+    io.write("      { 'Shift + +/-', 'Transpose selection' },\n")
+    io.write("      { 'CTRL + B/E', 'Selection begin/End' },\n")
+    io.write("      { 'SHIFT + Arrow Keys', 'Block selection' },\n")
+    io.write("      { 'CTRL + C/X/V', 'Copy / Cut / Paste' },\n")
+    io.write("      { 'CTRL + I', 'Interpolate' },\n")
+    io.write("      { 'Shift + Del', 'Delete block' },\n")
+    io.write("      { 'CTRL + (SHIFT) + Z', 'Undo / Redo' },\n")
+    io.write("      { 'SHIFT + Alt + Up/Down', '[Res]olution Up/Down' },\n")
+    io.write("      { 'SHIFT + Alt + Enter', '[Res]olution Commit' },\n")
+    io.write("      { 'CTRL + Up/Down', '[Oct]ave up/down' },\n")
+    io.write("      { 'CTRL + Shift + Up/Down', '[Env]elope change' },\n")
+    io.write("      { 'F4/F5', '[Adv]ance De/Increase' },\n")
+    io.write("      { 'F2/F3', 'MIDI [out] down/up' },\n")
+    io.write("      { 'F8/F12', 'Stop / Panic' },\n")
+    io.write("      { 'F10/F11', 'Note Names / Options' },\n")
+    io.write("      { 'CTRL + Left/Right', 'Switch MIDI item/track' },\n")
+    io.write("      { 'CTRL + Shift + Left/Right', 'Switch Track' },\n")
+    io.write("      { 'CTRL + D', 'Duplicate pattern' },\n")
+    io.write("      { 'CTRL + N', 'Rename pattern' },\n")
+    io.write("      { 'CTRL + R', 'Play notes' },\n")
+    io.write("      { 'CTRL + +/-', 'Advanced col options' },\n")
+    io.write("      { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },\n")
+    io.write("      { 'CTRL + Shift + A/P', 'Per channel CC/PC' },\n")
+    io.write("      { '', '' },\n")
+    io.write("      { 'Harmony helper', '' },\n")
+    io.write("      { 'F9', 'Toggle harmonizer' },\n")
+    io.write("      { 'CTRL + Click', 'Insert chord' },\n")
+    io.write("      { 'Alt', 'Invert first note' },\n")
+    io.write("      { 'Shift', 'Invert second note' },\n")
+    io.write("      { 'CTRL + Shift + Alt + +/-', 'Shift root note' },\n")
+    io.write("    }\n")
+    io.write("  end\n")
+    io.write("end\n")
+    io.write("\n")
+    io.write("-- Defines where the notes are on the virtual keyboard\n")
+    io.write("function loadCustomKeyboard(choice)\n")
+    io.write("  if ( choice == \"custom\" ) then\n")
+    io.write("    local c = 12\n")
+    io.write("    keys.pitches = {}\n")
+    io.write("    keys.pitches.z = 24-c\n")
+    io.write("    keys.pitches.x = 26-c\n")
+    io.write("    keys.pitches.c = 28-c\n")
+    io.write("    keys.pitches.v = 29-c\n")
+    io.write("    keys.pitches.b = 31-c\n")
+    io.write("    keys.pitches.n = 33-c\n")
+    io.write("    keys.pitches.m = 35-c\n")
+    io.write("    keys.pitches.s = 25-c\n")
+    io.write("    keys.pitches.d = 27-c\n")
+    io.write("    keys.pitches.g = 30-c\n")
+    io.write("    keys.pitches.h = 32-c\n")
+    io.write("    keys.pitches.j = 34-c\n")
+    io.write("    keys.pitches.q = 36-c\n")
+    io.write("    keys.pitches.w = 38-c\n")
+    io.write("    keys.pitches.e = 40-c\n")
+    io.write("    keys.pitches.r = 41-c\n")
+    io.write("    keys.pitches.t = 43-c\n")
+    io.write("    keys.pitches.y = 45-c\n")
+    io.write("    keys.pitches.u = 47-c\n")
+    io.write("    keys.pitches.i = 48-c\n")
+    io.write("    keys.pitches.o = 50-c\n")
+    io.write("    keys.pitches.p = 52-c\n")
+    io.write("\n")
+    io.write("    keys.octaves = {}\n")
+    io.write("    keys.octaves['0'] = 0\n")
+    io.write("    keys.octaves['1'] = 1\n")
+    io.write("    keys.octaves['2'] = 2\n")
+    io.write("    keys.octaves['3'] = 3\n")
+    io.write("    keys.octaves['4'] = 4\n")
+    io.write("    keys.octaves['5'] = 5\n")
+    io.write("    keys.octaves['6'] = 6\n")
+    io.write("    keys.octaves['7'] = 7\n")
+    io.write("    keys.octaves['8'] = 8\n")
+    io.write("    keys.octaves['9'] = 9\n")
+    io.write("  end\n")
+    io.write("end\n")
+    io.write("")
+    io.close(fhandle)
+  end
+
+  local ret, str = pcall(function() dofile(kfn) end)
+  if ( not ret ) then
+    reaper.ShowMessageBox("Error parsing " .. tracker.keyFile .. "\nError: " .. str .. "\nTerminating.", "FATAL ERROR", 0)
+    return
+  else
+    if ( not extrakeysets ) then
+      reaper.ShowMessageBox("Error parsing " .. tracker.keyFile .. "\nDid not find variable extrakeysets. Please delete userkeys.lua.\nTerminating.", "FATAL ERROR", 0)
+      return
+    end
+
+    for i,v in pairs( extrakeysets ) do
+      table.insert(keysets, v)
+    end
+    tracker.loadCustomKeys      = loadCustomKeys
+    tracker.loadCustomKeyboard  = loadCustomKeyboard
+  end
+
+
+  --if ( reaper.CountSelectedMediaItems(0) > 0 or tracker:readInt("initialiseAtTrack") ) then
     tracker.tick = 0
+    tracker.xposunset = 1
     tracker.scrollbar = scrollbar.create(tracker.scrollbar.size)
-    
+
     -- Load user options
     local cfg = tracker:loadConfig(tracker.configFile, tracker.cfg)
+    updateShown()
     tracker:loadColors(cfg.colorscheme)
     tracker:initColors()
+
+    -- Revert to default if selected keyset does not exist
+    local found = 0
+    for i,v in pairs( keysets ) do
+      if ( cfg.keyset == v ) then
+        found = 1
+      end
+    end
+    if ( found == 0 ) then
+      cfg.keyset = "default"
+    end
+
     tracker:loadKeys(cfg.keyset)
-    setKeyboard(cfg.keyset)    
-    tracker.cfg = cfg   
+    setKeyboard(cfg.keyset)
+    tracker.cfg = cfg
     
+    updateFontScale()
+
     if ( cfg.root and ( scales.root ~= cfg.root ) ) then
       scales:switchRoot( cfg.root )
     end
     if ( cfg.scale and ( scales.curScale ~= cfg.scale ) ) then
       scales:setScale( cfg.scale )
     end
-    
+
     tracker:generatePitches()
     tracker:initColors()
-    if ( tracker:grabActiveItem() ) then
+    tracker:grabActiveItem()
+    local wpos = tracker:loadConfig("_wpos.cfg", {})
 
-      local wpos = tracker:loadConfig("_wpos.cfg", {}) 
-      tracker.optionsActive = wpos.optionsActive or tracker.optionsActive
-      tracker.helpActive = wpos.helpActive or tracker.helpActive
-      local width, height = tracker:computeDims(48)
-      tracker:updateNames()
-      
-      if ( wpos.w and wpos.w > width ) then
-        width = wpos.w
-      end
-      if ( wpos.h and wpos.h > width ) then
-        height = wpos.h
-      end
-      local xpos = wpos.x or 200
-      local ypos = wpos.y or 200
-      
-      gfx.init(tracker.windowTitle, width, height, 0, xpos, ypos)
-      tracker.windowHeight = height
-      
-      if ( tracker.outChannel ) then
-        tracker:setOutChannel( tracker.outChannel )
-      end
-      
-      reaper.defer(updateLoop)
+    tracker.harmonyActive = wpos.harmonyActive or tracker.harmonyActive
+    tracker.noteNamesActive = wpos.noteNamesActive or tracker.noteNamesActive
+    tracker.helpActive = wpos.helpActive or tracker.helpActive
+    tracker.optionsActive = wpos.optionsActive or tracker.optionsActive
+    local width, height = tracker:computeDims(48)
+    tracker:updateNames()
+
+    --if ( wpos.w and wpos.w > width ) then
+      width = wpos.w or width
+    --end
+    if ( wpos.h ) then
+      height = wpos.h or height
     end
-  else
-    reaper.ShowMessageBox("Please select a MIDI item before starting the tracker", "No MIDI item selected", 0)
-  end
+    local xpos = wpos.x or 200
+    local ypos = wpos.y or 200
+
+    if ( width > tracker.cfg.maxWidth ) then
+      width = tracker.cfg.maxWidth
+    end
+    if ( height > tracker.cfg.maxHeight ) then
+      height = tracker.cfg.maxHeight
+    end
+    gfx.init(tracker.windowTitle, width, height, wpos.d, xpos, ypos)
+    tracker.windowHeight = height
+
+    if ( tracker.outChannel ) then
+      tracker:setOutChannel( tracker.outChannel )
+    end
+
+    if ( tracker.cfg.initLoopSet == 1 ) then
+      tracker:setLoopToPattern()
+    end
+
+    reaper.defer(updateLoop)
+
+  --else
+  --  reaper.ShowMessageBox("Please select a MIDI item before starting the tracker", "No MIDI item selected", 0)
+  --end
 end
 
 Main()
