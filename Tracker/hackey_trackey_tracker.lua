@@ -3,6 +3,7 @@
 @author: Joep Vanlier
 @provides
   scales.lua
+  tracker.lua
   [main] .
   [main] hackey_trackey_load_sample.lua
   [effect] Hackey_MIDI_Detector.jsfx
@@ -12,7 +13,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.84
+@version 2.85
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -43,6 +44,10 @@
 
 --[[
  * Changelog:
+ * v2.85 (2022-05-23)
+  + Renamed script to more searchable name (thanks Radian!).
+  + Added compatibility script to not break existing actions.
+  + Improve horizontal shift handling (used to be crash issue with FX channel).
  * v2.84 (2021-10-23)
   + Bugfix: Also advance when entering values in second velocity column on a space without notes.
  * v2.83 (2021-10-15)
@@ -7466,7 +7471,7 @@ function tracker:pasteClipboard()
 
   -- Determine the shift we need to apply to the current position to get to the start
   -- of the clipboard
-  local cpShift = self.colref[ datafields[start_xpos] ]
+  local cpShift = self.colref[datafields[start_xpos]]
   local region = self.clipboard.region
   region.xstop = start_xpos + (region.xstop - region.xstart) + cpShift
   region.ystop = self.ypos + (region.ystop - region.ystart)
@@ -8880,12 +8885,55 @@ function tracker:move_block(from_x, from_y, width, height, to_x, to_y, action_na
   reaper.Undo_EndBlock2(0, action_name, 4)
   reaper.MarkProjectDirty(0)
 end
+
+
+tracker.leading_cols = {
+  mod1 = 'mod1',
+  mod2 = 'mod1',
+  mod3 = 'mod1',
+  mod4 = 'mod1',
+  modtxt1 = 'modtxt1',
+  modtxt2 = 'modtxt1',
+  text = 'text',
+  vel1 = 'text',
+  vel2 = 'text',
+  delay1 = 'text',
+  delay2 = 'text',
+  end1 = 'text',
+  end2 = 'text',
+  legato = 'legato',
+  fx1 = 'fx1',
+  fx2 = 'fx1',
+}
  
-function tracker:seek_notecol(xp, dir)
+ 
+function tracker:seek_leading_col(xp, dir)
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
   local attempts = 0
   
-  while(datafields[xp] ~= "text") do
+  -- Find the leading field for this type
+  local leading_field = self.leading_cols[datafields[xp]]
+  
+  while(datafields[xp] ~= leading_field) do
+    xp = xp + dir
+    attempts = attempts + 1
+    
+    if attempts > 60 then
+      return xp
+    end
+  end
+  
+  return xp
+end
+
+function tracker:seek_until_different_leading_col(xp, dir)
+  local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
+  local attempts = 0
+  
+  -- Find the leading field for this type
+  local leading_field = self.leading_cols[datafields[xp]]
+  
+  while(self.leading_cols[datafields[xp]] == leading_field) do
     xp = xp + dir
     attempts = attempts + 1
     
@@ -8899,14 +8947,32 @@ end
 
 function tracker:insert_hori()
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
-  local from = self:seek_notecol(self:seek_notecol(self.xpos, - 1), 1)
-  self:move_block(from, self.ypos, #datafields - self.xpos, 0, self:seek_notecol(from + 1, 1), self.ypos, "Tracker: Insert horizontal")
+  
+  -- Has to have an index to be shifted
+  if idxfields[self.xpos] == 0 then
+    return
+  end
+  
+  local from = self:seek_leading_col(self.xpos, -1);
+  local to = self:seek_leading_col(from + 1, 1)
+  local next_group = self:seek_until_different_leading_col(to, 1)
+  local width = next_group - 1 - to
+  self:move_block(from, self.ypos, width, 0, to, self.ypos, "Tracker: Insert horizontal")
 end
 
 function tracker:remove_hori()
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
-  local from = self:seek_notecol(self:seek_notecol(self.xpos + 1, 1), -1)
-  self:move_block(from, self.ypos, #datafields - from, 0, self:seek_notecol(from - 1, -1), self.ypos, "Tracker: Remove horizontal")
+  
+  -- Has to have an index to be shifted
+  if idxfields[self.xpos] == 0 then
+    return
+  end
+  
+  local to = self:seek_leading_col(self.xpos, -1)
+  local from = self:seek_leading_col(to + 1, 1)
+  local next_group = self:seek_until_different_leading_col(from, 1)
+  local width = next_group - 1 - from
+  self:move_block(from, self.ypos, width, 0, to, self.ypos, "Tracker: Remove horizontal")
 end
 
 function tracker:mouseToPatternCoord(already_dragging)
