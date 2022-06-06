@@ -3,8 +3,8 @@
 @author: Joep Vanlier
 @provides
   scales.lua
-  hackey_trackey_tracker.lua
   [main] .
+  [main] hackey_trackey_tracker.lua
   [main] hackey_trackey_load_sample.lua
   [effect] Hackey_MIDI_Detector.jsfx
   [effect] Hackey_Sample_Playback.jsfx
@@ -13,7 +13,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.85
+@version 2.86
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -44,6 +44,8 @@
 
 --[[
  * Changelog:
+ * v2.86 (2022-06-07)
+  + Make alternate lua file show up in the actions list.
  * v2.85 (2022-05-23)
   + Renamed script to more searchable name (thanks Radian!).
   + Added compatibility script to not break existing actions.
@@ -561,7 +563,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.85"
+tracker.name = "Hackey Trackey v2.86"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
