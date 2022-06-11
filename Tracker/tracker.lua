@@ -13,7 +13,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.86
+@version 2.87
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -44,6 +44,8 @@
 
 --[[
  * Changelog:
+ * v2.87 (2022-06-11)
+  + Add direct MIDI input as option for input (this one doesn't rely on recording).
  * v2.86 (2022-06-07)
   + Make alternate lua file show up in the actions list.
  * v2.85 (2022-05-23)
@@ -774,6 +776,7 @@ tracker.cfg.releaseNoteOffs = 0
 tracker.cfg.scrubMode = 0
 tracker.cfg.lastVel = 96
 tracker.cfg.lastVelSample = 1
+tracker.cfg.globalMidi = 0
 
 tracker.tracker_samples = 0
 tracker.cfg.fixedIndicator = 0
@@ -811,7 +814,8 @@ tracker.binaryOptions = {
     { 'alwaysShowNoteEnd', 'Always show note end' },
     { 'alwaysShowDelays', 'Always show note delay' },
     { 'blockWhileRecording', 'Block while recording' },
-    { 'readfrommidi', 'Track from MIDI (BETA)' },
+    { 'readfrommidi', 'Track from MIDI JSFX-based (BETA)' },
+    { 'globalMidi', 'Track from global MIDI (BETA)' },
     { 'velfrommidi', 'Use recorded velocities' },
     { 'bigLineIndicator', 'Bigger play indicator' },
     { 'selectMIDINotes', 'Block select selects notes' },
@@ -8864,6 +8868,104 @@ function tracker:readNotesFromJSFX()
   end
 end
 
+function tracker:readNotesFromQueue()
+  local note_on = 0x90
+  local note_off = 0x80
+  
+  if not self.midi_note_mem then
+    self.midi_note_mem = {}
+    -- First poll we ignore everything before
+    local retval, buf, tsval, devIdx, projPos = reaper.MIDI_GetRecentInputEvent(0)
+    self.last_midi_seen = buf
+  end
+  
+  local i = 0
+  local first_buf
+  while true do
+    local retval, buf, tsval, devIdx, projPos = reaper.MIDI_GetRecentInputEvent(i)
+    if not first_buf then
+      first_buf = buf
+    end
+    if retval == 0 then break end  -- No more
+    if buf == self.last_midi_seen then break end  -- Already processed
+    
+    local msg = buf:byte(1)
+    local pitch = buf:byte(2)
+    local vel = buf:byte(3)
+    
+    local chan = msg & 0x0f;
+    
+    local ix = 256 * chan + pitch
+
+    local msg_type = msg & 0xf0;
+    if (msg_type == note_on) and (vel == 0) then
+      -- Convert velocity zero to note off
+      msg_type = note_off;
+    end
+    
+    if (msg_type == note_on) then
+      self.midi_note_mem[ix] = {chan=chan, pitch=pitch, vel=vel, active=1}
+    elseif (msg_type == note_off) then
+      local table = self.midi_note_mem[ix]
+      if table then
+        self.midi_note_mem[ix].active = 0
+      end
+      
+      -- Check if any notes are still on
+      local anyNotesOn = 0
+      for i, v in pairs(self.midi_note_mem) do
+        if v.active > 0 then
+          anyNotesOn = 1
+        end
+      end
+      
+      if anyNotesOn == 0 then
+        -- Only place notes when focused
+        if gfx.getchar(65536) & 2 > 0 then
+          local xpos = self.xpos
+          for i, v in pairs(self.midi_note_mem) do
+            local ftype, chan, row = self:getLocation()
+            if v.chan then
+              if self.cfg.velfrommidi == 1 then
+                self:setLastVel(v.vel)
+              end
+              self:placeNote(v.pitch, chan, row)
+              self:tab()
+            end
+          end
+          self.xpos = xpos
+          self:advanceCursor()
+        end
+        self.midi_note_mem = {}
+      end
+    end
+    
+    i = i + 1
+  end
+  -- Make sure we don't process data we've already seen again
+  self.last_midi_seen = first_buf
+end
+
+--[[
+
+    local idx = 1;
+    local xpos = self.xpos
+    for i = 0, notes-1 do
+      channel = reaper.gmem_read(idx);
+      pitch = reaper.gmem_read(idx + 1);
+      velocity = reaper.gmem_read(idx + 2);
+      idx = idx + 4;
+      
+      local ftype, chan, row = self:getLocation()
+      if chan then
+        if self.cfg.velfrommidi == 1 then
+          self:setLastVel(velocity)
+        end
+        self:placeNote(pitch, chan, row)
+        self:tab()
+      end
+]]--
+
 function tracker:move_block(from_x, from_y, width, height, to_x, to_y, action_name)
   local oldx = self.xpos
   local oldy = self.ypos
@@ -9485,6 +9587,10 @@ local function updateLoop()
   
   if tracker.cfg.readfrommidi == 1 then
     tracker:readNotesFromJSFX();
+  end
+  
+  if tracker.cfg.globalMidi == 1 then
+    tracker:readNotesFromQueue();
   end
   
   local modified = 0
