@@ -13,7 +13,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.87
+@version 2.88
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -44,6 +44,8 @@
 
 --[[
  * Changelog:
+ * v2.88 (2022-07-14)
+  + Add time-out to global midi mode (allowing you to correct notes when dropping notes from a chord before committing).
  * v2.87 (2022-06-11)
   + Add direct MIDI input as option for input (this one doesn't rely on recording).
  * v2.86 (2022-06-07)
@@ -777,6 +779,7 @@ tracker.cfg.scrubMode = 0
 tracker.cfg.lastVel = 96
 tracker.cfg.lastVelSample = 1
 tracker.cfg.globalMidi = 0
+tracker.cfg.global_midi_release_timeout = 0.15
 
 tracker.tracker_samples = 0
 tracker.cfg.fixedIndicator = 0
@@ -8904,11 +8907,14 @@ function tracker:readNotesFromQueue()
     end
     
     if (msg_type == note_on) then
-      self.midi_note_mem[ix] = {chan=chan, pitch=pitch, vel=vel, active=1}
+      self.midi_note_mem[ix] = {chan=chan, pitch=pitch, vel=vel, active=1, release_time=0}
     elseif (msg_type == note_off) then
       local table = self.midi_note_mem[ix]
       if table then
-        self.midi_note_mem[ix].active = 0
+        if self.midi_note_mem[ix].active == 1 then
+          self.midi_note_mem[ix].active = 0
+          self.midi_note_mem[ix].release_time = reaper.time_precise()
+        end
       end
       
       -- Check if any notes are still on
@@ -8920,17 +8926,28 @@ function tracker:readNotesFromQueue()
       end
       
       if anyNotesOn == 0 then
+        -- Find the most recent time
+        local max = 0
+        for i, v in pairs(self.midi_note_mem) do
+          if v.release_time > max then
+            max = v.release_time
+          end
+        end
+        
         -- Only place notes when focused
         if gfx.getchar(65536) & 2 > 0 then
           local xpos = self.xpos
           for i, v in pairs(self.midi_note_mem) do
-            local ftype, chan, row = self:getLocation()
-            if v.chan then
-              if self.cfg.velfrommidi == 1 then
-                self:setLastVel(v.vel)
+            -- Only show if it was released recently enough
+            if (max - v.release_time) < self.cfg.global_midi_release_timeout then
+              local ftype, chan, row = self:getLocation()
+              if v.chan then
+                if self.cfg.velfrommidi == 1 then
+                  self:setLastVel(v.vel)
+                end
+                self:placeNote(v.pitch, chan, row)
+                self:tab()
               end
-              self:placeNote(v.pitch, chan, row)
-              self:tab()
             end
           end
           self.xpos = xpos
