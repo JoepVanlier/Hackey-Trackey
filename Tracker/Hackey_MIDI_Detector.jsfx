@@ -13,20 +13,54 @@ out_pin:right output
 @slider
 
 @block
+base_position += samplesblock / srate;
+
 function pushToHT()
+local(maximum_position, noteOut, note_idx, note_ptr, ix)
+global(gmem, note_data, note_count, note_size, num_sent_notes)
 (
-  noteOut = note_data;
-  loop(note_data[]*note_size + 2,
-    gmem[noteOut] = noteOut[];
-    noteOut += 1;
+  maximum_position = 0;
+  
+  note_idx = 0;
+  loop(note_data[],  // First element is note count
+    note_ptr = note_idx * note_size + 1;
+    (note_ptr[4] > maximum_position) ? (
+      maximum_position = note_ptr[4];
+    );
+    note_idx += 1;
   );
+  
+  num_sent_notes = 0;
+  noteOut = 1; // Zeroth gmem is reserved for the size
+  note_idx = 0;
+  loop(note_data[],
+    note_ptr = note_idx * note_size + 1;
+    
+    // Was this note released recently enough?
+    (maximum_position - note_ptr[4]) < 0.15 ? (
+      num_sent_notes += 1;
+      
+      // Write the note to gmem
+      ix = 0;
+      loop(4,  /* Hackey trackey is only expecting the first 4 elements of a note */
+        gmem[noteOut] = note_ptr[ix];
+        noteOut += 1;
+        ix += 1;
+      );
+    );
+    
+    note_idx += 1;
+  );
+  
+  // First element of the gmem stores the number of notes
+  gmem[0] = num_sent_notes;
   note_data[] = 0;
 );
 
 
 note_on  = $x90;
 note_off = $x80;
-note_size = 4;
+note_size = 5;
 note_data = 0; // First element is the note count
 while(midirecv(offset, msg, pitch, vel)) (
   type = msg & 0xf0;
@@ -43,6 +77,7 @@ while(midirecv(offset, msg, pitch, vel)) (
     note_ptr[1] = pitch;
     note_ptr[2] = vel;
     note_ptr[3] = 1;
+    note_ptr[4] = 0;
     note_data[0] += 1;
   );
 
@@ -54,7 +89,10 @@ while(midirecv(offset, msg, pitch, vel)) (
     notePtr = note_data + 1;
     loop(note_count,
       (notePtr[] == chan) && (notePtr[1] == pitch) ? (
-        notePtr[3] = 0;
+        notePtr[3] ? (
+          notePtr[3] = 0;
+          notePtr[4] = base_position + offset / srate;
+        );
       );
       nonFree = nonFree || notePtr[3];      
       notePtr += note_size;
@@ -67,7 +105,8 @@ while(midirecv(offset, msg, pitch, vel)) (
   midisend(offset, msg, pitch, vel);
 );
 
-@gfx
+//@gfx
+/*
   gfx_set(0, 0, 0, 1);
   gfx_rect(0, 0, gfx_w, gfx_h);
   gfx_x = gfx_y = 0;
@@ -75,9 +114,10 @@ while(midirecv(offset, msg, pitch, vel)) (
   notes = note_data[];
   notePtr = note_data;
   loop(notes*note_size + 1,
-    gfx_printf("%d ", notePtr[]);
+    gfx_printf("%f ", notePtr[]);
     notePtr += 1;
   );
   gfx_y += 10;
   gfx_x = 0;
   gfx_printf("%d", nonFree);
+*/

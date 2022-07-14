@@ -13,7 +13,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.88
+@version 2.89
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -44,6 +44,8 @@
 
 --[[
  * Changelog:
+ * v2.89 (2022-07-15)
+  + Add time-out to JSFX-based midi mode (allowing you to correct notes when dropping notes from a chord before committing).
  * v2.88 (2022-07-14)
   + Add time-out to global midi mode (allowing you to correct notes when dropping notes from a chord before committing).
  * v2.87 (2022-06-11)
@@ -567,7 +569,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.87"
+tracker.name = "Hackey Trackey v2.89"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
