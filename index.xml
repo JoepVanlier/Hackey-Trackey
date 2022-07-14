@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="9de563bd2d710410aaa8f28fac080d4bcd31fd96">
+<index version="1" name="Tracker tools" commit="1c1761e84cbe516ea5c32fa56a4b345ccbd681b2">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -1206,6 +1206,17 @@ FF = the full length of the last tick.]]></changelog>
         <source type="effect" file="Hackey_Sample_Playback.jsfx">https://github.com/JoepVanlier/Hackey-Trackey/raw/9de563bd2d710410aaa8f28fac080d4bcd31fd96/Tracker/Hackey_Sample_Playback.jsfx</source>
         <source type="effect" file="htp_midi.jsfx-inc">https://github.com/JoepVanlier/Hackey-Trackey/raw/9de563bd2d710410aaa8f28fac080d4bcd31fd96/Tracker/htp_midi.jsfx-inc</source>
         <source type="effect" file="htp_sample_editor.jsfx-inc">https://github.com/JoepVanlier/Hackey-Trackey/raw/9de563bd2d710410aaa8f28fac080d4bcd31fd96/Tracker/htp_sample_editor.jsfx-inc</source>
+      </version>
+      <version name="2.89" author=": Joep Vanlier" time="2022-07-14T22:59:35Z">
+        <changelog><![CDATA[+ Add time-out to JSFX-based midi mode (allowing you to correct notes when dropping notes from a chord before committing).]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/1c1761e84cbe516ea5c32fa56a4b345ccbd681b2/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/1c1761e84cbe516ea5c32fa56a4b345ccbd681b2/Tracker/tracker.lua</source>
+        <source main="main" file="hackey_trackey_tracker.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/1c1761e84cbe516ea5c32fa56a4b345ccbd681b2/Tracker/hackey_trackey_tracker.lua</source>
+        <source main="main" file="hackey_trackey_load_sample.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/1c1761e84cbe516ea5c32fa56a4b345ccbd681b2/Tracker/hackey_trackey_load_sample.lua</source>
+        <source type="effect" file="Hackey_MIDI_Detector.jsfx">https://github.com/JoepVanlier/Hackey-Trackey/raw/1c1761e84cbe516ea5c32fa56a4b345ccbd681b2/Tracker/Hackey_MIDI_Detector.jsfx</source>
+        <source type="effect" file="Hackey_Sample_Playback.jsfx">https://github.com/JoepVanlier/Hackey-Trackey/raw/1c1761e84cbe516ea5c32fa56a4b345ccbd681b2/Tracker/Hackey_Sample_Playback.jsfx</source>
+        <source type="effect" file="htp_midi.jsfx-inc">https://github.com/JoepVanlier/Hackey-Trackey/raw/1c1761e84cbe516ea5c32fa56a4b345ccbd681b2/Tracker/htp_midi.jsfx-inc</source>
+        <source type="effect" file="htp_sample_editor.jsfx-inc">https://github.com/JoepVanlier/Hackey-Trackey/raw/1c1761e84cbe516ea5c32fa56a4b345ccbd681b2/Tracker/htp_sample_editor.jsfx-inc</source>
       </version>
     </reapack>
   </category>
