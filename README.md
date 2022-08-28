@@ -318,67 +318,92 @@ see them. Note that the status of this can be seen next to the [Rec] button.
 Enable cheesy CRT effect. Works best with Hacker theme.
 
 ## Special keys
-These are just the default key bindings when you download the script. They are optimized 
-for a QWERTY layout. If you wish to change the shortcuts, edit the keys table. If you wish 
-to edit the note keyboard, edit the keys.pitches table. If you wish to know what keystroke 
-particular key has, set printKeys to 1 and start typing. Note that control modifies keystroke 
-values.
+When you first download the script, it will initialize using the default keybindings (which 
+are listed here below for convenience). They are optimized for a QWERTY layout. You can set 
+which key layout to use in the options panel (opened with F11 or CTRL + o in the default) 
+key set.
 
-| Key                   		| Action                                                                |
-|:--------------------------------------|:----------------------------------------------------------------------|
-| Any key on the virtual keyboard 	| Enter a note and advance						|
-| Shift + Key on the virtual keyboard 	| Enter a note go to the next column					|
-| Arrow keys            		| Navigate                                                              |
-| Backspace             		| Delete item and shift rows up                                         |
-| Del                   		| Delete item                                                           |
-| Insert                		| Shift all items down by one                                           |
-| \-                    		| Place note OFF                                                        |
-| ENTER                 		| Start play at cursor position                                         |
-| Space                 		| Start/Stop                                                            |
-| CTRL \+ Z             		| Undo                                                                  |
-| CTRL \+ SHIFT + Z     		| Redo                                                                  |
-| CTRL \+ B             		| Start selection block                                                 |
-| CTRL \+ E             		| End selection block                                                   |
-| SHIFT \+ Del          		| Delete block                                                          |
-| CTRL \+ I 				| Interpolate block							|
-| CTRL \+ X             		| Cut \(To do\)                                                         |
-| CTRL \+ V             		| Paste \(To do\)                                                       |
-| CTRL \+ C             		| Copy \(To do\)                                                        |
-| CTRL \+ /\\           		| Shift current octave up                                               |
-| CTRL \+ \\/           		| Shift current octave down                                             |
-| SHIFT \+ CTRL \+ /\\  		| Switch envelope mode \(FX automation\)                                |
-| SHIFT \+ CTRL \+ \\/  		| Switch envelope mode \(FX automation\)                                |
-| Shift \+ Numpad \+    		| Shift selection up \(e.g. C\-1 \-> C\#1\)                             |
-| Shift \+ Numpad \-    		| Shift selection down                                                  |
-| F1 					| Help 									|
-| F2 					| Decrease output channel						|
-| F3					| Increase output channel 						|
-| F4 					| Decrease advance amount						|
-| F5					| Increase advance amount						|
-| F8					| Stop playing								|
-| F11 					| Options screen (theme etc) 						|
-| F12 					| MIDI Panic (stop all notes) 						|
-| CTRL \+ L 				| Set loop to pattern bounds						|
-| CTRL \+ Q 				| Set loop start before current row					|
-| CTRL \+ W 				| Set loop end after current row					|
-| CTRL \+ ALT + Up 			| Increase row resolution 						|
-| CTRL \+ ALT + Down 			| Decrease row resolution 						|
-| CTRL \+ ALT + Enter 			| Commit row resolution (WARNING: Destructive)	 			|
-| CTRL \+ -> 				| Next MIDI item on track 						|
-| CTRL \+ <-				| Previous MIDI item on track 						|
-| CTRL \+ D				| Duplicate MIDI item							|
-| CTRL \+ N				| Rename MIDI Item    							|
-| CTRL \+ R				| Arm (plays notes)							|
-| CTRL \+ \+/\- 			| Enable/disable advanced options for this column 			|
-| CTRL \+ Shift \+ \+/\-		| Add CC column (only possible when in advanced mode for CC programming |
-| 					| 									|
-| Harmony Helper keys			|									|
-| F9 					| Open harmony helper 							|
-| CTRL + Click chord			| Insert chord at current position					|
-| ALT + Click chord			| Invert first note of chord 						|
-| SHIFT + Click chord			| Invert second note of chord 						|
-| Shift \+ CTRL \+ ALT \+ Numpad \+ 	| Shift root note up \(e.g. C\-1 \-> C\#1\)                             |
-| Shift \+ CTRL \+ ALT \+ Numpad \- 	| Shift root note down                                         	        |
+The keybindings in the default set are. Note that you can always look these up in the tracker 
+by pressing F1.
+
+| Key                   		            | Action                                                    |
+|:--------------------------------------|:----------------------------------------------------------|
+| Any key on the virtual keyboard 	    | Enter a note and advance						                      |
+| Shift + Key on the virtual keyboard 	| Enter a note go to the next column					              |
+| Arrow keys            		            | Navigate                                                  |
+| Backspace             		            | Delete item and shift rows up                             |
+| Del or .               		            | Delete item                                               |
+| Insert                		            | Shift all items down by one                               |
+| \-                    		            | Place note OFF                                            |
+| CTRL + ENTER           		            | Start play at cursor position                             |
+| Space                 		            | Start/Stop                                                |
+| CTRL \+ Z             		            | Undo                                                      |
+| CTRL \+ SHIFT \+ Z     		            | Redo                                                      |
+| CTRL \+ B             		            | Start selection block                                     |
+| CTRL \+ E             		            | End selection block                                       |
+| SHIFT \+ Arrow keys                   | Make selection                                            |
+| SHIFT \+ Del          		            | Delete block                                              |
+| CTRL \+ I 				                    | Interpolate block							                            |
+| CTRL \+ X             		            | Cut                                                       |
+| CTRL \+ V             		            | Paste                                                     |
+| CTRL \+ C             		            | Copy                                                      |
+| Shift \+ Numpad \+    		            | Shift selection up \(e.g. C\-1 \-> C\#1\)                 |
+| Shift \+ Numpad \-    		            | Shift selection down                                      |
+| CTRL \+ /\\           		            | Shift current octave up                                   |
+| CTRL \+ \\/           		            | Shift current octave down                                 |
+| SHIFT \+ CTRL \+ /\\  		            | Switch envelope mode \(FX automation\)                    |
+| SHIFT \+ CTRL \+ \\/  		            | Switch envelope mode \(FX automation\)                    |
+| SHIFT \+ ALT \+ /\\ 			            | Increase row resolution 						                      |
+| SHIFT \+ ALT \+ \\/ 			            | Decrease row resolution 						                      |
+| SHIFT \+ ALT + Enter 			            | Commit row resolution (WARNING: Destructive)	 			      |
+| F1 					                          | Help 									                                    |
+| F2 					                          | Decrease output channel					                        	|
+| F3					                          | Increase output channel 			                       			|
+| F4 					                          | Decrease advance amount				                        		|
+| F5			                           		| Increase advance amount				                        		|
+| F8			                           		| Stop playing							                              	|
+| F10                                   | Show / hide note names                                    |
+| F11 			                         		| Options screen (theme etc) 			                     			|
+| F12 				                         	| MIDI Panic (stop all notes) 		                  				|
+| CTRL \+ L 		                     		| Set loop to pattern bounds						                    |
+| CTRL \+ Q 	      			              | Set loop start before current row					                |
+| CTRL \+ W 				                    | Set loop end after current row					                  |
+| CTRL \+ -> 				                    | Next MIDI item on track 						                      |
+| CTRL \+ <-				                    | Previous MIDI item on track 						                  |
+| CTRL \+ SHIFT \+ -> 				          | Next track 						                                    |
+| CTRL \+ SHIFT \+ <-				            | Previous track 						                                |
+| CTRL \+ D				                      | Duplicate MIDI item						                          	|
+| CTRL \+ N				                      | Rename MIDI Item    					                        		|
+| CTRL \+ R			                       	| Arm (plays notes)						                            	|
+| CTRL \+ \+/\- 			                  | Enable/disable advanced options for this column 		    	|
+| CTRL \+ Shift \+ \+/\-		            | Add CC column (only available in advanced CC mode)        |
+| CTRL \+ Shift \+ A/P   		            | Per channel CC or PC (only available in advanced mode)    |
+| CTRL \+ Shift \+ Click row indicator  | Change how rows are highlighted (for different metres)    |
+| CTRL \+ S                             | Toggle column solo                                        |
+| CTRL \+ M                             | Toggle column mute                                        |
+| CTRL \+ T                             | Toggle advance to next note mode                          |
+| 					                            | 									                                        |
+| Harmony Helper keys			              |									                                          |
+| F9 					                          | Open harmony helper 							                        |
+| CTRL + Click chord			              | Insert chord at current position					                |
+| ALT + Click chord			                | Invert first note of chord 						                    |
+| SHIFT + Click chord			              | Invert second note of chord 						                  |
+| Shift \+ CTRL \+ ALT \+ Numpad \+ 	  | Shift root note up \(e.g. C\-1 \-> C\#1\)                 |
+| Shift \+ CTRL \+ ALT \+ Numpad \- 	  | Shift root note down                                      |
+
+## Custom keybindings
+If these keys do not suffice for your purposes, you can add custom keybindings in a file 
+which was created on disk the first time you loaded the tracker. This file can be found in 
+the folder where Hackey Trackey was installed. If installed via Reapack, this will be:
+
+%APPDATA%\reaper\scripts\Tracker tools\tracker\userkeys.lua (Windows)
+$HOME/Library/Application Support/REAPER/Scripts (Mac OS X)
+
+If you wish to know what keystroke particular key has, set printKeys to 1 and start typing. 
+Note that control modifies keystroke values.
+
+Alternatively, you could also just edit the script and edit the keys table, but future updates 
+of the script, would then overwrite your new keys.
 
 ## Feature requests
 Feature requests are always welcome, preferably with an idea of how to achieve it 
