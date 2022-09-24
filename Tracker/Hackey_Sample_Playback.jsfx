@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.59
+version: 0.61
 author: Joep Vanlier
-changelog: Add undo for sample editor (CTRL + Z). Note only a single action can be undone!
+changelog: Add reverse effect (60 (hex) / 96 (decimal)). Add option to bring up effect list with F1.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -40,13 +40,16 @@ about:
   09 - Set offset
     Unlike the classic Protracker, this sets offset as fraction of the sample length.
     Since 7F (127) is the maximum in MIDI; 40 is the middle of the sample, 20 1/4th etc.
-  0A - Apreggiator
+  0A - Arpeggiator
     Arpeggiate. X and Y are note offsets in semitones. 0 continues previous value.
   0B - Retrigger
     Retrigger note.
     X - Volume reduction per trigger
     Y - Retrigger count
   0C - Sample probability
+  60 - Reverse
+    Reverses playhead if effect value is 00.
+    Returns to forward 
     
 
 options:gmem=saike_HT_sample
@@ -307,34 +310,40 @@ local(frac, ism1, is0, is1, is2, id0, id1, id2, id3)
   
   frac = position - floor(position);
   
-  eco = 1;
-  eco ? (
-    read_ptr = start_ptr + 2 * floor(position) - 2;
-    outL = (read_ptr[] * (1.0 - frac) + frac * read_ptr[2]);
-    outR = (read_ptr[1] * (1.0 - frac) + frac * read_ptr[3]);
+  position > 1 ? (
+    eco = 1;
+    eco ? (
+      read_ptr = start_ptr + 2 * floor(position) - 2;
+      outL = (read_ptr[] * (1.0 - frac) + frac * read_ptr[2]);
+      outR = (read_ptr[1] * (1.0 - frac) + frac * read_ptr[3]);
+    ) : (
+      read_ptr = start_ptr + 2 * floor(position) - 8;
+      ism1 = read_ptr[];
+      is0 = read_ptr[2];
+      is1 = read_ptr[4];
+      is2 = read_ptr[6];
+      
+      id0 = is0;
+      id1 = 0.5*(is1 - ism1);
+      id2 = ism1 - 2.5*is0 + 2*is1 - 0.5*is2;
+      id3 = 0.5*(is2 - ism1) + 1.5 * (is0 - is1);
+      outL = ((id3*frac+id2)*frac+id1)*frac+id0;
+      
+      ism1 = read_ptr[1];
+      is0 = read_ptr[3];
+      is1 = read_ptr[5];
+      is2 = read_ptr[7];
+      
+      id0 = is0;
+      id1 = 0.5*(is1 - ism1);
+      id2 = ism1 - 2.5*is0 + 2*is1 - 0.5*is2;
+      id3 = 0.5*(is2 - ism1) + 1.5 * (is0 - is1);
+      outR = ((id3*frac+id2)*frac+id1)*frac+id0;
+    );
   ) : (
-    read_ptr = start_ptr + 2 * floor(position) - 8;
-    ism1 = read_ptr[];
-    is0 = read_ptr[2];
-    is1 = read_ptr[4];
-    is2 = read_ptr[6];
-    
-    id0 = is0;
-    id1 = 0.5*(is1 - ism1);
-    id2 = ism1 - 2.5*is0 + 2*is1 - 0.5*is2;
-    id3 = 0.5*(is2 - ism1) + 1.5 * (is0 - is1);
-    outL = ((id3*frac+id2)*frac+id1)*frac+id0;
-    
-    ism1 = read_ptr[1];
-    is0 = read_ptr[3];
-    is1 = read_ptr[5];
-    is2 = read_ptr[7];
-    
-    id0 = is0;
-    id1 = 0.5*(is1 - ism1);
-    id2 = ism1 - 2.5*is0 + 2*is1 - 0.5*is2;
-    id3 = 0.5*(is2 - ism1) + 1.5 * (is0 - is1);
-    outR = ((id3*frac+id2)*frac+id1)*frac+id0;
+    /* Gentle fade */
+    outL *= 0.9995;
+    outR *= 0.9995;
   );
   
   outL *= fade_level;
@@ -438,6 +447,9 @@ local(vol_change,
   /* If no effect value is set, don't use one */
   (effect_value == -1) ? effect = -1;
 
+  // Start from end of sample if we are dealing with a reverse on a note start.
+  (effect == 96 && effect_value == 0) ? offset = 1;
+
   (effect == 9) ? (offset = effect_value / 127;);
   
   // Glide disables the note on and off. See note on got_note above.
@@ -525,6 +537,22 @@ local(vol_change,
       this.play1.portamento_ds = portamento_ds;
     );
     last_porta = effect_value;
+  );
+  
+  (effect == 96) ? (
+    (current_playback == 0) ? (
+      (effect_value == 0) ? (
+        this.play0.speed = - abs(this.play0.speed);
+      ) : (
+        this.play0.speed = abs(this.play0.speed);
+      );
+    ) : (
+      (effect_value == 0) ? (
+        this.play1.speed = - abs(this.play1.speed);
+      ) : (
+        this.play1.speed = abs(this.play1.speed);
+      );
+    );
   );
   
   // Arpeggiator
@@ -1062,6 +1090,56 @@ sample_data_gfx_finalize();
 
 handle_mouse_sample_handler();
 
+(current_char == 26161) && (last_char != current_char) ? show_hints = 1 - show_hints;
+
+show_hints ? (
+gfx_setfont(10, "Arial", floor(gfx_h / 40));
+str = 
+"Effect List
+  
+  01 - Portamento up
+  02 - Portamento down
+    Note that the portamento's behave different from Protracker. In PT you directly
+    perform the portamento based on the period of the signal. Portamento is updated
+    every N times per row (ticks).
+    Here, the portamento slides continuously and the amount is specified in 
+    eigth semitones. This means that 08 is 1 semitone. 10 is 2, etc.
+    00 continues the last portamento.
+  03 - Glide
+    Glide to note. Glide speed is specified in 1/16th notes.
+    00 Continues a previous glide.
+  04 - Vibrato
+    X is pitch depth (value from 0 to 7). They are given in seventh semitones.
+    Y is speed (value from 0 to F).
+      Continue, 128, 64, 32, 24, 16, 12, 8, 6, 5, 4, 3, 2, 1, 0.25, 0.125
+    0 continues the previous value.
+  08 - Panning
+    Panning.
+  09 - Set offset
+    Unlike the classic Protracker, this sets offset as fraction of the sample length.
+    Since 7F (127) is the maximum in MIDI; 40 is the middle of the sample, 20 1/4th etc.
+  0A - Arpeggiator
+    Arpeggiate. X and Y are note offsets in semitones. 0 continues previous value.
+  0B - Retrigger
+    Retrigger note.
+    X - Volume reduction per trigger
+    Y - Retrigger count
+  0C - Sample probability
+  60 - Reverse
+    Reverses playhead if effect value is 00.
+    Returns to forward 
+";
+bx = by = 10;
+gfx_measurestr(str, ww, hh);
+gfx_set(0, 0, 0, 0.9);
+gfx_rect(bx, by, ww + 2 * bx, hh + 2 * by);
+gfx_set(1, 1, 1, 1);
+gfx_x = 2 * bx;
+gfx_y = 2 * by;
+gfx_printf(str);
+);
+
+last_char = current_char;
 
 /*
 gfx_x = gfx_y = 0;
