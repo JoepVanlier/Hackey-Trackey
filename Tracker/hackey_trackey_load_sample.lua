@@ -61,7 +61,7 @@ function transfer_take()
         reaper.gmem_write(gmem_ptr, 1337)
         gmem_ptr = gmem_ptr + 1
         
-        name = name:match("[\\]([^\\]+)%.(%w+)$")
+        name = name:match("[\\/]([^\\/]+)%.(%w+)$")
         for char in name:gmatch('.') do
           reaper.gmem_write(gmem_ptr, string.byte(char))
           gmem_ptr = gmem_ptr + 1

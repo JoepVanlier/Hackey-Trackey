@@ -13,7 +13,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.89
+@version 2.91
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -44,6 +44,10 @@
 
 --[[
  * Changelog:
+ * v2.91 (2022-09-24)
+  + Bugfix load_sample script for linux/mac users.
+ * v2.90 (2022-08-28)
+  + Improved consistency key descriptions.
  * v2.89 (2022-07-15)
   + Add time-out to JSFX-based midi mode (allowing you to correct notes when dropping notes from a chord before committing).
  * v2.88 (2022-07-14)
