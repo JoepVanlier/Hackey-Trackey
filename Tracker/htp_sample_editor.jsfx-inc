@@ -198,41 +198,57 @@ local(offset, buf) (
     ) : 0;
   );
   strcpy_substr(string_buffer, buf, 0, offset);
+  cidx + 1
 );
 
 function handle_gmem_imports()
 global(gmem, samplelocs, selected_sample, ref_note,
        MAX_SAMPLE_DURATION, SAMPLE_SIZE, SAMPLE_HEADER, SAMPLE_NAMES,
-       critical_error, reset_zoom)
-local(sample_gmem_length, sample_location, cidx, ptr, validate)
+       critical_error, reset_zoom, readout, N_SAMPLES)
+local(sample_gmem_length, sample_location, cidx, ptr, validate, num_samples, old_loc, sample_end)
 (
   sample_location = samplelocs;
-
-  /* Has the user run the sample dropping script? */
-  sample_gmem_length = gmem[];
-  (sample_gmem_length > 0) ? (
-    memset(sample_location[selected_sample], 0, SAMPLE_SIZE);
+  
+  (gmem[] == 72453) ? (
     gmem[] = 0;
-    sample_location[selected_sample][0] = min(sample_gmem_length, MAX_SAMPLE_DURATION);
-    sample_location[selected_sample][1] = gmem[1];  // Sample rate
-    sample_location[selected_sample][2] = ref_note; // Reference pitch
-    sample_location[selected_sample][3] = -1;       // Loop start (in position; raw sample pos/2)
-    sample_location[selected_sample][4] = -1;       // Loop end (in position; raw sample pos/2)
-    sample_location[selected_sample][5] = 0;        // Bi-directional?
-    //memcpy(sample_location[selected_sample] + SAMPLE_HEADER, gmem + 1, sample_gmem_length);
-    ptr = sample_location[selected_sample] + SAMPLE_HEADER;
-    cidx = SAMPLE_HEADER;
-    loop(sample_gmem_length,
-      (cidx < MAX_SAMPLE_DURATION) ? ptr[] = gmem[cidx];
-      ptr += 1;
-      cidx += 1;
-    );
-    validate = gmem[cidx];
-    critical_error = critical_error || (validate != 1337);
-    cidx += 1;
-    readstr_from_gmem(SAMPLE_NAMES + selected_sample, cidx);
+    num_samples = gmem[1];
+    cidx =  2;
+    old_loc = selected_sample;
     
-    reset_zoom = 1;
+    loop(num_samples,
+      /* Has the user run the sample dropping script? */
+      sample_gmem_length = gmem[cidx];
+      (sample_gmem_length > 0) ? (
+        (selected_sample < N_SAMPLES) ? (
+          memset(sample_location[selected_sample], 0, SAMPLE_SIZE);
+          gmem[cidx] = 0;
+          sample_location[selected_sample][0] = min(sample_gmem_length, MAX_SAMPLE_DURATION);
+          sample_location[selected_sample][1] = gmem[cidx + 1];  // Sample rate
+          sample_location[selected_sample][2] = ref_note;        // Reference pitch
+          sample_location[selected_sample][3] = -1;              // Loop start (in position; raw sample pos/2)
+          sample_location[selected_sample][4] = -1;              // Loop end (in position; raw sample pos/2)
+          sample_location[selected_sample][5] = 0;               // Bi-directional?
+          //memcpy(sample_location[selected_sample] + SAMPLE_HEADER, gmem + 1, sample_gmem_length);
+          ptr = sample_location[selected_sample] + SAMPLE_HEADER;
+          cidx += SAMPLE_HEADER;
+          sample_end = ptr + MAX_SAMPLE_DURATION - 2;
+          
+          loop(sample_gmem_length,
+            (ptr < sample_end) ? ptr[] = gmem[cidx];
+            ptr += 1;
+            cidx += 1;
+          );
+          validate = gmem[cidx];
+          critical_error = critical_error || (validate != 1337);
+          cidx += 1;
+          cidx = readstr_from_gmem(SAMPLE_NAMES + selected_sample, cidx);
+          selected_sample = selected_sample + 1;
+          reset_zoom = 1;
+        );
+      );
+    );
+    
+    selected_sample = old_loc;
   );
 );
 

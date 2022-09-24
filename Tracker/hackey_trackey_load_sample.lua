@@ -4,9 +4,11 @@
 
 SAMPLE_HEADER = 64;
 SAMPLE_SIZE = 32768 * 16;
+nSamples = 0;
 
-function transfer_take()
-  local mediaItem = reaper.GetSelectedMediaItem(0, 0);
+function transfer_take(gmem_start, ix)
+  local mediaItem = reaper.GetSelectedMediaItem(0, ix);
+  local gmem_ptr = gmem_start
   if reaper.ValidatePtr(mediaItem, "MediaItem*") then
     local take = reaper.GetActiveTake(mediaItem)
     if reaper.ValidatePtr(take, "MediaItem_Take*") then
@@ -31,10 +33,8 @@ function transfer_take()
         local remaining = len
         local blockSize = 4096
         
-        reaper.gmem_attach('saike_HT_sample')
-        
         local samplebuffer = reaper.new_array(blockSize * nChannels)
-        local gmem_ptr = SAMPLE_HEADER
+        gmem_ptr = gmem_ptr + SAMPLE_HEADER
         for idx=0,math.floor(len/blockSize) do
           reaper.GetAudioAccessorSamples(accessor, srate, nChannels, start + idx * blockSize / srate, blockSize, samplebuffer)
           
@@ -54,11 +54,11 @@ function transfer_take()
           
           remaining = remaining - blockSize;
         end
-         
-        reaper.gmem_write(0, len * 2);
-        reaper.gmem_write(1, srate);
+        reaper.gmem_write(gmem_start, len * 2);
+        reaper.gmem_write(gmem_start + 1, srate);
         
         reaper.gmem_write(gmem_ptr, 1337)
+        nSamples = nSamples + 1;
         gmem_ptr = gmem_ptr + 1
         
         name = name:match("[\\/]([^\\/]+)%.(%w+)$")
@@ -70,6 +70,16 @@ function transfer_take()
       end
     end
   end
+  
+  return gmem_ptr + 1
 end
 
-transfer_take()
+
+reaper.gmem_attach('saike_HT_sample')
+local gmem_start = 2
+for ix = 0, reaper.CountSelectedMediaItems(0) - 1 do
+  gmem_start = transfer_take(gmem_start, ix)
+end
+reaper.gmem_write(0, 72453);
+reaper.gmem_write(1, nSamples);
+

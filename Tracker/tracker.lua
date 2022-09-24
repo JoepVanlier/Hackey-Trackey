@@ -13,7 +13,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.91
+@version 2.92
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -44,6 +44,8 @@
 
 --[[
  * Changelog:
+ * v2.92 (2022-09-24)
+  + Allow loading multiple samples at once with load_sample.
  * v2.91 (2022-09-24)
   + Bugfix load_sample script for linux/mac users.
  * v2.90 (2022-08-28)

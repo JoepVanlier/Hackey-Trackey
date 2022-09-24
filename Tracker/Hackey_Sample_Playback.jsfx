@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.57
+version: 0.58
 author: Joep Vanlier
-changelog: Fix bug that could lead to clicks when going from bidi loop to non looping. Fix bug that could allow sample to go past end.
+changelog: Allow loading multiple samples at once with loadsample.
 license: MIT
 about:
   # Hackey Tracker Sampler
