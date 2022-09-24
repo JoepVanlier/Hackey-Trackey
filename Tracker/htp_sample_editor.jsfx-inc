@@ -618,6 +618,27 @@ local(length_in_samples, ptr, len, step, ww, hh, fine, SAMPLE_NAME_STR)
   gfx_printf(SAMPLE_NAME_STR);
 );
 
+function make_undo_point(selected_sample)
+local()
+global(sample_locs, undo_memory, SAMPLE_SIZE)
+(
+  undo_memory[0] = 1337;
+  undo_memory[1] = selected_sample;
+  memcpy(undo_memory + 64, sample_locs[selected_sample], SAMPLE_SIZE);
+);
+
+function undo_sample_action()
+local(selected_sample)
+global(sample_locs, undo_memory, SAMPLE_SIZE, nothing_in_memory)
+(
+  (undo_memory[] == 1337) ? (
+    selected_sample = undo_memory[1];
+    memcpy(sample_locs[selected_sample], undo_memory + 64, SAMPLE_SIZE);
+  ) : (
+    nothing_in_memory = 1;
+  );
+);
+
 function draw_sample_big(cx, cy, ww, hh, reset_zoom)
 instance(sample_start, sample_len,
          disp_range_start, disp_range_len,
@@ -632,6 +653,11 @@ global(samplelocs, selected_sample, SAMPLE_NAMES, SAMPLE_HEADER, SAMPLE_DURATION
   draw_box(cx, cy, ww, hh);
   draw_waveform(cx, cy, ww, 0.5 * hh, disp_range_start, disp_range_len);
   draw_waveform(cx, cy + 0.5 * hh, ww, 0.5 * hh, disp_range_start + 1, disp_range_len);
+  
+  ((current_char == 26) && (mouse_cap == 4)) ? (
+    undo_sample_action(selected_sample);
+    updated_loop = 1;
+  );
   
   // Loop points
   (samplelocs[selected_sample][3] > -1) ? (
@@ -680,11 +706,13 @@ global(samplelocs, selected_sample, SAMPLE_NAMES, SAMPLE_HEADER, SAMPLE_DURATION
   // Delete
   (current_char == 6579564) ? (
     ( (block_start == 0) && (block_end == 0) ) ? (
+      make_undo_point(selected_sample);
       memset(samplelocs[selected_sample], 0, SAMPLE_HEADER + SAMPLE_DURATION);
       sprintf(SAMPLE_NAMES + selected_sample, "");
 
       reset_zoom = 1;
     ) : (
+      make_undo_point(selected_sample);
       left = min(block_start, block_end);
       right = max(block_start, block_end);
       
@@ -737,23 +765,30 @@ global(samplelocs, selected_sample, SAMPLE_NAMES, SAMPLE_HEADER, SAMPLE_DURATION
     ) : (
       menu_selection = gfx_showmenu("Zoom|Reset Zoom||Set loop|Set loop (bidirectional)|Remove loop||Reverse (Ctrl + R)||Fade in|Fade out||Crop to selection||Copy (Ctrl + C)|Paste (Ctrl + V)|Cut (Ctrl + X)||Normalize");
     );
+    
     (menu_selection == 1) ? (
       disp_range_len = max(10, abs(block_end - block_start));
       disp_range_start = min(block_start, block_end);
     ) : (menu_selection == 2) ? (
       reset_zoom = 1;
     ) : ((menu_selection == 3) || (menu_selection == 4)) ? (
+      make_undo_point(selected_sample);
       samplelocs[selected_sample][3] = floor(0.5 * max(2, left - sample_start));    // Loop start
       samplelocs[selected_sample][4] = floor(0.5 * (right - sample_start));   // Loop end
       samplelocs[selected_sample][5] = (menu_selection == 3) ? 0 : 1;         // Bi-directional?
       updated_loop = 1;
     ) : (menu_selection == 5) ? (
+      make_undo_point(selected_sample);
       samplelocs[selected_sample][3] = -1;
     ) : (menu_selection == 6) ? (
+      make_undo_point(selected_sample);
       reverse(left, right);
     ) : ( ( menu_selection == 7 ) || ( menu_selection == 8 ) ) ? (
+      make_undo_point(selected_sample);
       fade(left, right, menu_selection == 7);
     ) : (menu_selection == 9) ? (
+      make_undo_point(selected_sample);
+      
       // Crop to selection
       memcpy(sample_start, left, right - left);
       memset(sample_start + sample_len - (right - left), 0, right - left);
@@ -767,12 +802,15 @@ global(samplelocs, selected_sample, SAMPLE_NAMES, SAMPLE_HEADER, SAMPLE_DURATION
     ) : (menu_selection == 10) ? (
       copy(samplelocs[selected_sample], left, right);
     ) : (menu_selection == 11) ? (
+      make_undo_point(selected_sample);
+      
       paste(samplelocs[selected_sample]);
       reset_zoom = 1;
     ) : (menu_selection == 12) ? (
       copy(samplelocs[selected_sample], left, right);
       this.delete(selected_sample, left, right);
     ) : (menu_selection == 13) ? (
+      make_undo_point(selected_sample);
       normalize(sample_start, sample_len);
     );
   );

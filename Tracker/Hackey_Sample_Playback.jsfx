@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.58
+version: 0.59
 author: Joep Vanlier
-changelog: Allow loading multiple samples at once with loadsample.
+changelog: Add undo for sample editor (CTRL + Z). Note only a single action can be undone!
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -731,6 +731,7 @@ loop(N_SAMPLES,
 
 freemem = (scratchloc = freemem) + SAMPLE_SIZE;
 freemem = (copyloc = freemem) + SAMPLE_SIZE;
+freemem = (undo_memory = freemem) + SAMPLE_SIZE + 64;
 
 freemem = (midimem = freemem) + 32768;
 midi.initializeMIDI(midimem, 1, 1);
