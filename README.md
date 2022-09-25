@@ -258,13 +258,18 @@ The effects available are the following:
   09 - Set offset
     Unlike the classic Protracker, this sets offset as fraction of the sample length.
     Since 7F (127) is the maximum in MIDI; 40 is the middle of the sample, 20 1/4th etc.
-  0A - Apreggiator
+  0A - Arpeggiator
     Arpeggiate. X and Y are note offsets in semitones. 0 continues previous value.
   0B - Retrigger
     Retrigger note.
     X - Volume reduction per trigger
     Y - Retrigger count
   0C - Sample probability
+  60 - Reverse
+    Reverses playhead if effect value is 00. Note that if this effect is applied on a 
+    note start, it plays the sample from the end. If the effect is started from anywhere 
+    else, it will simply reverse the playhead. When the effect is used with 01, hackey 
+    tracker playback will return to forward playing.
 ```
 
 Loading samples into the hackey trackey playback module can be done in two ways. They 
