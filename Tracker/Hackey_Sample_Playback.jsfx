@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.61
+version: 0.62
 author: Joep Vanlier
-changelog: Add reverse effect (60 (hex) / 96 (decimal)). Add option to bring up effect list with F1.
+changelog: Small fixup docstring.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -48,8 +48,10 @@ about:
     Y - Retrigger count
   0C - Sample probability
   60 - Reverse
-    Reverses playhead if effect value is 00.
-    Returns to forward 
+    Reverses playhead if effect value is 00. Note that if this effect is applied on a 
+    note start, it plays the sample from the end. If the effect is started from anywhere 
+    else, it will simply reverse the playhead. When the effect is used with 01, hackey 
+    tracker playback will return to forward playing.
     
 
 options:gmem=saike_HT_sample
@@ -1126,8 +1128,10 @@ str =
     Y - Retrigger count
   0C - Sample probability
   60 - Reverse
-    Reverses playhead if effect value is 00.
-    Returns to forward 
+    Reverses playhead if effect value is 00. Note that if this effect is applied on a 
+    note start, it plays the sample from the end. If the effect is started from anywhere 
+    else, it will simply reverse the playhead. When the effect is used with 01, hackey 
+    tracker playback will return to forward playing.
 ";
 bx = by = 10;
 gfx_measurestr(str, ww, hh);

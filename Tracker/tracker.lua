@@ -13,7 +13,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.94
+@version 2.95
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -44,6 +44,8 @@
 
 --[[
  * Changelog:
+ * v2.95 (2022-09-25)
+  + Fixup documentation reverse effect.
  * v2.94 (2022-09-25)
   + Added reverse playback effect for hackey trackey playback.
   + Added option to bring up effect list with F1.
@@ -580,7 +582,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.94"
+tracker.name = "Hackey Trackey v2.95"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
