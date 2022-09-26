@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.62
+version: 0.63
 author: Joep Vanlier
-changelog: Small fixup docstring.
+changelog: Add option to control which sample is played via note number instead of through volume. Fix play marker leaving sample box on the left.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -99,18 +99,14 @@ options:maxmem=34000000
 slider1:tracker=0<0,1,1{Buzz,Renoise}>-Key mapping
 slider2:kb_layout=0<0,2,1{QWERTY,QWERTZ,AZERTY}>-Keyboard layout
 slider3:multi_out=0<0,1,{Off,On}>-Multi-Out
+slider4:select_by_notes=0<0,1,{Off,On}>-Choose sample by note
+
 
 @init
 init_sample_data_defaults();
 
 font_color_r = font_color_g = font_color_b = 0.8;
 font_color_a = 1.0;
-
-SAMPLE_FONT = 5;
-TINY_FONT = 6;
-gfx_setfont(TINY_FONT, "Arial", 12);
-BIG_FONT = 7;
-gfx_setfont(BIG_FONT, "Arial", 18);
 
 waveform_r = .3;
 waveform_g = .4;
@@ -667,12 +663,18 @@ local()
 function handle_message(msg1, msg2, msg3)
 instance(vol, effect, effect_value)
 local(cc_msg)
-global(N_SAMPLES)
+global(N_SAMPLES, select_by_notes)
 (
   (msg1>$x8F && msg1<$xA0 && msg3!=0) ? (
     // Note on?
-    (msg3 < N_SAMPLES) ? (
-      this.schedule_note(msg3 - 1, msg2); /* msg3 = velocity which serves as note now ; msg2 is pitch */
+    select_by_notes ? (
+      (msg2 - 60) < N_SAMPLES ? (
+        this.schedule_note(msg2 - 60, 69);
+      )
+    ) : (
+      (msg3 < N_SAMPLES) ? (
+        this.schedule_note(msg3 - 1, msg2); /* msg3 = velocity which serves as note now ; msg2 is pitch */
+      );
     );
   ) : ( (msg1>$x7F && msg1<$x90) || (msg1>$x89&&msg1<$xA0 && msg3==0 ) ) ? (
     // Note off
@@ -933,6 +935,12 @@ multi_out ? (
 );
 
 @gfx
+SAMPLE_FONT = 5;
+TINY_FONT = 6;
+gfx_setfont(TINY_FONT, "Arial", 12);
+BIG_FONT = 7;
+gfx_setfont(BIG_FONT, "Arial", 18);
+
 handle_dropped_files();
 current_char = gfx_getchar();
 handle_gmem_imports();
@@ -944,13 +952,13 @@ global(TINY_FONT, last_cap, mouse_cap, captured,
 (
   bw = 30;
   bh = 15;
-  control_rect(x, y + h - bh, bw, bh, 0.04, 0.07, 0.03, 1.0, TINY_FONT, "Play") ? (
+  control_rect(x, y + h - bh, bw, bh, 0.04, 0.07, 0.03, 1.0, TINY_FONT, "Play", 0) ? (
     ((last_cap & 1) == 0) && (mouse_cap & 1) && !captured ? (
       preview_channel.play_sample(idx, 69, 0);
     );
   );
     
-  control_rect(x + bw, y + h - bh, bw, bh, 0.07, 0.04, 0.03, 1.0, TINY_FONT, "Stop") ? (
+  control_rect(x + bw, y + h - bh, bw, bh, 0.07, 0.04, 0.03, 1.0, TINY_FONT, "Stop", 0) ? (
     ((last_cap & 1) == 0) && (mouse_cap & 1) && !captured ? (
       preview_channel.stop_sample();
     );
@@ -1060,11 +1068,11 @@ global(samplelocs)
 instance(sample_idx, current_playback, play0, play1)
 (
   (current_playback == 0) ? (
-    play0.playing ? (
+    play0.playing && (play0.position > 0) ? (
       draw_playmarker(sample_idx, 2 * play0.position / samplelocs[sample_idx][]);
     );
   ) : (
-    play1.playing ? (
+    play1.playing && (play1.position > 0) ? (
       draw_playmarker(sample_idx, 2 * play1.position / samplelocs[sample_idx][]);      
     );
   );
@@ -1151,4 +1159,8 @@ gfx_set(1, 1, 1, 1);
 gfx_printf(DROPPED_FILE_STR);
 */
 
+hinter.drawhint();
+old_time = new_time;
+new_time = time_precise();
+delta_time = new_time - old_time;
 

@@ -13,7 +13,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.95
+@version 2.96
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -44,6 +44,9 @@
 
 --[[
  * Changelog:
+ * v2.96 (2022-09-26)
+  + Add feature to Hackey Trackey Sample Playback to control which sample is played via note number instead of through volume.
+  + Add option to hide velocity channel.
  * v2.95 (2022-09-25)
   + Fixup documentation reverse effect.
  * v2.94 (2022-09-25)
@@ -582,7 +585,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.95"
+tracker.name = "Hackey Trackey v2.96"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -795,6 +798,7 @@ tracker.cfg.lastVel = 96
 tracker.cfg.lastVelSample = 1
 tracker.cfg.globalMidi = 0
 tracker.cfg.global_midi_release_timeout = 0.15
+tracker.cfg.hideVelocity = 0
 
 tracker.tracker_samples = 0
 tracker.cfg.fixedIndicator = 0
@@ -840,6 +844,7 @@ tracker.binaryOptions = {
     { 'undoForReassignment', 'Add undo pt for col reassignment' },
     { 'releaseNoteOffs', 'Emit note off on release' },
     { 'scrubMode', 'Recording acts as scrub mode (plays notes)' },
+    { 'hideVelocity', 'Hide velocity column' },
     }
 
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2", "sink"}
@@ -2370,37 +2375,47 @@ function tracker:linkData()
     hints[#hints+1]         = string.format('Note channel %2d', j)
 
     -- Link up the velocity fields
-    master[#master+1]       = 0
-    datafield[#datafield+1] = 'vel1'
-    idx[#idx+1]             = j
-    colsizes[#colsizes + 1] = 1
-    padsizes[#padsizes + 1] = 0
-    if ( self.selectionBehavior == 1 ) then
-      grouplink[#grouplink+1] = {-1, 1}
+    if self.cfg.hideVelocity == 0 then
+      master[#master+1]       = 0
+      datafield[#datafield+1] = 'vel1'
+      idx[#idx+1]             = j
+      colsizes[#colsizes + 1] = 1
+      padsizes[#padsizes + 1] = 0
+      if ( self.selectionBehavior == 1 ) then
+        grouplink[#grouplink+1] = {-1, 1}
+      else
+        grouplink[#grouplink+1] = {1}
+      end
+      headers[#headers + 1]   = ''
+      headerW[#headerW+1]     = 2
+      hints[#hints+1]         = string.format('Velocity channel %2d', j)
+  
+      -- Link up the velocity fields
+      master[#master+1]       = 0
+      datafield[#datafield+1] = 'vel2'
+      idx[#idx+1]             = j
+      colsizes[#colsizes + 1] = 1
+      padsizes[#padsizes + 1] = 2 - math.max(self.cfg.channelCCs, self.tracker_samples)
+      if ( self.selectionBehavior == 1 ) then
+        grouplink[#grouplink+1] = {-2, -1}
+      else
+        grouplink[#grouplink+1] = {-1}
+      end
+      headers[#headers + 1]   = ''
+      headerW[#headerW+1]     = 0
+      hints[#hints+1]         = string.format('Velocity channel %2d', j)
     else
-      grouplink[#grouplink+1] = {1}
+      padsizes[#padsizes] = 2
     end
-    headers[#headers + 1]   = ''
-    headerW[#headerW+1]     = 2
-    hints[#hints+1]         = string.format('Velocity channel %2d', j)
-
-    -- Link up the velocity fields
-    master[#master+1]       = 0
-    datafield[#datafield+1] = 'vel2'
-    idx[#idx+1]             = j
-    colsizes[#colsizes + 1] = 1
-    padsizes[#padsizes + 1] = 2 - math.max(self.cfg.channelCCs, self.tracker_samples)
-    if ( self.selectionBehavior == 1 ) then
-      grouplink[#grouplink+1] = {-2, -1}
-    else
-      grouplink[#grouplink+1] = {-1}
-    end
-    headers[#headers + 1]   = ''
-    headerW[#headerW+1]     = 0
-    hints[#hints+1]         = string.format('Velocity channel %2d', j)
 
     if ( math.max(self.cfg.channelCCs, self.tracker_samples) == 1 ) then
+      local header_loc = #headers
       tracker:linkCC_channel(1, j, data, master, datafield, idx, colsizes, padsizes, grouplink, headers, headerW, hints)
+      
+      
+      if self.cfg.hideVelocity == 1 then
+        headers[header_loc + 1]   = ''
+      end
     end
 
     -- Link up the delay fields (if active)
@@ -7374,7 +7389,7 @@ end
 function tracker:getAdvance( chtype, ch, extraShift )
   local hasDelay = 0
   if ( chtype == 'text' ) then
-    return 3 + (extrashift or 0)
+    return (3 - self.cfg.hideVelocity) + (extrashift or 0)  -- TODO: Get rid of the direct config reference here.
   elseif ( chtype == 'vel1' ) then
     return 2 + (extrashift or 0)
   elseif ( chtype == 'vel2' ) then

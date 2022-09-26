@@ -117,6 +117,39 @@ function sample_data_gfx_finalize()
   );
 );
 
+function hinter.sethint(label)
+instance(hint_time, hint_label, was_over)
+global(delta_time)
+(
+  hint_label = label;
+  hint_time += delta_time;
+  was_over = 1;
+);
+
+function hinter.drawhint()
+instance(hint_time, hint_label, was_over)
+global(gfx_x, gfx_y, gfx_w, gfx_h, mouse_x, mouse_y, scaling)
+local(w, h)
+(
+  !was_over ? hint_time = 0;
+  was_over = 0;
+
+  ( hint_time > 0.75 ) ? (
+    gfx_setfont(9, "Arial", 12 * max(1, scaling));
+    gfx_measurestr(hint_label, w, h);
+      
+    gfx_x = mouse_x+15;
+    gfx_y = mouse_y+15;
+    ( gfx_x > 0.5*gfx_w ) ? gfx_x = mouse_x - w - 8;
+    ( gfx_y > 0.5*gfx_h ) ? gfx_y = mouse_y - h - 8;
+
+    gfx_set( 0.05, 0.05, 0.1, .8 );
+    gfx_rect(gfx_x-2, gfx_y-2, w+4, h+4);
+    gfx_set( .7, .7, .7, 1 );      
+    gfx_printf(hint_label);
+  );
+);
+
 function handle_mouse_sample_handler()
 (
   last_cap = mouse_cap;
@@ -381,10 +414,10 @@ instance(sample_len, sample_start, disp_range_start, disp_range_len, block_start
   block_start = 0;
 );
 
-function control_rect(x, y, w, h, r, g, b, a, font, label)
-local(ww, hh)
+function control_rect(x, y, w, h, r, g, b, a, font, label, hint)
+local(ww, hh, over)
 global(font_color_r, font_color_g, font_color_b, font_color_a, gfx_x, gfx_y,
-       mouse_x, mouse_y)
+       mouse_x, mouse_y, hinter.sethint)
 (
   gfx_set(r, g, b, a*.7);
   gfx_rect(x, y, w, h);
@@ -398,7 +431,11 @@ global(font_color_r, font_color_g, font_color_b, font_color_a, gfx_x, gfx_y,
   gfx_y = y + 0.5 * (h - hh);
   gfx_printf(label);
   
-  (mouse_x > x) && (mouse_x < (x+w)) && (mouse_y > y) && (mouse_y < (y+h))
+  over = (mouse_x > x) && (mouse_x < (x+w)) && (mouse_y > y) && (mouse_y < (y+h));
+  
+  over ? hinter.sethint(hint);
+  
+  over
 );
 
 function mouse_over(x, y, w, h)
@@ -460,18 +497,19 @@ global(captured, updated_loop,
 );
 
 function pitch_widget(cx, cy, ww, hh, sample_loc)
-local(button_width, button_height, frac, mul)
-global(BIG_FONT,
+local(button_width, button_height, frac, mul, ix)
+global(BIG_FONT, samplelocs, N_SAMPLES,
        captured, mouse_cap, mouse_dy,
        DRAG_FINE, DRAG_PITCH,
-       multi_out)
+       multi_out, select_by_notes)
 instance(dy_sum)
 (
   // Reference pitch
   button_width = 50;
   button_height = 30;
   control_rect(cx + ww - button_width - 1, cy + 1, button_width, button_height, 0.07, 0.04, 0.03, 1.0, BIG_FONT, 
-  sprintf(8, "+%.2f", sample_loc[2] - floor(sample_loc[2]))) ? (
+  sprintf(8, "+%.2f", sample_loc[2] - floor(sample_loc[2])), 
+  "Fine tune zero pitch for sample\n\nNote: If you hold Alt/Option, it will affect all samples.\nControl/Command and Shift allow more precise movements.") ? (
     mouse_press(1) && !captured ? captured = DRAG_FINE;
   );
   
@@ -480,13 +518,23 @@ instance(dy_sum)
   (mouse_cap&8) ? mul = mul * 0.125; /* SHIFT */
   
   ((captured == DRAG_FINE) && (mouse_is_down(1))) ? (
-    frac = sample_loc[2] - floor(sample_loc[2]) - 0.01 * mul * mouse_dy;
-    frac = max(0, min(0.9999999, frac + 0.01 * dy_sum));
-    sample_loc[2] = floor(sample_loc[2]) + frac;
+    (mouse_cap & 16) ? (
+      ix = 0;
+      loop(N_SAMPLES,
+        frac = samplelocs[ix][2] - floor(samplelocs[ix][2]) - 0.01 * mul * mouse_dy;
+        frac = max(0, min(0.9999999, frac + 0.01 * dy_sum));
+        samplelocs[ix][2] = floor(samplelocs[ix][2]) + frac;
+        ix += 1;
+      );
+    ) : (
+      frac = sample_loc[2] - floor(sample_loc[2]) - 0.01 * mul * mouse_dy;
+      frac = max(0, min(0.9999999, frac + 0.01 * dy_sum));
+      sample_loc[2] = floor(sample_loc[2]) + frac;
+    );
   );
   
   control_rect(cx + ww - 2 * button_width - 2 - 1, cy + 1, button_width, button_height, 0.07, 0.04, 0.03, 1.0, BIG_FONT, 
-  sprintf(8, "%s-%d", midi_pitch_to_note(sample_loc[2]), midi_pitch_to_octave(sample_loc[2]))) ? (
+  sprintf(8, "%s-%d", midi_pitch_to_note(sample_loc[2]), midi_pitch_to_octave(sample_loc[2])), "Set zero pitch for sample\n\nNote: If you hold Alt/Option, it will affect all samples.") ? (
     (mouse_press(1) && !captured) ? captured = DRAG_PITCH;
   );
   
@@ -494,16 +542,28 @@ instance(dy_sum)
     dy_sum -= 0.1 * mul * mouse_dy;
     
     (dy_sum > 1) ? (
-      sample_loc[2] += floor(dy_sum);
+      (mouse_cap & 16) ? (
+        ix = 0; loop(N_SAMPLES, samplelocs[ix][2] += floor(dy_sum); ix += 1; );
+      ) : (
+        sample_loc[2] += floor(dy_sum);
+      );
       dy_sum -= floor(dy_sum);
     ) : (dy_sum < -1) ? (
-      sample_loc[2] += ceil(dy_sum);
+      (mouse_cap & 16) ? (
+        ix = 0; loop(N_SAMPLES, samplelocs[ix][2] += ceil(dy_sum); ix += 1; );
+      ) : (
+        sample_loc[2] += ceil(dy_sum);
+      );
       dy_sum -= ceil(dy_sum);
     );
   );
-  
-  (control_rect(cx + ww - 4 * button_width - 4 - 1, cy + 1, 2 * button_width, button_height, 0.07 + .5 * multi_out, 0.04, 0.03, 1.0, BIG_FONT, "Multi - Out") && mouse_press(1)) ? (
+
+  (control_rect(cx + ww - 4 * button_width - 4 - 1, cy + 1, 2 * button_width, button_height, 0.07 + .1 * multi_out, 0.04, 0.03 + .7 * multi_out, 1.0, BIG_FONT, "Multi - Out", "Enable to output to\nmultiple channels") && mouse_press(1)) ? (
     multi_out = 1 - multi_out;
+  );
+  
+  (control_rect(cx + ww - 6.04 * button_width - 4 - 1, cy + 1, 2 * button_width, button_height, 0.07 + .1 * select_by_notes, 0.04, 0.03 + .7 * select_by_notes, 1.0, BIG_FONT, "Note toggle", "Note toggle\n\nEnable to have different notes trigger different\nsamples instead of pitches.\n\nNote: This mode is still in BETA and subject to change.") && mouse_press(1)) ? (
+    select_by_notes = 1 - select_by_notes;
   );
   
   ((captured == DRAG_FINE) || (captured == DRAG_PITCH)) ? (
@@ -942,14 +1002,14 @@ local(bh)
   );
 
   bh = 14;
-  control_rect(x + w - 2 * bh - 1, y + 1, bh, bh, 0.04 + muted_samples[idx] * .8, 0.07, 0.03, 1.0, TINY_FONT, "M") ? (
+  control_rect(x + w - 2 * bh - 1, y + 1, bh, bh, 0.04 + muted_samples[idx] * .8, 0.07, 0.03, 1.0, TINY_FONT, "M", 0) ? (
     ((last_cap & 1) == 0) && (mouse_cap & 1) && !captured ? (
       muted_samples[idx] = 1 - muted_samples[idx];
       update_mute_status();
     );
   );
   
-  control_rect(x + w - bh - 1, y + 1, bh, bh, 0.04, 0.07 + solod_samples[idx] * .8, 0.03, 1.0, TINY_FONT, "S") ? (
+  control_rect(x + w - bh - 1, y + 1, bh, bh, 0.04, 0.07 + solod_samples[idx] * .8, 0.03, 1.0, TINY_FONT, "S", 0) ? (
     ((last_cap & 1) == 0) && (mouse_cap & 1) && !captured ? (
       solod_samples[idx] = 1 - solod_samples[idx];
       update_mute_status();
