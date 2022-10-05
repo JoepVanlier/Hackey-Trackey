@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="04c88c564f1eaaa703f3cca28ce22d524aae71d9">
+<index version="1" name="Tracker tools" commit="7c204f9e4a519a52b05eafc3605bb661474a9a42">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -1285,6 +1285,17 @@ FF = the full length of the last tick.]]></changelog>
         <source type="effect" file="Hackey_Sample_Playback.jsfx">https://github.com/JoepVanlier/Hackey-Trackey/raw/04c88c564f1eaaa703f3cca28ce22d524aae71d9/Tracker/Hackey_Sample_Playback.jsfx</source>
         <source type="effect" file="htp_midi.jsfx-inc">https://github.com/JoepVanlier/Hackey-Trackey/raw/04c88c564f1eaaa703f3cca28ce22d524aae71d9/Tracker/htp_midi.jsfx-inc</source>
         <source type="effect" file="htp_sample_editor.jsfx-inc">https://github.com/JoepVanlier/Hackey-Trackey/raw/04c88c564f1eaaa703f3cca28ce22d524aae71d9/Tracker/htp_sample_editor.jsfx-inc</source>
+      </version>
+      <version name="2.97" author=": Joep Vanlier" time="2022-10-05T21:07:45Z">
+        <changelog><![CDATA[+ Label channels by their actual MIDI channel number.]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/7c204f9e4a519a52b05eafc3605bb661474a9a42/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/7c204f9e4a519a52b05eafc3605bb661474a9a42/Tracker/tracker.lua</source>
+        <source main="main" file="hackey_trackey_tracker.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/7c204f9e4a519a52b05eafc3605bb661474a9a42/Tracker/hackey_trackey_tracker.lua</source>
+        <source main="main" file="hackey_trackey_load_sample.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/7c204f9e4a519a52b05eafc3605bb661474a9a42/Tracker/hackey_trackey_load_sample.lua</source>
+        <source type="effect" file="Hackey_MIDI_Detector.jsfx">https://github.com/JoepVanlier/Hackey-Trackey/raw/7c204f9e4a519a52b05eafc3605bb661474a9a42/Tracker/Hackey_MIDI_Detector.jsfx</source>
+        <source type="effect" file="Hackey_Sample_Playback.jsfx">https://github.com/JoepVanlier/Hackey-Trackey/raw/7c204f9e4a519a52b05eafc3605bb661474a9a42/Tracker/Hackey_Sample_Playback.jsfx</source>
+        <source type="effect" file="htp_midi.jsfx-inc">https://github.com/JoepVanlier/Hackey-Trackey/raw/7c204f9e4a519a52b05eafc3605bb661474a9a42/Tracker/htp_midi.jsfx-inc</source>
+        <source type="effect" file="htp_sample_editor.jsfx-inc">https://github.com/JoepVanlier/Hackey-Trackey/raw/7c204f9e4a519a52b05eafc3605bb661474a9a42/Tracker/htp_sample_editor.jsfx-inc</source>
       </version>
     </reapack>
   </category>
