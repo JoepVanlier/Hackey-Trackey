@@ -13,7 +13,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.96
+@version 2.97
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -44,6 +44,8 @@
 
 --[[
  * Changelog:
+ * v2.97 (2022-10-05)
+  + Label channels by their actual MIDI channel number.
  * v2.96 (2022-09-26)
   + Add feature to Hackey Trackey Sample Playback to control which sample is played via note number instead of through volume.
   + Add option to hide velocity channel.
@@ -585,7 +587,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.96"
+tracker.name = "Hackey Trackey v2.97"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -799,6 +801,7 @@ tracker.cfg.lastVelSample = 1
 tracker.cfg.globalMidi = 0
 tracker.cfg.global_midi_release_timeout = 0.15
 tracker.cfg.hideVelocity = 0
+tracker.cfg.channelOffset = 1
 
 tracker.tracker_samples = 0
 tracker.cfg.fixedIndicator = 0
@@ -845,6 +848,7 @@ tracker.binaryOptions = {
     { 'releaseNoteOffs', 'Emit note off on release' },
     { 'scrubMode', 'Recording acts as scrub mode (plays notes)' },
     { 'hideVelocity', 'Hide velocity column' },
+    { 'channelOffset', 'Make channel number reflect midi chan' },
     }
 
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2", "sink"}
@@ -2354,6 +2358,7 @@ function tracker:linkData()
   for j = 1,self.displaychannels do
     local hasDelay = self.showDelays[j] or 0
     local hasEnd   = self.showEnd[j] or 0
+    local channelOffset = tracker.cfg.channelOffset
 
     -- Link up the note fields
     master[#master+1]       = 1
@@ -2367,12 +2372,12 @@ function tracker:linkData()
       grouplink[#grouplink+1] = {0}
     end
     if self.muted_channels and self.muted_channels[j] then
-      headers[#headers + 1]   = string.format('(Ch%2d)', j)
+      headers[#headers + 1]   = string.format('(Ch%2d)', j + channelOffset)
     else
-      headers[#headers + 1]   = string.format('Ch%2d', j)
+      headers[#headers + 1]   = string.format('Ch%2d', j + channelOffset)
     end
     headerW[#headerW+1]     = 6 + 3 * hasDelay + 3 * hasEnd
-    hints[#hints+1]         = string.format('Note channel %2d', j)
+    hints[#hints+1]         = string.format('Note channel %2d', j + channelOffset)
 
     -- Link up the velocity fields
     if self.cfg.hideVelocity == 0 then
@@ -2388,7 +2393,7 @@ function tracker:linkData()
       end
       headers[#headers + 1]   = ''
       headerW[#headerW+1]     = 2
-      hints[#hints+1]         = string.format('Velocity channel %2d', j)
+      hints[#hints+1]         = string.format('Velocity channel %2d', j + channelOffset)
   
       -- Link up the velocity fields
       master[#master+1]       = 0
@@ -2403,7 +2408,7 @@ function tracker:linkData()
       end
       headers[#headers + 1]   = ''
       headerW[#headerW+1]     = 0
-      hints[#hints+1]         = string.format('Velocity channel %2d', j)
+      hints[#hints+1]         = string.format('Velocity channel %2d', j + channelOffset)
     else
       padsizes[#padsizes] = 2
     end
@@ -2434,7 +2439,7 @@ function tracker:linkData()
       end
       headers[#headers + 1]   = ''
       headerW[#headerW+1]     = 0
-      hints[#hints+1]         = string.format('Note delay channel %2d', j)
+      hints[#hints+1]         = string.format('Note delay channel %2d', j + channelOffset)
 
       -- Link up the delay fields
       master[#master+1]       = 0
@@ -2449,7 +2454,7 @@ function tracker:linkData()
       end
       headers[#headers + 1]   = ''
       headerW[#headerW+1]     = 0
-      hints[#hints+1]         = string.format('Note delay channel %2d', j)
+      hints[#hints+1]         = string.format('Note delay channel %2d', j + channelOffset)
     end
 
     -- Link up the delay fields (if active)
@@ -2468,7 +2473,7 @@ function tracker:linkData()
       end
       headers[#headers + 1]   = ''
       headerW[#headerW+1]     = 0
-      hints[#hints+1]         = string.format('Note end channel %2d', j)
+      hints[#hints+1]         = string.format('Note end channel %2d', j + channelOffset)
 
       -- Link up the delay fields
       master[#master+1]       = 0
@@ -2483,7 +2488,7 @@ function tracker:linkData()
       end
       headers[#headers + 1]   = ''
       headerW[#headerW+1]     = 0
-      hints[#hints+1]         = string.format('Note end channel %2d', j)
+      hints[#hints+1]         = string.format('Note end channel %2d', j + channelOffset)
     end
   end
 
