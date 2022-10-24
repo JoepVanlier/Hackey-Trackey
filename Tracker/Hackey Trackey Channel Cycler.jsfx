@@ -1,0 +1,121 @@
+noindex: true
+desc:Hackey Trackey Channel Cycler
+tags: channel cycler meant for hackey trackey
+version: 0.01
+author: Joep Vanlier
+changelog: Initial release
+license: MIT
+about:
+  # Hackey Trackey Channel Cycler
+  A small tool that can be placed in front of Hackey Trackey Sample Playback 
+  to ensure that different notes are spread out to unique columns thus ensuring that 
+  playback always occurs. Note that this can also be used for recording, to ensure 
+  that notes are already assigned a unique channel.
+  
+
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+@init
+freemem = 0;
+
+freemem = (active_notes = freemem) + 32;
+memset(active_notes, 0, 16);
+
+@slider
+
+@block
+
+@sample
+function set_note(channel, source_channel, offset, msg1, msg2, msg3)
+global(active_notes)
+local(source_channel, target_channel)
+(
+  active_notes[2 * channel] = msg2;
+  active_notes[2 * channel + 1] = source_channel;
+  
+  midisend(offset, msg1 - source_channel + channel, msg2, msg3);
+);
+
+function stop_note(channel, offset, msg1, msg2, msg3)
+global(active_notes)
+local(source_channel, target_channel)
+(
+  source_channel = msg1 & 15;
+  
+  active_notes[2 * channel] = 0;
+  active_notes[2 * channel + 1] = 0;
+  midisend(offset, msg1 - source_channel + channel, msg2, msg3);
+);
+
+function handle_midi()
+local(
+  offset, msg1, msg2, msg3,
+  noteOn, noteOff, mwCC, pb, channel,
+  idx, found
+)
+global(active_notes)
+instance()
+(
+  while (midirecv(offset,msg1,msg2,msg3)) (
+    channel = msg1 & 15;
+    noteOn = msg1>$x8F&&msg1<$xA0 && msg3!=0;
+    noteOff = (msg1>$x7F&&msg1<$x90) || (msg1>$x89&&msg1<$xA0 && msg3==0);
+    mwCC = (msg1>$xAF&&msg1<$xC0);
+    pb = msg1 & 0xF0 === 0xE0;
+    
+    // First handle note off since they may open up new opportunities
+    noteOff ? (
+      // Find where this note was sent to
+      idx = 1; found = 0;
+      while(!found && (idx < 17)) (
+        ((active_notes[2 * idx] == msg2) && (active_notes[2 * idx + 1] == channel)) ? (
+          found = 1;
+          stop_note(idx, offset, msg1, msg2, msg3);
+        );
+        idx += 1;
+      );
+    );
+    
+    // Seek for an empty channel. Prefer the incoming channel if possible.
+    noteOn ? (
+      (active_notes[2 * channel] == 0) ? (
+        // Place it here
+        set_note(channel, channel, offset, msg1, msg2, msg3)
+      ) : (
+        idx = 1; found = 0;
+        while(!found && (idx < 17)) (
+          (active_notes[2 * idx] == 0) ? (
+            // Found one!
+            found = 1;
+            set_note(idx, channel, offset, msg1, msg2, msg3);
+          );
+          idx += 1;
+        );
+      );
+    );
+  );
+);
+
+handle_midi();
+
+@gfx
+gfx_set(0, 0, 0, 1.0);
+gfx_rect(0, 0, gfx_w, gfx_h);
+
+gfx_set(1, 1, 1, 1);
+gfx_x = 10;
+gfx_y = 10;
+tidx = 2;
+loop(16,
+  active_notes[tidx] > 0 ? (
+    gfx_set(1, 1, 1, 1);
+    gfx_printf("Ch %2d: %d (orig source ch %d)\n", tidx / 2, active_notes[tidx], active_notes[tidx + 1]);
+  ) : (
+    gfx_set(0.1, 0.1, 0.1, 1);
+    gfx_printf("Ch %2d: silent\n", tidx / 2);
+  );
+  tidx += 2;
+);

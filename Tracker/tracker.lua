@@ -10,10 +10,11 @@
   [effect] Hackey_Sample_Playback.jsfx
   [effect] htp_midi.jsfx-inc
   [effect] htp_sample_editor.jsfx-inc
+  [effect] Hackey Trackey Channel Cycler.jsfx
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.97
+@version 2.98
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -44,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v2.98 (2022-10-24)
+  + Added little JSFX that spreads out incoming MIDI over channels. This can be used when playing drums live from a MIDI keyboard, but wanting them played back over Hackey Trackey Sample Playback. With this plugin on the input FX, every note gets sent to its own channel. In combination with `Note Toggle` enabled on Hackey Trackey Sample Playback, you can now easily jam with drum kits.
  * v2.97 (2022-10-05)
   + Label channels by their actual MIDI channel number.
  * v2.96 (2022-09-26)
