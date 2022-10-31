@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.98
+@version 2.99
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v2.99 (2020-10-31)
+  + Add right mouse button menu which allows docking on mac (and adds a convenient way to open options, help etc).
  * v2.98 (2022-10-24)
   + Added little JSFX that spreads out incoming MIDI over channels. This can be used when playing drums live from a MIDI keyboard, but wanting them played back over Hackey Trackey Sample Playback. With this plugin on the input FX, every note gets sent to its own channel. In combination with `Note Toggle` enabled on Hackey Trackey Sample Playback, you can now easily jam with drum kits.
  * v2.97 (2022-10-05)
@@ -590,7 +592,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.97"
+tracker.name = "Hackey Trackey v2.99"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -3728,7 +3730,6 @@ function tracker:printGrid()
     end
 
   end
-
   ----------------------------------
   -- Help
   ----------------------------------
@@ -9348,6 +9349,70 @@ local function updateLoop()
       if ( Inew and Jnew ) then
         -- Move the cursor pos on initial click
         tracker:dragBlock(Inew, Jnew)
+      else
+        gfx.x = gfx.mouse_x;
+        gfx.y = gfx.mouse_y;
+        local was_docked = gfx.dock(-1)
+        local menu_str = string.format(
+        "%sDock window|%sShow Options|%sShow Harmonizer|%sShow Help|>Follow|%sFollow Selection|%sFollow Song|%sFix Indicator in View|%sFollow Row in Arrange View|<%sAuto Set Loop|>Note Entry|%sAdvance By note|%sAlways Record|%sTrack from Global MIDI|<%sScrub mode|%sPer channel CCs|%sHide Velocity Column",
+        was_docked > 0 and "!" or "",
+        tracker.optionsActive > 0 and "!" or "",
+        tracker.harmonyActive > 0 and "!" or "",
+        tracker.helpActive > 0 and "!" or "",
+        tracker.cfg.followSelection > 0 and "!" or "",
+        tracker.cfg.followSong > 0 and "!" or "",
+        tracker.cfg.fixedIndicator > 0 and "!" or "",
+        tracker.cfg.followRow > 0 and "!" or "",
+        tracker.cfg.loopFollow > 0 and "!" or "",
+        tracker.cfg.advanceByNote > 0 and "!" or "",
+        tracker.cfg.alwaysRecord > 0 and "!" or "",
+        tracker.cfg.globalMidi > 0 and "!" or "",
+        tracker.cfg.scrubMode > 0 and "!" or "",
+        tracker.cfg.channelCCs > 0 and "!" or "",
+        tracker.cfg.hideVelocity > 0 and "!" or ""
+        );
+        
+        local menu_response = gfx.showmenu(menu_str);
+        if menu_response == 1 then
+          gfx.dock(1 - was_docked);
+        elseif menu_response == 2  then
+          tracker.optionsActive = 1 - tracker.optionsActive;
+        elseif menu_response == 3 then
+          tracker.harmonyActive = 1 - tracker.harmonyActive;
+        elseif menu_response == 4 then
+          tracker.helpActive = 1 - tracker.helpActive;
+        elseif menu_response == 5 then
+          tracker.cfg.followSelection = 1 - tracker.cfg.followSelection;
+        elseif menu_response == 6 then
+          tracker.cfg.followSong = 1 - tracker.cfg.followSong;
+        elseif menu_response == 7 then
+          tracker.cfg.fixedIndicator = 1 - tracker.cfg.fixedIndicator;
+        elseif menu_response == 8 then
+          tracker.cfg.followRow = 1 - tracker.cfg.followRow;
+        elseif menu_response == 9 then
+          tracker.cfg.loopFollow = 1 - tracker.cfg.loopFollow;
+        elseif menu_response == 10 then
+          tracker.cfg.advanceByNote = 1 - tracker.cfg.advanceByNote;
+        elseif menu_response == 11 then
+          tracker.cfg.alwaysRecord = 1 - tracker.cfg.alwaysRecord;
+        elseif menu_response == 12 then
+          tracker.cfg.globalMidi = 1 - tracker.cfg.globalMidi;
+        elseif menu_response == 12 then
+          tracker.cfg.scrubMode = 1 - tracker.cfg.scrubMode;
+        elseif menu_response == 13 then
+          tracker.cfg.channelCCs = 1 - tracker.cfg.channelCCs;
+        elseif menu_response == 14 then
+          tracker.cfg.hideVelocity = 1 - tracker.cfg.hideVelocity;
+        end
+        
+        tracker.holding = 1
+        local cfg = tracker.cfg
+        tracker:saveConfig(tracker.configFile, cfg)
+        tracker:loadColors(cfg.colorscheme)
+        tracker:initColors()
+        tracker:loadKeys(cfg.keyset)
+        tracker:forceUpdate()
+        updateShown()
       end
     end
   end
