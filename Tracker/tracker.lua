@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.00
+@version 3.01
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.01 (2020-10-31)
+  + Add "show note names" to right click menu.
  * v3.00 (2020-10-31)
   + Refactor dials a little bit for clarity when hovering.
  * v2.99 (2020-10-31)
@@ -594,7 +596,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.00"
+tracker.name = "Hackey Trackey v3.01"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -9398,10 +9400,11 @@ local function updateLoop()
         gfx.y = gfx.mouse_y;
         local was_docked = gfx.dock(-1)
         local menu_str = string.format(
-        "%sDock window|%sShow Options|%sShow Harmonizer|%sShow Help|>Follow|%sFollow Selection|%sFollow Song|%sFix Indicator in View|%sFollow Row in Arrange View|<%sAuto Set Loop|>Note Entry|%sAdvance By note|%sAlways Record|%sTrack from Global MIDI|<%sScrub mode|%sPer channel CCs|%sHide Velocity Column",
+        "%sDock window|%sShow Options|%sShow Harmonizer|%sShow Note Names|%sShow Help|>Follow|%sFollow Selection|%sFollow Song|%sFix Indicator in View|%sFollow Row in Arrange View|<%sAuto Set Loop|>Note Entry|%sAdvance By note|%sAlways Record|%sTrack from Global MIDI|<%sScrub mode|%sPer channel CCs|%sHide Velocity Column",
         was_docked > 0 and "!" or "",
         tracker.optionsActive > 0 and "!" or "",
         tracker.harmonyActive > 0 and "!" or "",
+        tracker.noteNamesActive > 0 and "!" or "",
         tracker.helpActive > 0 and "!" or "",
         tracker.cfg.followSelection > 0 and "!" or "",
         tracker.cfg.followSong > 0 and "!" or "",
@@ -9416,37 +9419,39 @@ local function updateLoop()
         tracker.cfg.hideVelocity > 0 and "!" or ""
         );
         
-        local menu_response = gfx.showmenu(menu_str);
+        local menu_response = gfx.showmenu(menu_str)
         if menu_response == 1 then
-          gfx.dock(1 - was_docked);
+          gfx.dock(1 - was_docked)
         elseif menu_response == 2  then
-          tracker.optionsActive = 1 - tracker.optionsActive;
+          tracker.optionsActive = 1 - tracker.optionsActive
         elseif menu_response == 3 then
-          tracker.harmonyActive = 1 - tracker.harmonyActive;
+          tracker.harmonyActive = 1 - tracker.harmonyActive
         elseif menu_response == 4 then
-          tracker.helpActive = 1 - tracker.helpActive;
+          tracker.noteNamesActive = 1 - tracker.noteNamesActive
         elseif menu_response == 5 then
-          tracker.cfg.followSelection = 1 - tracker.cfg.followSelection;
+          tracker.helpActive = 1 - tracker.helpActive
         elseif menu_response == 6 then
-          tracker.cfg.followSong = 1 - tracker.cfg.followSong;
+          tracker.cfg.followSelection = 1 - tracker.cfg.followSelection
         elseif menu_response == 7 then
-          tracker.cfg.fixedIndicator = 1 - tracker.cfg.fixedIndicator;
+          tracker.cfg.followSong = 1 - tracker.cfg.followSong
         elseif menu_response == 8 then
-          tracker.cfg.followRow = 1 - tracker.cfg.followRow;
+          tracker.cfg.fixedIndicator = 1 - tracker.cfg.fixedIndicator
         elseif menu_response == 9 then
-          tracker.cfg.loopFollow = 1 - tracker.cfg.loopFollow;
+          tracker.cfg.followRow = 1 - tracker.cfg.followRow
         elseif menu_response == 10 then
-          tracker.cfg.advanceByNote = 1 - tracker.cfg.advanceByNote;
+          tracker.cfg.loopFollow = 1 - tracker.cfg.loopFollow
         elseif menu_response == 11 then
-          tracker.cfg.alwaysRecord = 1 - tracker.cfg.alwaysRecord;
+          tracker.cfg.advanceByNote = 1 - tracker.cfg.advanceByNote
         elseif menu_response == 12 then
-          tracker.cfg.globalMidi = 1 - tracker.cfg.globalMidi;
-        elseif menu_response == 12 then
-          tracker.cfg.scrubMode = 1 - tracker.cfg.scrubMode;
+          tracker.cfg.alwaysRecord = 1 - tracker.cfg.alwaysRecord
         elseif menu_response == 13 then
-          tracker.cfg.channelCCs = 1 - tracker.cfg.channelCCs;
+          tracker.cfg.globalMidi = 1 - tracker.cfg.globalMidi
         elseif menu_response == 14 then
-          tracker.cfg.hideVelocity = 1 - tracker.cfg.hideVelocity;
+          tracker.cfg.scrubMode = 1 - tracker.cfg.scrubMode
+        elseif menu_response == 15 then
+          tracker.cfg.channelCCs = 1 - tracker.cfg.channelCCs
+        elseif menu_response == 16 then
+          tracker.cfg.hideVelocity = 1 - tracker.cfg.hideVelocity
         end
         
         tracker.holding = 1
