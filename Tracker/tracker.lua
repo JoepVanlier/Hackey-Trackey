@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 2.99
+@version 3.00
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.00 (2020-10-31)
+  + Refactor dials a little bit for clarity when hovering.
  * v2.99 (2020-10-31)
   + Add right mouse button menu which allows docking on mac (and adds a convenient way to open options, help etc).
  * v2.98 (2022-10-24)
@@ -592,7 +594,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v2.99"
+tracker.name = "Hackey Trackey v3.00"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -3394,23 +3396,30 @@ function tracker:printGrid()
 
   -- Draw the bottom indicators
   gfx.set(table.unpack(colors.headercolor))
-  local strs, locs, yh = tracker:infoString()
-  gfx.y = yh + extraFontShift
+  local dials = self.dials
+  gfx.y = dials[1].ymin + extraFontShift
 
   if ( self.take ) then
-    for i=1,#locs-1 do
-      gfx.x = locs[i]
-      gfx.printf(strs[i])
+    for i=1,#dials-1 do
+      if dials[i]:highlight() then
+        gfx.set(table.unpack(colors.changed))
+      else
+        gfx.set(table.unpack(colors.headercolor))
+      end
+      
+      gfx.x = dials[i].xmin
+      gfx.printf(dials[i].str)
     end
+    gfx.set(table.unpack(colors.headercolor))
 
-    if ( tracker.newRowPerQn ~= tracker.rowPerQn ) then
+    if ( tracker.newRowPerQn ~= tracker.rowPerQn or dials[#dials]:highlight() ) then
       gfx.set(table.unpack(colors.changed))
     else
       gfx.set(table.unpack(colors.headercolor))
     end
-    gfx.x = locs[#locs]
+    gfx.x = dials[#dials].xmin
     gfx.y = bottom + yheight[1] + extraFontShift
-    gfx.printf(strs[#locs])
+    gfx.printf(dials[#dials].str)
   end
 
   gfx.set(table.unpack(colors.headercolor))
@@ -3826,23 +3835,50 @@ end
 dofile(get_script_path() .. 'scales.lua')
 scales:initialize()
 
+function dialButton(self, str, xmin, xmax, ymin, ymax, cap_mode)
+  -- Create new if not yet created, otherwise reuse
+  local self = self or {
+    over = function(self)
+      return gfx.mouse_x > self.xmin and gfx.mouse_x < self.xmax and gfx.mouse_y > self.ymin and gfx.mouse_y < self.ymax
+    end,
+    highlight = function(self)
+      return self:over() or cap_mode == mouse_cap
+    end,
+  }
+  
+  self.xmin = xmin
+  self.xmax = xmax
+  self.ymin = ymin
+  self.ymax = ymax
+  self.str = str
+  self.cap_mode = cap_mode
+  
+  return self
+end
+
 function tracker:infoString()
   local plotData = self.plotData
   local tw       = plotData.totalwidth
   local yloc     = plotData.yloc
   local yheight  = (yloc[2]-yloc[1])*.7
 
+  if ( self.colors.patternFont and self.colors.patternFontSize ) then
+    gfx.setfont(1, self.colors.patternFont, self.colors.patternFontSize)
+  else
+    gfx.setfont(0)
+  end
+
   local str = {}
-  str[4] = string.format( "Oct [%d]", self.transpose )
+  str[1] = string.format( "Out [%s]", self:outString() )
+  str[2] = string.format( "Env [%s]", tracker.envShapes[tracker.envShape] )
   if self.cfg.advanceByNote == 1 then
-    str[3] = string.format( "Adv [N]", self.advance )
+    str[3] = string.format( "Adv [N]" )
   else
     str[3] = string.format( "Adv [%d]", self.advance )
   end
-  str[2] = string.format( "Env [%s]", tracker.envShapes[tracker.envShape] )
-  str[1] = string.format( "Out [%s]", self:outString() )
+  str[4] = string.format( "Oct [%d]", self.transpose )
   str[5] = string.format( "Res [%d]", tracker.newRowPerQn )
-
+  
   local locs = {}
   local xs = plotData.xstart + tw - 5
   local maxi
@@ -3851,16 +3887,22 @@ function tracker:infoString()
   else
     maxi = 1
   end
-
+  
+  if not self.dials then
+    self.dials = {}
+  end
+  
+  local _, yh = gfx.measurestr("X[0]")
+  local capture_modes = {CaptureModes.OUT_SELECTOR, CaptureModes.ENV_SELECTOR, CaptureModes.ADV_SELECTOR, CaptureModes.OCT_SELECTOR, CaptureModes.RES_SELECTOR}
+  local y = self:getBottom() + yheight
   for i=1,maxi do
-    xs = xs - gfx.measurestr(str[i])
-    locs[i] = xs
+    local width = gfx.measurestr(str[i])
+    xs = xs - width
+    
+    locs[i] = {xs, xs + width}
+    self.dials[i] = dialButton(self.dials[i], str[i], xs, xs + width, y, y + yh, capture_modes[i])
     xs = xs - gfx.measurestr("p")
   end
-
-  local y = self:getBottom() + yheight
-
-  return str, locs, y
 end
 
 function tracker:shouldShowScrollbars()
@@ -9184,6 +9226,8 @@ local function updateLoop()
     tracker.outChannel = 0
   end
 
+  tracker:infoString()
+
   -- Check if the note data or take changed, if so, update the note contents
   tracker:checkArmed()
   if (reaper.GetPlayState() & 4 == 0) or (self.armed == 0) or (tracker.cfg.blockWhileRecording == 0) then
@@ -9461,25 +9505,22 @@ local function updateLoop()
 
     -- Mouse in range of bottom fields?
     if ( tracker.take ) then
-      local strs, locs, yh = tracker:infoString()
-      if ( gfx.mouse_y > yh and gfx.mouse_y < yh + 10 and gfx.mouse_x < plotData.xstart + plotData.totalwidth ) then
-        -- Calculate the positions
-        local strs, locs, yh = tracker:infoString()
-        -- TODO: The way the different locs are handled could use some refactoring.
-        if ( gfx.mouse_x > locs[1] ) then
-          setCapMode(CaptureModes.OUT_SELECTOR, tracker.outChannel, 0, 16) -- Out
-        elseif ( #locs > 1 and gfx.mouse_x > locs[2] ) then
-          setCapMode(CaptureModes.ENV_SELECTOR, tracker.envShape, 0, #tracker.envShapes ) -- Env
-        elseif ( #locs > 2 and gfx.mouse_x > locs[3] ) then
-          setCapMode(CaptureModes.ADV_SELECTOR, tracker.advance, -99, 99) -- Adv
-        elseif ( #locs > 3 and gfx.mouse_x > locs[4] ) then
-          setCapMode(CaptureModes.OCT_SELECTOR, tracker.transpose, tracker.minoct, tracker.maxoct) -- Oct
-        elseif ( #locs > 4 and gfx.mouse_x > locs[5] ) then
-          setCapMode(CaptureModes.RES_SELECTOR, tracker.newRowPerQn, 1, tracker.maxRowPerQn) -- Res
-        elseif ( gfx.mouse_x < plotData.xstart + gfx.measurestr("[Rec]") ) and ( gfx.mouse_x > plotData.xstart ) then
-          if ( tracker.lastleft ~= 1 ) then
-            tracker:toggleRec()
-          end
+      local dials = tracker.dials
+
+      -- TODO: The way the different locs are handled could use some refactoring.
+      if ( dials[1]:over() ) then
+        setCapMode(CaptureModes.OUT_SELECTOR, tracker.outChannel, 0, 16) -- Out
+      elseif ( dials[2]:over() ) then
+        setCapMode(CaptureModes.ENV_SELECTOR, tracker.envShape, 0, #tracker.envShapes ) -- Env
+      elseif ( dials[3]:over() ) then
+        setCapMode(CaptureModes.ADV_SELECTOR, tracker.advance, -99, 99) -- Adv
+      elseif ( dials[4]:over() ) then
+        setCapMode(CaptureModes.OCT_SELECTOR, tracker.transpose, tracker.minoct, tracker.maxoct) -- Oct
+      elseif ( dials[5]:over() ) then
+        setCapMode(CaptureModes.RES_SELECTOR, tracker.newRowPerQn, 1, tracker.maxRowPerQn) -- Res
+      elseif ( gfx.mouse_x < plotData.xstart + gfx.measurestr("[Rec]") ) and ( gfx.mouse_x > plotData.xstart ) then
+        if ( tracker.lastleft ~= 1 ) then
+          tracker:toggleRec()
         end
       end
     end
