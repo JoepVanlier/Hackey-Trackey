@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.01
+@version 3.02
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.02 (2020-11-05)
+  + Hotfix for bug involving undefined plotdata when opened without active pattern.
  * v3.01 (2020-10-31)
   + Add "show note names" to right click menu.
  * v3.00 (2020-10-31)
@@ -596,7 +598,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.01"
+tracker.name = "Hackey Trackey v3.02"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -2611,6 +2613,7 @@ function tracker:updatePlotLink()
   plotData.textSize = dx
 
   self.plotData = plotData
+  self:infoString()
   self.scrollbar:setPos( plotData.xstart + plotData.totalwidth, yloc[1] - plotData.yshift, plotData.totalheight - plotData.itempady )
 end
 
@@ -9227,8 +9230,6 @@ local function updateLoop()
     tracker:setOutChannel(0)
     tracker.outChannel = 0
   end
-
-  tracker:infoString()
 
   -- Check if the note data or take changed, if so, update the note contents
   tracker:checkArmed()
