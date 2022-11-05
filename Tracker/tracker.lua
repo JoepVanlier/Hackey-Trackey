@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.02
+@version 3.03
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,13 +45,15 @@
 
 --[[
  * Changelog:
- * v3.02 (2020-11-05)
+ * v3.03 (2022-11-05)
+  + Update labels more frequently.
+ * v3.02 (2022-11-05)
   + Hotfix for bug involving undefined plotdata when opened without active pattern.
- * v3.01 (2020-10-31)
+ * v3.01 (2022-10-31)
   + Add "show note names" to right click menu.
- * v3.00 (2020-10-31)
+ * v3.00 (2022-10-31)
   + Refactor dials a little bit for clarity when hovering.
- * v2.99 (2020-10-31)
+ * v2.99 (2022-10-31)
   + Add right mouse button menu which allows docking on mac (and adds a convenient way to open options, help etc).
  * v2.98 (2022-10-24)
   + Added little JSFX that spreads out incoming MIDI over channels. This can be used when playing drums live from a MIDI keyboard, but wanting them played back over Hackey Trackey Sample Playback. With this plugin on the input FX, every note gets sent to its own channel. In combination with `Note Toggle` enabled on Hackey Trackey Sample Playback, you can now easily jam with drum kits.
@@ -598,7 +600,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.02"
+tracker.name = "Hackey Trackey v3.03"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -3863,50 +3865,52 @@ end
 
 function tracker:infoString()
   local plotData = self.plotData
-  local tw       = plotData.totalwidth
-  local yloc     = plotData.yloc
-  local yheight  = (yloc[2]-yloc[1])*.7
-
-  if ( self.colors.patternFont and self.colors.patternFontSize ) then
-    gfx.setfont(1, self.colors.patternFont, self.colors.patternFontSize)
-  else
-    gfx.setfont(0)
-  end
-
-  local str = {}
-  str[1] = string.format( "Out [%s]", self:outString() )
-  str[2] = string.format( "Env [%s]", tracker.envShapes[tracker.envShape] )
-  if self.cfg.advanceByNote == 1 then
-    str[3] = string.format( "Adv [N]" )
-  else
-    str[3] = string.format( "Adv [%d]", self.advance )
-  end
-  str[4] = string.format( "Oct [%d]", self.transpose )
-  str[5] = string.format( "Res [%d]", tracker.newRowPerQn )
+  if plotData then
+    local tw       = plotData.totalwidth
+    local yloc     = plotData.yloc
+    local yheight  = (yloc[2]-yloc[1])*.7
   
-  local locs = {}
-  local xs = plotData.xstart + tw - 5
-  local maxi
-  if ( self.toosmall == 0 ) then
-    maxi = #str
-  else
-    maxi = 1
-  end
+    if ( self.colors.patternFont and self.colors.patternFontSize ) then
+      gfx.setfont(1, self.colors.patternFont, self.colors.patternFontSize)
+    else
+      gfx.setfont(0)
+    end
   
-  if not self.dials then
-    self.dials = {}
-  end
-  
-  local _, yh = gfx.measurestr("X[0]")
-  local capture_modes = {CaptureModes.OUT_SELECTOR, CaptureModes.ENV_SELECTOR, CaptureModes.ADV_SELECTOR, CaptureModes.OCT_SELECTOR, CaptureModes.RES_SELECTOR}
-  local y = self:getBottom() + yheight
-  for i=1,maxi do
-    local width = gfx.measurestr(str[i])
-    xs = xs - width
+    local str = {}
+    str[1] = string.format( "Out [%s]", self:outString() )
+    str[2] = string.format( "Env [%s]", tracker.envShapes[tracker.envShape] )
+    if self.cfg.advanceByNote == 1 then
+      str[3] = string.format( "Adv [N]" )
+    else
+      str[3] = string.format( "Adv [%d]", self.advance )
+    end
+    str[4] = string.format( "Oct [%d]", self.transpose )
+    str[5] = string.format( "Res [%d]", tracker.newRowPerQn )
     
-    locs[i] = {xs, xs + width}
-    self.dials[i] = dialButton(self.dials[i], str[i], xs, xs + width, y, y + yh, capture_modes[i])
-    xs = xs - gfx.measurestr("p")
+    local locs = {}
+    local xs = plotData.xstart + tw - 5
+    local maxi
+    if ( self.toosmall == 0 ) then
+      maxi = #str
+    else
+      maxi = 1
+    end
+    
+    if not self.dials then
+      self.dials = {}
+    end
+    
+    local _, yh = gfx.measurestr("X[0]")
+    local capture_modes = {CaptureModes.OUT_SELECTOR, CaptureModes.ENV_SELECTOR, CaptureModes.ADV_SELECTOR, CaptureModes.OCT_SELECTOR, CaptureModes.RES_SELECTOR}
+    local y = self:getBottom() + yheight
+    for i=1,maxi do
+      local width = gfx.measurestr(str[i])
+      xs = xs - width
+      
+      locs[i] = {xs, xs + width}
+      self.dials[i] = dialButton(self.dials[i], str[i], xs, xs + width, y, y + yh, capture_modes[i])
+      xs = xs - gfx.measurestr("p")
+    end
   end
 end
 
@@ -9371,6 +9375,7 @@ local function updateLoop()
         self.hash = math.random()
       end
     end
+    tracker:infoString()
   end
   if ( left == 0 ) then
     if ( mouse_cap > 0 ) then
