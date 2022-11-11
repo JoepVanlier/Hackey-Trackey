@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.63
+version: 0.64
 author: Joep Vanlier
-changelog: Add option to control which sample is played via note number instead of through volume. Fix play marker leaving sample box on the left.
+changelog: Fix issue with tooltips for solo and mute not showing up correctly. Add RMB menu for clicking on pads.
 license: MIT
 about:
   # Hackey Tracker Sampler

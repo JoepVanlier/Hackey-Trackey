@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.03
+@version 3.04
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,9 @@
 
 --[[
  * Changelog:
+ * v3.04 (2022-11-12)
+  + Fix issue with tooltip for mute and solo not showing up.
+  + Added RMB menu to pads (cut/copy/paste).
  * v3.03 (2022-11-05)
   + Update labels more frequently.
  * v3.02 (2022-11-05)
@@ -600,7 +603,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.03"
+tracker.name = "Hackey Trackey v3.04"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -9359,7 +9362,7 @@ local function updateLoop()
   if ( left == 1 and mouse_cap > 0 ) then
     if ( mouse_cap == CaptureModes.OUT_SELECTOR ) then
       tracker.outChannel = getCapValue( 0.05 )
-    elseif ( mouse_cap == CaptureModes.ENV_SELECTOR ) then
+    elseif ( mouse_cap == CaptureModes.ENV_SELECTOR ) then 
       tracker.envShape = getCapValue( 0.05 )
     elseif ( mouse_cap == CaptureModes.ADV_SELECTOR ) then
       tracker.advance = getCapValue( 0.05 )
