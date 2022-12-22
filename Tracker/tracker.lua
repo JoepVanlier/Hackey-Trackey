@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.05
+@version 3.06
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.06 (2022-11-22)
+  + Add (currently unbound) keys to go to first/last column. The bindings are called "fullLeft", "fullRight", "shiftFullLeft" and "shiftFullRight". The shift variants include block selection updates.
  * v3.05 (2022-11-22)
   + Force update after muting or solo'ing. Prior to this change, the change in mute/solo status would only be visible if there were notes in the column.
   + Fixed issue with check whether track is armed. Prior to this change, the plugin could sometimes crash if it looked for a previous armed status even if there was none.
@@ -578,7 +580,7 @@
    + Added ReaPack header
 --]]
 
--- Copyright (c) Joep Vanlier 2018
+-- Copyright (c) Joep Vanlier 2022
 --
 --    Permission is hereby granted, free of charge, to any person obtaining
 --    a copy of this software and associated documentation files (the "Software"),
@@ -608,7 +610,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.05"
+tracker.name = "Hackey Trackey v3.06"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -1305,6 +1307,13 @@ function tracker:loadKeys( keySet )
 
   keys.options2 = { 1, 0, 0, 15 } -- ctrl + o
   keys.mute_row = { 1, 0, 0, 45 } -- CTRL + -
+  
+  -- Unassigned by default
+  keys.shiftFullLeft  = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.shiftFullRight = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.fullLeft       = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.fullRight      = { 1,    1,  0,    500000000000000000000000.0 }
+  
   if keyset == "default" then
     --                    CTRL    ALT SHIFT Keycode
     keys.left           = { 0,    0,  0,    1818584692 }    -- <-
@@ -1429,7 +1438,7 @@ function tracker:loadKeys( keySet )
     keys.shiftpgup      = { 0,    0,  1,    1885828464 }    -- Shift + PgUp
     keys.shifthome      = { 0,    0,  1,    1752132965 }    -- Shift + Home
     keys.shiftend       = { 0,    0,  1,    6647396 }       -- Shift + End
-
+    
     keys.startPat       = { 0,    0,  0,    13,  "Hackey Sequencer/Sequencer/HackeyPatterns_exec.lua", 1 }
 
     help = {
@@ -9830,6 +9839,18 @@ local function updateLoop()
       tracker.ypos = tracker.ypos - tracker.cfg.page
       tracker:forceCursorInRange()
       tracker:dragBlock()
+    elseif inputs('shiftFullLeft') and tracker.take then
+      tracker:dragBlock()
+      tracker.xpos = 1
+      tracker:dragBlock()
+    elseif inputs('shiftFullRight') and tracker.take then
+      tracker:dragBlock()
+      tracker.xpos = tracker.max_xpos
+      tracker:dragBlock()
+    elseif inputs('fullLeft') and tracker.take then
+      tracker.xpos = 1
+    elseif inputs('fullRight') and tracker.take then
+      tracker.xpos = tracker.max_xpos
     elseif inputs('shifthome') and tracker.take then
       tracker:dragBlock()
       tracker.ypos = 0
@@ -10959,6 +10980,11 @@ local function Main()
     io.write("    keys.shiftpgup      = { 0,    0,  1,    1885828464 }    -- Shift + PgUp\n")
     io.write("    keys.shifthome      = { 0,    0,  1,    1752132965 }    -- Shift + Home\n")
     io.write("    keys.shiftend       = { 0,    0,  1,    6647396 }       -- Shift + End\n")
+    io.write("\n")
+    io.write("    keys.shiftFullLeft  = { 1,    0,  1,    500000000000000000000000.0 }\n")
+    io.write("    keys.shiftFullRight = { 1,    0,  1,    500000000000000000000000.0 }\n")
+    io.write("    keys.fullLeft       = { 1,    1,  0,    500000000000000000000000.0 }\n")
+    io.write("    keys.fullRight      = { 1,    1,  0,    500000000000000000000000.0 }\n")
     io.write("\n")
     io.write("    help = {\n")
     io.write("      { 'Shift + Note', 'Advance column after entry' },\n")
