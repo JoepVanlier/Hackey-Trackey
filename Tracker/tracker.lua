@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.04
+@version 3.05
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,11 @@
 
 --[[
  * Changelog:
+ * v3.05 (2022-11-22)
+  + Force update after muting or solo'ing. Prior to this change, the change in mute/solo status would only be visible if there were notes in the column.
+  + Fixed issue with check whether track is armed. Prior to this change, the plugin could sometimes crash if it looked for a previous armed status even if there was none.
+  + Fixed bug with out channel not being stored correctly when changed from the UI.
+  + Fixed bug which added CCs from Hackey Trackey Sampler when switching from a track with HTS to an item on a different track without HTS while having "Enable CCs for channels > 0" enabled.
  * v3.04 (2022-11-12)
   + Fix issue with tooltip for mute and solo not showing up.
   + Added RMB menu to pads (cut/copy/paste).
@@ -603,7 +608,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.04"
+tracker.name = "Hackey Trackey v3.05"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -6031,7 +6036,7 @@ function tracker:scrub()
   if (tracker.cfg.scrubMode == 1) then
     self:checkArmed()
     
-    if (self.armed) then
+    if (self.armed == 1) then
       self:terminateScrubNotes()
       --local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
       --local loc = reaper.AddProjectMarker(0, 0, mpos + tracker:toSeconds(self.ypos-1), 0, "", -1)
@@ -6870,6 +6875,7 @@ function tracker:toggleSoloChannel()
   end
   
   reaper.MIDI_Sort(self.take)
+  self:forceUpdate()
 end
 
 function tracker:toggleMuteChannel()
@@ -6879,7 +6885,8 @@ function tracker:toggleMuteChannel()
 
   local _, muteChannel, _ = self:getLocation()
   self:setChannelMute(muteChannel, not self.muted_channels[muteChannel])
-  reaper.MIDI_Sort(self.take)  
+  reaper.MIDI_Sort(self.take)
+  self:forceUpdate()
 end
 
 function tracker:addSamplerCCs(all)
@@ -7135,16 +7142,19 @@ function tracker:setTake( take )
   if ( self.take ~= take ) then
     if ( reaper.TakeIsMIDI( take ) == true ) then
 
-      if ( tracker.armed == 1 ) then
+      if ( self.armed == 1 ) then
         tracker:stopNote()
       end
 
       self.take = take
       if self:validateCurrentItem() then
         local new_track = reaper.GetMediaItem_Track(self.item)
-        if tracker.armed and (new_track ~= self.track) then
-          -- Only disarm when seeking a different track
-          tracker:disarm()
+        if new_track ~= self.track then
+          -- Remove any CCs that might have carried over
+          if ( self.armed == 1 ) then
+            -- Only disarm when seeking a different track
+            tracker:disarm()
+          end
         end
         self.track = new_track
         
@@ -8220,7 +8230,6 @@ function tracker:disarm()
     reaper.SetMediaTrackInfo_Value(self.track, "I_RECMON",   self.oldmonitor)
     self.armed = 0
     self.hash = 0
-    self:update()
   end
 end
 
@@ -9362,6 +9371,7 @@ local function updateLoop()
   if ( left == 1 and mouse_cap > 0 ) then
     if ( mouse_cap == CaptureModes.OUT_SELECTOR ) then
       tracker.outChannel = getCapValue( 0.05 )
+      tracker:setOutChannel(tracker.outChannel)
     elseif ( mouse_cap == CaptureModes.ENV_SELECTOR ) then 
       tracker.envShape = getCapValue( 0.05 )
     elseif ( mouse_cap == CaptureModes.ADV_SELECTOR ) then
