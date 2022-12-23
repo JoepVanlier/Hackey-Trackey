@@ -47,6 +47,7 @@
  * Changelog:
  * v3.07 (2022-11-23)
   + Fix issue with rec toggle being toggleable along complete height.
+  + Fix armed handling (reduce plugin statefulness).
  * v3.06 (2022-11-22)
   + Add (currently unbound) keys to go to first/last column. The bindings are called "fullLeft", "fullRight", "shiftFullLeft" and "shiftFullRight". The shift variants include block selection updates.
  * v3.05 (2022-11-22)
@@ -1879,7 +1880,6 @@ tracker.signed["Width (Pre-FX)"] = 1
 tracker.signed["Pan"] = 1
 tracker.signed["Width"] = 1
 
-tracker.armed = 0
 tracker.maxPatternNameSize = 13
 
 tracker.hint = ''
@@ -3452,7 +3452,7 @@ function tracker:printGrid()
 
   gfx.x = plotData.xstart
   if ( self.take ) then
-    if ( self.armed == 1) then
+    if ( self:isArmed() ) then
       if ( self.onlyListen == 1 ) then
         gfx.set(table.unpack(colors.changed2))
       else
@@ -4636,7 +4636,7 @@ function tracker:createNote(inChar, shift)
   -- Determine fieldtype, channel and row
   local ftype, chan, row = self:getLocation()
 
-  if ( ( self.armed == 1 ) and ( self.onlyListen == 1 ) ) then
+  if ( ( self:isArmed() ) and ( self.onlyListen == 1 ) ) then
     local note = keys.pitches[char]
     if ( note ) then
       -- Note is present, we are good to go!
@@ -6045,9 +6045,7 @@ end
 
 function tracker:scrub()
   if (tracker.cfg.scrubMode == 1) then
-    self:checkArmed()
-    
-    if (self.armed == 1) then
+    if (self:isArmed()) then
       self:terminateScrubNotes()
       --local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
       --local loc = reaper.AddProjectMarker(0, 0, mpos + tracker:toSeconds(self.ypos-1), 0, "", -1)
@@ -7153,7 +7151,7 @@ function tracker:setTake( take )
   if ( self.take ~= take ) then
     if ( reaper.TakeIsMIDI( take ) == true ) then
 
-      if ( self.armed == 1 ) then
+      if (self:isArmed()) then
         tracker:stopNote()
       end
 
@@ -7162,7 +7160,7 @@ function tracker:setTake( take )
         local new_track = reaper.GetMediaItem_Track(self.item)
         if new_track ~= self.track then
           -- Remove any CCs that might have carried over
-          if ( self.cfg.alwaysRecord == 1 and self.armed == 1 ) then
+          if ( self.cfg.alwaysRecord == 1 and self:isArmed() ) then
             -- Only disarm when seeking a different track
             tracker:disarm()
           end
@@ -8214,23 +8212,22 @@ function tracker:arm()
   reaper.SetMediaTrackInfo_Value(self.track, "I_RECARM", 1)
   reaper.SetMediaTrackInfo_Value(self.track, "I_RECMON", 1)
   reaper.SetMediaTrackInfo_Value(self.track, "I_RECINPUT", 6112)
-  self.armed = 1
 end
 
-function tracker:checkArmed()
+function tracker:isArmed()
   if reaper.ValidatePtr(self.track, "MediaTrack*") then
-    if ( self.armed == 1 and self.track ) then
-      local recinput = reaper.GetMediaTrackInfo_Value(self.track, "I_RECINPUT")
-      local recarm = reaper.GetMediaTrackInfo_Value(self.track, "I_RECARM")
-      local recmonitor = reaper.GetMediaTrackInfo_Value(self.track, "I_RECMON")
-      local ready = ( recinput == tracker.playNoteCh ) and ( recarm == 1 ) and ( recmonitor == 1 )
-      if ( not ready ) then
-        self.armed = 0
-      end
+    local recinput = reaper.GetMediaTrackInfo_Value(self.track, "I_RECINPUT")
+    local recarm = reaper.GetMediaTrackInfo_Value(self.track, "I_RECARM")
+    local recmonitor = reaper.GetMediaTrackInfo_Value(self.track, "I_RECMON")
+    local ready = ( recinput == tracker.playNoteCh ) and ( recarm == 1 ) and ( recmonitor == 1 )
+    if ( not ready ) then
+      return false
     end
   else
-    self.armed = 0
+    return false
   end
+  
+  return true
 end
 
 function tracker:disarm()
@@ -8240,16 +8237,14 @@ function tracker:disarm()
       reaper.SetMediaTrackInfo_Value(self.track, "I_RECINPUT", self.oldinput)
       reaper.SetMediaTrackInfo_Value(self.track, "I_RECMON",   self.oldmonitor)
     end
-    self.armed = 0
     self.hash = 0
   end
 end
 
 function tracker:playNote(chan, pitch, vel)
-  self:checkArmed()
   local line_played = self.line_played or {}
   local ch = 1
-  if ( self.armed == 1 and not (self.cfg.readfrommidi == 1) ) then
+  if ( self:isArmed() and not (self.cfg.readfrommidi == 1) ) then
     if self.cfg.releaseNoteOffs == 0 then
       self:stopNote()
       if self.outChannel == 0 then
@@ -8287,8 +8282,7 @@ function tracker:playNote(chan, pitch, vel)
 end
 
 function tracker:stopNote()
-  self:checkArmed()
-  if ( self.armed == 1 ) then
+  if ( self:isArmed() ) then
     if ( self.lastNote ) then
       local lastNote = self.lastNote
       reaper.StuffMIDIMessage(0, 0x80 + lastNote[1], lastNote[2], lastNote[3])
@@ -8298,9 +8292,8 @@ function tracker:stopNote()
 end
 
 function tracker:stopAllNotes()
-  self:checkArmed()
   self:terminateScrubNotes()
-  if ( self.armed == 1) then
+  if ( self:isArmed()) then
     self:stopNote()
     if self.line_played then
       local line_played = self.line_played
@@ -8315,8 +8308,7 @@ end
 
 -- chord has to contain a table of {chan, pitch, vel}
 function tracker:playChord(chord)
-  self:checkArmed()
-  if ( self.armed == 1 ) then
+  if ( self:isArmed() ) then
     self:stopChord()
     local idx = 1
     for i,v in pairs( chord ) do
@@ -8414,8 +8406,7 @@ function tracker:insertChord(chord)
 end
 
 function tracker:stopChord()
-  self:checkArmed()
-  if ( self.armed == 1 ) then
+  if ( self:isArmed() ) then
     if ( self.lastChord ) then
       local idx = 1
       for i,v in pairs( self.lastChord ) do
@@ -8792,7 +8783,7 @@ local function getCapValue( sensitivity )
 end
 
 function tracker:playLine()
-  if ( self.armed == 0 ) then
+  if ( not self:isArmed() ) then
      self:arm()
   end
      
@@ -9260,8 +9251,7 @@ local function updateLoop()
   end
 
   -- Check if the note data or take changed, if so, update the note contents
-  tracker:checkArmed()
-  if (reaper.GetPlayState() & 4 == 0) or (self.armed == 0) or (tracker.cfg.blockWhileRecording == 0) then
+  if (reaper.GetPlayState() & 4 == 0) or (not self:isArmed()) or (tracker.cfg.blockWhileRecording == 0) then
     if ( not tracker:checkChange() ) then
       tracker:lostItem()
     end
@@ -10426,7 +10416,7 @@ local function updateLoop()
     elseif( inputs('closeTracker') ) then
       tracker:terminate()
     elseif inputs('escape') then
-      if ( tracker.armed == 1 ) then
+      if ( tracker:isArmed() ) then
         tracker.onlyListen = 1 - tracker.onlyListen
       end
     elseif ( lastChar == 0 ) then
@@ -10588,7 +10578,7 @@ function tracker:terminate()
 end
 
 function tracker:toggleRec()
-  if ( self.armed == 1 ) then
+  if ( self:isArmed() ) then
      self:stopNote()
      self:disarm()
   else
