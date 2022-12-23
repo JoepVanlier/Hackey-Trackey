@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.07
+@version 3.08
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,9 +45,10 @@
 
 --[[
  * Changelog:
- * v3.07 (2022-11-23)
+ * v3.08 (2022-11-23)
   + Fix issue with rec toggle being toggleable along complete height.
   + Fix armed handling (reduce plugin statefulness).
+  + Add option to specify user theme in usertheme.lua.
  * v3.06 (2022-11-22)
   + Add (currently unbound) keys to go to first/last column. The bindings are called "fullLeft", "fullRight", "shiftFullLeft" and "shiftFullRight". The shift variants include block selection updates.
  * v3.05 (2022-11-22)
@@ -613,10 +614,11 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.06"
+tracker.name = "Hackey Trackey v3.08"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
+tracker.themeFile = "usertheme.lua"
 
 tracker.offTag = "__OFF__"
 
@@ -1270,6 +1272,15 @@ function tracker:loadColors(colorScheme)
   DELAY text color = RGB(77,77,77)
   LENGHT text color = RGB(52,160,232)
   If possible : background line3 (every 8 steps) = RGB(179,179,179)]]--
+  
+  else
+    -- Custom color scheme
+    if extraThemes[colorScheme] then
+      tracker:loadColors("renoise")  -- Load some defaults
+      extraThemes[colorScheme](self.colors)
+    else
+      print("FATAL ERROR: Missing color scheme "..colorScheme)
+    end
   end
   -- clear colour is in a different format
   gfx.clear = tracker.colors.windowbackground[1]*256+(tracker.colors.windowbackground[2]*256*256)+(tracker.colors.windowbackground[3]*256*256*256)
@@ -3294,7 +3305,7 @@ function tracker:printGrid()
     for y=1,#yloc do
       local absy = y + scrolly
       if ( absy > 0 and absy <= rows ) then
-        local c1, c2, tx
+        local c1, c2, tx, fc
         if ( (((absy-1)/sig) - math.floor((absy-1)/sig)) == 0 ) then
           c1 = colors.linecolor5
           c2 = colors.linecolor5s
@@ -10837,254 +10848,355 @@ local function file_exists(name)
    if f~=nil then io.close(f) return true else return false end
 end
 
+local function run_or_create_custom_file(fn, str)
+  local full_path = get_script_path()..fn
+  if ( not file_exists(full_path) ) then
+    
+    local fhandle = io.open(full_path, "w")
+    io.output(fhandle)
+    io.write(str)
+    io.close(fhandle)
+  end
+  
+  local ret, str = pcall(function() dofile(full_path) end)
+  if ( not ret ) then
+    reaper.ShowMessageBox("Error parsing " .. fn .. ".\nError: " .. str .. "\nTerminating.", "FATAL ERROR", 0)
+    return
+  else
+    return full_path
+  end
+end
+
 local function Main()
   local tracker = tracker
   local reaper = reaper
 
-  local kfn = get_script_path()..tracker.keyFile
-  if ( not file_exists(kfn) ) then
-    local fhandle = io.open(kfn, "w")
-    io.output(fhandle)
-    io.write("  -- This file can be used to define own custom keysets. Every keyset needs to be declared in\n")
-    io.write("  -- extrakeysets. The actual keyset can then be defined in an if-statement in loadCustomKeys().\n")
-    io.write("  -- This file will not be overwritten when hackey trackey updates, so your keysets are safe.\n")
-    io.write("  -- Note that if new keys get added in the future, that you will have to update this file manually\n")
-    io.write("  -- or else the new keys will revert to their defaults.\n")
-    io.write("  --\n")
-    io.write("  -- Missing keys will be taken from the default set.\n")
-    io.write("\n")
-    io.write("  extrakeysets = { \"custom\" }\n")
-    io.write("\n")
-    io.write("  function loadCustomKeys(keyset)\n")
-    io.write("    if keyset == \"custom\" then\n")
-    io.write("    --                    CTRL    ALT SHIFT Keycode\n")
-    io.write("    keys.left           = { 0,    0,  0,    1818584692 }    -- <-\n")
-    io.write("    keys.right          = { 0,    0,  0,    1919379572 }    -- ->\n")
-    io.write("    keys.up             = { 0,    0,  0,    30064 }         -- /\\\n")
-    io.write("    keys.down           = { 0,    0,  0,    1685026670 }    -- \\/\n")
-    io.write("    keys.off            = { 0,    0,  0,    45 }            -- -\n")
-    io.write("    keys.delete         = { 0,    0,  0,    6579564 }       -- Del\n")
-    io.write("    keys.delete2        = { 0,    0,  0,    46 }            -- .\n")
-    io.write("    keys.home           = { 0,    0,  0,    1752132965 }    -- Home\n")
-    io.write("    keys.End            = { 0,    0,  0,    6647396 }       -- End\n")
-    io.write("    keys.toggle         = { 0,    0,  0,    32 }            -- Space\n")
-    io.write("    keys.playfrom       = { 0,    0,  0,    13 }            -- Enter\n")
-    io.write("    keys.enter          = { 0,    0,  0,    13 }            -- Enter\n")
-    io.write("    keys.insert         = { 0,    0,  0,    6909555 }       -- Insert\n")
-    io.write("    keys.remove         = { 0,    0,  0,    8 }             -- Backspace\n")
-    io.write("    keys.pgup           = { 0,    0,  0,    1885828464 }    -- Page up\n")
-    io.write("    keys.pgdown         = { 0,    0,  0,    1885824110 }    -- Page down\n")
-    io.write("    keys.undo           = { 1,    0,  0,    26 }            -- CTRL + Z\n")
-    io.write("    keys.redo           = { 1,    0,  1,    26 }            -- CTRL + SHIFT + Z\n")
-    io.write("    keys.beginBlock     = { 1,    0,  0,    2 }             -- CTRL + B\n")
-    io.write("    keys.endBlock       = { 1,    0,  0,    5 }             -- CTRL + E\n")
-    io.write("    keys.cutBlock       = { 1,    0,  0,    24 }            -- CTRL + X\n")
-    io.write("    keys.pasteBlock     = { 1,    0,  0,    22 }            -- CTRL + V\n")
-    io.write("    keys.copyBlock      = { 1,    0,  0,    3 }             -- CTRL + C\n")
-    io.write("    keys.shiftItemUp    = { 0,    0,  1,    43 }            -- SHIFT + Num pad +\n")
-    io.write("    keys.shiftItemDown  = { 0,    0,  1,    45 }            -- SHIFT + Num pad -\n")
-    io.write("    keys.scaleUp        = { 1,    1,  1,    267 }           -- CTRL + SHIFT + ALT + Num pad +\n")
-    io.write("    keys.scaleDown      = { 1,    1,  1,    269 }           -- CTRL + SHIFT + ALT + Num pad -\n")
-    io.write("    keys.octaveup       = { 1,    0,  0,    30064 }         -- CTRL + /\\\n")
-    io.write("    keys.octavedown     = { 1,    0,  0,    1685026670 }    -- CTRL + \\/\n")
-    io.write("    keys.envshapeup     = { 1,    0,  1,    30064 }         -- CTRL + SHIFT + /\\\n")
-    io.write("    keys.envshapedown   = { 1,    0,  1,    1685026670 }    -- CTRL + SHIFT + /\\\n")
-    io.write("    keys.help           = { 0,    0,  0,    26161 }         -- F1\n")
-    io.write("    keys.outchandown    = { 0,    0,  0,    26162 }         -- F2\n")
-    io.write("    keys.outchanup      = { 0,    0,  0,    26163 }         -- F3\n")
-    io.write("    keys.advancedown    = { 0,    0,  0,    26164 }         -- F4\n")
-    io.write("    keys.advanceup      = { 0,    0,  0,    26165 }         -- F5\n")
-    io.write("    keys.stop2          = { 0,    0,  0,    26168 }         -- F8\n")
-    io.write("    keys.harmony        = { 0,    0,  0,    26169 }         -- F9\n")
-    io.write("    keys.noteNames      = { 0,    0,  0,    6697264 }       -- F10\n")
-    io.write("    keys.options        = { 0,    0,  0,    6697265 }       -- F11\n")
-    io.write("    keys.panic          = { 0,    0,  0,    6697266 }       -- F12\n")
-    io.write("    keys.setloop        = { 1,    0,  0,    12 }            -- CTRL + L\n")
-    io.write("    keys.setloopstart   = { 1,    0,  0,    17 }            -- CTRL + Q\n")
-    io.write("    keys.setloopend     = { 1,    0,  0,    23 }            -- CTRL + W\n")
-    io.write("    keys.interpolate    = { 1,    0,  0,    9 }             -- CTRL + I\n")
-    io.write("    keys.shiftleft      = { 0,    0,  1,    1818584692 }    -- Shift + <-\n")
-    io.write("    keys.shiftright     = { 0,    0,  1,    1919379572 }    -- Shift + ->\n")
-    io.write("    keys.shiftup        = { 0,    0,  1,    30064 }         -- Shift + /\\\n")
-    io.write("    keys.shiftdown      = { 0,    0,  1,    1685026670 }    -- Shift + \\/\n")
-    io.write("    keys.deleteBlock    = { 0,    0,  1,    6579564 }       -- Shift + Del\n")
-    io.write("    keys.resolutionUp   = { 0,    1,  1,    30064 }         -- SHIFT + Alt + Up\n")
-    io.write("    keys.resolutionDown = { 0,    1,  1,    1685026670 }    -- SHIFT + Alt + Down\n")
-    io.write("    keys.commit         = { 0,    1,  1,    13 }            -- SHIFT + Alt + Enter\n")
-    io.write("    keys.nextMIDI       = { 1,    0,  0,    1919379572.0 }  -- CTRL + ->\n")
-    io.write("    keys.prevMIDI       = { 1,    0,  0,    1818584692.0 }  -- CTRL + <-\n")
-    io.write("    keys.duplicate      = { 1,    0,  0,    4 }             -- CTRL + D\n")
-    io.write("    keys.rename         = { 1,    0,  0,    14 }            -- CTRL + N\n")
-    io.write("    keys.escape         = { 0,    0,  0,    27 }            -- Escape\n")
-    io.write("    keys.toggleRec      = { 1,    0,  0,    18 }            -- CTRL + R\n")
-    io.write("    keys.showMore       = { 1,    0,  0,    11 }            -- CTRL + +\n")
-    io.write("    keys.showLess       = { 1,    0,  0,    13 }            -- CTRL + -\n")
-    io.write("    keys.addCol         = { 1,    0,  1,    11 }            -- CTRL + Shift + +\n")
-    io.write("    keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -\n")
-    io.write("    keys.addColAll      = { 1,    0,  1,    1 }             -- CTRL + Shift + A\n")
-    io.write("    keys.addPatchSelect = { 1,    0,  1,    16 }            -- CTRL + Shift + P\n")
-    io.write("    keys.tab            = { 0,    0,  0,    9 }             -- Tab\n")
-    io.write("    keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab\n")
-    io.write("    keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F\n")
-    io.write("    keys.deleteRow      = { 1,    0,  0,    6579564 }       -- Ctrl + Del\n")
-    io.write("    keys.closeTracker   = { 1,    0,  0,    6697266 }       -- Ctrl + F12\n")
-    io.write("    keys.nextTrack      = { 1,    0,  1,    1919379572.0 }  -- CTRL + Shift + ->\n")
-    io.write("    keys.prevTrack      = { 1,    0,  1,    1818584692.0 }  -- CTRL + Shift + <-\n")
-    io.write("\n")
-    io.write("    keys.insertRow      = { 1,    0,  0,    6909555 }       -- Insert row CTRL+Ins\n")
-    io.write("    keys.removeRow      = { 1,    0,  0,    8 }             -- Remove Row CTRL+Backspace\n")
-    io.write("    keys.wrapDown       = { 1,    0,  1,    6909555 }       -- CTRL + SHIFT + Ins\n")
-    io.write("    keys.wrapUp         = { 1,    0,  1,    8 }             -- CTRL + SHIFT + Backspace\n")
-    io.write("\n")
-    io.write("    keys.m0             = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
-    io.write("    keys.m25            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
-    io.write("    keys.m50            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
-    io.write("    keys.m75            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
-    io.write("    keys.off2           = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
-    io.write("    keys.renoiseplay    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
-    io.write("    keys.shpatdown      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
-    io.write("    keys.shpatup        = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
-    io.write("    keys.shcoldown      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
-    io.write("    keys.shcolup        = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
-    io.write("    keys.shblockdown    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
-    io.write("    keys.shblockup      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
-    io.write("    keys.upByAdvance    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
-    io.write("    keys.downByAdvance  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
-    io.write("    keys.advanceDouble  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
-    io.write("    keys.advanceHalve   = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned\n")
-    io.write("\n")
-    io.write("    keys.cutPattern     = { 1,    0,  0,    500000000000000000000000 }\n")
-    io.write("    keys.cutColumn      = { 1,    0,  1,    500000000000000000000000 }\n")
-    io.write("    keys.cutBlock2      = { 1,    1,  0,    500000000000000000000000 }\n")
-    io.write("    keys.copyPattern    = { 1,    0,  0,    500000000000000000000000 }\n")
-    io.write("    keys.copyColumn     = { 1,    0,  1,    500000000000000000000000 }\n")
-    io.write("    keys.copyBlock2     = { 1,    1,  0,    500000000000000000000000 }\n")
-    io.write("    keys.pastePattern   = { 1,    0,  0,    500000000000000000000000 }\n")
-    io.write("    keys.pasteColumn    = { 1,    0,  1,    500000000000000000000000 }\n")
-    io.write("    keys.pasteBlock2    = { 1,    1,  0,    500000000000000000000000 }\n")
-    io.write("    keys.patternOctDown = { 1,    0,  0,    500000000000000000000000.0 }\n")
-    io.write("    keys.patternOctUp   = { 1,    0,  0,    500000000000000000000000.0 }\n")
-    io.write("    keys.colOctDown     = { 1,    0,  1,    500000000000000000000000.0 }\n")
-    io.write("    keys.colOctUp       = { 1,    0,  1,    500000000000000000000000.0 }\n")
-    io.write("    keys.blockOctDown   = { 1,    1,  0,    500000000000000000000000.0 }\n")
-    io.write("    keys.blockOctUp     = { 1,    1,  0,    500000000000000000000000.0 }\n")
-    io.write("\n")
-    io.write("    keys.shiftpgdn      = { 0,    0,  1,    1885824110 }    -- Shift + PgDn\n")
-    io.write("    keys.shiftpgup      = { 0,    0,  1,    1885828464 }    -- Shift + PgUp\n")
-    io.write("    keys.shifthome      = { 0,    0,  1,    1752132965 }    -- Shift + Home\n")
-    io.write("    keys.shiftend       = { 0,    0,  1,    6647396 }       -- Shift + End\n")
-    io.write("\n")
-    io.write("    keys.shiftFullLeft  = { 1,    0,  1,    500000000000000000000000.0 }\n")
-    io.write("    keys.shiftFullRight = { 1,    0,  1,    500000000000000000000000.0 }\n")
-    io.write("    keys.fullLeft       = { 1,    1,  0,    500000000000000000000000.0 }\n")
-    io.write("    keys.fullRight      = { 1,    1,  0,    500000000000000000000000.0 }\n")
-    io.write("\n")
-    io.write("    help = {\n")
-    io.write("      { 'Shift + Note', 'Advance column after entry' },\n")
-    io.write("      { 'Insert/Backspace/-', 'Insert/Remove/Note OFF' },\n")
-    io.write("      { 'CTRL + Insert/Backspace', 'Insert Row/Remove Row' },\n")
-    io.write("      { 'CTRL + Shift + Ins/Bksp', 'Wrap Forward/Backward' },\n")
-    io.write("      { 'Del/.', 'Delete' },\n")
-    io.write("      { 'Space/Return', 'Play/Play From' },\n")
-    io.write("      { 'CTRL + L', 'Loop pattern' },\n")
-    io.write("      { 'CTRL + Q/W', 'Loop start/end' },\n")
-    io.write("      { 'Shift + +/-', 'Transpose selection' },\n")
-    io.write("      { 'CTRL + B/E', 'Selection begin/End' },\n")
-    io.write("      { 'SHIFT + Arrow Keys', 'Block selection' },\n")
-    io.write("      { 'CTRL + C/X/V', 'Copy / Cut / Paste' },\n")
-    io.write("      { 'CTRL + I', 'Interpolate' },\n")
-    io.write("      { 'Shift + Del', 'Delete block' },\n")
-    io.write("      { 'CTRL + (SHIFT) + Z', 'Undo / Redo' },\n")
-    io.write("      { 'SHIFT + Alt + Up/Down', '[Res]olution Up/Down' },\n")
-    io.write("      { 'SHIFT + Alt + Enter', '[Res]olution Commit' },\n")
-    io.write("      { 'CTRL + Up/Down', '[Oct]ave up/down' },\n")
-    io.write("      { 'CTRL + Shift + Up/Down', '[Env]elope change' },\n")
-    io.write("      { 'F4/F5', '[Adv]ance De/Increase' },\n")
-    io.write("      { 'F2/F3', 'MIDI [out] down/up' },\n")
-    io.write("      { 'F8/F12', 'Stop / Panic' },\n")
-    io.write("      { 'F10/F11', 'Note Names / Options' },\n")
-    io.write("      { 'CTRL + Left/Right', 'Switch MIDI item/track' },\n")
-    io.write("      { 'CTRL + Shift + Left/Right', 'Switch Track' },\n")
-    io.write("      { 'CTRL + D', 'Duplicate pattern' },\n")
-    io.write("      { 'CTRL + N', 'Rename pattern' },\n")
-    io.write("      { 'CTRL + R', 'Play notes' },\n")
-    io.write("      { 'CTRL + +/-', 'Advanced col options' },\n")
-    io.write("      { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },\n")
-    io.write("      { 'CTRL + Shift + A/P', 'Per channel CC/PC' },\n")
-    io.write("      { '', '' },\n")
-    io.write("      { 'Harmony helper', '' },\n")
-    io.write("      { 'F9', 'Toggle harmonizer' },\n")
-    io.write("      { 'CTRL + Click', 'Insert chord' },\n")
-    io.write("      { 'Alt', 'Invert first note' },\n")
-    io.write("      { 'Shift', 'Invert second note' },\n")
-    io.write("      { 'CTRL + Shift + Alt + +/-', 'Shift root note' },\n")
-    io.write("    }\n")
-    io.write("  end\n")
-    io.write("end\n")
-    io.write("\n")
-    io.write("-- Defines where the notes are on the virtual keyboard\n")
-    io.write("function loadCustomKeyboard(choice)\n")
-    io.write("  if ( choice == \"custom\" ) then\n")
-    io.write("    local c = 12\n")
-    io.write("    keys.pitches = {}\n")
-    io.write("    keys.pitches.z = 24-c\n")
-    io.write("    keys.pitches.x = 26-c\n")
-    io.write("    keys.pitches.c = 28-c\n")
-    io.write("    keys.pitches.v = 29-c\n")
-    io.write("    keys.pitches.b = 31-c\n")
-    io.write("    keys.pitches.n = 33-c\n")
-    io.write("    keys.pitches.m = 35-c\n")
-    io.write("    keys.pitches.s = 25-c\n")
-    io.write("    keys.pitches.d = 27-c\n")
-    io.write("    keys.pitches.g = 30-c\n")
-    io.write("    keys.pitches.h = 32-c\n")
-    io.write("    keys.pitches.j = 34-c\n")
-    io.write("    keys.pitches.q = 36-c\n")
-    io.write("    keys.pitches.w = 38-c\n")
-    io.write("    keys.pitches.e = 40-c\n")
-    io.write("    keys.pitches.r = 41-c\n")
-    io.write("    keys.pitches.t = 43-c\n")
-    io.write("    keys.pitches.y = 45-c\n")
-    io.write("    keys.pitches.u = 47-c\n")
-    io.write("    keys.pitches.i = 48-c\n")
-    io.write("    keys.pitches.o = 50-c\n")
-    io.write("    keys.pitches.p = 52-c\n")
-    io.write("\n")
-    io.write("    keys.octaves = {}\n")
-    io.write("    keys.octaves['0'] = 0\n")
-    io.write("    keys.octaves['1'] = 1\n")
-    io.write("    keys.octaves['2'] = 2\n")
-    io.write("    keys.octaves['3'] = 3\n")
-    io.write("    keys.octaves['4'] = 4\n")
-    io.write("    keys.octaves['5'] = 5\n")
-    io.write("    keys.octaves['6'] = 6\n")
-    io.write("    keys.octaves['7'] = 7\n")
-    io.write("    keys.octaves['8'] = 8\n")
-    io.write("    keys.octaves['9'] = 9\n")
-    io.write("  end\n")
-    io.write("end\n")
-    io.write("")
-    io.close(fhandle)
-  end
+  local keyPath = run_or_create_custom_file(
+    tracker.keyFile,
+    [[
+  -- This file can be used to define own custom keysets. Every keyset needs to be declared in
+  -- extrakeysets. The actual keyset can then be defined in an if-statement in loadCustomKeys().
+  -- This file will not be overwritten when hackey trackey updates, so your keysets are safe.
+  -- Note that if new keys get added in the future, that you will have to update this file manually
+  -- or else the new keys will revert to their defaults.
+  --
+  -- Missing keys will be taken from the default set.
 
-  local ret, str = pcall(function() dofile(kfn) end)
-  if ( not ret ) then
-    reaper.ShowMessageBox("Error parsing " .. tracker.keyFile .. "\nError: " .. str .. "\nTerminating.", "FATAL ERROR", 0)
+  extrakeysets = { "custom" }
+
+  function loadCustomKeys(keyset)
+    if keyset == "custom" then
+    --                    CTRL    ALT SHIFT Keycode
+    keys.left           = { 0,    0,  0,    1818584692 }    -- <-
+    keys.right          = { 0,    0,  0,    1919379572 }    -- ->
+    keys.up             = { 0,    0,  0,    30064 }         -- /\
+    keys.down           = { 0,    0,  0,    1685026670 }    -- \/
+    keys.off            = { 0,    0,  0,    45 }            -- -
+    keys.delete         = { 0,    0,  0,    6579564 }       -- Del
+    keys.delete2        = { 0,    0,  0,    46 }            -- .
+    keys.home           = { 0,    0,  0,    1752132965 }    -- Home
+    keys.End            = { 0,    0,  0,    6647396 }       -- End
+    keys.toggle         = { 0,    0,  0,    32 }            -- Space
+    keys.playfrom       = { 0,    0,  0,    13 }            -- Enter
+    keys.enter          = { 0,    0,  0,    13 }            -- Enter
+    keys.insert         = { 0,    0,  0,    6909555 }       -- Insert
+    keys.remove         = { 0,    0,  0,    8 }             -- Backspace
+    keys.pgup           = { 0,    0,  0,    1885828464 }    -- Page up
+    keys.pgdown         = { 0,    0,  0,    1885824110 }    -- Page down
+    keys.undo           = { 1,    0,  0,    26 }            -- CTRL + Z
+    keys.redo           = { 1,    0,  1,    26 }            -- CTRL + SHIFT + Z
+    keys.beginBlock     = { 1,    0,  0,    2 }             -- CTRL + B
+    keys.endBlock       = { 1,    0,  0,    5 }             -- CTRL + E
+    keys.cutBlock       = { 1,    0,  0,    24 }            -- CTRL + X
+    keys.pasteBlock     = { 1,    0,  0,    22 }            -- CTRL + V
+    keys.copyBlock      = { 1,    0,  0,    3 }             -- CTRL + C
+    keys.shiftItemUp    = { 0,    0,  1,    43 }            -- SHIFT + Num pad +
+    keys.shiftItemDown  = { 0,    0,  1,    45 }            -- SHIFT + Num pad -
+    keys.scaleUp        = { 1,    1,  1,    267 }           -- CTRL + SHIFT + ALT + Num pad +
+    keys.scaleDown      = { 1,    1,  1,    269 }           -- CTRL + SHIFT + ALT + Num pad -
+    keys.octaveup       = { 1,    0,  0,    30064 }         -- CTRL + /\
+    keys.octavedown     = { 1,    0,  0,    1685026670 }    -- CTRL + \/
+    keys.envshapeup     = { 1,    0,  1,    30064 }         -- CTRL + SHIFT + /\
+    keys.envshapedown   = { 1,    0,  1,    1685026670 }    -- CTRL + SHIFT + /\
+    keys.help           = { 0,    0,  0,    26161 }         -- F1
+    keys.outchandown    = { 0,    0,  0,    26162 }         -- F2
+    keys.outchanup      = { 0,    0,  0,    26163 }         -- F3
+    keys.advancedown    = { 0,    0,  0,    26164 }         -- F4
+    keys.advanceup      = { 0,    0,  0,    26165 }         -- F5
+    keys.stop2          = { 0,    0,  0,    26168 }         -- F8
+    keys.harmony        = { 0,    0,  0,    26169 }         -- F9
+    keys.noteNames      = { 0,    0,  0,    6697264 }       -- F10
+    keys.options        = { 0,    0,  0,    6697265 }       -- F11
+    keys.panic          = { 0,    0,  0,    6697266 }       -- F12
+    keys.setloop        = { 1,    0,  0,    12 }            -- CTRL + L
+    keys.setloopstart   = { 1,    0,  0,    17 }            -- CTRL + Q
+    keys.setloopend     = { 1,    0,  0,    23 }            -- CTRL + W
+    keys.interpolate    = { 1,    0,  0,    9 }             -- CTRL + I
+    keys.shiftleft      = { 0,    0,  1,    1818584692 }    -- Shift + <-
+    keys.shiftright     = { 0,    0,  1,    1919379572 }    -- Shift + ->
+    keys.shiftup        = { 0,    0,  1,    30064 }         -- Shift + /\
+    keys.shiftdown      = { 0,    0,  1,    1685026670 }    -- Shift + \/
+    keys.deleteBlock    = { 0,    0,  1,    6579564 }       -- Shift + Del
+    keys.resolutionUp   = { 0,    1,  1,    30064 }         -- SHIFT + Alt + Up
+    keys.resolutionDown = { 0,    1,  1,    1685026670 }    -- SHIFT + Alt + Down
+    keys.commit         = { 0,    1,  1,    13 }            -- SHIFT + Alt + Enter
+    keys.nextMIDI       = { 1,    0,  0,    1919379572.0 }  -- CTRL + ->
+    keys.prevMIDI       = { 1,    0,  0,    1818584692.0 }  -- CTRL + <-
+    keys.duplicate      = { 1,    0,  0,    4 }             -- CTRL + D
+    keys.rename         = { 1,    0,  0,    14 }            -- CTRL + N
+    keys.escape         = { 0,    0,  0,    27 }            -- Escape
+    keys.toggleRec      = { 1,    0,  0,    18 }            -- CTRL + R
+    keys.showMore       = { 1,    0,  0,    11 }            -- CTRL + +
+    keys.showLess       = { 1,    0,  0,    13 }            -- CTRL + -
+    keys.addCol         = { 1,    0,  1,    11 }            -- CTRL + Shift + +
+    keys.remCol         = { 1,    0,  1,    13 }            -- CTRL + Shift + -
+    keys.addColAll      = { 1,    0,  1,    1 }             -- CTRL + Shift + A
+    keys.addPatchSelect = { 1,    0,  1,    16 }            -- CTRL + Shift + P
+    keys.tab            = { 0,    0,  0,    9 }             -- Tab
+    keys.shifttab       = { 0,    0,  1,    9 }             -- SHIFT + Tab
+    keys.follow         = { 1,    0,  0,    6 }             -- CTRL + F
+    keys.deleteRow      = { 1,    0,  0,    6579564 }       -- Ctrl + Del
+    keys.closeTracker   = { 1,    0,  0,    6697266 }       -- Ctrl + F12
+    keys.nextTrack      = { 1,    0,  1,    1919379572.0 }  -- CTRL + Shift + ->
+    keys.prevTrack      = { 1,    0,  1,    1818584692.0 }  -- CTRL + Shift + <-
+
+    keys.insertRow      = { 1,    0,  0,    6909555 }       -- Insert row CTRL+Ins
+    keys.removeRow      = { 1,    0,  0,    8 }             -- Remove Row CTRL+Backspace
+    keys.wrapDown       = { 1,    0,  1,    6909555 }       -- CTRL + SHIFT + Ins
+    keys.wrapUp         = { 1,    0,  1,    8 }             -- CTRL + SHIFT + Backspace
+
+    keys.m0             = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.m25            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.m50            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.m75            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.off2           = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.renoiseplay    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.shpatdown      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.shpatup        = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.shcoldown      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.shcolup        = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.shblockdown    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.shblockup      = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.upByAdvance    = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.downByAdvance  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.advanceDouble  = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+    keys.advanceHalve   = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
+
+    keys.cutPattern     = { 1,    0,  0,    500000000000000000000000 }
+    keys.cutColumn      = { 1,    0,  1,    500000000000000000000000 }
+    keys.cutBlock2      = { 1,    1,  0,    500000000000000000000000 }
+    keys.copyPattern    = { 1,    0,  0,    500000000000000000000000 }
+    keys.copyColumn     = { 1,    0,  1,    500000000000000000000000 }
+    keys.copyBlock2     = { 1,    1,  0,    500000000000000000000000 }
+    keys.pastePattern   = { 1,    0,  0,    500000000000000000000000 }
+    keys.pasteColumn    = { 1,    0,  1,    500000000000000000000000 }
+    keys.pasteBlock2    = { 1,    1,  0,    500000000000000000000000 }
+    keys.patternOctDown = { 1,    0,  0,    500000000000000000000000.0 }
+    keys.patternOctUp   = { 1,    0,  0,    500000000000000000000000.0 }
+    keys.colOctDown     = { 1,    0,  1,    500000000000000000000000.0 }
+    keys.colOctUp       = { 1,    0,  1,    500000000000000000000000.0 }
+    keys.blockOctDown   = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.blockOctUp     = { 1,    1,  0,    500000000000000000000000.0 }
+
+    keys.shiftpgdn      = { 0,    0,  1,    1885824110 }    -- Shift + PgDn
+    keys.shiftpgup      = { 0,    0,  1,    1885828464 }    -- Shift + PgUp
+    keys.shifthome      = { 0,    0,  1,    1752132965 }    -- Shift + Home
+    keys.shiftend       = { 0,    0,  1,    6647396 }       -- Shift + End
+
+    keys.shiftFullLeft  = { 1,    0,  1,    500000000000000000000000.0 }
+    keys.shiftFullRight = { 1,    0,  1,    500000000000000000000000.0 }
+    keys.fullLeft       = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.fullRight      = { 1,    1,  0,    500000000000000000000000.0 }
+
+    help = {
+      { 'Shift + Note', 'Advance column after entry' },
+      { 'Insert/Backspace/-', 'Insert/Remove/Note OFF' },
+      { 'CTRL + Insert/Backspace', 'Insert Row/Remove Row' },
+      { 'CTRL + Shift + Ins/Bksp', 'Wrap Forward/Backward' },
+      { 'Del/.', 'Delete' },
+      { 'Space/Return', 'Play/Play From' },
+      { 'CTRL + L', 'Loop pattern' },
+      { 'CTRL + Q/W', 'Loop start/end' },
+      { 'Shift + +/-', 'Transpose selection' },
+      { 'CTRL + B/E', 'Selection begin/End' },
+      { 'SHIFT + Arrow Keys', 'Block selection' },
+      { 'CTRL + C/X/V', 'Copy / Cut / Paste' },
+      { 'CTRL + I', 'Interpolate' },
+      { 'Shift + Del', 'Delete block' },
+      { 'CTRL + (SHIFT) + Z', 'Undo / Redo' },
+      { 'SHIFT + Alt + Up/Down', '[Res]olution Up/Down' },
+      { 'SHIFT + Alt + Enter', '[Res]olution Commit' },
+      { 'CTRL + Up/Down', '[Oct]ave up/down' },
+      { 'CTRL + Shift + Up/Down', '[Env]elope change' },
+      { 'F4/F5', '[Adv]ance De/Increase' },
+      { 'F2/F3', 'MIDI [out] down/up' },
+      { 'F8/F12', 'Stop / Panic' },
+      { 'F10/F11', 'Note Names / Options' },
+      { 'CTRL + Left/Right', 'Switch MIDI item/track' },
+      { 'CTRL + Shift + Left/Right', 'Switch Track' },
+      { 'CTRL + D', 'Duplicate pattern' },
+      { 'CTRL + N', 'Rename pattern' },
+      { 'CTRL + R', 'Play notes' },
+      { 'CTRL + +/-', 'Advanced col options' },
+      { 'CTRL + Shift + +/-', 'Add CC (adv mode)' },
+      { 'CTRL + Shift + A/P', 'Per channel CC/PC' },
+      { '', '' },
+      { 'Harmony helper', '' },
+      { 'F9', 'Toggle harmonizer' },
+      { 'CTRL + Click', 'Insert chord' },
+      { 'Alt', 'Invert first note' },
+      { 'Shift', 'Invert second note' },
+      { 'CTRL + Shift + Alt + +/-', 'Shift root note' },
+    }
+  end
+end
+
+-- Defines where the notes are on the virtual keyboard
+function loadCustomKeyboard(choice)
+  if ( choice == "custom" ) then
+    local c = 12
+    keys.pitches = {}
+    keys.pitches.z = 24-c
+    keys.pitches.x = 26-c
+    keys.pitches.c = 28-c
+    keys.pitches.v = 29-c
+    keys.pitches.b = 31-c
+    keys.pitches.n = 33-c
+    keys.pitches.m = 35-c
+    keys.pitches.s = 25-c
+    keys.pitches.d = 27-c
+    keys.pitches.g = 30-c
+    keys.pitches.h = 32-c
+    keys.pitches.j = 34-c
+    keys.pitches.q = 36-c
+    keys.pitches.w = 38-c
+    keys.pitches.e = 40-c
+    keys.pitches.r = 41-c
+    keys.pitches.t = 43-c
+    keys.pitches.y = 45-c
+    keys.pitches.u = 47-c
+    keys.pitches.i = 48-c
+    keys.pitches.o = 50-c
+    keys.pitches.p = 52-c
+
+    keys.octaves = {}
+    keys.octaves['0'] = 0
+    keys.octaves['1'] = 1
+    keys.octaves['2'] = 2
+    keys.octaves['3'] = 3
+    keys.octaves['4'] = 4
+    keys.octaves['5'] = 5
+    keys.octaves['6'] = 6
+    keys.octaves['7'] = 7
+    keys.octaves['8'] = 8
+    keys.octaves['9'] = 9
+  end
+end
+    ]]
+  )
+
+  local themePath = run_or_create_custom_file(
+    tracker.themeFile,
+    [[
+  -- This file can be used to define own custom themes. Every theme needs to be declared in extraThemes.
+  -- This file will not be overwritten when hackey trackey updates, so your themes are safe.
+  -- Note that if new colors get added in the future, that you will have to update this file manually
+  -- or else the new colors will revert to their defaults. Note that you may define multiple custom themes.
+  --
+  -- Missing color definitions will be taken from the Renoise theme.
+  
+  extraThemes = {
+    custom = function(self)
+      self.ellipsis         = 1  -- Draw ellipses instead of dots
+      self.shadercolor      = {177/255, 171/255, 116/255, 1.0}
+      self.harmonycolor     = {177/255, 171/255, 116/255, 1.0}
+      self.harmonyselect    = {183/255, 255/255, 191/255, 1.0}
+      self.helpcolor        = {243/255, 171/255, 116/255, 1.0} -- Determines how the functions are colored in the help
+      self.helpcolor2       = {178/256, 178/256, 178/256, 1} -- Determines how the keys are colored in the help
+      self.selectcolor      = {1, 234/256, 20/256, 1} -- Background color selection
+      self.selecttext       = {0, 0, 0, 1} -- Foreground color selection
+      self.textcolor        = {148/256, 148/256, 148/256, 1} -- pattern data text color (only used when normal and bar are left undefined)
+      self.textcolorbar     = {1, 1, 1, 1} -- pattern data text color at bar (only used when normal and bar are left undefined)
+      self.headercolor      = {215/256, 215/256, 215/256, 1} -- column headers, statusbar etc
+      self.inactive         = {115/256, 115/256, 115/256, 1} -- column headers, statusbar etc
+      self.linecolor        = {18/256,18/256,18/256, 0.6} -- normal row
+      self.linecolor2       = {1/256*55, 1/256*55, 1/256*55, 0.6} -- beats (must not have 100% alpha as it's drawn over the cursor(!))
+      self.linecolor3       = {1/256*180, 1/256*148, 1/256*120, 1} -- scroll indicating trangle thingy
+      self.linecolor4       = {1/256*204, 1/256*204, 1/256*68, 1} -- Reaper edit cursor
+      self.linecolor5       = {41/256, 41/256, 41/256, 1.0} -- Bar start
+      self.loopcolor        = {1/256*204, 1/256*204, 1/256*68, 1} -- lines surrounding loop
+      self.copypaste        = {1/256*57, 1/256*57, 1/256*20, 0.66}  -- the selection (should be lighter (not alpha blended) but is drawn over the data)
+      self.scrollbar1       = {98/256, 98/256, 98/256, 1} -- scrollbar handle & outline
+      self.scrollbar2       = {19/256, 19/256, 19/256, 1} -- scrollbar background
+      self.changed          = {1, 1, 0, 1}  -- Color indicating a changed but uncommitted setting
+      self.changed2         = {0, .5, 1, .5} -- Only listening
+      self.windowbackground = {18/256, 18/256, 18/256, 1}  -- Window background. Note that the alpha channel is ignored.
+      self.crtStrength      = 0  -- How strong should the CRT effect be when enabled.
+      
+      -- Colors that override the text colors for different columns
+      -- When these are specified, the colors textcolor and textcolorbar are ignored.
+      self.normal.mod1      = {243/255, 171/255, 116/255, 1.0}
+      self.normal.mod2      = self.normal.mod1
+      self.normal.mod3      = self.normal.mod1
+      self.normal.mod4      = self.normal.mod1
+      self.normal.modtxt1   = {243/255, 171/255, 116/255, 1.0}
+      self.normal.modtxt2   = self.normal.modtxt1
+      self.normal.modtxt3   = self.normal.modtxt1
+      self.normal.modtxt4   = self.normal.modtxt1
+      self.normal.vel1      = {186/255, 185/255, 108/255, 1.0}
+      self.normal.vel2      = self.normal.vel1
+      self.normal.delay1    = {123/255, 149/255, 197/255, 1.0}
+      self.normal.delay2    = self.normal.delay1
+      self.normal.fx1       = {183/255, 255/255, 191/255, 1.0}
+      self.normal.fx2       = self.normal.fx1
+      self.normal.end1      = {136/255, 80/255, 178/255, 1.0}
+      self.normal.end2      = self.normal.end1
+      
+      self.bar.mod1         = {255/255, 159/255, 88/255, 1.0}
+      self.bar.mod2         = self.bar.mod1
+      self.bar.mod3         = self.bar.mod1
+      self.bar.mod4         = self.bar.mod1
+      self.bar.modtxt1      = {255/255, 159/255, 88/255, 1.0}
+      self.bar.modtxt2      = self.bar.modtxt1
+      self.bar.modtxt3      = self.bar.modtxt1
+      self.bar.modtxt4      = self.bar.modtxt1
+      self.bar.vel1         = {171/255, 169/255, 77/255, 1.0}
+      self.bar.vel2         = self.bar.vel1
+      self.bar.delay1       = {116/255, 162/255, 255/255, 1.0}
+      self.bar.delay2       = self.bar.delay1
+      self.bar.fx1          = {146/255, 255/255, 157/255, 1.0}
+      self.bar.fx2          = self.bar.fx1
+      self.bar.end1         = {136/255, 80/255, 178/255, 1.0}
+      self.bar.end2         = self.bar.end1
+      
+      self.patternFont         = "DejaVu Sans"  -- Custom font. Note that it should be installed on the system.
+      self.patternFontSize     = tracker.cfg.fontSize or 14  -- Font size. Usually overridden by the user already.
+      self.customFontDisplace  = { self.patternFontSize-6, -3 }  -- Font displacement to fixup alignment issues.
+    end
+  }
+    ]])
+
+  if ( not extrakeysets ) then
+    reaper.ShowMessageBox("Error parsing " .. tracker.keyFile .. "\nDid not find variable extrakeysets. Please delete userkeys.lua.\nTerminating.", "FATAL ERROR", 0)
     return
-  else
-    if ( not extrakeysets ) then
-      reaper.ShowMessageBox("Error parsing " .. tracker.keyFile .. "\nDid not find variable extrakeysets. Please delete userkeys.lua.\nTerminating.", "FATAL ERROR", 0)
-      return
-    end
-
-    for i,v in pairs( extrakeysets ) do
-      table.insert(keysets, v)
-    end
-    tracker.loadCustomKeys      = loadCustomKeys
-    tracker.loadCustomKeyboard  = loadCustomKeyboard
   end
-
-
+  
+  for i,v in pairs( extrakeysets ) do
+    table.insert(keysets, v)
+  end
+  tracker.loadCustomKeys      = loadCustomKeys
+  tracker.loadCustomKeyboard  = loadCustomKeyboard
+  
+  if not extraThemes then
+    reaper.ShowMessageBox("Error parsing " .. tracker.themeFile .. "\nDid not find variable extraThemes. Please delete usertheme.lua.\nTerminating.", "FATAL ERROR", 0)
+  else
+    -- Verify it has the correct format
+    for k, v in pairs(extraThemes) do
+      tracker.colorschemes[#tracker.colorschemes + 1] = k
+      v({normal={}, bar={}})
+    end
+  end
+  
   --if ( reaper.CountSelectedMediaItems(0) > 0 or tracker:readInt("initialiseAtTrack") ) then
     tracker.tick = 0
     tracker.xposunset = 1
