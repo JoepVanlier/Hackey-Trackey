@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.09 (t.b.d.)
+  + Improve layout logic.
  * v3.08 (2022-11-23)
   + Fix issue with rec toggle being toggleable along complete height.
   + Fix armed handling (reduce plugin statefulness).
@@ -727,8 +729,12 @@ function updateFontScale()
   
   tracker.harmonyWidth    = 520 * fontScaler
   tracker.noteNamesWidth  = 250 * fontScaler
-  tracker.helpwidth       = 400 * fontScaler
-  tracker.optionswidth    = 370 * fontScaler
+
+  local txt_w, txt_h = gfx.measurestr("CTRL + Shift + Click row indicator Change highlighting (RMB resets)")
+  tracker.helpwidth       = txt_w -- 400 * fontScaler
+  
+  local txt_w, txt_h = gfx.measurestr("___Theme_____Map______Layout____Font__FX1__Style_")
+  tracker.optionswidth    = txt_w + 8.2 * 4 --370 * fontScaler
 end
 
 tracker.scrollbar = {}
@@ -4025,13 +4031,13 @@ function tracker:optionLocations()
   local ys = plotData.ystart - 1.3*plotData.indicatorShiftY + yheight
 
   if self.harmonyActive == 1 then
-    xs = xs + self.harmonyWidth * 1.1
+    xs = xs + self.harmonyWidth
   end
   if self.noteNamesActive == 1 then
-    xs = xs + self.noteNamesWidth * 1.1
+    xs = xs + self.noteNamesWidth
   end
   if self.helpActive == 1 then
-    xs = xs + self.helpwidth * 1.1
+    xs = xs + self.helpwidth
   end
   
   if ( self.colors.patternFont and self.colors.patternFontSize ) then
@@ -4062,7 +4068,7 @@ function tracker:optionLocations()
   xloc = xloc + w;
   w = gfx.measurestr('fx2__')
   local fx2Menu = CreateMenu(xloc, ys + yheight * 2, w, yheight)
-
+  
   local binaryOptions = CreateMenu(xs + 8.2 * 2, ys + yheight * ( 1 + #tracker.colorschemes + #keysets ), w, yheight)
 
   return themeMenu, keymapMenu, layoutMenu, fontsizeMenu, binaryOptions, fx1Menu, fx2Menu, {x=xs, y=ys}
