@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.06
+@version 3.07
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.07 (2022-11-23)
+  + Fix issue with rec toggle being toggleable along complete height.
  * v3.06 (2022-11-22)
   + Add (currently unbound) keys to go to first/last column. The bindings are called "fullLeft", "fullRight", "shiftFullLeft" and "shiftFullRight". The shift variants include block selection updates.
  * v3.05 (2022-11-22)
@@ -7160,7 +7162,7 @@ function tracker:setTake( take )
         local new_track = reaper.GetMediaItem_Track(self.item)
         if new_track ~= self.track then
           -- Remove any CCs that might have carried over
-          if ( self.armed == 1 ) then
+          if ( self.cfg.alwaysRecord == 1 and self.armed == 1 ) then
             -- Only disarm when seeking a different track
             tracker:disarm()
           end
@@ -7179,14 +7181,13 @@ function tracker:setTake( take )
         if ( self.cfg.alwaysRecord == 1 ) then
           tracker:arm()
         end
-  
+        
         if tracker.noteNamesActive == 1 then
           tracker:getNoteNames()
         end
         
         self.muted_channels = nil
         return true
-        
       else
         return false
       end
@@ -8234,9 +8235,11 @@ end
 
 function tracker:disarm()
   if ( self.track ) then
-    reaper.SetMediaTrackInfo_Value(self.track, "I_RECARM",   self.oldarm)
-    reaper.SetMediaTrackInfo_Value(self.track, "I_RECINPUT", self.oldinput)
-    reaper.SetMediaTrackInfo_Value(self.track, "I_RECMON",   self.oldmonitor)
+    if self.oldarm then
+      reaper.SetMediaTrackInfo_Value(self.track, "I_RECARM",   self.oldarm)
+      reaper.SetMediaTrackInfo_Value(self.track, "I_RECINPUT", self.oldinput)
+      reaper.SetMediaTrackInfo_Value(self.track, "I_RECMON",   self.oldmonitor)
+    end
     self.armed = 0
     self.hash = 0
   end
@@ -9551,7 +9554,7 @@ local function updateLoop()
         setCapMode(CaptureModes.OCT_SELECTOR, tracker.transpose, tracker.minoct, tracker.maxoct) -- Oct
       elseif ( dials[5]:over() ) then
         setCapMode(CaptureModes.RES_SELECTOR, tracker.newRowPerQn, 1, tracker.maxRowPerQn) -- Res
-      elseif ( gfx.mouse_x < plotData.xstart + gfx.measurestr("[Rec]") ) and ( gfx.mouse_x > plotData.xstart ) then
+      elseif ( gfx.mouse_x < plotData.xstart + gfx.measurestr("[Rec]") ) and ( gfx.mouse_x > plotData.xstart ) and (gfx.mouse_y > dials[1].ymin) and (gfx.mouse_y < dials[1].ymax) then
         if ( tracker.lastleft ~= 1 ) then
           tracker:toggleRec()
         end
