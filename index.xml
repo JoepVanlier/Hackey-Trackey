@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Tracker tools" commit="d5ce18af914a38a0f69aa9097e2352390d846322">
+<index version="1" name="Tracker tools" commit="8ac51381d66fb0bf06ffe2c2f4178e14114e6ab6">
   <category name="Tracker">
     <reapack name="tracker.lua" type="script" desc="Hackey-Trackey: A tracker interface similar to Jeskola Buzz for MIDI and FX editing.">
       <metadata>
@@ -1408,6 +1408,32 @@ FF = the full length of the last tick.]]></changelog>
         <source type="effect" file="htp_midi.jsfx-inc">https://github.com/JoepVanlier/Hackey-Trackey/raw/d5ce18af914a38a0f69aa9097e2352390d846322/Tracker/htp_midi.jsfx-inc</source>
         <source type="effect" file="htp_sample_editor.jsfx-inc">https://github.com/JoepVanlier/Hackey-Trackey/raw/d5ce18af914a38a0f69aa9097e2352390d846322/Tracker/htp_sample_editor.jsfx-inc</source>
         <source type="effect" file="Hackey Trackey Channel Cycler.jsfx">https://github.com/JoepVanlier/Hackey-Trackey/raw/d5ce18af914a38a0f69aa9097e2352390d846322/Tracker/Hackey%20Trackey%20Channel%20Cycler.jsfx</source>
+      </version>
+      <version name="3.07" author=": Joep Vanlier" time="2022-12-23T15:25:54Z">
+        <changelog><![CDATA[+ Fix issue with rec toggle being toggleable along complete height.]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/48d8f23d132fc851eebddff152b85aeda9171c0b/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/48d8f23d132fc851eebddff152b85aeda9171c0b/Tracker/tracker.lua</source>
+        <source main="main" file="hackey_trackey_tracker.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/48d8f23d132fc851eebddff152b85aeda9171c0b/Tracker/hackey_trackey_tracker.lua</source>
+        <source main="main" file="hackey_trackey_load_sample.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/48d8f23d132fc851eebddff152b85aeda9171c0b/Tracker/hackey_trackey_load_sample.lua</source>
+        <source type="effect" file="Hackey_MIDI_Detector.jsfx">https://github.com/JoepVanlier/Hackey-Trackey/raw/48d8f23d132fc851eebddff152b85aeda9171c0b/Tracker/Hackey_MIDI_Detector.jsfx</source>
+        <source type="effect" file="Hackey_Sample_Playback.jsfx">https://github.com/JoepVanlier/Hackey-Trackey/raw/48d8f23d132fc851eebddff152b85aeda9171c0b/Tracker/Hackey_Sample_Playback.jsfx</source>
+        <source type="effect" file="htp_midi.jsfx-inc">https://github.com/JoepVanlier/Hackey-Trackey/raw/48d8f23d132fc851eebddff152b85aeda9171c0b/Tracker/htp_midi.jsfx-inc</source>
+        <source type="effect" file="htp_sample_editor.jsfx-inc">https://github.com/JoepVanlier/Hackey-Trackey/raw/48d8f23d132fc851eebddff152b85aeda9171c0b/Tracker/htp_sample_editor.jsfx-inc</source>
+        <source type="effect" file="Hackey Trackey Channel Cycler.jsfx">https://github.com/JoepVanlier/Hackey-Trackey/raw/48d8f23d132fc851eebddff152b85aeda9171c0b/Tracker/Hackey%20Trackey%20Channel%20Cycler.jsfx</source>
+      </version>
+      <version name="3.08" author=": Joep Vanlier" time="2022-12-23T17:42:38Z">
+        <changelog><![CDATA[+ Fix issue with rec toggle being toggleable along complete height.
++ Fix armed handling (reduce plugin statefulness).
++ Add option to specify user theme in usertheme.lua.]]></changelog>
+        <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/8ac51381d66fb0bf06ffe2c2f4178e14114e6ab6/Tracker/scales.lua</source>
+        <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/8ac51381d66fb0bf06ffe2c2f4178e14114e6ab6/Tracker/tracker.lua</source>
+        <source main="main" file="hackey_trackey_tracker.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/8ac51381d66fb0bf06ffe2c2f4178e14114e6ab6/Tracker/hackey_trackey_tracker.lua</source>
+        <source main="main" file="hackey_trackey_load_sample.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/8ac51381d66fb0bf06ffe2c2f4178e14114e6ab6/Tracker/hackey_trackey_load_sample.lua</source>
+        <source type="effect" file="Hackey_MIDI_Detector.jsfx">https://github.com/JoepVanlier/Hackey-Trackey/raw/8ac51381d66fb0bf06ffe2c2f4178e14114e6ab6/Tracker/Hackey_MIDI_Detector.jsfx</source>
+        <source type="effect" file="Hackey_Sample_Playback.jsfx">https://github.com/JoepVanlier/Hackey-Trackey/raw/8ac51381d66fb0bf06ffe2c2f4178e14114e6ab6/Tracker/Hackey_Sample_Playback.jsfx</source>
+        <source type="effect" file="htp_midi.jsfx-inc">https://github.com/JoepVanlier/Hackey-Trackey/raw/8ac51381d66fb0bf06ffe2c2f4178e14114e6ab6/Tracker/htp_midi.jsfx-inc</source>
+        <source type="effect" file="htp_sample_editor.jsfx-inc">https://github.com/JoepVanlier/Hackey-Trackey/raw/8ac51381d66fb0bf06ffe2c2f4178e14114e6ab6/Tracker/htp_sample_editor.jsfx-inc</source>
+        <source type="effect" file="Hackey Trackey Channel Cycler.jsfx">https://github.com/JoepVanlier/Hackey-Trackey/raw/8ac51381d66fb0bf06ffe2c2f4178e14114e6ab6/Tracker/Hackey%20Trackey%20Channel%20Cycler.jsfx</source>
       </version>
     </reapack>
   </category>
