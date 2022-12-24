@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.08
+@version 3.09
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,7 +45,7 @@
 
 --[[
  * Changelog:
- * v3.09 (t.b.d.)
+ * v3.09 (2022-11-24)
   + Improve layout logic.
   + Add scrollbar to options.
  * v3.08 (2022-11-23)
@@ -617,7 +617,7 @@
 --    Happy trackin'! :)
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.08"
+tracker.name = "Hackey Trackey v3.09"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
