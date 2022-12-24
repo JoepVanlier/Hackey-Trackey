@@ -47,6 +47,7 @@
  * Changelog:
  * v3.09 (t.b.d.)
   + Improve layout logic.
+  + Add scrollbar to options.
  * v3.08 (2022-11-23)
   + Fix issue with rec toggle being toggleable along complete height.
   + Fix armed handling (reduce plugin statefulness).
@@ -737,8 +738,8 @@ function updateFontScale()
   tracker.optionswidth    = txt_w + 8.2 * 4 --370 * fontScaler
 end
 
-tracker.scrollbar = {}
-tracker.scrollbar.size = 10
+tracker.scrollbar = {size = 10}
+tracker.options_scrollbar = {size = 10}
 
 tracker.zeroindexed = 1
 tracker.hex = 1
@@ -846,6 +847,8 @@ tracker.cfg.transpose = 3
 tracker.cfg.advance = 1
 tracker.cfg.envShape = 1
 tracker.cfg.modMode = 0
+
+tracker.cfg.optionsStartIndex = 1
 
 tracker.binaryOptions = {
     { 'autoResize', 'Auto Resize' },
@@ -2793,9 +2796,10 @@ end
 -- Scrollbar
 ------------------------------
 scrollbar = {}
-function scrollbar.create( w )
+function scrollbar.create( w, no_indicator )
   self = {}
   self.w = w
+  self.indicator = not no_indicator
   self.setPos = function ( self, x, y, h )
     self.x = x
     self.y = y
@@ -2868,7 +2872,7 @@ function scrollbar.create( w )
     self.ly = my
   end
 
-  self.draw = function(self, colors)
+  self.draw = function(self, colors, fixed_indicator_hack)
     local x = self.x
     local y = self.y
     local w = self.w
@@ -2876,14 +2880,15 @@ function scrollbar.create( w )
     local ytop = self.ytop
     local yend = self.yend
 
-    if ( tracker.cfg.fixedIndicator == 1 ) then
+    if fixed_indicator_hack then
+      -- TODO: This entire behaviour should not be in here!
       gfx.set(table.unpack(colors.scrollbar1))
       gfx.rect(x, y, w, h)
       gfx.set(table.unpack(colors.scrollbar2))
       gfx.rect(x+1, y+1, w-2, h-2)
 
       local fixedIndLoc = tracker.cfg.fixedIndLoc
-      local diff = (yend - ytop) * tracker.fov.height / (tracker.fov.height - 1)
+      local diff = (yend - ytop) * tracker.fov.height / (tracker.fov.height + 1)
       local totLen = 1 + diff
 
       ytop = (ytop + fixedIndLoc * diff) / totLen
@@ -2892,8 +2897,10 @@ function scrollbar.create( w )
 
       gfx.set(table.unpack(colors.scrollbar1))
       gfx.rect(x+2, y + ytop*h+2, w-4, (yend-ytop)*h-3)
-      gfx.set(table.unpack(colors.scrollbar1))
-      gfx.rect(x-2, y + ymarker*h-1, w+4, 2)
+      if self.indicator then
+        gfx.set(table.unpack(colors.scrollbar1))
+        gfx.rect(x-2, y + ymarker*h-1, w+4, 2)
+      end
     else
       gfx.set(table.unpack(colors.scrollbar1))
       gfx.rect(x, y, w, h)
@@ -2901,8 +2908,10 @@ function scrollbar.create( w )
       gfx.rect(x+1, y+1, w-2, h-2)
       gfx.set(table.unpack(colors.scrollbar1))
       gfx.rect(x+2, y + ytop*h+2, w-4, (yend-ytop)*h-3)
-      gfx.set(table.unpack(colors.scrollbar1))
-      gfx.rect(x-2, y + self.ymarker*h-1, w+4, 2)
+      if self.indicator then
+        gfx.set(table.unpack(colors.scrollbar1))
+        gfx.rect(x-2, y + self.ymarker*h-1, w+4, 2)
+      end
     end
   end
 
@@ -3547,7 +3556,7 @@ function tracker:printGrid()
   ------------------------------
   tracker.scrollbar:setExtent( fov.scrolly / rows, ( fov.scrolly + fov.height ) / rows, tracker.ypos/rows, rows )
   if ( self:shouldShowScrollbars() ) then
-    tracker.scrollbar:draw(colors)
+    tracker.scrollbar:draw(colors, tracker.cfg.fixedIndicator == 1)
   end
 
   ------------------------------
@@ -3830,23 +3839,43 @@ function tracker:printGrid()
 
     xs = binaryOptions.x
     ys = binaryOptions.y
-    for i=1,#self.binaryOptions do
+    
+    local max_count = math.floor((gfx.h - ys) / binaryOptions.h - 1)
+    tracker.options_scrollbar:setPos(xs + tracker.optionswidth - 50, ys, binaryOptions.h * math.min(#self.binaryOptions, max_count))
+    
+    local start_index = tracker.cfg.optionsStartIndex
+    local total = #self.binaryOptions
+    max_count = math.min(max_count, #self.binaryOptions - start_index + 1)
+    
+    tracker.options_scrollbar:setExtent((start_index - 1) / total, (start_index + max_count - 1) / total, (start_index - 1) / total, total)
+    
+    if tracker.cfg.optionsStartIndex ~= 1 or (#self.binaryOptions ~= max_count) then
+      tracker.options_scrollbar:draw(tracker.colors, false)
+    end
+    
+    local updated_location = tracker.options_scrollbar:mouseUpdate(gfx.mouse_x, gfx.mouse_y, gfx.mouse_cap & 1)
+    if updated_location then
+      tracker.cfg.optionsStartIndex = math.max(1, math.min(total - max_count + 1, updated_location * total + 1))
+    end
+    
+    start_index = math.floor(start_index)
+    for i=0,max_count - 1 do
       gfx.set(table.unpack(colors.textcolorbar or colors.helpcolor2))
       gfx.x = xs + 13
       local cys = ys + i * binaryOptions.h
       gfx.y = cys + extraFontShift
---c
+
       gfx.line(xs, cys, xs,  cys+8)
       gfx.line(xs+8, cys, xs+8,  cys+8)
       gfx.line(xs, cys, xs+8,  cys)
       gfx.line(xs, cys+8, xs+8,  cys+8)
 
-      if (self.cfg[self.binaryOptions[i][1]] == 1) then
+      if (self.cfg[self.binaryOptions[i + start_index][1]] == 1) then
         gfx.line(xs, cys, xs+8,  cys+8)
         gfx.line(xs+8, cys, xs,  cys+8)
       end
 
-      gfx.printf( "%s", self.binaryOptions[i][2] )
+      gfx.printf( "%s", self.binaryOptions[i + start_index][2] )
     end
   end
 
@@ -9748,13 +9777,17 @@ local function updateLoop()
         -- Binary options
         if ( gfx.mouse_x > binaryOptions.x ) then
           if ( gfx.mouse_y > binaryOptions.y ) then
-            for i=1,#tracker.binaryOptions do
+            local max_count = (gfx.h - ys) / binaryOptions.h - 1
+            local start_index = tracker.cfg.optionsStartIndex
+            max_count = math.min(max_count, #tracker.binaryOptions - start_index + 1)
+          
+            for i=0,max_count - 1 do
               local xs = binaryOptions.x
               local ys = binaryOptions.y + i * binaryOptions.h
               local xm = xs + 8
               local ym = ys + 8
               if ( ( gfx.mouse_x > xs ) and  ( gfx.mouse_x < xm ) and ( gfx.mouse_y > ys ) and ( gfx.mouse_y < ym ) ) then
-                tracker.cfg[tracker.binaryOptions[i][1]] = 1 - tracker.cfg[tracker.binaryOptions[i][1]]
+                tracker.cfg[tracker.binaryOptions[start_index + i][1]] = 1 - tracker.cfg[tracker.binaryOptions[start_index + i][1]]
                 changedOptions = 1
                 tracker.holding = 1
               end
@@ -11207,6 +11240,7 @@ end
     tracker.tick = 0
     tracker.xposunset = 1
     tracker.scrollbar = scrollbar.create(tracker.scrollbar.size)
+    tracker.options_scrollbar = scrollbar.create(tracker.options_scrollbar.size, true)
 
     -- Load user options
     local cfg = tracker:loadConfig(tracker.configFile, tracker.cfg)
