@@ -45,9 +45,12 @@
 
 --[[
  * Changelog:
- + v3.10 (2022-12-31)
+ + v3.10 (t.b.d.)
   + Fix bug to support gfx2imgui.
   + Move keyboard input handling out of main update loop for clarity.
+  + Add some commented out functions used for profiling stuff.
+  + Fix nil bug when simulating.
+  + Rename render function.
  * v3.09 (2022-11-24)
   + Improve layout logic.
   + Add scrollbar to options.
@@ -2951,7 +2954,7 @@ local function draw_ellipsis(x, py)
   gfx.rect(x+4, py, 1, 1)
 end
 
-function tracker:writeField(cdata, ellipsis, x, y, customFont)
+local function writeField(cdata, ellipsis, x, y, customFont)
   if ( type(cdata) == "number" ) then
     if ( cdata == -1 ) then
       if ( ellipsis == 1 ) then
@@ -3045,15 +3048,19 @@ function tracker:simulate_shallow_water(mode, movement)
   end
 
   local xs = 8;
-  local sim_w = (gfx.w + xs);
-  local sim_h = (gfx.h + xs);
-  local Nx = math.floor(sim_w/xs);
-  local Ny = math.floor(sim_h/xs);
-  dtg = 9.81*0.1;
-  dth = .4*0.1;
+  local sim_w = (gfx.w + xs)
+  local sim_h = (gfx.h + xs)
+  local Nx = math.floor(sim_w/xs)
+  local Ny = math.floor(sim_h/xs)
+  dtg = 9.81*0.1
+  dth = .4*0.1
   
-  local cx, cy;
+  local cx, cy
   local dUx, dUy, dHx, dHy, h
+  if self.sim and (self.sim.w ~= gfx.w) and (self.sim.h ~= gfx.h) then
+    self.sim = nil
+  end
+  
   local height = (self.sim and self.sim.height) or create_2d_table(Nx, Ny)
   local velocity_prediction_x = (self.sim and self.sim.velocity_prediction_x) or create_2d_table(Nx, Ny)
   local velocity_prediction_y = (self.sim and self.sim.velocity_prediction_y) or create_2d_table(Nx, Ny)
@@ -3200,6 +3207,8 @@ function tracker:simulate_shallow_water(mode, movement)
   sim.velocity_y = velocity_y
   
   self.sim = sim
+  self.sim.w = gfx.w
+  self.sim.h = gfx.h
 end
 
 -- CC values are used to designate tracker FX. They are always terminated _within_ the row
@@ -3266,7 +3275,7 @@ end
 ------------------------------
 -- Draw the GUI
 ------------------------------
-function tracker:printGrid()
+function tracker:renderGUI()
   local ellipsis  = self.colors.ellipsis
   local tracker   = tracker
   local colors    = tracker.colors
@@ -3368,7 +3377,7 @@ function tracker:printGrid()
           gfx.set(table.unpack(fc[thisfield] or tx))
 
           local cdata = data[thisfield][rows*xlink[x]+absy-1]
-          self:writeField( cdata, ellipsis, xloc[x], yloc[y], customFont )
+          writeField( cdata, ellipsis, xloc[x], yloc[y], customFont )
         end
       end
     end
@@ -3383,7 +3392,7 @@ function tracker:printGrid()
       gfx.set(table.unpack(colors.selecttext or colors.textcolor))
 
       local cdata = data[dlink[relx]][rows*xlink[relx]+absy-1]
-      self:writeField( cdata, ellipsis, xloc[relx], yloc[rely], customFont )
+      writeField( cdata, ellipsis, xloc[relx], yloc[rely], customFont )
     end
 
     -- Pattern Length Indicator
@@ -10045,7 +10054,7 @@ local function updateLoop()
       tracker:lostItem()
     end
   else
-    tracker:printGrid()
+    tracker:renderGUI()
     gfx.set(0, 0, 0, .5)
     gfx.rect(0, 0, gfx.w, gfx.h);
     gfx.update()
@@ -10583,7 +10592,7 @@ local function updateLoop()
 
   if modified == 0 then
     if ( not self.noDraw or self.noDraw == 0 ) then
-      tracker:printGrid()
+      tracker:renderGUI()
       gfx.update()
     end
   end
@@ -10599,7 +10608,7 @@ local function updateLoop()
     tracker.hash = math.random()
     
     tracker:update()
-    tracker:printGrid()
+    tracker:renderGUI()
   end
 
   tracker:updateNoteSelection()
