@@ -3353,6 +3353,57 @@ function tracker:customFieldDescription()
   end
 end
 
+function drawPattern(colors, data, scrolly, rows, sig, zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, indicatorShiftX, dlink, xlink)
+  local gfx = gfx
+  local c1, c2, tx, fc
+  for y=1,#yloc do
+    local absy = y + scrolly
+    if ( absy > 0 and absy <= rows ) then
+      if ( (((absy-1)/sig) - math.floor((absy-1)/sig)) == 0 ) then
+        c1 = colors.linecolor5
+        c2 = colors.linecolor5s
+        tx = colors.textcolorbar or colors.textcolor
+        fc = colors.bar
+      elseif ( (((absy-1)/(.25*sig)) - math.floor((absy-1)/(.25*sig))) == 0 ) then
+        c1 = colors.linecolor2
+        c2 = colors.linecolor2s
+        tx = colors.textcolorbar or colors.textcolor
+        fc = colors.bar
+      else
+        c1 = colors.linecolor
+        c2 = colors.linecolors
+        tx = colors.textcolor
+        fc = colors.normal
+      end
+
+      gfx.y = yloc[y] + extraFontShift
+      gfx.x = xloc[1] - indicatorShiftX
+
+      gfx.set(table.unpack(tx))
+      if zeroindexed == 1 then
+        gfx.printf("%03d", absy-1)
+      else
+        gfx.printf("%03d", absy)
+      end
+      gfx.set(table.unpack(c1))
+      gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, yheight[1] + itempady)
+      gfx.set(table.unpack(c2))
+      gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, 1)
+      gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, 1, yheight[y])
+      gfx.rect(xloc[1] - itempadx + tw + 0, yloc[y] - yshift, 1, yheight[y] + itempady)
+
+      for x=1,#xloc do
+        local thisfield = dlink[x]
+        gfx.x = xloc[x]
+        gfx.set(table.unpack(fc[thisfield] or tx))
+
+        local cdata = data[thisfield][rows*xlink[x]+absy-1]
+        writeField( cdata, ellipsis, xloc[x], yloc[y], customFont )
+      end
+    end
+  end
+end
+
 ------------------------------
 -- Draw the GUI
 ------------------------------
@@ -3417,58 +3468,13 @@ function tracker:renderGUI()
   end
 
   if ( self.take ) then
-    for y=1,#yloc do
-      local absy = y + scrolly
-      if ( absy > 0 and absy <= rows ) then
-        local c1, c2, tx, fc
-        if ( (((absy-1)/sig) - math.floor((absy-1)/sig)) == 0 ) then
-          c1 = colors.linecolor5
-          c2 = colors.linecolor5s
-          tx = colors.textcolorbar or colors.textcolor
-          fc = colors.bar
-        elseif ( (((absy-1)/(.25*sig)) - math.floor((absy-1)/(.25*sig))) == 0 ) then
-          c1 = colors.linecolor2
-          c2 = colors.linecolor2s
-          tx = colors.textcolorbar or colors.textcolor
-          fc = colors.bar
-        else
-          c1 = colors.linecolor
-          c2 = colors.linecolors
-          tx = colors.textcolor
-          fc = colors.normal
-        end
-
-        gfx.y = yloc[y] + extraFontShift
-        gfx.x = xloc[1] - plotData.indicatorShiftX
-
-        gfx.set(table.unpack(tx))
-        if tracker.zeroindexed == 1 then
-          gfx.printf("%03d", absy-1)
-        else
-          gfx.printf("%03d", absy)
-        end
-        gfx.set(table.unpack(c1))
-        gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, yheight[1] + itempady)
-        gfx.set(table.unpack(c2))
-        gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, tw, 1)
-        gfx.rect(xloc[1] - itempadx, yloc[y] - yshift, 1, yheight[y])
-        gfx.rect(xloc[1] - itempadx + tw + 0, yloc[y] - yshift, 1, yheight[y] + itempady)
-
-        for x=1,#xloc do
-          local thisfield = dlink[x]
-          gfx.x = xloc[x]
-          gfx.set(table.unpack(fc[thisfield] or tx))
-
-          local cdata = data[thisfield][rows*xlink[x]+absy-1]
-          writeField( cdata, ellipsis, xloc[x], yloc[y], customFont )
-        end
-      end
-    end
+    drawPattern(colors, data, scrolly, rows, sig, tracker.zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, plotData.indicatorShiftX, dlink, xlink)
   
+    -- Selector
     if ( xloc[relx] and yloc[rely] ) then
       local absy = rely + scrolly
       gfx.set(table.unpack(colors.selectcolor))
-      gfx.rect(xloc[relx]-1, yloc[rely]-plotData.yshift, xwidth[relx], yheight[rely] + itempady)
+      gfx.rect(xloc[relx]-1, yloc[rely] - yshift, xwidth[relx], yheight[rely] + itempady)
     
       gfx.x = xloc[relx]
       gfx.y = yloc[rely]
