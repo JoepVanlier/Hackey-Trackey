@@ -45,6 +45,9 @@
 
 --[[
  * Changelog:
+ + v3.10 (2022-12-31)
+  + Fix bug to support gfx2imgui.
+  + Move keyboard input handling out of main update loop for clarity.
  * v3.09 (2022-11-24)
   + Improve layout logic.
   + Add scrollbar to options.
@@ -615,6 +618,11 @@
 --    let me/others know.
 --
 --    Happy trackin'! :)
+
+-- require 'pepperfish'
+-- profiler = newProfiler()
+-- profiler:start()
+--gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
 tracker.name = "Hackey Trackey v3.09"
@@ -2954,14 +2962,14 @@ function tracker:writeField(cdata, ellipsis, x, y, customFont)
         draw_ellipsis(x + delta, py)
         draw_ellipsis(x + delta*2, py)
       else
-        gfx.printf("...", cdata)
+        gfx.printf("...")
       end
     else
       if ( ellipsis == 1 ) then
         local py = y + 6
         draw_ellipsis(x, py)
       else
-        gfx.printf(".", cdata)
+        gfx.printf(".")
       end
     end
   else
@@ -3442,8 +3450,10 @@ function tracker:printGrid()
     gfx.printf(patternName)
   elseif ( self.toosmall == 0 and self.take ) then
     patternName = self.patternName
-    gfx.x = plotData.xstart + tw - gfx.measurestr(patternName)
-    gfx.printf(patternName)
+    if patternName then
+      gfx.x = plotData.xstart + tw - gfx.measurestr(patternName)
+      gfx.printf(patternName)
+    end
   end
 
   -- Draw the bottom indicators
@@ -4030,7 +4040,7 @@ function CreateMenu(_x, _y, _w, _h)
         else
           gfx.set(table.unpack(normalColor))
         end
-        gfx.printf(v)
+        gfx.printf("%s", v)
       end
     end,
     
@@ -8154,31 +8164,6 @@ local function togglePlayPause()
 --  end
 end
 
-local function inputs( name )
-  -- Bitmask oddly enough doesn't behave as expected
-  local control = gfx.mouse_cap & 4
-  if ( control > 0 ) then control = 1 end
-  local shift   = gfx.mouse_cap & 8
-  if ( shift > 0 ) then shift = 1 end
-  local alt     = gfx.mouse_cap & 16
-  if ( alt > 0 ) then alt = 1 end
-
-  local checkMask = keys[name]
-  if checkMask then
-    if ( checkMask[1] == control ) then
-      if ( checkMask[2] == alt ) then
-        if ( checkMask[3] == shift ) then
-          if ( lastChar == checkMask[4] ) then
-            return true
-          end
-        end
-      end
-    end
-  end
-
-  return false
-end
-
 local function mouseStatus()
   local leftbutton  = gfx.mouse_cap & 1
   local rightbutton = gfx.mouse_cap & 2
@@ -9282,6 +9267,764 @@ function tracker:mouseToPatternCoord(already_dragging)
   return Inew, Jnew
 end
 
+function tracker:processKeyboardInput()
+  local keys = keys
+  
+  local function inputs(name)
+    -- Bitmask oddly enough doesn't behave as expected
+    local control = gfx.mouse_cap & 4
+    if ( control > 0 ) then control = 1 end
+    local shift   = gfx.mouse_cap & 8
+    if ( shift > 0 ) then shift = 1 end
+    local alt     = gfx.mouse_cap & 16
+    if ( alt > 0 ) then alt = 1 end
+  
+    local checkMask = keys[name]
+    if checkMask then
+      if ( checkMask[1] == control ) then
+        if ( checkMask[2] == alt ) then
+          if ( checkMask[3] == shift ) then
+            if ( lastChar == checkMask[4] ) then
+              return true
+            end
+          end
+        end
+      end
+    end
+  
+    return false
+  end
+  
+  local modified = 0
+  if ( self.renaming == 0 ) then
+    if inputs('left') and self.take then
+      self.xpos = self.xpos - 1
+      self:resetShiftSelect()
+    elseif inputs('right') and self.take then
+      self.xpos = self.xpos + 1
+      self:resetShiftSelect()
+    elseif inputs('up') and self.take then
+      self.ypos = self.ypos - 1
+      self:resetShiftSelect()
+      self:scrub()
+    elseif inputs('down') and self.take then
+      self.ypos = self.ypos + 1
+      self:resetShiftSelect()
+      self:scrub()
+    elseif inputs('upByAdvance') and self.take then
+      self:rewindCursor()
+      self:resetShiftSelect()
+    elseif inputs('downByAdvance') and self.take then
+      self:advanceCursor()
+      self:resetShiftSelect()
+    elseif inputs('shiftleft') and self.take then
+      self:dragBlock()
+      self.xpos = self.xpos - 1
+      self:forceCursorInRange()
+      self:dragBlock()
+    elseif inputs('shiftright') and self.take then
+      self:dragBlock()
+      self.xpos = self.xpos + 1
+      self:forceCursorInRange()
+      self:dragBlock()
+    elseif inputs('shiftup') and self.take then
+      self:dragBlock()
+      self.ypos = self.ypos - 1
+      self:forceCursorInRange()
+      self:dragBlock()
+    elseif inputs('shiftdown') and self.take then
+      self:dragBlock()
+      self.ypos = self.ypos + 1
+      self:forceCursorInRange()
+      self:dragBlock()
+    elseif inputs('shiftpgdn') and self.take then
+      self:dragBlock()
+      self.ypos = self.ypos + self.cfg.page
+      self:forceCursorInRange()
+      self:dragBlock()
+    elseif inputs('shiftpgup') and self.take then
+      self:dragBlock()
+      self.ypos = self.ypos - self.cfg.page
+      self:forceCursorInRange()
+      self:dragBlock()
+    elseif inputs('shiftFullLeft') and self.take then
+      self:dragBlock()
+      self.xpos = 1
+      self:dragBlock()
+    elseif inputs('shiftFullRight') and self.take then
+      self:dragBlock()
+      self.xpos = self.max_xpos
+      self:dragBlock()
+    elseif inputs('fullLeft') and self.take then
+      self.xpos = 1
+    elseif inputs('fullRight') and self.take then
+      self.xpos = self.max_xpos
+    elseif inputs('shifthome') and self.take then
+      self:dragBlock()
+      self.ypos = 0
+      self:forceCursorInRange()
+      self:dragBlock()
+    elseif inputs('shiftend') and self.take then
+      self:dragBlock()
+      self.ypos = self.rows
+      self:forceCursorInRange()
+      self:dragBlock()
+    elseif inputs('off') and self.take then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Place OFF")
+      reaper.MarkProjectDirty(0)
+      self:placeOff()
+      self:deleteNow()
+      reaper.MIDI_Sort(self.take)
+    elseif inputs('off2') and self.take then
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+  
+      if ( datafields[self.xpos] == "text" ) then
+        modified = 1
+        reaper.Undo_OnStateChange2(0, "Tracker: Place OFF")
+        reaper.MarkProjectDirty(0)
+        self:placeOff()
+        self:deleteNow()
+        reaper.MIDI_Sort(self.take)
+      else
+        self:noteEdit()
+      end
+    elseif ( inputs('delete') and self.take ) then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Delete (Del)")
+      self:delete()
+      self:deleteNow()
+      reaper.MIDI_Sort(self.take)
+    elseif ( inputs('delete2') and self.take ) then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Delete (Del)")
+      self:delete()
+      self:deleteNow()
+      reaper.MIDI_Sort(self.take)
+      self:advanceCursor()
+    elseif ( inputs('mute_row') and self.take ) then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Mute row (Shift + -)")
+      for chan = 1, self.displaychannels do
+        self:placeOffLowLevel(chan, self.ypos - 1)
+      end
+      self:deleteNow()
+      reaper.MIDI_Sort(self.take)
+    elseif ( inputs('deleteRow') and self.take ) then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Delete row (Del)")
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+      self:clearBlock({xstart=1, ystart=self.ypos, xstop=#datafields, ystop=self.ypos})
+      self:mendBlock({xstart=1, ystart=self.ypos, xstop=#datafields, ystop=self.ypos})
+      self:deleteNow()
+      reaper.MIDI_Sort(self.take)
+      self:advanceCursor()
+    elseif ( inputs('insertRow') and self.take ) then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Insert Row")
+      local cpS = self:saveClipboard()
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+      self.cp = {xstart=1, ystart=self.ypos, xstop=#datafields, ystop=self.rows-1}
+      reaper.MarkProjectDirty(0)
+      self:cutBlock()
+      self:deleteNow()
+      reaper.MIDI_Sort(self.take)
+      local oldx = self.xpos
+      self.xpos = 1
+      self.ypos = self.ypos + 1
+      self:pasteBlock()
+      self.xpos = oldx
+      self.ypos = self.ypos - 1
+      self:loadClipboard(cpS)
+      self:deleteNow()
+      reaper.MIDI_Sort(self.take)
+    elseif ( inputs('removeRow') and self.take ) then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Remove Row")
+      local cpS = self:saveClipboard()
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+      self.cp = {xstart=1, ystart=self.ypos+1, xstop=#datafields, ystop=self.rows}
+      reaper.MarkProjectDirty(0)
+      self:cutBlock()
+      self:deleteNow()
+      reaper.MIDI_Sort(self.take)
+      local oldx = self.xpos
+      self.xpos = 1
+      self:pasteBlock()
+      self.xpos = oldx
+      self:loadClipboard(cpS)
+      self:deleteNow()
+      reaper.MIDI_Sort(self.take)
+    elseif ( inputs('insert_hori') ) then
+      modified = 1
+      self:insert_hori()
+    elseif ( inputs('remove_hori') ) then
+      modified = 1
+      self:remove_hori()
+    elseif ( inputs('wrapDown') and self.take ) then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Wrap down")
+      local oldx = self.xpos
+      local oldy = self.ypos
+      local cpS = self:saveClipboard()
+  
+      -- Cut  last line to a special clipboard
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+      self.cp = {xstart=1, ystart=self.rows, xstop=#datafields, ystop=self.rows}
+      reaper.MarkProjectDirty(0)
+      self:cutBlock()
+      self:deleteNow()
+      reaper.MIDI_Sort(self.take)
+      local lastLineClipboard = self.clipboard
+  
+      -- Shift block
+      self.cp = {xstart=1, ystart=1, xstop=#datafields, ystop=self.rows-1}
+      reaper.MarkProjectDirty(0)
+      self:cutBlock()
+      self:deleteNow()
+      reaper.MIDI_Sort(self.take)
+  
+      -- Paste block one shifted
+      self.ypos = 2
+      self.xpos = 1
+      self:pasteBlock()
+  
+      -- Restore clipboard and paste line that fell off
+      self.clipboard = lastLineClipboard
+      self.ypos = 1
+      self.xpos = 1
+      self:pasteBlock()
+  
+      self:loadClipboard(cpS)
+      self.xpos = oldx
+      self.ypos = oldy
+    elseif ( inputs('wrapUp') and self.take ) then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Wrap up")
+      local oldx  = self.xpos
+      local oldy  = self.ypos
+      local cpS   = self:saveClipboard()
+  
+      -- Cut block to special clipboard
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+      self.cp = {xstart=1, ystart=2, xstop=#datafields, ystop=self.rows}
+      reaper.MarkProjectDirty(0)
+      self:cutBlock()
+      self:deleteNow()
+      reaper.MIDI_Sort(self.take)
+      local chunk = self.clipboard
+  
+      -- Cut  first line to a special clipboard
+      self.cp = {xstart=1, ystart=1, xstop=#datafields, ystop=1}
+      reaper.MarkProjectDirty(0)
+      self:cutBlock()
+      self:deleteNow()
+      reaper.MIDI_Sort(self.take)
+  
+      -- Paste line that fell off
+      self.xpos = 1
+      self.ypos = self.rows
+      self:pasteBlock()
+  
+      -- Paste block one shifted up
+      self.xpos = 1
+      self.ypos = 1
+      self.clipboard = chunk
+      self:pasteBlock()
+      self:deleteNow()
+      self:insertNow()
+      reaper.MIDI_Sort(self.take)
+  
+  
+      self:loadClipboard(cpS)
+      self.xpos = oldx
+      self.ypos = oldy
+  
+    elseif inputs('home') and self.take then
+      self.ypos = 0
+    elseif inputs('End') and self.take then
+      self.ypos = self.rows
+    elseif inputs('m0') and self.take then
+      self.ypos = 0
+    elseif inputs('m25') and self.take then
+      self.ypos = math.ceil(self.rows * 0.25)+1
+    elseif inputs('m50') and self.take then
+      self.ypos = math.ceil(self.rows * 0.5)+1
+    elseif inputs('m75') and self.take then
+      self.ypos = math.ceil(self.rows * 0.75)+1
+    elseif inputs('toggle') then
+      togglePlayPause()
+    elseif inputs('renoiseplay') and self.take then
+      local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+      local loc = reaper.AddProjectMarker(0, 0, mpos + self:toSeconds(0), 0, "", -1)
+      reaper.GoToMarker(0, loc, 0)
+      reaper.DeleteProjectMarker(0, loc, 0)
+      togglePlayPause()
+    elseif inputs('playfrom') and self.take then
+      if ( isPlaying() > 0 ) then
+        -- Determine where we stopped relative to the current media object
+        local playpos = reaper.GetPlayPosition()
+        local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+        local mlen = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
+        if ( playpos > mpos and playpos < (mpos+mlen) ) then
+          self.ypos = math.floor( (playpos-mpos) / mlen * self.rows ) + 1
+        end
+      end
+  
+      local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+      local loc = reaper.AddProjectMarker(0, 0, mpos + self:toSeconds(self.ypos-1), 0, "", -1)
+      reaper.GoToMarker(0, loc, 0)
+      reaper.DeleteProjectMarker(0, loc, 0)
+      togglePlayPause()
+    elseif inputs('insert') and self.take then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Insert")
+      reaper.MarkProjectDirty(0)
+      self:insert()
+      self:deleteNow()
+      reaper.MIDI_Sort(self.take)
+    elseif inputs('remove') and self.take then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Backspace")
+      reaper.MarkProjectDirty(0)
+      self:backspace()
+      self:deleteNow()
+      reaper.MIDI_Sort(self.take)
+    elseif inputs('pgup') and self.take then
+      self.ypos = self.ypos - self.cfg.page
+    elseif inputs('pgdown') and self.take then
+      self.ypos = self.ypos + self.cfg.page
+    elseif inputs('undo') and self.take then
+      modified = 1
+      reaper.Undo_DoUndo2(0)
+    elseif inputs('redo') and self.take then
+      modified = 1
+      reaper.Undo_DoRedo2(0)
+    elseif inputs('deleteBlock') and self.take then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Delete block")
+      reaper.MarkProjectDirty(0)
+      self:deleteBlock()
+      reaper.MIDI_Sort(self.take)
+    elseif inputs('beginBlock') and self.take then
+      self:beginBlock()
+    elseif inputs('endBlock') and self.take then
+      self:endBlock()
+    elseif ( inputs('copyBlock') or inputs('copyBlock2') ) and self.take then
+      self:copyBlock()
+    elseif inputs('copyColumn') and self.take then
+      local oldcp = self.cp
+      self.cp = {xstart=self.xpos, ystart=1, xstop=self.xpos, ystop=self.rows}
+      self:copyBlock()
+      self.cp = oldcp
+    elseif inputs('copyPattern') and self.take then
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+      local oldcp = self.cp
+      self.cp = {xstart=1, ystart=1, xstop=#datafields, ystop=self.rows}
+      self:copyBlock()
+      self.cp = oldcp
+    elseif ( inputs('cutBlock') or inputs('cutBlock2') ) and self.take then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Cut block")
+      reaper.MarkProjectDirty(0)
+      self:cutBlock()
+      reaper.MIDI_Sort(self.take)
+    elseif inputs('cutColumn') and self.take then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Cut column")
+      local oldcp = self.cp
+      self.cp = {xstart=self.xpos, ystart=1, xstop=self.xpos, ystop=self.rows}
+      reaper.MarkProjectDirty(0)
+      self:cutBlock()
+      self.cp = oldcp
+      reaper.MIDI_Sort(self.take)
+    elseif inputs('cutPattern') and self.take then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Cut pattern")
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+      local oldcp = self.cp
+      self.cp = {xstart=1, ystart=1, xstop=#datafields, ystop=self.rows}
+      reaper.MarkProjectDirty(0)
+      self:cutBlock()
+      self.cp = oldcp
+      reaper.MIDI_Sort(self.take)
+    elseif ( inputs('pasteBlock') or inputs('pasteBlock2') ) and self.take then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Paste block")
+      reaper.MarkProjectDirty(0)
+      self:pasteBlock()
+      reaper.MIDI_Sort(self.take)
+    elseif inputs('pasteColumn') and self.take then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Paste column")
+      reaper.MarkProjectDirty(0)
+      local oldpos = self.ypos
+      self.ypos = 1
+      self:pasteBlock()
+      self.ypos = oldpos
+      reaper.MIDI_Sort(self.take)
+    elseif inputs('pastePattern') and self.take then
+      modified = 1
+      reaper.Undo_OnStateChange2(0, "Tracker: Paste pattern")
+      reaper.MarkProjectDirty(0)
+      local oldx = self.xpos
+      local oldy = self.ypos
+      self.xpos = 1
+      self.ypos = 1
+      self:pasteBlock()
+      self.xpos = oldx
+      self.ypos = oldy
+      reaper.MIDI_Sort(self.take)
+    elseif ( inputs('shiftItemUp') or inputs('shblockup') ) and self.take then
+      modified = 1
+      self:shiftup()
+    elseif ( inputs('shiftItemDown') or inputs('shblockdown') ) and self.take then
+      modified = 1
+      self:shiftdown()
+    elseif inputs('shcoldown') and self.take then
+      modified = 1
+      self:shiftdown({xstart=self.xpos, ystart=1, xstop=self.xpos, ystop=self.rows})
+    elseif inputs('shcolup') and self.take then
+      modified = 1
+      self:shiftup({xstart=self.xpos, ystart=1, xstop=self.xpos, ystop=self.rows})
+    elseif inputs('shpatdown') and self.take then
+      modified = 1
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+      local x = 1
+      while ( x < #datafields ) do
+        if ( datafields[x] == 'text' ) then
+          break
+        end
+        x = x + 1
+      end
+      self:shiftdown({xstart=x, ystart=1, xstop=#datafields, ystop=self.rows}, 1)
+    elseif inputs('shpatup') and self.take then
+      modified = 1
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+      local x = 1
+      while ( x < #datafields ) do
+        if ( datafields[x] == 'text' ) then
+          break
+        end
+        x = x + 1
+      end
+      self:shiftup({xstart=x, ystart=1, xstop=#datafields, ystop=self.rows}, 1)
+    elseif inputs('colOctDown') and self.take then
+      modified = 1
+      self:shiftdown({xstart=self.xpos, ystart=1, xstop=self.xpos, ystop=self.rows}, 1, 12)
+    elseif inputs('colOctUp') and self.take then
+      modified = 1
+      self:shiftup({xstart=self.xpos, ystart=1, xstop=self.xpos, ystop=self.rows}, 1, 12)
+    elseif inputs('patternOctDown') and self.take then
+      modified = 1
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+      local x = 1
+      while ( x < #datafields ) do
+        if ( datafields[x] == 'text' ) then
+          break
+        end
+        x = x + 1
+      end
+      self:shiftdown({xstart=x, ystart=1, xstop=#datafields, ystop=self.rows}, 1, 12)
+    elseif inputs('patternOctUp') and self.take then
+      modified = 1
+      local datafields, padsizes, colsizes, idxfields, headers, grouplink = self:grabLinkage()
+      local x = 1
+      while ( x < #datafields ) do
+        if ( datafields[x] == 'text' ) then
+          break
+        end
+        x = x + 1
+      end
+      self:shiftup({xstart=x, ystart=1, xstop=#datafields, ystop=self.rows}, 1, 12)
+    elseif inputs('blockOctUp') and self.take then
+      modified = 1
+      self:shiftup(nil, 1, 12)
+    elseif inputs('blockOctDown') and self.take then
+      modified = 1
+      self:shiftdown(nil, 1, 12)
+    elseif inputs('scaleUp') and self.take then
+      modified = 1
+      self:shiftScaleUp()
+    elseif inputs('scaleDown') and self.take then
+      modified = 1
+      self:shiftScaleDown()
+    elseif inputs('octaveup') and self.take then
+      self.transpose = self.transpose + 1
+      if ( self.transpose > self.maxoct ) then
+        self.transpose = self.maxoct
+      end
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('octavedown') and self.take then
+      self.transpose = self.transpose - 1
+      if ( self.transpose < self.minoct ) then
+        self.transpose = self.minoct
+      end
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('envshapeup') and self.take then
+      self.envShape = self.envShape + 1
+      if ( self.envShape > #self.envShapes ) then
+        self.envShape = 0
+      end
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('envshapedown') and self.take then
+      self.envShape = self.envShape - 1
+      if ( self.envShape < 0 ) then
+        self.envShape = #self.envShapes
+      end
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('outchanup') and self.take then
+      self.outChannel = self.outChannel + 1
+      if ( self.outChannel > 16 ) then
+        self.outChannel = 0
+      end
+      if self.self_samples == 1 then
+        self.outChannel = 0
+      end
+      self:setOutChannel( self.outChannel )
+    elseif inputs('outchandown') and self.take then
+      self.outChannel = self.outChannel - 1
+      if ( self.outChannel < 0) then
+        self.outChannel = 16
+      end
+      if self.self_samples == 1 then
+        self.outChannel = 0
+      end
+      self:setOutChannel( self.outChannel )
+    elseif inputs('advanceup') and self.take then
+      self.advance = self.advance + 1
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advancedown') and self.take then
+      self.advance = math.max(self.advance - 1, 0)
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advanceDouble') and self.take then
+      -- max() with 1 because if they are doubling from 0 they probably
+      -- want it to actually increase and not just stay there
+      self.advance = math.max(self.advance * 2, 1)
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advanceHalve') and self.take then
+      self.advance = math.ceil(self.advance / 2)
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('resolutionUp') and self.take then
+      if ( prevChar ~= lastChar ) then
+        self.newRowPerQn = self.newRowPerQn + 1
+        if ( self.newRowPerQn > self.maxRowPerQn ) then
+          self.newRowPerQn = 1
+        end
+      end
+    elseif inputs('resolutionDown') and self.take then
+      if ( prevChar ~= lastChar ) then
+        self.newRowPerQn = self.newRowPerQn - 1
+        if ( self.newRowPerQn < 1 ) then
+          self.newRowPerQn = self.maxRowPerQn
+        end
+      end
+    elseif inputs('toggleNoteMode') then
+      self.cfg.advanceByNote = 1.0 - self.cfg.advanceByNote
+      self:saveConfig(self.configFile, self.cfg)      
+    elseif inputs('stop2') then
+      reaper.Main_OnCommand(1016, 0)
+    elseif inputs('panic') then
+      reaper.Main_OnCommand(40345, 0)
+    elseif inputs('harmony') then
+      self.harmonyActive = 1-(self.harmonyActive or 0)
+      self:resizeWindow()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('noteNames') then
+      if self.noteNamesActive == 0 then
+        self:getNoteNames()
+        self.noteNamesActive = 1
+      else
+        self.noteNamesActive = 0
+      end
+      self:resizeWindow()
+    elseif inputs('help') then
+      self.helpActive = 1-self.helpActive
+      self:resizeWindow()
+    elseif inputs('options') or inputs('options2') then
+      self.optionsActive = 1-self.optionsActive
+      self:resizeWindow()
+    elseif inputs('nextMIDI') then
+      self:seekMIDI(1)
+      self:resizeWindow()
+      if ( self.cfg.loopFollow == 1 ) then
+        self:setLoopToPattern()
+      end
+    elseif inputs('prevMIDI') then
+      self:seekMIDI(-1)
+      self:resizeWindow()
+      if ( self.cfg.loopFollow == 1 ) then
+        self:setLoopToPattern()
+      end
+    elseif inputs('nextTrack') then
+      self:seekTrack(1)
+      self:resizeWindow()
+      if ( self.cfg.loopFollow == 1 ) then
+        self:setLoopToPattern()
+      end
+    elseif inputs('prevTrack') then
+      self:seekTrack(-1)
+      self:resizeWindow()
+      if ( self.cfg.loopFollow == 1 ) then
+        self:setLoopToPattern()
+      end
+    elseif inputs('duplicate') and self.take then
+      reaper.Undo_OnStateChange2(0, "Tracker: Duplicate pattern")
+      reaper.MarkProjectDirty(0)
+      self:duplicate()
+    elseif inputs('commit') and self.take then
+      self:setResolution( self.newRowPerQn )
+      self:saveConfig(self.configFile, self.cfg)
+      self.hash = math.random()
+    elseif inputs('setloop') and self.take then
+      self:setLoopToPattern()
+    elseif inputs('setloopstart') and self.take then
+      self:setLoopStart()
+    elseif inputs('setloopend') and self.take then
+      self:setLoopEnd()
+    elseif inputs('follow') and self.take then
+      self.cfg.followSong = 1 - self.cfg.followSong
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('interpolate') and self.take then
+      reaper.Undo_OnStateChange2(0, "Tracker: Interpolate")
+      reaper.MarkProjectDirty(0)
+      self:interpolate()
+      self:deleteNow()
+      reaper.MIDI_Sort(self.take)
+    elseif inputs('showMore') and self.take then
+      self:showMore()
+    elseif inputs('showLess') and self.take then
+      self:showLess()
+    elseif inputs('tab') and self.take then
+      self:tab()
+    elseif inputs('shifttab') and self.take then
+      self:shifttab()
+    elseif inputs('addCol') and self.take then
+      self:addCol()
+    elseif inputs('addColAll') and self.take then
+      self:addColAll()
+    elseif inputs('addPatchSelect') and self.take then
+      self:addPatchSelect()
+    elseif inputs('remCol') and self.take then
+      self:remCol()
+    elseif inputs('rename') and self.take then
+      self.oldMidiName = self.midiName
+      self.midiName = ''
+      self.renaming = 1
+      self:updateMidiName()
+    elseif inputs('playline') then
+      self:playLine()
+    elseif inputs('toggleRec') then
+      self:toggleRec()
+    elseif inputs('mute') then
+      self:toggleMuteChannel()
+    elseif inputs('solo') then
+      self:toggleSoloChannel()
+    elseif( inputs('closeTracker') ) then
+      self:terminate()
+    elseif inputs('escape') then
+      if ( self:isArmed() ) then
+        self.onlyListen = 1 - self.onlyListen
+      end
+    elseif ( lastChar == 0 ) then
+      -- No input
+    elseif ( lastChar == -1 ) then
+      -- Closed window
+    else
+      for i,v in pairs( commandKeys ) do
+        if ( inputs(i) ) then
+          local cmd = reaper.NamedCommandLookup( v[5] )
+          if ( cmd and ( cmd > 0 ) ) then
+            reaper.Main_OnCommand(cmd, 0)
+          else
+            self.callScript( self, v[5] )
+            if ( v[6] and v[6] == 1 and self.cfg.closeWhenSwitchingToHP == 1 ) then
+              self:terminate()
+            end
+          end
+        end
+      end
+  
+      -- Notes here
+      modified = 1
+      self:noteEdit()
+    end
+  elseif( self.renaming == 1 ) then
+    -- Renaming pattern
+    if inputs( 'enter' ) then
+      self.renaming = 0
+    elseif inputs( 'escape' ) then
+      self.midiName = self.oldMidiName
+      self:updateMidiName()
+      self.renaming = 0
+    elseif inputs( 'remove' ) then
+      self.midiName = self.midiName:sub(1, self.midiName:len()-1)
+      self:updateMidiName()
+    else
+      if ( pcall( function () string.char(lastChar) end ) ) then
+        local str = string.char( lastChar )
+        self.midiName = string.format( '%s%s', self.midiName, str )
+        self:updateMidiName()
+      end
+    end
+  elseif ( self.renaming == 2 ) then
+    -- Adding column
+    if inputs( 'enter' ) then
+      self.renaming = 0
+      self:createCCCol()
+    elseif( inputs( 'escape' ) ) then
+      self.renaming = 0
+    elseif( inputs( 'remove' ) ) then
+      self.newCol = self.newCol:sub(1, self.newCol:len()-1)
+    elseif ( lastChar > 0 ) then
+      if ( pcall( function () string.char( lastChar ) tonumber(lastChar) end ) ) then
+        local str = string.char( lastChar )
+        self.newCol = string.format( '%s%s', self.newCol, str )
+      end
+    end
+  elseif ( self.renaming == 3 ) then
+    -- Resizing pattern
+    if inputs( 'enter' ) then
+      self.renaming = 0
+      self:resizePattern()
+    elseif( inputs( 'escape' ) ) then
+      self.renaming = 0
+    elseif( inputs( 'remove' ) ) then
+      self.newLength = self.newLength:sub(1, self.newLength:len()-1)
+    elseif ( lastChar > 0 ) then
+      if ( pcall( function () string.char( lastChar ) tonumber(lastChar) end ) ) then
+        local str = string.char( lastChar )
+        self.newLength = string.format( '%s%s', self.newLength:sub(1,2), str )
+      end
+    end
+  elseif ( self.renaming == 4 ) then
+    -- Adding column to all patterns
+    if inputs( 'enter' ) then
+      self.renaming = 0
+      self:createCCColAll()
+    elseif( inputs( 'escape' ) ) then
+      self.renaming = 0
+    elseif( inputs( 'remove' ) ) then
+      self.newCol = self.newCol:sub(1, self.newCol:len()-1)
+    elseif ( lastChar > 0 ) then
+      if ( pcall( function () string.char( lastChar ) tonumber(lastChar) end ) ) then
+        local str = string.char( lastChar )
+        self.newCol = string.format( '%s%s', self.newCol, str )
+      end
+    end
+  end
+  
+  return modified
+end
+
 ------------------------------
 -- Main update loop
 -----------------------------
@@ -9830,732 +10573,7 @@ local function updateLoop()
     tracker:readNotesFromQueue();
   end
   
-  local modified = 0
-  if ( tracker.renaming == 0 ) then
-    if inputs('left') and tracker.take then
-      tracker.xpos = tracker.xpos - 1
-      tracker:resetShiftSelect()
-    elseif inputs('right') and tracker.take then
-      tracker.xpos = tracker.xpos + 1
-      tracker:resetShiftSelect()
-    elseif inputs('up') and tracker.take then
-      tracker.ypos = tracker.ypos - 1
-      tracker:resetShiftSelect()
-      tracker:scrub()
-    elseif inputs('down') and tracker.take then
-      tracker.ypos = tracker.ypos + 1
-      tracker:resetShiftSelect()
-      tracker:scrub()
-    elseif inputs('upByAdvance') and tracker.take then
-      tracker:rewindCursor()
-      tracker:resetShiftSelect()
-    elseif inputs('downByAdvance') and tracker.take then
-      tracker:advanceCursor()
-      tracker:resetShiftSelect()
-    elseif inputs('shiftleft') and tracker.take then
-      tracker:dragBlock()
-      tracker.xpos = tracker.xpos - 1
-      tracker:forceCursorInRange()
-      tracker:dragBlock()
-    elseif inputs('shiftright') and tracker.take then
-      tracker:dragBlock()
-      tracker.xpos = tracker.xpos + 1
-      tracker:forceCursorInRange()
-      tracker:dragBlock()
-    elseif inputs('shiftup') and tracker.take then
-      tracker:dragBlock()
-      tracker.ypos = tracker.ypos - 1
-      tracker:forceCursorInRange()
-      tracker:dragBlock()
-    elseif inputs('shiftdown') and tracker.take then
-      tracker:dragBlock()
-      tracker.ypos = tracker.ypos + 1
-      tracker:forceCursorInRange()
-      tracker:dragBlock()
-    elseif inputs('shiftpgdn') and tracker.take then
-      tracker:dragBlock()
-      tracker.ypos = tracker.ypos + tracker.cfg.page
-      tracker:forceCursorInRange()
-      tracker:dragBlock()
-    elseif inputs('shiftpgup') and tracker.take then
-      tracker:dragBlock()
-      tracker.ypos = tracker.ypos - tracker.cfg.page
-      tracker:forceCursorInRange()
-      tracker:dragBlock()
-    elseif inputs('shiftFullLeft') and tracker.take then
-      tracker:dragBlock()
-      tracker.xpos = 1
-      tracker:dragBlock()
-    elseif inputs('shiftFullRight') and tracker.take then
-      tracker:dragBlock()
-      tracker.xpos = tracker.max_xpos
-      tracker:dragBlock()
-    elseif inputs('fullLeft') and tracker.take then
-      tracker.xpos = 1
-    elseif inputs('fullRight') and tracker.take then
-      tracker.xpos = tracker.max_xpos
-    elseif inputs('shifthome') and tracker.take then
-      tracker:dragBlock()
-      tracker.ypos = 0
-      tracker:forceCursorInRange()
-      tracker:dragBlock()
-    elseif inputs('shiftend') and tracker.take then
-      tracker:dragBlock()
-      tracker.ypos = tracker.rows
-      tracker:forceCursorInRange()
-      tracker:dragBlock()
-    elseif inputs('off') and tracker.take then
-      modified = 1
-      reaper.Undo_OnStateChange2(0, "Tracker: Place OFF")
-      reaper.MarkProjectDirty(0)
-      tracker:placeOff()
-      tracker:deleteNow()
-      reaper.MIDI_Sort(tracker.take)
-    elseif inputs('off2') and tracker.take then
-      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
-
-      if ( datafields[tracker.xpos] == "text" ) then
-        modified = 1
-        reaper.Undo_OnStateChange2(0, "Tracker: Place OFF")
-        reaper.MarkProjectDirty(0)
-        tracker:placeOff()
-        tracker:deleteNow()
-        reaper.MIDI_Sort(tracker.take)
-      else
-        tracker:noteEdit()
-      end
-    elseif ( inputs('delete') and tracker.take ) then
-      modified = 1
-      reaper.Undo_OnStateChange2(0, "Tracker: Delete (Del)")
-      tracker:delete()
-      tracker:deleteNow()
-      reaper.MIDI_Sort(tracker.take)
-    elseif ( inputs('delete2') and tracker.take ) then
-      modified = 1
-      reaper.Undo_OnStateChange2(0, "Tracker: Delete (Del)")
-      tracker:delete()
-      tracker:deleteNow()
-      reaper.MIDI_Sort(tracker.take)
-      tracker:advanceCursor()
-    elseif ( inputs('mute_row') and tracker.take ) then
-      modified = 1
-      reaper.Undo_OnStateChange2(0, "Tracker: Mute row (Shift + -)")
-      for chan = 1, tracker.displaychannels do
-        tracker:placeOffLowLevel(chan, tracker.ypos - 1)
-      end
-      tracker:deleteNow()
-      reaper.MIDI_Sort(tracker.take)
-    elseif ( inputs('deleteRow') and tracker.take ) then
-      modified = 1
-      reaper.Undo_OnStateChange2(0, "Tracker: Delete row (Del)")
-      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
-      tracker:clearBlock({xstart=1, ystart=tracker.ypos, xstop=#datafields, ystop=tracker.ypos})
-      tracker:mendBlock({xstart=1, ystart=tracker.ypos, xstop=#datafields, ystop=tracker.ypos})
-      tracker:deleteNow()
-      reaper.MIDI_Sort(tracker.take)
-      tracker:advanceCursor()
-    elseif ( inputs('insertRow') and tracker.take ) then
-      modified = 1
-      reaper.Undo_OnStateChange2(0, "Tracker: Insert Row")
-      local cpS = tracker:saveClipboard()
-      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
-      tracker.cp = {xstart=1, ystart=tracker.ypos, xstop=#datafields, ystop=tracker.rows-1}
-      reaper.MarkProjectDirty(0)
-      tracker:cutBlock()
-      tracker:deleteNow()
-      reaper.MIDI_Sort(tracker.take)
-      local oldx = tracker.xpos
-      tracker.xpos = 1
-      tracker.ypos = tracker.ypos + 1
-      tracker:pasteBlock()
-      tracker.xpos = oldx
-      tracker.ypos = tracker.ypos - 1
-      tracker:loadClipboard(cpS)
-      tracker:deleteNow()
-      reaper.MIDI_Sort(tracker.take)
-    elseif ( inputs('removeRow') and tracker.take ) then
-      modified = 1
-      reaper.Undo_OnStateChange2(0, "Tracker: Remove Row")
-      local cpS = tracker:saveClipboard()
-      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
-      tracker.cp = {xstart=1, ystart=tracker.ypos+1, xstop=#datafields, ystop=tracker.rows}
-      reaper.MarkProjectDirty(0)
-      tracker:cutBlock()
-      tracker:deleteNow()
-      reaper.MIDI_Sort(tracker.take)
-      local oldx = tracker.xpos
-      tracker.xpos = 1
-      tracker:pasteBlock()
-      tracker.xpos = oldx
-      tracker:loadClipboard(cpS)
-      tracker:deleteNow()
-      reaper.MIDI_Sort(tracker.take)
-    elseif ( inputs('insert_hori') ) then
-      modified = 1
-      tracker:insert_hori()
-    elseif ( inputs('remove_hori') ) then
-      modified = 1
-      tracker:remove_hori()
-    elseif ( inputs('wrapDown') and tracker.take ) then
-      modified = 1
-      reaper.Undo_OnStateChange2(0, "Tracker: Wrap down")
-      local oldx = tracker.xpos
-      local oldy = tracker.ypos
-      local cpS = tracker:saveClipboard()
-
-      -- Cut  last line to a special clipboard
-      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
-      tracker.cp = {xstart=1, ystart=tracker.rows, xstop=#datafields, ystop=tracker.rows}
-      reaper.MarkProjectDirty(0)
-      tracker:cutBlock()
-      tracker:deleteNow()
-      reaper.MIDI_Sort(tracker.take)
-      local lastLineClipboard = tracker.clipboard
-
-      -- Shift block
-      tracker.cp = {xstart=1, ystart=1, xstop=#datafields, ystop=tracker.rows-1}
-      reaper.MarkProjectDirty(0)
-      tracker:cutBlock()
-      tracker:deleteNow()
-      reaper.MIDI_Sort(tracker.take)
-
-      -- Paste block one shifted
-      tracker.ypos = 2
-      tracker.xpos = 1
-      tracker:pasteBlock()
-
-      -- Restore clipboard and paste line that fell off
-      tracker.clipboard = lastLineClipboard
-      tracker.ypos = 1
-      tracker.xpos = 1
-      tracker:pasteBlock()
-
-      tracker:loadClipboard(cpS)
-      tracker.xpos = oldx
-      tracker.ypos = oldy
-    elseif ( inputs('wrapUp') and tracker.take ) then
-      modified = 1
-      reaper.Undo_OnStateChange2(0, "Tracker: Wrap up")
-      local oldx  = tracker.xpos
-      local oldy  = tracker.ypos
-      local cpS   = tracker:saveClipboard()
-
-      -- Cut block to special clipboard
-      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
-      tracker.cp = {xstart=1, ystart=2, xstop=#datafields, ystop=tracker.rows}
-      reaper.MarkProjectDirty(0)
-      tracker:cutBlock()
-      tracker:deleteNow()
-      reaper.MIDI_Sort(tracker.take)
-      local chunk = tracker.clipboard
-
-      -- Cut  first line to a special clipboard
-      tracker.cp = {xstart=1, ystart=1, xstop=#datafields, ystop=1}
-      reaper.MarkProjectDirty(0)
-      tracker:cutBlock()
-      tracker:deleteNow()
-      reaper.MIDI_Sort(tracker.take)
-
-      -- Paste line that fell off
-      tracker.xpos = 1
-      tracker.ypos = tracker.rows
-      tracker:pasteBlock()
-
-      -- Paste block one shifted up
-      tracker.xpos = 1
-      tracker.ypos = 1
-      tracker.clipboard = chunk
-      tracker:pasteBlock()
-      tracker:deleteNow()
-      tracker:insertNow()
-      reaper.MIDI_Sort(tracker.take)
-
-
-      tracker:loadClipboard(cpS)
-      tracker.xpos = oldx
-      tracker.ypos = oldy
-
-    elseif inputs('home') and tracker.take then
-      tracker.ypos = 0
-    elseif inputs('End') and tracker.take then
-      tracker.ypos = tracker.rows
-    elseif inputs('m0') and tracker.take then
-      tracker.ypos = 0
-    elseif inputs('m25') and tracker.take then
-      tracker.ypos = math.ceil(tracker.rows * 0.25)+1
-    elseif inputs('m50') and tracker.take then
-      tracker.ypos = math.ceil(tracker.rows * 0.5)+1
-    elseif inputs('m75') and tracker.take then
-      tracker.ypos = math.ceil(tracker.rows * 0.75)+1
-    elseif inputs('toggle') then
-      togglePlayPause()
-    elseif inputs('renoiseplay') and tracker.take then
-      local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
-      local loc = reaper.AddProjectMarker(0, 0, mpos + tracker:toSeconds(0), 0, "", -1)
-      reaper.GoToMarker(0, loc, 0)
-      reaper.DeleteProjectMarker(0, loc, 0)
-      togglePlayPause()
-    elseif inputs('playfrom') and tracker.take then
-      if ( isPlaying() > 0 ) then
-        -- Determine where we stopped relative to the current media object
-        local playpos = reaper.GetPlayPosition()
-        local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
-        local mlen = reaper.GetMediaItemInfo_Value(tracker.item, "D_LENGTH")
-        if ( playpos > mpos and playpos < (mpos+mlen) ) then
-          tracker.ypos = math.floor( (playpos-mpos) / mlen * tracker.rows ) + 1
-        end
-      end
-
-      local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
-      local loc = reaper.AddProjectMarker(0, 0, mpos + tracker:toSeconds(tracker.ypos-1), 0, "", -1)
-      reaper.GoToMarker(0, loc, 0)
-      reaper.DeleteProjectMarker(0, loc, 0)
-      togglePlayPause()
-    elseif inputs('insert') and tracker.take then
-      modified = 1
-      reaper.Undo_OnStateChange2(0, "Tracker: Insert")
-      reaper.MarkProjectDirty(0)
-      tracker:insert()
-      tracker:deleteNow()
-      reaper.MIDI_Sort(tracker.take)
-    elseif inputs('remove') and tracker.take then
-      modified = 1
-      reaper.Undo_OnStateChange2(0, "Tracker: Backspace")
-      reaper.MarkProjectDirty(0)
-      tracker:backspace()
-      tracker:deleteNow()
-      reaper.MIDI_Sort(tracker.take)
-    elseif inputs('pgup') and tracker.take then
-      tracker.ypos = tracker.ypos - tracker.cfg.page
-    elseif inputs('pgdown') and tracker.take then
-      tracker.ypos = tracker.ypos + tracker.cfg.page
-    elseif inputs('undo') and tracker.take then
-      modified = 1
-      reaper.Undo_DoUndo2(0)
-    elseif inputs('redo') and tracker.take then
-      modified = 1
-      reaper.Undo_DoRedo2(0)
-    elseif inputs('deleteBlock') and tracker.take then
-      modified = 1
-      reaper.Undo_OnStateChange2(0, "Tracker: Delete block")
-      reaper.MarkProjectDirty(0)
-      tracker:deleteBlock()
-      reaper.MIDI_Sort(tracker.take)
-    elseif inputs('beginBlock') and tracker.take then
-      tracker:beginBlock()
-    elseif inputs('endBlock') and tracker.take then
-      tracker:endBlock()
-    elseif ( inputs('copyBlock') or inputs('copyBlock2') ) and tracker.take then
-      tracker:copyBlock()
-    elseif inputs('copyColumn') and tracker.take then
-      local oldcp = tracker.cp
-      tracker.cp = {xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows}
-      tracker:copyBlock()
-      tracker.cp = oldcp
-    elseif inputs('copyPattern') and tracker.take then
-      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
-      local oldcp = tracker.cp
-      tracker.cp = {xstart=1, ystart=1, xstop=#datafields, ystop=tracker.rows}
-      tracker:copyBlock()
-      tracker.cp = oldcp
-    elseif ( inputs('cutBlock') or inputs('cutBlock2') ) and tracker.take then
-      modified = 1
-      reaper.Undo_OnStateChange2(0, "Tracker: Cut block")
-      reaper.MarkProjectDirty(0)
-      tracker:cutBlock()
-      reaper.MIDI_Sort(tracker.take)
-    elseif inputs('cutColumn') and tracker.take then
-      modified = 1
-      reaper.Undo_OnStateChange2(0, "Tracker: Cut column")
-      local oldcp = tracker.cp
-      tracker.cp = {xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows}
-      reaper.MarkProjectDirty(0)
-      tracker:cutBlock()
-      tracker.cp = oldcp
-      reaper.MIDI_Sort(tracker.take)
-    elseif inputs('cutPattern') and tracker.take then
-      modified = 1
-      reaper.Undo_OnStateChange2(0, "Tracker: Cut pattern")
-      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
-      local oldcp = tracker.cp
-      tracker.cp = {xstart=1, ystart=1, xstop=#datafields, ystop=tracker.rows}
-      reaper.MarkProjectDirty(0)
-      tracker:cutBlock()
-      tracker.cp = oldcp
-      reaper.MIDI_Sort(tracker.take)
-    elseif ( inputs('pasteBlock') or inputs('pasteBlock2') ) and tracker.take then
-      modified = 1
-      reaper.Undo_OnStateChange2(0, "Tracker: Paste block")
-      reaper.MarkProjectDirty(0)
-      tracker:pasteBlock()
-      reaper.MIDI_Sort(tracker.take)
-    elseif inputs('pasteColumn') and tracker.take then
-      modified = 1
-      reaper.Undo_OnStateChange2(0, "Tracker: Paste column")
-      reaper.MarkProjectDirty(0)
-      local oldpos = tracker.ypos
-      tracker.ypos = 1
-      tracker:pasteBlock()
-      tracker.ypos = oldpos
-      reaper.MIDI_Sort(tracker.take)
-    elseif inputs('pastePattern') and tracker.take then
-      modified = 1
-      reaper.Undo_OnStateChange2(0, "Tracker: Paste pattern")
-      reaper.MarkProjectDirty(0)
-      local oldx = tracker.xpos
-      local oldy = tracker.ypos
-      tracker.xpos = 1
-      tracker.ypos = 1
-      tracker:pasteBlock()
-      tracker.xpos = oldx
-      tracker.ypos = oldy
-      reaper.MIDI_Sort(tracker.take)
-    elseif ( inputs('shiftItemUp') or inputs('shblockup') ) and tracker.take then
-      modified = 1
-      tracker:shiftup()
-    elseif ( inputs('shiftItemDown') or inputs('shblockdown') ) and tracker.take then
-      modified = 1
-      tracker:shiftdown()
-    elseif inputs('shcoldown') and tracker.take then
-      modified = 1
-      tracker:shiftdown({xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows})
-    elseif inputs('shcolup') and tracker.take then
-      modified = 1
-      tracker:shiftup({xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows})
-    elseif inputs('shpatdown') and tracker.take then
-      modified = 1
-      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
-      local x = 1
-      while ( x < #datafields ) do
-        if ( datafields[x] == 'text' ) then
-          break
-        end
-        x = x + 1
-      end
-      tracker:shiftdown({xstart=x, ystart=1, xstop=#datafields, ystop=tracker.rows}, 1)
-    elseif inputs('shpatup') and tracker.take then
-      modified = 1
-      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
-      local x = 1
-      while ( x < #datafields ) do
-        if ( datafields[x] == 'text' ) then
-          break
-        end
-        x = x + 1
-      end
-      tracker:shiftup({xstart=x, ystart=1, xstop=#datafields, ystop=tracker.rows}, 1)
-    elseif inputs('colOctDown') and tracker.take then
-      modified = 1
-      tracker:shiftdown({xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows}, 1, 12)
-    elseif inputs('colOctUp') and tracker.take then
-      modified = 1
-      tracker:shiftup({xstart=tracker.xpos, ystart=1, xstop=tracker.xpos, ystop=tracker.rows}, 1, 12)
-    elseif inputs('patternOctDown') and tracker.take then
-      modified = 1
-      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
-      local x = 1
-      while ( x < #datafields ) do
-        if ( datafields[x] == 'text' ) then
-          break
-        end
-        x = x + 1
-      end
-      tracker:shiftdown({xstart=x, ystart=1, xstop=#datafields, ystop=tracker.rows}, 1, 12)
-    elseif inputs('patternOctUp') and tracker.take then
-      modified = 1
-      local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
-      local x = 1
-      while ( x < #datafields ) do
-        if ( datafields[x] == 'text' ) then
-          break
-        end
-        x = x + 1
-      end
-      tracker:shiftup({xstart=x, ystart=1, xstop=#datafields, ystop=tracker.rows}, 1, 12)
-    elseif inputs('blockOctUp') and tracker.take then
-      modified = 1
-      tracker:shiftup(nil, 1, 12)
-    elseif inputs('blockOctDown') and tracker.take then
-      modified = 1
-      tracker:shiftdown(nil, 1, 12)
-    elseif inputs('scaleUp') and tracker.take then
-      modified = 1
-      tracker:shiftScaleUp()
-    elseif inputs('scaleDown') and tracker.take then
-      modified = 1
-      tracker:shiftScaleDown()
-    elseif inputs('octaveup') and tracker.take then
-      tracker.transpose = tracker.transpose + 1
-      if ( tracker.transpose > tracker.maxoct ) then
-        tracker.transpose = tracker.maxoct
-      end
-      tracker:storeSettings()
-      tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('octavedown') and tracker.take then
-      tracker.transpose = tracker.transpose - 1
-      if ( tracker.transpose < tracker.minoct ) then
-        tracker.transpose = tracker.minoct
-      end
-      tracker:storeSettings()
-      tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('envshapeup') and tracker.take then
-      tracker.envShape = tracker.envShape + 1
-      if ( tracker.envShape > #tracker.envShapes ) then
-        tracker.envShape = 0
-      end
-      tracker:storeSettings()
-      tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('envshapedown') and tracker.take then
-      tracker.envShape = tracker.envShape - 1
-      if ( tracker.envShape < 0 ) then
-        tracker.envShape = #tracker.envShapes
-      end
-      tracker:storeSettings()
-      tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('outchanup') and tracker.take then
-      tracker.outChannel = tracker.outChannel + 1
-      if ( tracker.outChannel > 16 ) then
-        tracker.outChannel = 0
-      end
-      if tracker.tracker_samples == 1 then
-        tracker.outChannel = 0
-      end
-      tracker:setOutChannel( tracker.outChannel )
-    elseif inputs('outchandown') and tracker.take then
-      tracker.outChannel = tracker.outChannel - 1
-      if ( tracker.outChannel < 0) then
-        tracker.outChannel = 16
-      end
-      if tracker.tracker_samples == 1 then
-        tracker.outChannel = 0
-      end
-      tracker:setOutChannel( tracker.outChannel )
-    elseif inputs('advanceup') and tracker.take then
-      tracker.advance = tracker.advance + 1
-      tracker:storeSettings()
-      tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('advancedown') and tracker.take then
-      tracker.advance = math.max(tracker.advance - 1, 0)
-      tracker:storeSettings()
-      tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('advanceDouble') and tracker.take then
-      -- max() with 1 because if they are doubling from 0 they probably
-      -- want it to actually increase and not just stay there
-      tracker.advance = math.max(tracker.advance * 2, 1)
-      tracker:storeSettings()
-      tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('advanceHalve') and tracker.take then
-      tracker.advance = math.ceil(tracker.advance / 2)
-      tracker:storeSettings()
-      tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('resolutionUp') and tracker.take then
-      if ( prevChar ~= lastChar ) then
-        tracker.newRowPerQn = tracker.newRowPerQn + 1
-        if ( tracker.newRowPerQn > tracker.maxRowPerQn ) then
-          tracker.newRowPerQn = 1
-        end
-      end
-    elseif inputs('resolutionDown') and tracker.take then
-      if ( prevChar ~= lastChar ) then
-        tracker.newRowPerQn = tracker.newRowPerQn - 1
-        if ( tracker.newRowPerQn < 1 ) then
-          tracker.newRowPerQn = tracker.maxRowPerQn
-        end
-      end
-    elseif inputs('toggleNoteMode') then
-      tracker.cfg.advanceByNote = 1.0 - tracker.cfg.advanceByNote
-      tracker:saveConfig(tracker.configFile, tracker.cfg)      
-    elseif inputs('stop2') then
-      reaper.Main_OnCommand(1016, 0)
-    elseif inputs('panic') then
-      reaper.Main_OnCommand(40345, 0)
-    elseif inputs('harmony') then
-      tracker.harmonyActive = 1-(tracker.harmonyActive or 0)
-      tracker:resizeWindow()
-      tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('noteNames') then
-      if tracker.noteNamesActive == 0 then
-        tracker:getNoteNames()
-        tracker.noteNamesActive = 1
-      else
-        tracker.noteNamesActive = 0
-      end
-      tracker:resizeWindow()
-    elseif inputs('help') then
-      tracker.helpActive = 1-tracker.helpActive
-      tracker:resizeWindow()
-    elseif inputs('options') or inputs('options2') then
-      tracker.optionsActive = 1-tracker.optionsActive
-      tracker:resizeWindow()
-    elseif inputs('nextMIDI') then
-      tracker:seekMIDI(1)
-      tracker:resizeWindow()
-      if ( tracker.cfg.loopFollow == 1 ) then
-        tracker:setLoopToPattern()
-      end
-    elseif inputs('prevMIDI') then
-      tracker:seekMIDI(-1)
-      tracker:resizeWindow()
-      if ( tracker.cfg.loopFollow == 1 ) then
-        tracker:setLoopToPattern()
-      end
-    elseif inputs('nextTrack') then
-      tracker:seekTrack(1)
-      tracker:resizeWindow()
-      if ( tracker.cfg.loopFollow == 1 ) then
-        tracker:setLoopToPattern()
-      end
-    elseif inputs('prevTrack') then
-      tracker:seekTrack(-1)
-      tracker:resizeWindow()
-      if ( tracker.cfg.loopFollow == 1 ) then
-        tracker:setLoopToPattern()
-      end
-    elseif inputs('duplicate') and tracker.take then
-      reaper.Undo_OnStateChange2(0, "Tracker: Duplicate pattern")
-      reaper.MarkProjectDirty(0)
-      tracker:duplicate()
-    elseif inputs('commit') and tracker.take then
-      tracker:setResolution( tracker.newRowPerQn )
-      tracker:saveConfig(tracker.configFile, tracker.cfg)
-      self.hash = math.random()
-    elseif inputs('setloop') and tracker.take then
-      tracker:setLoopToPattern()
-    elseif inputs('setloopstart') and tracker.take then
-      tracker:setLoopStart()
-    elseif inputs('setloopend') and tracker.take then
-      tracker:setLoopEnd()
-    elseif inputs('follow') and tracker.take then
-      tracker.cfg.followSong = 1 - tracker.cfg.followSong
-      tracker:saveConfig(tracker.configFile, tracker.cfg)
-    elseif inputs('interpolate') and tracker.take then
-      reaper.Undo_OnStateChange2(0, "Tracker: Interpolate")
-      reaper.MarkProjectDirty(0)
-      tracker:interpolate()
-      tracker:deleteNow()
-      reaper.MIDI_Sort(tracker.take)
-    elseif inputs('showMore') and tracker.take then
-      tracker:showMore()
-    elseif inputs('showLess') and tracker.take then
-      tracker:showLess()
-    elseif inputs('tab') and tracker.take then
-      tracker:tab()
-    elseif inputs('shifttab') and tracker.take then
-      tracker:shifttab()
-    elseif inputs('addCol') and tracker.take then
-      tracker:addCol()
-    elseif inputs('addColAll') and tracker.take then
-      tracker:addColAll()
-    elseif inputs('addPatchSelect') and tracker.take then
-      tracker:addPatchSelect()
-    elseif inputs('remCol') and tracker.take then
-      tracker:remCol()
-    elseif inputs('rename') and tracker.take then
-      tracker.oldMidiName = tracker.midiName
-      tracker.midiName = ''
-      tracker.renaming = 1
-      tracker:updateMidiName()
-    elseif inputs('playline') then
-      tracker:playLine()
-    elseif inputs('toggleRec') then
-      tracker:toggleRec()
-    elseif inputs('mute') then
-      tracker:toggleMuteChannel()
-    elseif inputs('solo') then
-      tracker:toggleSoloChannel()
-    elseif( inputs('closeTracker') ) then
-      tracker:terminate()
-    elseif inputs('escape') then
-      if ( tracker:isArmed() ) then
-        tracker.onlyListen = 1 - tracker.onlyListen
-      end
-    elseif ( lastChar == 0 ) then
-      -- No input
-    elseif ( lastChar == -1 ) then
-      -- Closed window
-    else
-      for i,v in pairs( commandKeys ) do
-        if ( inputs(i) ) then
-          local cmd = reaper.NamedCommandLookup( v[5] )
-          if ( cmd and ( cmd > 0 ) ) then
-            reaper.Main_OnCommand(cmd, 0)
-          else
-            tracker.callScript( tracker, v[5] )
-            if ( v[6] and v[6] == 1 and tracker.cfg.closeWhenSwitchingToHP == 1 ) then
-              tracker:terminate()
-            end
-          end
-        end
-      end
-
-      -- Notes here
-      modified = 1
-      tracker:noteEdit()
-    end
-  elseif( tracker.renaming == 1 ) then
-    -- Renaming pattern
-    if inputs( 'enter' ) then
-      tracker.renaming = 0
-    elseif inputs( 'escape' ) then
-      tracker.midiName = tracker.oldMidiName
-      tracker:updateMidiName()
-      tracker.renaming = 0
-    elseif inputs( 'remove' ) then
-      tracker.midiName = tracker.midiName:sub(1, tracker.midiName:len()-1)
-      tracker:updateMidiName()
-    else
-      if ( pcall( function () string.char(lastChar) end ) ) then
-        local str = string.char( lastChar )
-        tracker.midiName = string.format( '%s%s', tracker.midiName, str )
-        tracker:updateMidiName()
-      end
-    end
-  elseif ( tracker.renaming == 2 ) then
-    -- Adding column
-    if inputs( 'enter' ) then
-      tracker.renaming = 0
-      tracker:createCCCol()
-    elseif( inputs( 'escape' ) ) then
-      tracker.renaming = 0
-    elseif( inputs( 'remove' ) ) then
-      tracker.newCol = tracker.newCol:sub(1, tracker.newCol:len()-1)
-    elseif ( lastChar > 0 ) then
-      if ( pcall( function () string.char( lastChar ) tonumber(lastChar) end ) ) then
-        local str = string.char( lastChar )
-        tracker.newCol = string.format( '%s%s', tracker.newCol, str )
-      end
-    end
-  elseif ( tracker.renaming == 3 ) then
-    -- Resizing pattern
-    if inputs( 'enter' ) then
-      tracker.renaming = 0
-      tracker:resizePattern()
-    elseif( inputs( 'escape' ) ) then
-      tracker.renaming = 0
-    elseif( inputs( 'remove' ) ) then
-      tracker.newLength = tracker.newLength:sub(1, tracker.newLength:len()-1)
-    elseif ( lastChar > 0 ) then
-      if ( pcall( function () string.char( lastChar ) tonumber(lastChar) end ) ) then
-        local str = string.char( lastChar )
-        tracker.newLength = string.format( '%s%s', tracker.newLength:sub(1,2), str )
-      end
-    end
-  elseif ( tracker.renaming == 4 ) then
-    -- Adding column to all patterns
-    if inputs( 'enter' ) then
-      tracker.renaming = 0
-      tracker:createCCColAll()
-    elseif( inputs( 'escape' ) ) then
-      tracker.renaming = 0
-    elseif( inputs( 'remove' ) ) then
-      tracker.newCol = tracker.newCol:sub(1, tracker.newCol:len()-1)
-    elseif ( lastChar > 0 ) then
-      if ( pcall( function () string.char( lastChar ) tonumber(lastChar) end ) ) then
-        local str = string.char( lastChar )
-        tracker.newCol = string.format( '%s%s', tracker.newCol, str )
-      end
-    end
-  end
+  local modified = tracker:processKeyboardInput()
 
   if ( tracker.cfg.followSong == 1 and reaper.GetPlayState() ~= 0) then
     tracker:gotoCurrentPosition()
@@ -10623,6 +10641,14 @@ function tracker:terminate()
     optionsActive=tracker.optionsActive,
   })
   tracker:saveConfig(tracker.configFile, tracker.cfg)
+
+  if profiler then
+    print("Saving profile ...")
+    profiler:stop()
+    local outfile = io.open( "E:\\profile.txt", "w+" )
+    profiler:report( outfile )
+    outfile:close()
+  end
 
   gfx.quit()
 end
@@ -10909,7 +10935,7 @@ end
 local function Main()
   local tracker = tracker
   local reaper = reaper
-
+  
   local keyPath = run_or_create_custom_file(
     tracker.keyFile,
     [[
