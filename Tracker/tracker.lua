@@ -3357,6 +3357,8 @@ end
 -- Draw the GUI
 ------------------------------
 function tracker:renderGUI()
+  local start_time = os.clock()
+
   local ellipsis  = self.colors.ellipsis
   local tracker   = tracker
   local colors    = tracker.colors
@@ -3462,16 +3464,16 @@ function tracker:renderGUI()
         end
       end
     end
-
+  
     if ( xloc[relx] and yloc[rely] ) then
       local absy = rely + scrolly
       gfx.set(table.unpack(colors.selectcolor))
       gfx.rect(xloc[relx]-1, yloc[rely]-plotData.yshift, xwidth[relx], yheight[rely] + itempady)
-
+    
       gfx.x = xloc[relx]
       gfx.y = yloc[rely]
       gfx.set(table.unpack(colors.selecttext or colors.textcolor))
-
+    
       local cdata = data[dlink[relx]][rows*xlink[relx]+absy-1]
       writeField( cdata, ellipsis, xloc[relx], yloc[rely], customFont )
     end
@@ -4001,6 +4003,12 @@ function tracker:renderGUI()
       gfx.line(c, 0, c, gfx.h)
     end
   end
+  
+  gfx.x = 0
+  gfx.y = 0
+  local current_time = os.clock() - start_time
+  self.time = 0.95 * (self.time or current_time) + 0.05 * current_time
+  gfx.printf("%f", 1000 * self.time)
 end
 
 -- Load the scales
