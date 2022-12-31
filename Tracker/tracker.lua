@@ -52,6 +52,7 @@
   + Fix nil bug when simulating.
   + Rename render function.
   + Change OFC to OFF in pattern data.
+  + Add protracker inspired theme (TonE).
  * v3.09 (2022-11-24)
   + Improve layout logic.
   + Add scrollbar to options.
@@ -900,7 +901,7 @@ tracker.binaryOptions = {
     { 'channelOffset', 'Make channel number reflect midi chan' },
     }
 
-tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2", "sink"}
+tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2", "sink", "TonE"}
 
 noteNames = {}
 
@@ -1294,6 +1295,85 @@ function tracker:loadColors(colorScheme)
   LENGHT text color = RGB(52,160,232)
   If possible : background line3 (every 8 steps) = RGB(179,179,179)]]--
   
+  elseif colorScheme == "TonE" then
+    tracker:loadColors("renoise")  -- Load some defaults
+    local protracker_blue = {51/256, 68/256, 255/256, 1}
+    local protracker_yellow = {255/256, 221/256, 0/256, 1}
+    
+    self.colors.ellipsis         = 0  -- Draw ellipses instead of dots
+    self.colors.shadercolor      = {255/256, 221/256, 0/256, 1}
+    
+    -- bar numbers, note numbers
+    self.colors.selectcolor      = {150/256, 0, 0, 1} -- Background color selection
+    self.colors.selecttext       = {1/256*255, 1/256*221, 1/256*0, 1} -- Foreground color selection
+    self.colors.textcolor        = {51/256, 68/256, 255/256, 1} -- pattern data text color (only used when normal and bar are left undefined)
+    -- note color
+    self.colors.textcolorbar     = {51/256, 68/256, 255/256, 1} -- pattern data text color at bar (only used when normal and bar are left undefined)
+
+    -- yellow header, color from protracker of course :)
+    self.colors.headercolor      = protracker_yellow -- column headers, statusbar etc
+--      self.colors.inactive         = {115/256, 115/256, 115/256, 1} -- column headers, statusbar etc
+
+    self.colors.linecolor        = {0/256, 0/256, 0/256, 1} -- normal row
+    self.colors.linecolor2       = {1/256, 1/256, 1/256, 0.6} -- beats (must not have 100% alpha as it's drawn over the cursor(!)) lines 2 3 4 excluding first line per beat
+--      self.colors.linecolor3       = {1/256*180, 1/256*148, 1/256*120, 1} -- scroll indicating trangle thingy
+    self.colors.linecolor4       = {0/256, 0/256, 0/256, 1} -- Reaper edit cursor, I make it invisible meaning black as I can not see any value in this line for now
+    self.colors.linecolor5       = {0/256, 0/256, 0/256, 1.0} -- Bar start, each beat color meaning each 4 lines in my case at least
+
+--      self.colors.loopcolor        = {1/256*204, 1/256*204, 1/256*68, 1} -- lines surrounding loop
+    self.colors.copypaste        = {1/256*57, 1/256*57, 1/256*20, 0.66}  -- the selection (should be lighter (not alpha blended) but is drawn over the data)
+
+--      self.colors.scrollbar1       = {98/256, 98/256, 98/256, 1} -- scrollbar handle & outline
+    self.colors.scrollbar1       = protracker_blue -- scrollbar handle & outline
+    self.colors.scrollbar2       = {0, 0, 0, 1} -- scrollbar background
+
+    self.colors.changed          = {1, 1, 0, 1}  -- Color indicating a changed but uncommitted setting
+    self.colors.changed2         = {0, .5, 1, .5} -- Only listening
+
+    -- background, where no notes are
+    self.colors.windowbackground = {0/256, 0/256, 0/256, 1}  -- Window background. Note that the alpha channel is ignored.
+    self.colors.crtStrength      = 0  -- How strong should the CRT effect be when enabled.
+    
+    -- Colors that override the text colors for different columns
+    -- When these are specified, the colors textcolor and textcolorbar are ignored.
+--      self.colors.normal.mod1      = {243/255, 171/255, 116/255, 1.0}
+--      self.colors.normal.mod2      = self.colors.normal.mod1
+--      self.colors.normal.mod3      = self.colors.normal.mod1
+--      self.colors.normal.mod4      = self.colors.normal.mod1
+    self.colors.normal.modtxt1   = protracker_blue
+    self.colors.normal.modtxt2   = protracker_blue
+    self.colors.normal.modtxt3   = protracker_blue
+    self.colors.normal.modtxt4   = protracker_blue
+    self.colors.normal.vel1      = protracker_blue
+    self.colors.normal.vel2      = protracker_blue
+    self.colors.normal.delay1    = protracker_blue
+    self.colors.normal.delay2    = protracker_blue
+    self.colors.normal.fx1       = protracker_blue
+    self.colors.normal.fx2       = protracker_blue
+    self.colors.normal.end1      = protracker_blue
+    self.colors.normal.end2      = protracker_blue
+    
+    self.colors.bar.mod1         = protracker_blue
+    self.colors.bar.mod2         = protracker_blue
+    self.colors.bar.mod3         = protracker_blue
+    self.colors.bar.mod4         = protracker_blue
+    
+    self.colors.bar.modtxt1      = protracker_blue
+    self.colors.bar.modtxt2      = protracker_blue
+    self.colors.bar.modtxt3      = protracker_blue
+    self.colors.bar.modtxt4      = protracker_blue
+    self.colors.bar.vel1         = protracker_blue
+    self.colors.bar.vel2         = protracker_blue
+    self.colors.bar.delay1       = protracker_blue
+    self.colors.bar.delay2       = protracker_blue
+    self.colors.bar.fx1          = protracker_blue
+    self.colors.bar.fx2          = protracker_blue
+    self.colors.bar.end1         = protracker_blue
+    self.colors.bar.end2         = protracker_blue
+    
+    self.colors.patternFont         = "Fruity microfont"  -- Custom font. Note that it should be installed on the system.
+    self.colors.patternFontSize     = tracker.cfg.fontSize or 14  -- Font size. Usually overridden by the user already.
+    self.colors.customFontDisplace  = { self.colors.patternFontSize-6, -3 }  -- Font displacement to fixup alignment issues.
   else
     -- Custom color scheme
     if extraThemes[colorScheme] then
