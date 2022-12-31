@@ -51,6 +51,7 @@
   + Add some commented out functions used for profiling stuff.
   + Fix nil bug when simulating.
   + Rename render function.
+  + Change OFC to OFF in pattern data.
  * v3.09 (2022-11-24)
   + Improve layout logic.
   + Add scrollbar to options.
@@ -5862,7 +5863,7 @@ function tracker:assignOFF(channel, idx)
 
   local ppq = table.unpack( txtList[idx] )
   local row = math.floor( ppq * self.rowPerPpq )
-  data.text[rows*channel + row] = 'OFC'
+  data.text[rows*channel + row] = 'OFF'
   data.note[rows*channel + row] = -idx - 2
 end
 
