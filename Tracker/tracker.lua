@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.10
+@version 3.11
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ + v3.11 (2023-01-01)
+  + Force update after out channel change.
  + v3.10 (2023-01-01)
   + Fix bug to support gfx2imgui.
   + Move keyboard input handling out of main update loop for clarity.
@@ -8328,6 +8330,8 @@ function tracker:setOutChannel( ch )
       end
     end
   end
+  
+  self:forceUpdate()
 end
 
 function tracker:seen_item(ch)
