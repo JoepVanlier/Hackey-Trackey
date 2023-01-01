@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.12
+@version 3.13
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.13 (2023-01-01)
+  + Add config option to fill with empty (new default) rather than repeat the pattern when resizing pattern.
  * v3.12 (2023-01-01)
   + Fix issue with scrollbar missing yend when switching theme and immediately scrolling as part of the same click.
  * v3.11 (2023-01-01)
@@ -635,7 +637,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.12"
+tracker.name = "Hackey Trackey v3.13"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -867,6 +869,7 @@ tracker.cfg.transpose = 3
 tracker.cfg.advance = 1
 tracker.cfg.envShape = 1
 tracker.cfg.modMode = 0
+tracker.cfg.noloopGlue = 1
 
 tracker.cfg.optionsStartIndex = 1
 
@@ -908,6 +911,7 @@ tracker.binaryOptions = {
     { 'channelOffset', 'Make channel number reflect midi chan' },
     { 'useCachedRendering', 'Cached rendering (better performance)' },
     { 'showAvgFrameTime', 'Show average frame time' },
+    { 'noloopGlue', 'Force item to not loop when resizing' },
     }
 
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2", "sink", "TonE"}
@@ -8905,7 +8909,15 @@ function tracker:resizePattern()
 
     -- Make sure we have the correct item
     self:grabActiveItem()
-    reaper.SetMediaItemInfo_Value(self.item, "D_LENGTH", newLenS )
+    
+    local old_loop
+    if self.cfg.noloopGlue == 1 then
+      old_loop = reaper.GetMediaItemInfo_Value(self.item, "B_LOOPSRC")
+      reaper.SetMediaItemInfo_Value(self.item, "B_LOOPSRC", 0)
+      reaper.SetMediaItemInfo_Value(self.item, "D_LENGTH", newLenS)
+    end
+    
+    reaper.SetMediaItemInfo_Value(self.item, "D_LENGTH", newLenS)
 
     -- Resize it
     local cnt = reaper.CountTrackEnvelopes(self.track)
@@ -8921,6 +8933,11 @@ function tracker:resizePattern()
     -- Glue it again
     reaper.Main_OnCommand(glueCmd, 0)
     reaper.Main_OnCommand(42089, 0)
+    
+    if self.cfg.noloopGlue == 1 then
+      reaper.SetMediaItemInfo_Value(self.item, "B_LOOPSRC", old_loop)
+    end
+    
     tracker:checkChange()
   end
 end
