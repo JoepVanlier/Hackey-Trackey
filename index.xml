@@ -1449,6 +1449,14 @@ FF = the full length of the last tick.]]></changelog>
         <source type="effect" file="Hackey Trackey Channel Cycler.jsfx">https://github.com/JoepVanlier/Hackey-Trackey/raw/6dbe1c9bc1d06cc633f1f801f7303e794e2032b2/Tracker/Hackey%20Trackey%20Channel%20Cycler.jsfx</source>
       </version>
       <version name="3.10" author=": Joep Vanlier" time="2023-01-01T01:22:38Z">
+        <changelog><![CDATA[+ Fix bug to support gfx2imgui.
++ Move keyboard input handling out of main update loop for clarity.
++ Add some commented out functions used for profiling stuff.
++ Fix nil bug when simulating.
++ Rename render function.
++ Change OFC to OFF in pattern data.
++ Add protracker inspired theme (TonE).
++ Add cached render mode for pattern data (better gfx performance). Note, if you find issues with it, please let me know and disable it in the options for now.]]></changelog>
         <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/0f33c0c83e2985e6e25cd0762f66d6fc88d86bd9/Tracker/scales.lua</source>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/0f33c0c83e2985e6e25cd0762f66d6fc88d86bd9/Tracker/tracker.lua</source>
         <source main="main" file="hackey_trackey_tracker.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/0f33c0c83e2985e6e25cd0762f66d6fc88d86bd9/Tracker/hackey_trackey_tracker.lua</source>
@@ -1460,6 +1468,7 @@ FF = the full length of the last tick.]]></changelog>
         <source type="effect" file="Hackey Trackey Channel Cycler.jsfx">https://github.com/JoepVanlier/Hackey-Trackey/raw/0f33c0c83e2985e6e25cd0762f66d6fc88d86bd9/Tracker/Hackey%20Trackey%20Channel%20Cycler.jsfx</source>
       </version>
       <version name="3.11" author=": Joep Vanlier" time="2023-01-01T01:34:08Z">
+        <changelog><![CDATA[+ Force update after out channel change.]]></changelog>
         <source file="scales.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/0bdbaf5a6734fb5e4f92075754a498e87ac619a3/Tracker/scales.lua</source>
         <source main="main">https://github.com/JoepVanlier/Hackey-Trackey/raw/0bdbaf5a6734fb5e4f92075754a498e87ac619a3/Tracker/tracker.lua</source>
         <source main="main" file="hackey_trackey_tracker.lua">https://github.com/JoepVanlier/Hackey-Trackey/raw/0bdbaf5a6734fb5e4f92075754a498e87ac619a3/Tracker/hackey_trackey_tracker.lua</source>
