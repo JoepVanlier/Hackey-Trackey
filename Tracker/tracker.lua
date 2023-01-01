@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.09
+@version 3.10
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,7 +45,7 @@
 
 --[[
  * Changelog:
- + v3.10 (t.b.d.)
+ + v3.10 (2023-01-01)
   + Fix bug to support gfx2imgui.
   + Move keyboard input handling out of main update loop for clarity.
   + Add some commented out functions used for profiling stuff.
@@ -53,7 +53,7 @@
   + Rename render function.
   + Change OFC to OFF in pattern data.
   + Add protracker inspired theme (TonE).
-  + Add cached render mode for pattern data (better gfx performance).
+  + Add cached render mode for pattern data (better gfx performance). Note, if you find issues with it, please let me know and disable it in the options for now.
  * v3.09 (2022-11-24)
   + Improve layout logic.
   + Add scrollbar to options.
@@ -631,7 +631,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.09"
+tracker.name = "Hackey Trackey v3.10"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
