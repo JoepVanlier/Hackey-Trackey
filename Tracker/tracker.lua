@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.11
+@version 3.12
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,9 +45,11 @@
 
 --[[
  * Changelog:
- + v3.11 (2023-01-01)
+ * v3.12 (2023-01-01)
+  + Fix issue with scrollbar missing yend when switching theme and immediately scrolling as part of the same click.
+ * v3.11 (2023-01-01)
   + Force update after out channel change.
- + v3.10 (2023-01-01)
+ * v3.10 (2023-01-01)
   + Fix bug to support gfx2imgui.
   + Move keyboard input handling out of main update loop for clarity.
   + Add some commented out functions used for profiling stuff.
@@ -633,7 +635,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.10"
+tracker.name = "Hackey Trackey v3.12"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -2904,9 +2906,6 @@ function scrollbar.create( w, no_indicator )
     self.y = y
     self.h = h
     self.loc = self.loc or 0
-
-    self.ytop = ytop
-    self.yend = yend
   end
   
   self.setExtent = function( self, ytop, yend, ypos, rows )
