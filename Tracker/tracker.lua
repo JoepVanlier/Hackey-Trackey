@@ -53,6 +53,7 @@
   + Rename render function.
   + Change OFC to OFF in pattern data.
   + Add protracker inspired theme (TonE).
+  + Add cached render mode for pattern data (better gfx performance).
  * v3.09 (2022-11-24)
   + Improve layout logic.
   + Add scrollbar to options.
@@ -627,7 +628,7 @@
 -- require 'pepperfish'
 -- profiler = newProfiler()
 -- profiler:start()
---gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
+-- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
 tracker.name = "Hackey Trackey v3.09"
@@ -850,6 +851,8 @@ tracker.cfg.globalMidi = 0
 tracker.cfg.global_midi_release_timeout = 0.15
 tracker.cfg.hideVelocity = 0
 tracker.cfg.channelOffset = 1
+tracker.cfg.useCachedRendering = 1
+tracker.cfg.showAvgFrameTime = 0
 
 tracker.tracker_samples = 0
 tracker.cfg.fixedIndicator = 0
@@ -899,6 +902,8 @@ tracker.binaryOptions = {
     { 'scrubMode', 'Recording acts as scrub mode (plays notes)' },
     { 'hideVelocity', 'Hide velocity column' },
     { 'channelOffset', 'Make channel number reflect midi chan' },
+    { 'useCachedRendering', 'Cached rendering (better performance)' },
+    { 'showAvgFrameTime', 'Show average frame time' },
     }
 
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2", "sink", "TonE"}
@@ -3468,7 +3473,23 @@ function tracker:renderGUI()
   end
 
   if ( self.take ) then
-    drawPattern(colors, data, scrolly, rows, sig, tracker.zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, plotData.indicatorShiftX, dlink, xlink)
+    if self.cfg.fx1 == 0 and self.cfg.useCachedRendering == 1 then
+      if not self.cached_pattern or self.cached_pattern.scrollx ~= fov.scrollx or self.cached_pattern.scrolly ~= fov.scrolly then
+        self.cached_pattern = {scrolly=fov.scrolly, scrollx=fov.scrollx}
+        gfx.dest = 2
+        gfx.a2 = 1
+        gfx.setimgdim(2, gfx.w, gfx.h)
+        gfx.set(table.unpack(colors. windowbackground))
+        gfx.rect(0, 0, gfx.w, gfx.h)
+        drawPattern(colors, data, scrolly, rows, sig, self.zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, plotData.indicatorShiftX, dlink, xlink)
+      end
+      gfx.dest = -1
+      gfx.x = 0
+      gfx.y = 0
+      gfx.blit(2, 1, 0)
+    else
+      drawPattern(colors, data, scrolly, rows, sig, self.zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, plotData.indicatorShiftX, dlink, xlink)
+    end
   
     -- Selector
     if ( xloc[relx] and yloc[rely] ) then
@@ -4010,11 +4031,14 @@ function tracker:renderGUI()
     end
   end
   
-  gfx.x = 0
-  gfx.y = 0
-  local current_time = os.clock() - start_time
-  self.time = 0.95 * (self.time or current_time) + 0.05 * current_time
-  gfx.printf("%f", 1000 * self.time)
+  if self.cfg.showAvgFrameTime == 1 then
+    gfx.x = 0
+    gfx.y = 0
+    gfx.set(table.unpack(colors.textcolor));
+    local current_time = os.clock() - start_time
+    self.time = 0.95 * (self.time or current_time) + 0.05 * current_time
+    gfx.printf("Frame time: %.2f ms", 1000 * self.time)
+  end
 end
 
 -- Load the scales
@@ -7081,6 +7105,7 @@ function tracker:update()
     print( "Updating the grid ..." )
   end
 
+  self.cached_pattern = nil
   self:getRowInfo()
   self:getSettings()
   self:getTakeEnvelopes()
