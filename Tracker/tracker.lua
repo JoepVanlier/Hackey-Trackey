@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.13
+@version 3.14
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,9 @@
 
 --[[
  * Changelog:
+ * v3.14 (2023-01-06)
+  + Fix bug that caused the UI to not update when "advance by note" mode was selected.
+  + Add mode to preserve octave to "advance by note"-mode. Currently this special mode is only accessible via the keyboard shortcut and will be indicated by Adv[O]. In this mode the playhead goes to the next note when entering a note. When a new note is entered, the octave that was there s preserved rather than overwritten.
  * v3.13 (2023-01-01)
   + Add config option to fill with empty (new default) rather than repeat the pattern when resizing pattern.
  * v3.12 (2023-01-01)
@@ -637,7 +640,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.13"
+tracker.name = "Hackey Trackey vπ"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -4087,7 +4090,9 @@ function tracker:infoString()
     local str = {}
     str[1] = string.format( "Out [%s]", self:outString() )
     str[2] = string.format( "Env [%s]", tracker.envShapes[tracker.envShape] )
-    if self.cfg.advanceByNote == 1 then
+    if self.cfg.advanceByNote == 2 then
+      str[3] = string.format( "Adv [O]" )
+    elseif self.cfg.advanceByNote == 1 then
       str[3] = string.format( "Adv [N]" )
     else
       str[3] = string.format( "Adv [%d]", self.advance )
@@ -4335,7 +4340,7 @@ function tracker:findNextNote(direction)
 end
 
 function tracker:rewindCursor()
-  if self.cfg.advanceByNote == 1 then
+  if self.cfg.advanceByNote > 0 then
     self.ypos = self:findNextNote(-1)
   else
     self.ypos = self.ypos - self.advance
@@ -4343,7 +4348,7 @@ function tracker:rewindCursor()
 end
 
 function tracker:advanceCursor()
-  if self.cfg.advanceByNote == 1 then
+  if self.cfg.advanceByNote > 0 then
     self.ypos = self:findNextNote(1)
   else
     self.ypos = self.ypos + self.advance
@@ -4843,7 +4848,16 @@ function tracker:createNote(inChar, shift)
     local note = keys.pitches[char]
     if ( note ) then
       -- Note is present, we are good to go!
-      local pitch = note + self.transpose * 12
+      
+      local pitch
+      -- Advance by note 2 is a special mode where we don't change the octave
+      if ( self.cfg.advanceByNote == 2 and noteToEdit ) then
+        local old_pitch, _, _, _ = table.unpack(notes[noteToEdit])
+        pitch = note - math.floor(note / 12) * 12 + math.floor(old_pitch / 12) * 12
+      else
+        pitch = note + self.transpose * 12        
+      end
+      
       shouldMove = self:placeNote(pitch, chan, row)
     else
       local octave = keys.octaves[char]
@@ -9977,8 +9991,12 @@ function tracker:processKeyboardInput()
         end
       end
     elseif inputs('toggleNoteMode') then
-      self.cfg.advanceByNote = 1.0 - self.cfg.advanceByNote
-      self:saveConfig(self.configFile, self.cfg)      
+      self.cfg.advanceByNote = self.cfg.advanceByNote + 1
+      if self.cfg.advanceByNote > 2 then
+        self.cfg.advanceByNote = 0
+      end
+      self:saveConfig(self.configFile, self.cfg)
+      self:forceUpdate()
     elseif inputs('stop2') then
       reaper.Main_OnCommand(1016, 0)
     elseif inputs('panic') then
@@ -10400,7 +10418,11 @@ local function updateLoop()
         elseif menu_response == 10 then
           tracker.cfg.loopFollow = 1 - tracker.cfg.loopFollow
         elseif menu_response == 11 then
-          tracker.cfg.advanceByNote = 1 - tracker.cfg.advanceByNote
+          if tracker.cfg.advanceByNote > 0 then
+            tracker.cfg.advanceByNote = 0
+          else
+            tracker.cfg.advanceByNote = 1
+          end
         elseif menu_response == 12 then
           tracker.cfg.alwaysRecord = 1 - tracker.cfg.alwaysRecord
         elseif menu_response == 13 then
