@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.14
+@version 3.15
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.15 (2023-01-08)
+  + Fix bug with item not being found when resizing pattern.
  * v3.14 (2023-01-06)
   + Fix bug that caused the UI to not update when "advance by note" mode was selected.
   + Add mode to preserve octave to "advance by note"-mode. Currently this special mode is only accessible via the keyboard shortcut and will be indicated by Adv[O]. In this mode the playhead goes to the next note when entering a note. When a new note is entered, the octave that was there s preserved rather than overwritten.
@@ -640,7 +642,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey vπ"
+tracker.name = "Hackey Trackey v3.15"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -8948,11 +8950,14 @@ function tracker:resizePattern()
     reaper.Main_OnCommand(glueCmd, 0)
     reaper.Main_OnCommand(42089, 0)
     
-    if self.cfg.noloopGlue == 1 then
-      reaper.SetMediaItemInfo_Value(self.item, "B_LOOPSRC", old_loop)
-    end
-    
     tracker:checkChange()
+    
+    self:grabActiveItem()
+    if self.cfg.noloopGlue == 1 then
+      if ( reaper.ValidatePtr2(0, self.item, "MediaItem*") ) then
+        reaper.SetMediaItemInfo_Value(self.item, "B_LOOPSRC", old_loop)
+      end
+    end
   end
 end
 
