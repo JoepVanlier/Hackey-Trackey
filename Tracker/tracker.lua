@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.15
+@version 3.16
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,10 @@
 
 --[[
  * Changelog:
+ * v3.16 (2023-01-20)
+  + Fix corner case with empty item not returning a take.
+  + Copy cell under cursor if copying without selection block.
+  + Allow option for cyclic shift left/right (wrapping around when using CTRL + left/right).
  * v3.15 (2023-01-08)
   + Fix bug with item not being found when resizing pattern.
  * v3.14 (2023-01-06)
@@ -642,7 +646,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.15"
+tracker.name = "Hackey Trackey v3.16"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -876,6 +880,8 @@ tracker.cfg.envShape = 1
 tracker.cfg.modMode = 0
 tracker.cfg.noloopGlue = 1
 
+tracker.cfg.wrapAroundSeeking = 0
+
 tracker.cfg.optionsStartIndex = 1
 
 tracker.binaryOptions = {
@@ -917,6 +923,7 @@ tracker.binaryOptions = {
     { 'useCachedRendering', 'Cached rendering (better performance)' },
     { 'showAvgFrameTime', 'Show average frame time' },
     { 'noloopGlue', 'Force item to not loop when resizing' },
+    { 'wrapAroundSeeking', 'Wrap around when seeking items' },
     }
 
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2", "sink", "TonE"}
@@ -7935,6 +7942,14 @@ function tracker:copyToClipboard()
   local rows      = self.rows
   local cp        = self.cp
 
+  if ( cp.xstart == -1 and cp.ystart == -1 and cp.xstop == -1 and cp.ystop == -1 ) then
+    cp.xstart = self.xpos
+    cp.ystart = self.ypos
+    cp.xstop = self.xpos
+    cp.ystop = self.ypos
+    cp.all = 0
+  end
+
   newclipboard.refppq = self:rowToPpq( cp.ystart - 1 )
   local maxppq    = self:rowToPpq(cp.ystop)
   newclipboard.maxrow = cp.ystop - cp.ystart
@@ -8787,6 +8802,16 @@ function tracker:seekMIDI( dir )
         return
       end
     end
+    if self.cfg.wrapAroundSeeking == 1 then
+      for i=0,cur - 1 do
+        if ( self:tryTake(i) ) then
+          if ( self.selectionFollows == 1 ) then
+            self:selectCurrent()
+          end
+          return
+        end
+      end
+    end
   elseif ( dir < 0 ) then
     for i=cur-1,0,-1 do
       if ( self:tryTake(i) ) then
@@ -8794,6 +8819,16 @@ function tracker:seekMIDI( dir )
           self:selectCurrent()
         end
         return
+      end
+    end
+    if self.cfg.wrapAroundSeeking == 1 then
+      for i=nItems,cur + 1,-1 do
+        if ( self:tryTake(i) ) then
+          if ( self.selectionFollows == 1 ) then
+            self:selectCurrent()
+          end
+          return
+        end
       end
     end
   else
@@ -11075,10 +11110,12 @@ function tracker:grabActiveItem()
       local item = reaper.GetSelectedMediaItem(0, 0)
       if ( item ) then
         local take = reaper.GetActiveTake(item)
-        if ( reaper.TakeIsMIDI( take ) == true ) then
-          tracker:setItem( item )
-          tracker:setTake( take )
-          return 1
+        if take then
+          if ( reaper.TakeIsMIDI( take ) == true ) then
+            tracker:setItem( item )
+            tracker:setTake( take )
+            return 1
+          end
         end
       end
     end
