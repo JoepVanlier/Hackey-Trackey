@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.64
+version: 0.66
 author: Joep Vanlier
-changelog: Fix issue with tooltips for solo and mute not showing up correctly. Add RMB menu for clicking on pads.
+changelog: Allow dragging from editor to pad.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -935,6 +935,7 @@ multi_out ? (
 );
 
 @gfx
+over_pad = -1;
 SAMPLE_FONT = 5;
 TINY_FONT = 6;
 gfx_setfont(TINY_FONT, "Arial", 12);

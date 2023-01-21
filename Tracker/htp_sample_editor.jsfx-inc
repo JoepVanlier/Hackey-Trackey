@@ -69,6 +69,7 @@ In @serialize:
 In @gfx:
   At the start:
     current_char = gfx_getchar();
+    over_pad = -1;
     
   Followed by:
     handle_gmem_imports()
@@ -91,6 +92,7 @@ DRAG_LOOP_POINT_1 = 2;
 DRAG_LOOP_POINT_2 = 3;
 DRAG_PITCH = 4;
 DRAG_FINE = 5;
+DRAG_SAMPLE_TO_PAD = 6;
 
 function init_sample_data_defaults()
 (
@@ -705,8 +707,9 @@ instance(sample_start, sample_len,
          block_start, block_end)
 local(is_over, menu_selection, fractional_pos, center, loop_start, loop_stop, mouse_pos_in_samples, left, right, tmp)
 global(samplelocs, selected_sample, SAMPLE_NAMES, SAMPLE_HEADER, SAMPLE_DURATION, captured,
-       DRAG_SAMPLE, DRAG_LOOP_POINT_1, DRAG_LOOP_POINT_2,
-       updated_loop, current_char, last_click_time, sample_name_copy_location,
+       DRAG_SAMPLE, DRAG_LOOP_POINT_1, DRAG_LOOP_POINT_2, DRAG_SAMPLE_TO_PAD,
+       updated_loop, current_char, last_click_time, sample_name_copy_location, over_pad,
+       scratchloc, copyloc,
        mouse_x, mouse_y, mouse_wheel, mouse_cap,
        gfx_x, gfx_y, gfx_a)
 (
@@ -732,17 +735,24 @@ global(samplelocs, selected_sample, SAMPLE_NAMES, SAMPLE_HEADER, SAMPLE_DURATION
   
   is_over = mouse_over(cx, cy, ww, hh);
   (is_over && mouse_press(1) && !captured) ? (
-    captured = DRAG_SAMPLE;
     mouse_pos_in_samples = disp_range_start + disp_range_len * max(min((mouse_x - cx) / ww, 1), 0);
-    block_start = mouse_pos_in_samples;
-    block_end = mouse_pos_in_samples;
-    block_start = floor(block_start * 0.5) * 2;
-    block_end = floor(block_end * 0.5) * 2;
-    
-    ((time_precise() - last_click_time) < 0.2) ? (
-      block_start = sample_start;
-      block_end = sample_start + sample_len; 
-      captured = 0;
+    left = min(block_start, block_end);
+    right = max(block_start, block_end);
+    (mouse_pos_in_samples > left && mouse_pos_in_samples < right) ? (
+      captured = DRAG_SAMPLE_TO_PAD;
+      gfx_setcursor(32649, "arrow");
+    ) : (
+      captured = DRAG_SAMPLE;
+      block_start = mouse_pos_in_samples;
+      block_end = mouse_pos_in_samples;
+      block_start = floor(block_start * 0.5) * 2;
+      block_end = floor(block_end * 0.5) * 2;
+      
+      ((time_precise() - last_click_time) < 0.2) ? (
+        block_start = sample_start;
+        block_end = sample_start + sample_len; 
+        captured = 0;
+      );
     );
     last_click_time = time_precise();
   ) : ((captured == DRAG_SAMPLE) && mouse_is_down(1)) ? (
@@ -754,6 +764,23 @@ global(samplelocs, selected_sample, SAMPLE_NAMES, SAMPLE_HEADER, SAMPLE_DURATION
     );
   ) : ((captured == DRAG_SAMPLE) && mouse_release(1)) ? (
     captured = 0;
+  ) : ((captured == DRAG_SAMPLE_TO_PAD) && mouse_release(1)) ? (
+    (over_pad > -1) ? (
+      // Abuse the scratch location a bit.
+      tmp = copyloc;
+      copyloc = scratchloc;
+      
+      left = min(block_start, block_end);
+      right = max(block_start, block_end);
+      copy(samplelocs[selected_sample], left, right);
+      paste(samplelocs[over_pad]);
+      copyloc = tmp;
+    ) : (
+      block_start = 0;
+      block_end = 0;
+    );
+    captured = 0;
+    gfx_setcursor(32512);
   );
   
   gfx_set(1, 1, 1, 0.1);
@@ -968,7 +995,7 @@ local(any_solo, idx)
 function process_pad(x, y, w, h, idx, sample_location)
 global(gfx_x, gfx_y, mouse_x, mouse_y, mouse_cap, last_cap, captured,
        file_dropped, SAMPLE_NAME_STR, SAMPLE_NAMES, DROPPED_FILE_STR, selected_sample,
-       reset_zoom,
+       reset_zoom, over_pad,
        samplelocs, sample_name_copy_location, SAMPLE_NAMES, SAMPLE_HEADER, SAMPLE_DURATION)
 local(is_over, ww, hh, menu_selection, sample_start, sample_len)
 (
@@ -984,6 +1011,10 @@ local(is_over, ww, hh, menu_selection, sample_start, sample_len)
     load_from_dropped(sample_location);
     file_dropped += 1;
     file_dropped = gfx_getdropfile(file_dropped, DROPPED_FILE_STR) ? file_dropped : -1;
+  );
+  
+  is_over ? (
+    over_pad = idx;
   );
   
   ((last_cap & 1) == 0) && !captured && is_over ? (
