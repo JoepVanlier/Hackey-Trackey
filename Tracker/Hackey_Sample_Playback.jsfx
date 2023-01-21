@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.66
+version: 0.67
 author: Joep Vanlier
-changelog: Allow dragging from editor to pad.
+changelog: Allow panning in sample editor with shift + drag.
 license: MIT
 about:
   # Hackey Tracker Sampler

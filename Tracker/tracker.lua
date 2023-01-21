@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.17
+@version 3.18
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.18 (2023-01-21)
+  + Add panning to sample editor (shift + drag).
  * v3.17 (2023-01-21)
   + Support dragging chops to sample pads in hackey trackey sampler.
  * v3.16 (2023-01-20)
@@ -648,7 +650,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.17"
+tracker.name = "Hackey Trackey v3.18"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"

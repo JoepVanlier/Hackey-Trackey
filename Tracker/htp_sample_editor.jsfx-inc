@@ -93,6 +93,7 @@ DRAG_LOOP_POINT_2 = 3;
 DRAG_PITCH = 4;
 DRAG_FINE = 5;
 DRAG_SAMPLE_TO_PAD = 6;
+DRAG_SAMPLE_HORI = 7;
 
 function init_sample_data_defaults()
 (
@@ -707,11 +708,11 @@ instance(sample_start, sample_len,
          block_start, block_end)
 local(is_over, menu_selection, fractional_pos, center, loop_start, loop_stop, mouse_pos_in_samples, left, right, tmp)
 global(samplelocs, selected_sample, SAMPLE_NAMES, SAMPLE_HEADER, SAMPLE_DURATION, captured,
-       DRAG_SAMPLE, DRAG_LOOP_POINT_1, DRAG_LOOP_POINT_2, DRAG_SAMPLE_TO_PAD,
+       DRAG_SAMPLE, DRAG_LOOP_POINT_1, DRAG_LOOP_POINT_2, DRAG_SAMPLE_TO_PAD, DRAG_SAMPLE_HORI,
        updated_loop, current_char, last_click_time, sample_name_copy_location, over_pad,
        scratchloc, copyloc,
        mouse_x, mouse_y, mouse_wheel, mouse_cap,
-       gfx_x, gfx_y, gfx_a)
+       gfx_x, gfx_y, gfx_a, mouse_dx)
 (
   draw_box(cx, cy, ww, hh);
   draw_waveform(cx, cy, ww, 0.5 * hh, disp_range_start, disp_range_len);
@@ -734,7 +735,9 @@ global(samplelocs, selected_sample, SAMPLE_NAMES, SAMPLE_HEADER, SAMPLE_DURATION
   this.pitch_widget(cx, cy, ww, hh, samplelocs[selected_sample]);
   
   is_over = mouse_over(cx, cy, ww, hh);
-  (is_over && mouse_press(1) && !captured) ? (
+  (is_over && mouse_cap == 9 && !captured) ? (
+    captured = DRAG_SAMPLE_HORI;
+  ) : (is_over && mouse_press(1) && !captured) ? (
     mouse_pos_in_samples = disp_range_start + disp_range_len * max(min((mouse_x - cx) / ww, 1), 0);
     left = min(block_start, block_end);
     right = max(block_start, block_end);
@@ -781,6 +784,13 @@ global(samplelocs, selected_sample, SAMPLE_NAMES, SAMPLE_HEADER, SAMPLE_DURATION
     );
     captured = 0;
     gfx_setcursor(32512);
+  ) : (captured == DRAG_SAMPLE_HORI) ? (
+    (mouse_cap & 1 == 0) ? (
+      captured = 0;
+    ) : (
+      disp_range_start -= disp_range_len * mouse_dx / ww;
+      disp_range_start = max(0, min(disp_range_start, sample_len - disp_range_len));
+    );
   );
   
   gfx_set(1, 1, 1, 0.1);
