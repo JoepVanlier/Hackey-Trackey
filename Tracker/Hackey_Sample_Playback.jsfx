@@ -1,7 +1,7 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.67
+version: 0.68
 author: Joep Vanlier
 changelog: Allow panning in sample editor with shift + drag.
 license: MIT

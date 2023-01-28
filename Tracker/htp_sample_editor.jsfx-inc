@@ -636,7 +636,8 @@ global(SAMPLE_FONT, TINY_FONT, SAMPLE_HEADER, selected_sample,
        font_color_r, font_color_g, font_color_b, font_color_a,
        selection_color_r, selection_color_g, selection_color_b, selection_color_a,
        draw_box, draw_waveform,
-       SAMPLE_NAMES)
+       SAMPLE_NAMES,
+       select_by_notes)
 local(length_in_samples, ptr, len, step, ww, hh, fine, SAMPLE_NAME_STR)
 (
   draw_box(x, y, w, h);
@@ -648,7 +649,12 @@ local(length_in_samples, ptr, len, step, ww, hh, fine, SAMPLE_NAME_STR)
 
   gfx_set(0.1, 0.1, 0.1, 0.7);
   gfx_setfont(SAMPLE_FONT, "Arial", h);
-  sprintf(16, "%02X", idx + 1);
+
+  select_by_notes ? (
+    sprintf(16, "%s%d", midi_pitch_to_note(idx+60), midi_pitch_to_octave(idx+60));
+  ) : (
+    sprintf(16, "%02X", idx + 1);
+  );
   gfx_measurestr(16, ww, hh);
   
   gfx_x = x - 0.5 * ww + 0.5 * w;

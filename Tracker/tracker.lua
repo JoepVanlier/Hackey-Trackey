@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.18
+@version 3.19
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,10 @@
 
 --[[
  * Changelog:
+ * v3.19 (2023-01-28)
+  + When the sampler is in note toggle mode, display which note is bound to which sample rather than sample index, as it is more useful.
+  + Changed playfrom in default key mapping to ctrl + alt + enter to avoid conflict with increase/decrease column (thanks for the report cjunekim!).
+  + Fix bug that led to crash if one tries to remove an effect column while Hackey Trackey Sampler is on the track.
  * v3.18 (2023-01-21)
   + Add panning to sample editor (shift + drag).
  * v3.17 (2023-01-21)
@@ -650,7 +654,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.18"
+tracker.name = "Hackey Trackey v3.19"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -1470,7 +1474,7 @@ function tracker:loadKeys( keySet )
     keys.home           = { 0,    0,  0,    1752132965 }    -- Home
     keys.End            = { 0,    0,  0,    6647396 }       -- End
     keys.toggle         = { 0,    0,  0,    32 }            -- Space
-    keys.playfrom       = { 1,    0,  0,    13 }            -- Ctrl + Enter
+    keys.playfrom       = { 1,    1,  0,    13 }            -- Ctrl + Enter
     keys.enter          = { 0,    0,  0,    13 }            -- Enter
     keys.playline       = { 0,    0,  1,    32 }            -- Ctrl + Space
     keys.insert         = { 0,    0,  0,    6909555 }       -- Insert
@@ -6857,10 +6861,8 @@ local stringbuffer = "                                                          
 
 function tracker:addCol()
   if ( self.showMod == 1 ) then
-    if ( self.modMode == 1 ) then
-      tracker.renaming = 2
-      tracker.newCol = ''
-    end
+    tracker.renaming = 2
+    tracker.newCol = ''
   end
 end
 
@@ -6935,8 +6937,15 @@ function tracker:remCol()
 
       for i,v in pairs( modtypes ) do
         if ( v == modtype ) then
-          self:deleteCC_range(0, self.rows, modtype)
-          modtypes[i] = nil
+          local dont_remove = false
+          if hasSampler(self.track) == 1 and (modtype == 512 + 7 or modtype == 512 + 12 or modtype == 512 + 13) then
+            dont_remove = true
+          end
+          
+          if not dont_remove then
+            self:deleteCC_range(0, self.rows, modtype)
+            modtypes[i] = nil
+          end
         end
       end
 
@@ -7345,7 +7354,7 @@ function tracker:setItem( item )
   self.itemStart = reaper.GetMediaItemInfo_Value( self.item, "D_POSITION" )
 end
 
-local function hasSampler(track)
+function hasSampler(track)
   -- Check whether hackey trackey sampler is on this track
   -- NOTE: track has to be a validated track ptr
   local samplerName = "Hackey Trackey Sample Playback"
@@ -10112,20 +10121,25 @@ function tracker:processKeyboardInput()
       reaper.MIDI_Sort(self.take)
     elseif inputs('showMore') and self.take then
       self:showMore()
+      modified = 1
     elseif inputs('showLess') and self.take then
       self:showLess()
+      modified = 1
     elseif inputs('tab') and self.take then
       self:tab()
     elseif inputs('shifttab') and self.take then
       self:shifttab()
     elseif inputs('addCol') and self.take then
       self:addCol()
+      modified = 1
     elseif inputs('addColAll') and self.take then
       self:addColAll()
+      modified = 1
     elseif inputs('addPatchSelect') and self.take then
       self:addPatchSelect()
     elseif inputs('remCol') and self.take then
       self:remCol()
+      modified = 1
     elseif inputs('rename') and self.take then
       self.oldMidiName = self.midiName
       self.midiName = ''
