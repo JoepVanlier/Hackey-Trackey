@@ -340,7 +340,7 @@ by pressing F1.
 | Del or .                              | Delete item                                               |
 | Insert                                | Shift all items down by one                               |
 | \-                                    | Place note OFF                                            |
-| CTRL + ENTER                          | Start play at cursor position                             |
+| CTRL + ALT + ENTER                    | Start play at cursor position                             |
 | Space                                 | Start/Stop                                                |
 | CTRL \+ Z                             | Undo                                                      |
 | CTRL \+ SHIFT \+ Z                    | Redo                                                      |
