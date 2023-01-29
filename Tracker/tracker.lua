@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.19
+@version 3.20
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.20 (2023-01-29)
+  + Fix bug that occurs when hitting record while the tracker is open.
  * v3.19 (2023-01-28)
   + When the sampler is in note toggle mode, display which note is bound to which sample rather than sample index, as it is more useful.
   + Changed playfrom in default key mapping to ctrl + alt + enter to avoid conflict with increase/decrease column (thanks for the report cjunekim!).
@@ -654,7 +656,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.19"
+tracker.name = "Hackey Trackey v3.20"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -10265,7 +10267,7 @@ local function updateLoop()
   end
 
   -- Check if the note data or take changed, if so, update the note contents
-  if (reaper.GetPlayState() & 4 == 0) or (not self:isArmed()) or (tracker.cfg.blockWhileRecording == 0) then
+  if (reaper.GetPlayState() & 4 == 0) or (not tracker:isArmed()) or (tracker.cfg.blockWhileRecording == 0) then
     if ( not tracker:checkChange() ) then
       tracker:lostItem()
     end
