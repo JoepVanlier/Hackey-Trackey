@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.20
+@version 3.21
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,10 @@
 
 --[[
  * Changelog:
+ * v3.21 (2023-02-19)
+  + Fix duplicate keymapping for the renoise keymap (moved panic to SHIFT + ESC on the renoise mapping, thanks for the report retrack!).
+  + Fixup incorrect key in help.
+  + Allow RMB on settings wheels for setting them more conveniently.
  * v3.20 (2023-01-29)
   + Fix bug that occurs when hitting record while the tracker is open.
  * v3.19 (2023-01-28)
@@ -656,7 +660,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.20"
+tracker.name = "Hackey Trackey v3.22"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -1597,7 +1601,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + -/Insert/Backspace', 'Mute/Insert Row/Remove Row' },
       { 'CTRL + Shift + Ins/Bksp', 'Wrap Forward/Backward' },
       { 'Del/.', 'Delete' },
-      { 'Space/CTRL + Return', 'Play/Play From' },
+      { 'Space/CTRL + Alt + Return', 'Play/Play From' },
       { 'CTRL + L', 'Loop pattern' },
       { 'CTRL + Q/W', 'Loop start/end' },
       { 'Shift + +/-', 'Transpose selection' },
@@ -1827,7 +1831,7 @@ function tracker:loadKeys( keySet )
     keys.harmony        = { 1,    0,  0,    8  }             -- ctrl+h harmony helper
     keys.noteNames      = { 1,    0,  0,    13 }            -- CTRL + m
     keys.options        = { 1,    0,  0,    15 }            -- ctrl+o options
-    keys.panic          = { 0,    0,  0,    27 }            -- Escape = MIDI Panic!
+    keys.panic          = { 0,    0,  1,    27 }            -- Shift + Escape = MIDI Panic!
     keys.insert         = { 0,    0,  0,    6909555 }       -- Insert
     keys.remove         = { 0,    0,  0,    8 }             -- Backspace
     keys.pgup           = { 0,    0,  0,    1885828464 }    -- Page up
@@ -1954,7 +1958,7 @@ function tracker:loadKeys( keySet )
       { 'Del/Ctrl+Del', 'Delete/Delete Row' },
       { 'CTRL + Shift + Insert/Backspace', 'Wrap Forward/Backward' },
       { 'Space/Shift+Space', 'Play / Play From' },
-      { 'Ctrl + O / Escape', 'Options / Stop all notes' },
+      { 'Ctrl + O / Shift + Escape', 'Options / Stop all notes' },
       { 'Enter', 'Loop pattern' },
       { 'CTRL + Q/W', 'Loop start/end' },
       { 'Shift + +/-', 'Transpose selection' },
@@ -10433,76 +10437,138 @@ local function updateLoop()
         -- Move the cursor pos on initial click
         tracker:dragBlock(Inew, Jnew)
       else
-        gfx.x = gfx.mouse_x;
-        gfx.y = gfx.mouse_y;
-        local was_docked = gfx.dock(-1)
-        local menu_str = string.format(
-        "%sDock window|%sShow Options|%sShow Harmonizer|%sShow Note Names|%sShow Help|>Follow|%sFollow Selection|%sFollow Song|%sFix Indicator in View|%sFollow Row in Arrange View|<%sAuto Set Loop|>Note Entry|%sAdvance By note|%sAlways Record|%sTrack from Global MIDI|<%sScrub mode|%sPer channel CCs|%sHide Velocity Column",
-        was_docked > 0 and "!" or "",
-        tracker.optionsActive > 0 and "!" or "",
-        tracker.harmonyActive > 0 and "!" or "",
-        tracker.noteNamesActive > 0 and "!" or "",
-        tracker.helpActive > 0 and "!" or "",
-        tracker.cfg.followSelection > 0 and "!" or "",
-        tracker.cfg.followSong > 0 and "!" or "",
-        tracker.cfg.fixedIndicator > 0 and "!" or "",
-        tracker.cfg.followRow > 0 and "!" or "",
-        tracker.cfg.loopFollow > 0 and "!" or "",
-        tracker.cfg.advanceByNote > 0 and "!" or "",
-        tracker.cfg.alwaysRecord > 0 and "!" or "",
-        tracker.cfg.globalMidi > 0 and "!" or "",
-        tracker.cfg.scrubMode > 0 and "!" or "",
-        tracker.cfg.channelCCs > 0 and "!" or "",
-        tracker.cfg.hideVelocity > 0 and "!" or ""
-        );
-        
-        local menu_response = gfx.showmenu(menu_str)
-        if menu_response == 1 then
-          gfx.dock(1 - was_docked)
-        elseif menu_response == 2  then
-          tracker.optionsActive = 1 - tracker.optionsActive
-        elseif menu_response == 3 then
-          tracker.harmonyActive = 1 - tracker.harmonyActive
-        elseif menu_response == 4 then
-          tracker.noteNamesActive = 1 - tracker.noteNamesActive
-        elseif menu_response == 5 then
-          tracker.helpActive = 1 - tracker.helpActive
-        elseif menu_response == 6 then
-          tracker.cfg.followSelection = 1 - tracker.cfg.followSelection
-        elseif menu_response == 7 then
-          tracker.cfg.followSong = 1 - tracker.cfg.followSong
-        elseif menu_response == 8 then
-          tracker.cfg.fixedIndicator = 1 - tracker.cfg.fixedIndicator
-        elseif menu_response == 9 then
-          tracker.cfg.followRow = 1 - tracker.cfg.followRow
-        elseif menu_response == 10 then
-          tracker.cfg.loopFollow = 1 - tracker.cfg.loopFollow
-        elseif menu_response == 11 then
-          if tracker.cfg.advanceByNote > 0 then
-            tracker.cfg.advanceByNote = 0
-          else
-            tracker.cfg.advanceByNote = 1
+        gfx.x = gfx.mouse_x
+        gfx.y = gfx.mouse_y
+        local dials = tracker.dials
+        if dials[1]:over() then
+          local menu_string = tracker.outChannel == 0 and "!Output to channel indicated on column" or "Output to channel indicated on column"
+          for i=1,16 do
+            menu_string = menu_string .. "|" .. (tracker.outChannel == i and "!" or "") .. "Output to channel " .. i
           end
-        elseif menu_response == 12 then
-          tracker.cfg.alwaysRecord = 1 - tracker.cfg.alwaysRecord
-        elseif menu_response == 13 then
-          tracker.cfg.globalMidi = 1 - tracker.cfg.globalMidi
-        elseif menu_response == 14 then
-          tracker.cfg.scrubMode = 1 - tracker.cfg.scrubMode
-        elseif menu_response == 15 then
-          tracker.cfg.channelCCs = 1 - tracker.cfg.channelCCs
-        elseif menu_response == 16 then
-          tracker.cfg.hideVelocity = 1 - tracker.cfg.hideVelocity
+          local menu_response = gfx.showmenu(menu_string);
+          if menu_response > 0 then
+            tracker.outChannel = math.floor(menu_response - 1)
+            tracker:setOutChannel(tracker.outChannel)
+          end
+        elseif dials[2]:over() then
+          local menu_response = gfx.showmenu(
+            string.format(
+              "%sLinear|%sSample & Hold|%sExponential|%sFast",
+              (tracker.envShape == 0) and "!" or "",
+              (tracker.envShape == 1) and "!" or "",
+              (tracker.envShape == 2) and "!" or "",
+              (tracker.envShape == 3) and "!" or ""
+            )
+          )
+          if menu_response > 0 then
+            tracker.envShape = math.floor(menu_response - 1)
+            tracker:storeSettings()
+          end
+        elseif dials[3]:over() then
+          local menu_string = ""
+          for i=-4,4 do
+            menu_string = menu_string .. "|" .. (tracker.advance == i and "!" or "") .. "Advance by " .. i
+          end
+          local menu_response = gfx.showmenu(menu_string)
+          if menu_response > 0 then
+            tracker.advance = math.floor(menu_response - 5);
+            tracker:storeSettings()
+            tracker:saveConfig(tracker.configFile, tracker.cfg)
+          end
+        elseif dials[4]:over() then
+          local menu_string = ""
+          for i=tracker.minoct,tracker.maxoct do
+            menu_string = menu_string .. "|" .. (tracker.transpose == i and "!" or "") .. "Set octave to " .. i
+          end
+          local menu_response = gfx.showmenu(menu_string)
+          if menu_response > 0 then
+            tracker.transpose = math.floor(menu_response + tracker.minoct - 1);
+            tracker:storeSettings()
+            tracker:saveConfig(tracker.configFile, tracker.cfg)
+          end
+        elseif dials[5]:over() then
+          local menu_string = ""
+          for i=1,tracker.maxRowPerQn do
+            menu_string = menu_string .. "|" .. (tracker.rowPerQn == i and "!" or "") .. "Set resolution to " .. i
+          end
+          local menu_response = gfx.showmenu(menu_string)
+          if menu_response > 0 then
+            tracker.newRowPerQn = math.floor(menu_response);
+            tracker:setResolution(tracker.newRowPerQn)
+            tracker:storeSettings()
+            tracker:saveConfig(tracker.configFile, tracker.cfg)
+            self.hash = math.random()
+          end
+        else
+          local was_docked = gfx.dock(-1)
+          local menu_str = string.format(
+          "%sDock window|%sShow Options|%sShow Harmonizer|%sShow Note Names|%sShow Help|>Follow|%sFollow Selection|%sFollow Song|%sFix Indicator in View|%sFollow Row in Arrange View|<%sAuto Set Loop|>Note Entry|%sAdvance By note|%sAlways Record|%sTrack from Global MIDI|<%sScrub mode|%sPer channel CCs|%sHide Velocity Column",
+          was_docked > 0 and "!" or "",
+          tracker.optionsActive > 0 and "!" or "",
+          tracker.harmonyActive > 0 and "!" or "",
+          tracker.noteNamesActive > 0 and "!" or "",
+          tracker.helpActive > 0 and "!" or "",
+          tracker.cfg.followSelection > 0 and "!" or "",
+          tracker.cfg.followSong > 0 and "!" or "",
+          tracker.cfg.fixedIndicator > 0 and "!" or "",
+          tracker.cfg.followRow > 0 and "!" or "",
+          tracker.cfg.loopFollow > 0 and "!" or "",
+          tracker.cfg.advanceByNote > 0 and "!" or "",
+          tracker.cfg.alwaysRecord > 0 and "!" or "",
+          tracker.cfg.globalMidi > 0 and "!" or "",
+          tracker.cfg.scrubMode > 0 and "!" or "",
+          tracker.cfg.channelCCs > 0 and "!" or "",
+          tracker.cfg.hideVelocity > 0 and "!" or ""
+          );
+          
+          local menu_response = gfx.showmenu(menu_str)
+          if menu_response == 1 then
+            gfx.dock(1 - was_docked)
+          elseif menu_response == 2  then
+            tracker.optionsActive = 1 - tracker.optionsActive
+          elseif menu_response == 3 then
+            tracker.harmonyActive = 1 - tracker.harmonyActive
+          elseif menu_response == 4 then
+            tracker.noteNamesActive = 1 - tracker.noteNamesActive
+          elseif menu_response == 5 then
+            tracker.helpActive = 1 - tracker.helpActive
+          elseif menu_response == 6 then
+            tracker.cfg.followSelection = 1 - tracker.cfg.followSelection
+          elseif menu_response == 7 then
+            tracker.cfg.followSong = 1 - tracker.cfg.followSong
+          elseif menu_response == 8 then
+            tracker.cfg.fixedIndicator = 1 - tracker.cfg.fixedIndicator
+          elseif menu_response == 9 then
+            tracker.cfg.followRow = 1 - tracker.cfg.followRow
+          elseif menu_response == 10 then
+            tracker.cfg.loopFollow = 1 - tracker.cfg.loopFollow
+          elseif menu_response == 11 then
+            if tracker.cfg.advanceByNote > 0 then
+              tracker.cfg.advanceByNote = 0
+            else
+              tracker.cfg.advanceByNote = 1
+            end
+          elseif menu_response == 12 then
+            tracker.cfg.alwaysRecord = 1 - tracker.cfg.alwaysRecord
+          elseif menu_response == 13 then
+            tracker.cfg.globalMidi = 1 - tracker.cfg.globalMidi
+          elseif menu_response == 14 then
+            tracker.cfg.scrubMode = 1 - tracker.cfg.scrubMode
+          elseif menu_response == 15 then
+            tracker.cfg.channelCCs = 1 - tracker.cfg.channelCCs
+          elseif menu_response == 16 then
+            tracker.cfg.hideVelocity = 1 - tracker.cfg.hideVelocity
+          end
+          
+          tracker.holding = 1
+          local cfg = tracker.cfg
+          tracker:saveConfig(tracker.configFile, cfg)
+          tracker:loadColors(cfg.colorscheme)
+          tracker:initColors()
+          tracker:loadKeys(cfg.keyset)
+          tracker:forceUpdate()
+          updateShown()
         end
-        
-        tracker.holding = 1
-        local cfg = tracker.cfg
-        tracker:saveConfig(tracker.configFile, cfg)
-        tracker:loadColors(cfg.colorscheme)
-        tracker:initColors()
-        tracker:loadKeys(cfg.keyset)
-        tracker:forceUpdate()
-        updateShown()
       end
     end
   end
