@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.22
+@version 3.23
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.23 (2023-04-20)
+  + Attempt to recreate older colorscheme (renoiseC).
  * v3.22 (2023-04-20)
   + Fixed bug with lines per beat not updating properly.
   + Ensure mouse click on menu was actually a click and not just a move onto.
@@ -664,7 +666,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.22"
+tracker.name = "Hackey Trackey v3.23"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -944,7 +946,7 @@ tracker.binaryOptions = {
     { 'wrapAroundSeeking', 'Wrap around when seeking items' },
     }
 
-tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "buzz2", "sink", "TonE"}
+tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "renoiseC", "buzz2", "sink", "TonE"}
 
 noteNames = {}
 
@@ -1153,7 +1155,6 @@ function tracker:loadColors(colorScheme)
     self.colors.selectcolor      = {1, 234/256, 20/256, 1} -- the cursor
     self.colors.selecttext       = {0, 0, 0, 1} -- the cursor
     self.colors.textcolor        = {148/256, 148/256, 148/256, 1} --{1/256*60, 1/256*105, 1/256*59, 1} -- main pattern data (rows should all be darker & this should be green)
-    self.colors.textcolorbar     = {1, 1, 1, 1}
     self.colors.headercolor      = {215/256, 215/256, 215/256, 1} -- column headers, statusbar etc
     self.colors.inactive         = {115/256, 115/256, 115/256, 1} -- column headers, statusbar etc
     self.colors.linecolor        = {18/256,18/256,18/256, 0.6} -- normal row
@@ -1207,6 +1208,18 @@ function tracker:loadColors(colorScheme)
     self.colors.patternFont         = "DejaVu Sans"
     self.colors.patternFontSize     = tracker.cfg.fontSize or 14
     self.colors.customFontDisplace  = { self.colors.patternFontSize-6, -3 }
+  
+  elseif colorScheme == "renoiseC" then
+    tracker:loadColors("renoiseB")
+    
+    -- Changed colors
+    self.colors.windowbackground = {8/256, 8/256, 8/256, 1}
+    self.colors.textcolor        = {0.6, 0.6, 0.6, 1}
+    self.colors.textcolorbar     = {1.0, 1.0, 1.0, 1}
+    self.colors.linecolor        = {18/256, 18/256, 18/256, 0.1} -- normal row
+    self.colors.linecolor2       = {1/256*5, 1/256*5, 1/256*15, 0.1} -- beats (must not have 100% alpha as it's drawn over the cursor(!))
+    self.colors.linecolor5       = {29/256, 29/256, 29/256, 1.0} -- Bar start
+    
   elseif colorScheme == "buzz2" then
     -- Buzz
     self.colors.shadercolor      = {.55, .55, .54}
@@ -3407,7 +3420,7 @@ function drawPattern(colors, data, scrolly, rows, sig, zeroindexed, xloc, yloc, 
       elseif ( (((absy-1)/(.25*sig)) - math.floor((absy-1)/(.25*sig))) == 0 ) then
         c1 = colors.linecolor2
         c2 = colors.linecolor2s
-        tx = colors.textcolorbar or colors.textcolor
+        tx = colors.textcolor
         fc = colors.bar
       else
         c1 = colors.linecolor
