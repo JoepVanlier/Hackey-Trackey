@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.21
+@version 3.22
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,10 @@
 
 --[[
  * Changelog:
+ * v3.22 (2023-04-20)
+  + Fixed bug with lines per beat not updating properly.
+  + Ensure mouse click on menu was actually a click and not just a move onto.
+  + Enable dragging off-pattern for larger drag areas.
  * v3.21 (2023-02-19)
   + Fix duplicate keymapping for the renoise keymap (moved panic to SHIFT + ESC on the renoise mapping, thanks for the report retrack!).
   + Fixup incorrect key in help.
@@ -2948,7 +2952,7 @@ function scrollbar.create( w, no_indicator )
 
   self.mouseUpdate = function(self, mx, my, left)
     if ( behavior == 1 ) then
-      if ( left == 1 ) then
+      if ( left == 1 and last_cap == 0 ) then
         if ( ( mx > self.x ) and ( mx < self.x + self.w ) ) then
           if ( ( my > self.y ) and ( my < self.y + self.h ) ) then
             self.loc = ( my - self.y ) / self.h
@@ -2957,10 +2961,10 @@ function scrollbar.create( w, no_indicator )
         return self.loc
       end
     else
-      if ( left == 1 ) then
+      if (left == 1) and ((last_cap == 0) or self.dragging) then
         if ( ( mx > self.x ) and ( mx < self.x + self.w ) ) or self.dragging then
           if ( ( my > self.y ) and ( my < self.y + self.h ) ) or self.dragging then
-            if ( self.ly and my ~= self.ly and not self.dragging ) then
+            if ( (my > (self.y + self.ytop * self.h)) and (my < (self.y + self.yend * self.h)) and not self.dragging ) then
               mouse_cap = CaptureModes.SCROLLBAR
               self.dragging = 1
               self.cdy = 0
@@ -4177,10 +4181,12 @@ function CreateMenu(_x, _y, _w, _h)
     w=_w, 
     h=_h,
     processMouseMenu = function(self)
-      if ( gfx.mouse_x > self.x ) then
-        if ( gfx.mouse_x < self.x+self.w ) then
-          if ( gfx.mouse_y > self.y ) then
-            return math.floor((gfx.mouse_y - self.y)/self.h)
+      if ( gfx.mouse_cap > 0 and last_cap == 0 ) then
+        if ( gfx.mouse_x > self.x ) then
+          if ( gfx.mouse_x < self.x+self.w ) then
+            if ( gfx.mouse_y > self.y ) then
+              return math.floor((gfx.mouse_y - self.y)/self.h)
+            end
           end
         end
       end
@@ -9457,6 +9463,7 @@ end
 function tracker:mouseToPatternCoord(already_dragging)
   local Inew = nil
   local Jnew = nil
+  local beyond = 0 -- 1 = Outside pattern window left, 2 = Outside pattern window right
   local plotData  = self.plotData
   local fov       = self.fov
   local xloc      = plotData.xloc
@@ -9468,14 +9475,32 @@ function tracker:mouseToPatternCoord(already_dragging)
     if ( ( gfx.mouse_x > xloc[#xloc] ) and ( (gfx.mouse_x <= (xloc[#xloc] + xwidth[#xloc])) or already_dragging ) ) then
       Inew = #xloc + fov.scrollx
     end
+    if gfx.mouse_x < xloc[1] then
+      beyond = beyond + 1
+      Inew = fov.scrollx
+    end
+    if gfx.mouse_x > xloc[#xloc] then
+      beyond = beyond + 2
+      Inew = fov.scrollx + #xloc
+    end
     for i=1,#xloc-1 do
       if ( ( gfx.mouse_x > xloc[i] ) and ( gfx.mouse_x <= (xloc[i+1]) ) ) then
         Inew = i + fov.scrollx
       end
     end
+    
     if ( ( gfx.mouse_y > yloc[#yloc] ) and ( (gfx.mouse_y <= (yloc[#yloc] + yheight[#yloc]) or already_dragging) ) ) then
       Jnew = #yloc + fov.scrolly
     end
+    
+    if gfx.mouse_y > (yloc[#yloc] + yheight[#yloc]) then
+      beyond = beyond + 4
+      Jnew = #yloc + fov.scrolly
+    elseif gfx.mouse_y < yloc[1] then
+      beyond = beyond + 8
+      Jnew = fov.scrolly
+    end
+    
     for i=1,#yloc-1 do
       if ( ( gfx.mouse_y > yloc[i] ) and ( gfx.mouse_y <= (yloc[i+1]) ) ) then
         Jnew = i + fov.scrolly
@@ -9486,7 +9511,7 @@ function tracker:mouseToPatternCoord(already_dragging)
     end
   end
   
-  return Inew, Jnew
+  return Inew, Jnew, beyond
 end
 
 function tracker:processKeyboardInput()
@@ -10042,6 +10067,7 @@ function tracker:processKeyboardInput()
           self.newRowPerQn = 1
         end
       end
+      self:forceUpdate()
     elseif inputs('resolutionDown') and self.take then
       if ( prevChar ~= lastChar ) then
         self.newRowPerQn = self.newRowPerQn - 1
@@ -10049,6 +10075,7 @@ function tracker:processKeyboardInput()
           self.newRowPerQn = self.maxRowPerQn
         end
       end
+      self:forceUpdate()
     elseif inputs('toggleNoteMode') then
       self.cfg.advanceByNote = self.cfg.advanceByNote + 1
       if self.cfg.advanceByNote > 2 then
@@ -10432,8 +10459,8 @@ local function updateLoop()
     end
     
     if (tracker.lastright == 0) and (mouse_cap == 0) then
-      local Inew, Jnew = tracker:mouseToPatternCoord()
-      if ( Inew and Jnew ) then
+      local Inew, Jnew, outsidePattern = tracker:mouseToPatternCoord()
+      if ( Inew and Jnew and outsidePattern == 0 ) then
         -- Move the cursor pos on initial click
         tracker:dragBlock(Inew, Jnew)
       else
@@ -10655,10 +10682,10 @@ local function updateLoop()
     end
 
     -- Mouse in range of pattern data?
-    local Inew, Jnew = tracker:mouseToPatternCoord(mouse_cap == 6)
+    local Inew, Jnew, outsidePattern = tracker:mouseToPatternCoord(mouse_cap == 6)
     if ( Inew and Jnew ) then
       -- Move the cursor pos on initial click
-      if ( tracker.lastleft == 0 ) then
+      if ( tracker.lastleft == 0 and outsidePattern == 0 ) then
         setCapMode(CaptureModes.SELECT_BLOCK)
         tracker:resetShiftSelect()
         tracker.xpos = Inew
@@ -10666,9 +10693,22 @@ local function updateLoop()
           tracker:dragBlock(Inew, Jnew)
           tracker.ypos = Jnew
         end
-      else
+      elseif (mouse_cap == CaptureModes.SELECT_BLOCK) then
         -- Change selection if it wasn't the initial click
         tracker:dragBlock(Inew, Jnew)
+        if outsidePattern then
+          if outsidePattern & 1 == 1 then
+            tracker.xpos = Inew - 1
+          elseif outsidePattern & 2 == 2 then
+            tracker.xpos = Inew + 1
+          end
+          
+          if outsidePattern & 4 == 4 then
+            tracker.ypos = Jnew + 1
+          elseif outsidePattern & 8 == 8 then
+            tracker.ypos = Jnew - 1
+          end
+        end
       end
     end
 
@@ -10692,7 +10732,7 @@ local function updateLoop()
         end
       end
 
-      if ( gfx.mouse_y > chordAreaY ) then
+      if ( gfx.mouse_y > chordAreaY and last_cap == 0 ) then
         -- Figure out which scale we are clicking
         yCoord = ( gfx.mouse_y - chordAreaY ) / keyMapH
 
@@ -10775,7 +10815,7 @@ local function updateLoop()
     end
 
     -- Mouse in range of options?
-    if ( tracker.optionsActive == 1 ) then
+    if ( tracker.optionsActive == 1 and last_cap == 0 ) then
       local changedOptions = 0
       local themeMenu, keymapMenu, layoutMenu, fontsizeMenu, binaryOptions, fx1Menu, fx2Menu = tracker:optionLocations()
 
@@ -10907,6 +10947,8 @@ local function updateLoop()
   else
     tracker:terminate()
   end
+  
+  last_cap = gfx.mouse_cap
 end
 
 function tracker:saveClipboard()
