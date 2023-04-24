@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.23
+@version 3.24
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.24 (2023-04-24)
+  + Add stamp action (middle mouse after selecting a block).
  * v3.23 (2023-04-20)
   + Attempt to recreate older colorscheme (renoiseC).
  * v3.22 (2023-04-20)
@@ -666,7 +668,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.23"
+tracker.name = "Hackey Trackey v3.24"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -10458,6 +10460,34 @@ local function updateLoop()
       tracker:saveConfig(tracker.configFile, tracker.cfg)
     end
     mouse_cap = 0
+  end
+
+  local middle = gfx.mouse_cap & 64
+  if ( middle == 64 ) then
+    if (last_cap == 0) then
+      local Inew, Jnew, outsidePattern = tracker:mouseToPatternCoord()
+      if Inew and Jnew and outsidePattern == 0 then
+        local cp = tracker.cp
+        if not ( cp.xstart == -1 and cp.ystart == -1 and cp.xstop == -1 and cp.ystop == -1 ) then
+          tracker:copyBlock()
+        end
+      
+        local oldx = tracker.xpos
+        local oldy = tracker.ypos
+        
+        reaper.Undo_BeginBlock2(0)
+     
+        -- Paste block one shifted
+        tracker.xpos = Inew
+        tracker.ypos = Jnew
+        tracker:pasteBlock()
+        tracker.xpos = oldx
+        tracker.ypos = oldy
+        
+        reaper.Undo_EndBlock2(0, "Stamp",  2)
+        tracker:forceUpdate()
+      end
+    end
   end
 
   if ( right == 1 ) then
