@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.24
+@version 3.25
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.25 (2023-05-18)
+  + Always update info string (indicates for resolution, octave, advance etc).
  * v3.24 (2023-04-24)
   + Add stamp action (middle mouse after selecting a block).
  * v3.23 (2023-04-20)
@@ -668,7 +670,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.24"
+tracker.name = "Hackey Trackey v3.25"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -10452,8 +10454,8 @@ local function updateLoop()
         self.hash = math.random()
       end
     end
-    tracker:infoString()
   end
+  tracker:infoString()
   if ( left == 0 ) then
     if ( mouse_cap > 0 ) then
       tracker:storeSettings()
