@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.25
+@version 3.26
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.26 (2023-05-20)
+  + Show reverse as recognized effect.
  * v3.25 (2023-05-18)
   + Always update info string (indicates for resolution, octave, advance etc).
  * v3.24 (2023-04-24)
@@ -670,7 +672,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.25"
+tracker.name = "Hackey Trackey v3.26"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -3403,6 +3405,8 @@ function tracker:customFieldDescription()
         return string.format("Retrigger (Vol: %d %%, Count: %d)", math.floor(100 - 100*cc_level/16/8), ((cc_level % 16)))
       elseif cc_value == 12 then
         return string.format("Sample probability (%d %%)", math.floor(100 * (cc_level / 127)))
+      elseif cc_value == 96 then
+        return string.format("Reverse sample (%s)", cc_level > 0 and "forward" or "backward")
       else
         return string.format("Unknown effect (%s)", cc_value)
       end
