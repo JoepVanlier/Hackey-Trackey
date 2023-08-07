@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.26
+@version 3.27
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.27 (2023-08-07)
+  + Workaround for initial point.
  * v3.26 (2023-05-20)
   + Show reverse as recognized effect.
  * v3.25 (2023-05-18)
@@ -672,7 +674,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.26"
+tracker.name = "Hackey Trackey v3.27"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -6781,9 +6783,9 @@ function tracker:addEnvPt(fxid, time, value, shape)
       val = (val - 0.5/255)*2.0 - 1.0
     end
   end
-
+  
   ptidx, loc = self:getEnvIdx(fxid, time)
-  if ( ptidx ) then
+  if ( ptidx and ptidx > -1 ) then
     reaper.SetEnvelopePointEx(envidx, autoidx, ptidx, loc, val, envShape, envTension, false, true)
   else
     reaper.InsertEnvelopePointEx(envidx, autoidx, loc, val, envShape, 0.5, false, true)
