@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.27
+@version 3.28
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.28 (2024-02-07)
+  + Fix focus issue Harmonizer.
  * v3.27 (2023-08-07)
   + Workaround for initial point.
  * v3.26 (2023-05-20)
@@ -674,7 +676,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.27"
+tracker.name = "Hackey Trackey v3.28"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -10783,7 +10785,7 @@ local function updateLoop()
         end
       end
 
-      if ( gfx.mouse_y > chordAreaY and last_cap == 0 ) then
+      if ( gfx.mouse_y > chordAreaY and (last_cap & 3) == 0 ) then
         -- Figure out which scale we are clicking
         yCoord = ( gfx.mouse_y - chordAreaY ) / keyMapH
 
