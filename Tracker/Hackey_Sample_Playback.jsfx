@@ -1,9 +1,9 @@
 noindex: true
 desc:Hackey Trackey Sample Playback Module (pre-alpha)
 tags: tracker-style sampler
-version: 0.68
+version: 0.70
 author: Joep Vanlier
-changelog: Allow panning in sample editor with shift + drag.
+changelog: Include very basic autosplit functionality to Hackey Trackey Sample Playback.
 license: MIT
 about:
   # Hackey Tracker Sampler
@@ -789,6 +789,8 @@ freemem = preview_channel.initNoteSchedule(freemem);
 freemem = (blocked_samples = freemem) + N_SAMPLES;
 freemem = (muted_samples = freemem) + N_SAMPLES;
 freemem = (solod_samples = freemem) + N_SAMPLES;
+
+freemem = (autosplits = freemem) + 128;
 
 @slider
 

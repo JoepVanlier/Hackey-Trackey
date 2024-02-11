@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.28
+@version 3.29
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.29 (2024-02-11)
+  + Added option to automatically split items in hackey trackey sample playback.
  * v3.28 (2024-02-07)
   + Fix focus issue Harmonizer.
  * v3.27 (2023-08-07)
@@ -676,7 +678,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.28"
+tracker.name = "Hackey Trackey v3.29"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"

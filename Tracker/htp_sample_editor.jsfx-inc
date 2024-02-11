@@ -470,9 +470,11 @@ local()
 );
 
 function handle_loop_point(cx, cy, ww, hh, sample_start, disp_range_start, disp_range_len, loop_loc, capture_mode)
-local(loop_point, point_in_samples, mul, new_loopsize)
-global(captured, updated_loop,
-       mouse_dx, mouse_x, mouse_y, mouse_cap)
+local(loop_point, point_in_samples, mul, new_loopsize, splits)
+global(
+  captured, updated_loop,
+  mouse_dx, mouse_x, mouse_y, mouse_cap,
+)
 (
   loop_point = cx + ww * (2 * loop_loc[] - disp_range_start + sample_start) / disp_range_len;
   gfx_rect(loop_point - 1, cy, 2, hh);
@@ -499,12 +501,259 @@ global(captured, updated_loop,
   loop_point
 );
 
+function split_algorithm1()
+local(split_ptr, split_front, ptr, window, nrg, nrg_last, nrg_last2, sample_len, sample_start, lock)
+global(autosplits, samplelocs, SAMPLE_HEADER, selected_sample)
+instance()
+(
+  nrg_last2 = 1000000000;
+  nrg_last = 1000000000;
+  nrg = 1000000000;
+  
+  window = 256;
+  lock = 8;
+  split_ptr = autosplits;  // Place to store the splits
+  split_ptr[] = 1337;  // Mark that we actually have splits!
+  split_ptr += 1;
+  
+  sample_start = samplelocs[selected_sample] + SAMPLE_HEADER;
+  
+  split_ptr[] = sample_start;
+  split_ptr += 1;
+  
+  split_front = sample_start;
+  sample_len = samplelocs[selected_sample][];
+  loop(0.5 * (sample_len - window),
+    ptr = split_front;
+    nrg_last2 = nrg_last;
+    nrg_last = nrg;
+    nrg = 0;
+    loop(window,
+      nrg += sqr(ptr[]) + 0.5 * sqr(ptr[] - ptr[-1]);
+      ptr += 1;
+    );
+    nrg = sqrt(nrg);
+    
+    ((nrg > 0.25) && (nrg > nrg_last) && (nrg_last > nrg_last2) && (nrg > nrg_last2 * 1.1) && (lock == 0)) ? (
+    //(nrg > nrg_last) ? (
+      // Found a transient => Store it!
+      split_ptr[] = ptr - 32;
+      split_ptr += 1;
+      split_front += 2 * window;
+      lock = 8;
+    );
+    
+    split_front += 2;  // Move in stereo increments
+    (lock > 0) ? lock -= 1;
+  );
+  
+  split_ptr[] = sample_start + sample_len;
+  split_ptr += 1;
+  
+  split_ptr[] = -1;  // We're done here.
+);
+
+function init_follower(atk, release, sample_rate)
+local()
+instance(at, rt, state)
+global()
+(
+  at = ( atk > 0 ) ? exp(-1/(0.5 * 0.001 * atk * sample_rate)) : 0;
+  rt = exp(-1/(0.5 * 0.001 * release * sample_rate));
+  state = 0;
+);
+
+function eval_follower(x)
+local()
+instance(state, at, rt, x)
+global()
+(
+  x > state ? (
+    state = at * state + ( 1.0 - at ) * x;
+  ) : (
+    state = rt * state + ( 1.0 - rt ) * x;
+  );
+  
+  20 * log10(state)
+);
+
+function init_linearSVF_absolute(f0, res, sample_rate)
+global()
+local(g)
+instance(f0, ic1eq, ic2eq, k, a1, a2, a3)
+(
+  g = tan($pi * f0 / sample_rate);
+  k = 2 - 2*res;
+      
+  a1 = 1/(1+g*(g+k));
+  a2 = g*a1;
+  a3 = g*a2;
+);
+
+function eval_linearSVF_HP(v0)
+global()
+local(v1, v2, v3)
+instance(ic1eq, ic2eq, k, a1, a2, a3)
+(
+  v3 = v0 - ic2eq;
+  v1 = a1 * ic1eq + a2 * v3;
+  v2 = ic2eq + a2 * ic1eq + a3*v3;
+  ic1eq = 2*v1 - ic1eq;
+  ic2eq = 2*v2 - ic2eq;    
+  
+  v0 - k*v1 - v2
+);
+
+function eval_linearSVF_LP(v0)
+global()
+local(v1, v2, v3)
+instance(ic1eq, ic2eq, a1, a2, a3)
+(
+  v3 = v0 - ic2eq;
+  v1 = a1 * ic1eq + a2 * v3;
+  v2 = ic2eq + a2 * ic1eq + a3*v3;
+  ic1eq = 2*v1 - ic1eq;
+  ic2eq = 2*v2 - ic2eq;    
+  
+  v2
+);
+
+function split_algorithm2(include_hf)
+local(input_gain, input_gain_hp, split_ptr, split_front, window, nrg, nrg_last, nrg_last2, sample_len, sample_start, lock, sample_rate)
+global(autosplits, samplelocs, SAMPLE_HEADER, selected_sample)
+instance(lp1, lp2, hp1, hp2)
+(
+  nrg_last2 = 1000000000;
+  nrg_last = 1000000000;
+  nrg = 1000000000;
+  
+  sample_rate = samplelocs[selected_sample][1];
+  
+  window = 256;
+  lock = 0;
+  split_ptr = autosplits;  // Place to store the splits
+  split_ptr[] = 1337;  // Mark that we actually have splits!
+  split_ptr += 1;
+  
+  this.envFollower.init_follower(5, 100, sample_rate);
+  this.slowFollower.init_follower(10, 100, sample_rate);
+  
+  this.hp_envFollower.init_follower(5, 100, sample_rate);
+  this.hp_slowFollower.init_follower(10, 100, sample_rate);
+  
+  lp1.init_linearSVF_absolute(500, 0.0, sample_rate);
+  lp2.init_linearSVF_absolute(500, 0.0, sample_rate);
+  
+  hp1.init_linearSVF_absolute(2000, 0.6, sample_rate);
+  hp2.init_linearSVF_absolute(2000, 0.6, sample_rate);
+  
+  sample_start = samplelocs[selected_sample] + SAMPLE_HEADER;
+  
+  split_ptr[] = sample_start;
+  split_ptr += 1;
+  
+  split_front = sample_start;
+  sample_len = samplelocs[selected_sample][];
+  loop(0.5 * (sample_len - window),
+    input_gain = abs(lp1.eval_linearSVF_LP(split_front[])) + abs(lp2.eval_linearSVF_LP(split_front[1]));
+    input_gain_hp = abs(hp1.eval_linearSVF_HP(split_front[])) + abs(hp2.eval_linearSVF_HP(split_front[1]));
+    (
+      (this.envFollower.eval_follower(input_gain) > (this.slowFollower.eval_follower(input_gain) + 1.5))
+      || (include_hf && (this.hp_envFollower.eval_follower(input_gain_hp) > (this.hp_slowFollower.eval_follower(input_gain_hp) + 1.2)))
+    ) ? (
+      (lock <= 0) ? (
+        lock = 10 * sample_rate / 1000;
+        // Found a transient => Store it!
+        split_ptr[] = max(sample_start, split_front - 2 * sample_rate / 1000);
+        split_ptr += 1;
+      );
+    ) : (
+      (lock > 0) ? lock -= 1;
+    );
+    
+    split_front += 2;  // Move in stereo increments
+  );
+  
+  split_ptr[] = sample_start + sample_len;
+  split_ptr += 1;
+  
+  split_ptr[] = -1;  // We're done here.
+);
+
+function split(algorithm)
+(
+  (algorithm == 0) ? (
+    this.split_algorithm2(0);
+  ) : (algorithm == 1) ? (
+    this.split_algorithm2(1);
+  ) : (
+    this.split_algorithm1(0);
+  );
+);
+
+function draw_splits(cx, cy, ww, hh, disp_range_start, disp_range_len)
+global(autosplits)
+local(val, split_ptr, sample)
+instance()
+(
+  split_ptr = autosplits;
+  
+  (split_ptr[] == 1337) ? (
+    split_ptr += 1;
+    
+    gfx_set(1, 1, 1, 1);
+    val = split_ptr[];
+    while(val != -1) (
+      ((val > disp_range_start) && (val < (disp_range_start + disp_range_len))) ? (
+        // In view!
+        //gfx_line(cx + ww * (val - disp_range_start) / disp_range_len, cy, cx + ww * (val - disp_range_start) / disp_range_len, cy + hh);
+        gfx_rect(cx + ww * (val - disp_range_start) / disp_range_len, cy, 2, hh);
+      );
+      
+      split_ptr += 1;
+      val = split_ptr[];
+    );
+  );
+);
+
+function grab_split(mouse_position_in_samples)
+global(autosplits)
+local(found, val, split_ptr, sample)
+instance(block_start, block_end)
+(
+  split_ptr = autosplits;
+  
+  found = 0;
+  (split_ptr[] == 1337) ? (
+    split_ptr += 1;
+    
+    gfx_set(1, 1, 1, 1);
+    val = split_ptr[];
+    while(val != -1) (
+      ((mouse_position_in_samples >= val) && (mouse_position_in_samples < split_ptr[1])) ? (
+        // In view!
+        //gfx_line(cx + ww * (val - disp_range_start) / disp_range_len, cy, cx + ww * (val - disp_range_start) / disp_range_len, cy + hh);
+        block_end = split_ptr[1];
+        block_end = floor(block_end * 0.5) * 2;
+        
+        block_start = val;
+        block_start = floor(block_start * 0.5) * 2;
+      );
+      
+      split_ptr += 1;
+      val = split_ptr[];
+    );
+  );
+);
+
 function pitch_widget(cx, cy, ww, hh, sample_loc)
-local(button_width, button_height, frac, mul, ix)
-global(BIG_FONT, samplelocs, N_SAMPLES,
-       captured, mouse_cap, mouse_dy,
-       DRAG_FINE, DRAG_PITCH,
-       multi_out, select_by_notes)
+local(button_width, button_height, frac, mul, ix, s0, s1, s2)
+global(
+  BIG_FONT, samplelocs, N_SAMPLES,
+  captured, mouse_cap, mouse_dy,
+  DRAG_FINE, DRAG_PITCH,
+  multi_out, select_by_notes, auto_split_mode, split_algorithm,
+)
 instance(dy_sum)
 (
   // Reference pitch
@@ -569,6 +818,28 @@ instance(dy_sum)
     select_by_notes = 1 - select_by_notes;
   );
   
+  (control_rect(cx + ww - 9.62 * button_width - 4 - 1, cy + 1, 2 * button_width, button_height, 0.07 + .1 * auto_split_mode, 0.04, 0.03 + .7 * auto_split_mode, 1.0, BIG_FONT, "Split mode", "Automatic splitter (drag splits into samples directly).") && mouse_press(1)) ? (
+    auto_split_mode = 1 - auto_split_mode;
+  );
+  
+  s0 = (split_algorithm == 0) * auto_split_mode;
+  (control_rect(cx + ww - 7.58 * button_width - 4 - 1, cy + 1, 0.5 * button_width, button_height, 0.07 + .1 * s0, 0.04, 0.03 + .7 * s0, 1.0, BIG_FONT, "1", "Splitting algorithm 1.") && mouse_press(1)) ? (
+    split_algorithm = 0;
+    auto_split_mode = 1;
+  );
+  
+  s1 = (split_algorithm == 1) * auto_split_mode;
+  (control_rect(cx + ww - 7.08 * button_width - 4 - 1, cy + 1, 0.5 * button_width, button_height, 0.07 + .1 * s1, 0.04, 0.03 + .7 * s1, 1.0, BIG_FONT, "2", "Splitting algorithm 2.") && mouse_press(1)) ? (
+    split_algorithm = 1;
+    auto_split_mode = 1;
+  );
+  
+  s2 = (split_algorithm == 2) * auto_split_mode;
+  (control_rect(cx + ww - 6.58 * button_width - 4 - 1, cy + 1, 0.5 * button_width, button_height, 0.07 + .1 * s2, 0.04, 0.03 + .7 * s2, 1.0, BIG_FONT, "3", "Splitting algorithm 3.") && mouse_press(1)) ? (
+    split_algorithm = 2;
+    auto_split_mode = 1;
+  );
+
   ((captured == DRAG_FINE) || (captured == DRAG_PITCH)) ? (
     (!mouse_is_down(1)) ? ( captured = 0; dy_sum = 0; );
   );
@@ -711,18 +982,29 @@ global(sample_locs, undo_memory, SAMPLE_SIZE, nothing_in_memory)
 function draw_sample_big(cx, cy, ww, hh, reset_zoom)
 instance(sample_start, sample_len,
          disp_range_start, disp_range_len,
-         block_start, block_end)
+         block_start, block_end, last_split_sample, last_len_split)
 local(is_over, menu_selection, fractional_pos, center, loop_start, loop_stop, mouse_pos_in_samples, left, right, tmp)
 global(samplelocs, selected_sample, SAMPLE_NAMES, SAMPLE_HEADER, SAMPLE_DURATION, captured,
        DRAG_SAMPLE, DRAG_LOOP_POINT_1, DRAG_LOOP_POINT_2, DRAG_SAMPLE_TO_PAD, DRAG_SAMPLE_HORI,
        updated_loop, current_char, last_click_time, sample_name_copy_location, over_pad,
        scratchloc, copyloc,
        mouse_x, mouse_y, mouse_wheel, mouse_cap,
-       gfx_x, gfx_y, gfx_a, mouse_dx)
+       gfx_x, gfx_y, gfx_a, mouse_dx, auto_split_mode, split_algorithm, last_split_algorithm)
 (
   draw_box(cx, cy, ww, hh);
   draw_waveform(cx, cy, ww, 0.5 * hh, disp_range_start, disp_range_len);
   draw_waveform(cx, cy + 0.5 * hh, ww, 0.5 * hh, disp_range_start + 1, disp_range_len);
+  
+  (auto_split_mode == 1) ? (
+    ((selected_sample != last_split_sample) || (samplelocs[selected_sample][] != last_len_split) || (split_algorithm != last_split_algorithm)) ? (
+      last_split_algorithm = split_algorithm;
+      last_split_sample = selected_sample;
+      last_len_split = samplelocs[selected_sample][];
+      this.split(split_algorithm);
+    );
+  );
+  
+  auto_split_mode ? this.draw_splits(cx, cy, ww, hh, disp_range_start, disp_range_len);
   
   ((current_char == 26) && (mouse_cap == 4)) ? (
     undo_sample_action(selected_sample);
@@ -745,6 +1027,12 @@ global(samplelocs, selected_sample, SAMPLE_NAMES, SAMPLE_HEADER, SAMPLE_DURATION
     captured = DRAG_SAMPLE_HORI;
   ) : (is_over && mouse_press(1) && !captured) ? (
     mouse_pos_in_samples = disp_range_start + disp_range_len * max(min((mouse_x - cx) / ww, 1), 0);
+    
+    // We have presplit stuff in here! Select that!
+    auto_split_mode ? (
+      this.grab_split(mouse_pos_in_samples);
+    );
+    
     left = min(block_start, block_end);
     right = max(block_start, block_end);
     (mouse_pos_in_samples > left && mouse_pos_in_samples < right) ? (
@@ -979,6 +1267,7 @@ global(DROPPED_FILE_STR, MAX_SAMPLE_DURATION, SAMPLE_HEADER, SAMPLE_SIZE, ref_no
     sample_location[3] = -1;          // Loop start (in position; raw sample pos/2)
     sample_location[4] = -1;          // Loop end (in position; raw sample pos/2)
     sample_location[5] = 0;           // Bi-directional?
+    
     file_close(file_handle);
   );
 );
