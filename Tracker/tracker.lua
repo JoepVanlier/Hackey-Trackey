@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.29
+@version 3.30
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.30 (2024-05-12)
+  + Highlight which chord we are hovering over.
  * v3.29 (2024-02-11)
   + Added option to automatically split items in hackey trackey sample playback.
  * v3.28 (2024-02-07)
@@ -3882,6 +3884,17 @@ function tracker:renderGUI()
     local cury = ys + chordAreaY - keyMapH
     local curx = xs + scaleW
 
+    local active_scale_index, active_row, active_tone
+    if tracker.harm_selected then
+      active_scale_index = tracker.harm_selected[1]
+      active_row = tracker.harm_selected[2]
+      active_tone = tracker.harm_selected[3]
+    else
+      active_scale_index = -1
+      active_row = -1
+      active_tone = -1
+    end
+
     -- Currently marked for major, could choose to incorporate others
     local markings = { 'I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii0', 'VIII' }
     for k = 1,7 do
@@ -3919,6 +3932,13 @@ function tracker:renderGUI()
             local ccc = colors.harmonycolor or colors.textcolor
             local col = { ccc[1], ccc[2], ccc[3], clamp( 0.1, 1, ccc[4] - 0.4 * score ) }
             gfx.set(table.unpack(col))
+            
+            if (k == active_tone) and (j == (active_row + 1) and (i == (active_scale_index - 1))) then
+              gfx.set(1, 1, 1, 1)
+            end
+            if gfx.mouse_x > curx and gfx.mouse_x < (curx + chordW) and gfx.mouse_y > cury and gfx.mouse_y < (cury + keyMapH) then
+              gfx.a = 0.5 + 0.5 * math.abs(math.sin(3 * reaper.time_precise()))
+            end
 
             gfx.printf( chordmap[k].names[j] )
           end
@@ -10786,26 +10806,29 @@ local function updateLoop()
           end
         end
       end
-
+      
       if ( gfx.mouse_y > chordAreaY and (last_cap & 3) == 0 ) then
-        -- Figure out which scale we are clicking
-        yCoord = ( gfx.mouse_y - chordAreaY ) / keyMapH
-
-        -- Find the scale we clicked
-        local done = 0
-        local i = 1
-        local row = 0
-        local chordrow = 1
+        local tone
+        local yCoord
         local scaleRows
         local scaleIdx
         local scaleName
+        
+        local i = 1
+        local chordrow = 1
+        local done = 0
+        local row = 0
+        
+        -- Figure out which scale we are clicking
+        yCoord = ( gfx.mouse_y - chordAreaY - ys ) / keyMapH
+        
         while (done==0) do
           scaleIdx = i
           scaleName = scales.names[i]
           -- How many rows does this scale have?
           local chordmap = #(progressions[scaleName][1].notes)
           scaleRows = #(progressions[scaleName][1].notes)
-          chordrow = math.floor(yCoord - row - .5)
+          chordrow = math.floor(yCoord - row)
           i = i + 1
           if ( ( chordrow < scaleRows ) or ( i > #scales.names ) ) then
             done = 1
@@ -10813,7 +10836,10 @@ local function updateLoop()
             row = row + scaleRows
           end
         end
-
+        
+        tone = math.floor( ( gfx.mouse_x - xs - scaleW ) / chordW ) + 1
+        tracker.harm_selected = {i, chordrow, tone}
+      
         -- Select different scale?
         if ( gfx.mouse_x > xs ) then
           if ( gfx.mouse_x < xs + scaleW ) then
@@ -10823,7 +10849,6 @@ local function updateLoop()
 
           -- Selected a chord?
           if ( chordrow < scaleRows ) then
-            local tone = math.floor( ( gfx.mouse_x - xs - scaleW ) / chordW ) + 1
             if ( ( tone > 0 ) and ( tone < 8 ) ) then
               local chord = scales:pickChord( scaleName, tone, chordrow+1 )
 
