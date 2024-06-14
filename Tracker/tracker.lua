@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.30
+@version 3.31
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,9 @@
 
 --[[
  * Changelog:
+ * v3.31 (2024-06-15)
+  + Fix issue with uninitialized variable being hit when "stick info to bottom" is activated.
+  + Fix issue with not rounding coordinates when toggling binary options.
  * v3.30 (2024-05-12)
   + Highlight which chord we are hovering over.
  * v3.29 (2024-02-11)
@@ -680,7 +683,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.29"
+tracker.name = "Hackey Trackey v3.31"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -2803,7 +2806,7 @@ function tracker:updatePlotLink()
 
   local vrows = self:getVRows()
 
-  for j = 0,math.max(1, vrows-1) do
+  for j = 0,math.max(1, vrows - 1) do
     yloc[#yloc + 1] = y
     yheight[#yheight + 1] = 0.7 * dy
     y = y + dy
@@ -3086,7 +3089,7 @@ function tracker:getSizeIndicatorLocation()
   local yl
 
   if ( self.cfg.stickToBottom == 1 ) then
-    yl = self.windowHeight - yheight[1]*2
+    yl = gfx.h - yheight[1]*2
   else
     yl = yloc[#yloc] + yheight[1] + plotData.itempady
   end
@@ -4212,8 +4215,8 @@ function tracker:getBottom()
   local itempady = plotData.itempady
 
   local bottom
-  if ( self.cfg.stickToBottom == 1 ) then
-    bottom = self.windowHeight - yheight * 2
+  if (self.cfg.stickToBottom == 1) then
+    bottom = gfx.h - yheight * 2
   else
     bottom = yloc[#yloc] + yheight + itempady
   end
@@ -10370,7 +10373,8 @@ local function updateLoop()
   -- Auto resize y
   if ( gfx.h > 1 ) then
     local grid = tracker.grid
-    local newRows = math.floor(gfx.h / grid.dy)-3
+    -- TODO: This needs tweaking so that it doesn't look weird for higher font sizes
+    local newRows = math.floor(gfx.h / grid.dy) - 3
     if ( newRows ~= self.rows and newRows > 2) then
       self.rows = newRows
       tracker.fov.height = newRows
@@ -10947,7 +10951,8 @@ local function updateLoop()
               local xm = xs + 8
               local ym = ys + 8
               if ( ( gfx.mouse_x > xs ) and  ( gfx.mouse_x < xm ) and ( gfx.mouse_y > ys ) and ( gfx.mouse_y < ym ) ) then
-                tracker.cfg[tracker.binaryOptions[start_index + i][1]] = 1 - tracker.cfg[tracker.binaryOptions[start_index + i][1]]
+                local binary_option = tracker.binaryOptions[math.floor(start_index + i)][1]
+                tracker.cfg[binary_option] = 1 - tracker.cfg[binary_option]
                 changedOptions = 1
                 tracker.holding = 1
               end
@@ -11197,7 +11202,6 @@ function tracker:resizeWindow()
     local v, wx, wy, ww, wh
     local d, wx, wh = gfx.dock(-1, 1, 1, nil, nil)
     reinitializeWindow( self.windowTitle, width, height, d, wx, wh )
-    self.windowHeight = height
   end
 end
 
@@ -11747,7 +11751,6 @@ end
       height = tracker.cfg.maxHeight
     end
     gfx.init(tracker.windowTitle, width, height, wpos.d, xpos, ypos)
-    tracker.windowHeight = height
 
     if ( tracker.outChannel ) then
       tracker:setOutChannel( tracker.outChannel )
