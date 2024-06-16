@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.31
+@version 3.32
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.32 (2024-06-15)
+  + Fix issue with scrolling through options while no item is open.
  * v3.31 (2024-06-15)
   + Fix issue with uninitialized variable being hit when "stick info to bottom" is activated.
   + Fix issue with not rounding coordinates when toggling binary options.
@@ -683,7 +685,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.31"
+tracker.name = "Hackey Trackey v3.32"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -4011,7 +4013,7 @@ function tracker:renderGUI()
   if ( tracker.helpActive == 1 ) then
     local help = help
     local helpwidth = self.helpwidth
-    local ys = plotData.ystart - 1.3*plotData.indicatorShiftY
+    local ys = plotData.ystart - plotData.indicatorShiftY
     local xs = plotData.xstart + tw
     if self.harmonyActive == 1 then
       xs = xs + self.harmonyWidth * 1
@@ -5821,16 +5823,18 @@ end
 
 function tracker:storeSettings( )
   if ( self.rememberSettings == 1 ) then
-    local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
-    for i=0,textsyxevtcntOut do
-      local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
-
-      if ( string.sub(msg,1,3) == 'OPT' ) then
-        reaper.MIDI_DeleteTextSysexEvt(self.take, i)
+    if self.take then
+      local _, _, _, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
+      for i=0,textsyxevtcntOut do
+        local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
+  
+        if ( string.sub(msg,1,3) == 'OPT' ) then
+          reaper.MIDI_DeleteTextSysexEvt(self.take, i)
+        end
       end
+  
+      reaper.MIDI_InsertTextSysexEvt(self.take, false, false, 0, 1, string.format( 'OPT%2d%2d%2d%d%2d', self.transpose, self.advance, self.envShape, self.modMode, self.cfg.rowOverride ) )
     end
-
-    reaper.MIDI_InsertTextSysexEvt(self.take, false, false, 0, 1, string.format( 'OPT%2d%2d%2d%d%2d', self.transpose, self.advance, self.envShape, self.modMode, self.cfg.rowOverride ) )
   end
 end
 
@@ -8856,6 +8860,10 @@ function tracker:duplicate()
 end
 
 function tracker:seekMIDI( dir )
+  if not self.item then
+    return
+  end
+  
   self.track = reaper.GetMediaItem_Track(self.item)
   local nItems = reaper.GetTrackNumMediaItems(self.track)
 
@@ -8922,6 +8930,10 @@ end
 function tracker:seekTrack( dir )
   local eps = 0.0001
   local oldtrack = self.track
+
+  if not tracker.item then
+    return
+  end
 
   -- Find the location of the cursor
   local mpos = reaper.GetMediaItemInfo_Value(tracker.item, "D_POSITION")
@@ -9398,6 +9410,10 @@ end
 ]]--
 
 function tracker:move_block(from_x, from_y, width, height, to_x, to_y, action_name)
+  if not self.take then
+    return
+  end
+
   local oldx = self.xpos
   local oldy = self.ypos
   local cpS = self:saveClipboard()
