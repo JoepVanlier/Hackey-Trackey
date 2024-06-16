@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.33
+@version 3.34
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.34 (2024-06-16)
+  + Small resolution checking fixup.
  * v3.33 (2024-06-16)
   + Issue warning when rows aren't an exact PPQ.
  * v3.32 (2024-06-15)
@@ -687,7 +689,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.32"
+tracker.name = "Hackey Trackey v3.34"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -4166,7 +4168,7 @@ function tracker:renderGUI()
     next_line()
     gfx.printf("Results in %f PPQ per row.", self.ppqPerRow);
     next_line()
-    gfx.printf("Suggested PPQ: %f.", 256 * tracker:getResolution());
+    gfx.printf("Suggested PPQ: %f.", 256 * self:getResolution());
   end
 end
 
@@ -5812,6 +5814,10 @@ end
 
 function tracker:getResolution( reso )
  -- Determine Row per Qn for this MIDI item
+  if not self.take then
+    return self.cfg.rowPerQn
+  end
+ 
   local retval, notecntOut, ccevtcntOut, textsyxevtcntOut = reaper.MIDI_CountEvts(self.take)
   for i=0,textsyxevtcntOut do
     local _, _, _, ppqpos, typeidx, msg = reaper.MIDI_GetTextSysexEvt(self.take, i, nil, nil, 1, 0, "")
