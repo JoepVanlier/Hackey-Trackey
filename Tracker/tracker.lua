@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.32
+@version 3.33
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -45,6 +45,8 @@
 
 --[[
  * Changelog:
+ * v3.33 (2024-06-16)
+  + Issue warning when rows aren't an exact PPQ.
  * v3.32 (2024-06-15)
   + Fix issue with scrolling through options while no item is open.
  * v3.31 (2024-06-15)
@@ -4126,6 +4128,46 @@ function tracker:renderGUI()
     self.time = 0.95 * (self.time or current_time) + 0.05 * current_time
     gfx.printf("Frame time: %.2f ms", 1000 * self.time)
   end
+  
+  if self.ppqWarning then
+    local font_height = math.min(math.floor(gfx.h / 16), math.floor(gfx.w / 28));
+    gfx.setfont(19, "Arial", font_height);
+    
+    function next_line()
+      gfx.x = 0.04 * gfx.w;
+      gfx.y = gfx.y + font_height;
+    end
+    
+    gfx.set(0, 0, 0, 0.6);
+    gfx.rect(0.01 * gfx.w, 0.01 * gfx.h, gfx.w - 0.02 * gfx.w, gfx.h - 0.02 * gfx.h);
+    
+    
+    gfx.set(1, 1, 1, 1);
+    gfx.x = 0.04 * gfx.w;
+    gfx.y = 0.04 * gfx.h;
+    
+    gfx.printf("Warning!\n")
+    next_line()
+    next_line()
+    gfx.printf("The pulses per quarter in this MIDI item are not a multiple of")
+    next_line()
+    gfx.printf("the duration of a single row in the tracker. This is problematic")
+    next_line()
+    gfx.printf("as it causes notes to fall in between rows leading to buggy ")
+    next_line()
+    gfx.printf("behavior in the tracker. Go to Options > Preferences > MIDI and ")
+    next_line()
+    gfx.printf("change ticks per quarter note to a large multiple of the resolution.");
+    next_line()
+    gfx.printf("For HT a multiple of 256 and the resolution is optimal.");
+    next_line()
+    next_line()
+    gfx.printf("PPQ for this MIDI item: %d.", self.ppqPerQn);
+    next_line()
+    gfx.printf("Results in %f PPQ per row.", self.ppqPerRow);
+    next_line()
+    gfx.printf("Suggested PPQ: %f.", 256 * tracker:getResolution());
+  end
 end
 
 -- Load the scales
@@ -5923,6 +5965,12 @@ function tracker:getRowInfo()
     self.rowPerSec    = ppqPerSec * self.rowPerQn / ppqPerQn
     self.ppqPerSec    = ppqPerSec
     local rows        = math.floor( self.rowPerQn * qnCount + 0.5 )
+    
+    if self.ppqPerRow ~= math.floor(self.ppqPerRow) then
+      self.ppqWarning = 1
+    else
+      self.ppqWarning = nil
+    end
 
     -- Do not allow zero rows in the tracker!
     if ( rows < self.eps ) then
