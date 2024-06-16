@@ -171,13 +171,15 @@ If you then hit commit (Ctrl + Alt + ENTER), the resolution will change.
 
 ### Can I use note delays?
 Yes, but there is a catch. For note delays to work reliably, your MIDI settings have to be 
-set in such a way that each row is a multiple of 256 MIDI pulses long. Otherwise, roundoff 
-errors will occur which cause values to shift as you enter them.
+set in such a way that each row is a multiple of 256 times the resolution MIDI pulses long. 
+Otherwise, roundoff errors will occur which cause values or notes to shift as you enter them.
 
 You can set these in Options => Preferences => Media/MIDI => Ticks per quarter note for 
-new MIDI items. The default here is 960, but 1024, 2048 or 4096 is recommended for 
-Hackey Trackey. Once configured correctly, you can open the note delay column for any note 
-by simply hitting CTRL + \+ for that column.
+new MIDI items. The default here is 960, but 3840 is recommended for Hackey Trackey (as 
+it will work well for 3/4, 4/4, 5/4 and is divisible by 256). Note that if you want to
+work in 7/4 you would need a different factor again (but HT will warn you about this).
+Once configured correctly, you can open the note delay column for any note by simply 
+hitting CTRL + \+ for that column.
 
 ### Can I enter note lengths?
 Yes you can. Hit CTRL \+ \+ twice on a note column to bring up the note length panel. This 
