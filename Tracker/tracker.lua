@@ -2470,7 +2470,7 @@ function tracker:linkCC_channel(modmode, ch, data, master, datafield, idx, colsi
 
     if ( modtypes ) then
       for j = 1,#modtypes do
-        master[#master+1]       = 1
+        master[#master+1]       = 0
         datafield[#datafield+1] = 'modtxt1'
         idx[#idx+1]             = idxes[j]
         colsizes[#colsizes+1]   = 1
