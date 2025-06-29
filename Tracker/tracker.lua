@@ -794,14 +794,14 @@ function updateFontScale()
   tracker.grid.fontScaler = fontScaler
   tracker.grid.originx   = 22 + 18*fontScaler  -- 35
   tracker.grid.originy   = 35
-  tracker.grid.dx        = 8 * fontScaler
+  tracker.grid.dx        = (tracker.colors.customFontDisplace and tracker.colors.customFontDisplace[1]) or 8 * fontScaler
   tracker.grid.dy        = 20 * fontScaler
   tracker.grid.barpad    = 10 * fontScaler
   tracker.grid.itempadx  = 5
   tracker.grid.itempady  = 3
-  
-  tracker.harmonyWidth    = 520 * fontScaler
-  tracker.noteNamesWidth  = 250 * fontScaler
+  tracker.grid.extraFontShift   = (tracker.colors.customFontDisplace and tracker.colors.customFontDisplace[2]) or 0
+  tracker.harmonyWidth    = 65 * tracker.grid.dx
+  tracker.noteNamesWidth  = 32 * tracker.grid.dx
 
   local txt_w, txt_h = gfx.measurestr("CTRL + Shift + Click row indicator Change highlighting (RMB resets)")
   tracker.helpwidth       = txt_w -- 400 * fontScaler
@@ -911,6 +911,7 @@ tracker.cfg.hideVelocity = 0
 tracker.cfg.channelOffset = 1
 tracker.cfg.useCachedRendering = 1
 tracker.cfg.showAvgFrameTime = 0
+tracker.cfg.buzzNoteCols = 0
 
 tracker.tracker_samples = 0
 tracker.cfg.fixedIndicator = 0
@@ -967,6 +968,7 @@ tracker.binaryOptions = {
     { 'showAvgFrameTime', 'Show average frame time' },
     { 'noloopGlue', 'Force item to not loop when resizing' },
     { 'wrapAroundSeeking', 'Wrap around when seeking items' },
+    { 'buzzNoteCols', 'Buzz-style note columns' },
     }
 
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "renoiseC", "buzz2", "sink", "TonE"}
@@ -2090,6 +2092,7 @@ end
 --- Base pitches
 --- Can customize the 'keyboard' here, if they aren't working for you
 local function setKeyboard( choice )
+  
   if ( choice == "buzz" or choice == "default" ) then
     local c = 12
     keys.pitches = {}
@@ -2115,7 +2118,7 @@ local function setKeyboard( choice )
     keys.pitches.i = 48-c
     keys.pitches.o = 50-c
     keys.pitches.p = 52-c
-
+    
     keys.octaves = {}
     keys.octaves['0'] = 0
     keys.octaves['1'] = 1
@@ -2127,6 +2130,7 @@ local function setKeyboard( choice )
     keys.octaves['7'] = 7
     keys.octaves['8'] = 8
     keys.octaves['9'] = 9
+
   elseif ( choice == "renoise" ) then
     keys.pitches = {}
     local c = 12
@@ -2587,7 +2591,7 @@ function tracker:linkData()
     master[#master+1]       = 1
     datafield[#datafield+1] = 'text'
     idx[#idx+1]             = j
-    colsizes[#colsizes + 1] = 3 * tracker.grid.fontScaler
+    colsizes[#colsizes + 1] = 3
     padsizes[#padsizes + 1] = 1
     if ( self.selectionBehavior == 1 ) then
       grouplink[#grouplink+1] = {1, 2}
@@ -2602,6 +2606,29 @@ function tracker:linkData()
     headerW[#headerW+1]     = 6 + 3 * hasDelay + 3 * hasEnd
     hints[#hints+1]         = string.format('Note channel %2d', j + channelOffset)
 
+    if (self.cfg.buzzNoteCols == 1) then
+      colsizes[#colsizes] = 1
+      if ( self.selectionBehavior == 1 ) then
+        grouplink[#grouplink] = {1, 2, 3}
+      else
+        grouplink[#grouplink] = {1}
+      end
+
+      master[#master+1]       = 0
+      datafield[#datafield+1] = 'octave'
+      idx[#idx+1]             = j
+      colsizes[#colsizes + 1] = 1
+      padsizes[#padsizes + 1] = 1
+      if ( self.selectionBehavior == 1 ) then
+        grouplink[#grouplink+1] = {-1, 1,2}
+      else
+        grouplink[#grouplink+1] = {-1}
+      end
+      headers[#headers + 1] = ''
+      headerW[#headerW+1]     = 0
+      hints[#hints+1]         = string.format('Note channel %2d', j + channelOffset)
+    end
+    
     -- Link up the velocity fields
     if self.cfg.hideVelocity == 0 then
       master[#master+1]       = 0
@@ -2610,7 +2637,11 @@ function tracker:linkData()
       colsizes[#colsizes + 1] = 1
       padsizes[#padsizes + 1] = 0
       if ( self.selectionBehavior == 1 ) then
-        grouplink[#grouplink+1] = {-1, 1}
+        if (self.cfg.buzzNoteCols == 1) then
+          grouplink[#grouplink+1] = {-2, -1, 1}
+        else
+          grouplink[#grouplink+1] = {-1, 1}
+        end
       else
         grouplink[#grouplink+1] = {1}
       end
@@ -2625,7 +2656,11 @@ function tracker:linkData()
       colsizes[#colsizes + 1] = 1
       padsizes[#padsizes + 1] = 2 - math.max(self.cfg.channelCCs, self.tracker_samples)
       if ( self.selectionBehavior == 1 ) then
-        grouplink[#grouplink+1] = {-2, -1}
+        if (self.cfg.buzzNoteCols == 1) then
+          grouplink[#grouplink+1] = {-3, -2, -1}
+        else
+          grouplink[#grouplink+1] = {-2, -1}
+        end
       else
         grouplink[#grouplink+1] = {-1}
       end
@@ -2776,7 +2811,7 @@ function tracker:updatePlotLink()
   local q = 0
   for j = fov.scrollx+1,#colsizes do
     xloc[#xloc + 1] = x
-    xwidth[#xwidth + 1] = colsizes[j] * dx + padsizes[j]
+    xwidth[#xwidth + 1] = colsizes[j] * dx
     xlink[#xlink + 1] = idxfields[j]
     dlink[#dlink + 1] = datafields[j]
     glink[#glink + 1] = grouplink[j]
@@ -3105,48 +3140,38 @@ function tracker:getSizeIndicatorLocation()
   return xl, yl, xm, ym
 end
 
-local function draw_ellipsis(x, py)
-  gfx.rect(x,  py, 1, 1)
-  gfx.rect(x+2, py, 1, 1)
-  gfx.rect(x+4, py, 1, 1)
+local function draw_ellipsis(x, y, dx)
+  gfx.rect(x + math.floor(dx/4),  y, 1, 1)
+  gfx.rect(x + math.floor(dx/2), y, 1, 1)
+  gfx.rect(x + math.floor(3*dx/4), y, 1, 1)
 end
 
-local function writeField(cdata, ellipsis, x, y, customFont)
+local function writeField(cdata, ellipsis, x, y, dx, dy, extraFontShift)
   if ( type(cdata) == "number" ) then
     if ( cdata == -1 ) then
       if ( ellipsis == 1 ) then
-        local py = y + 6
-        local delta = customFont and customFont[1] or 9
-        x = x + 2
-        draw_ellipsis(x, py)
-        draw_ellipsis(x + delta, py)
-        draw_ellipsis(x + delta*2, py)
+        local py = y + math.floor(dy / 4)
+        draw_ellipsis(x, py, dx)
+        draw_ellipsis(x + dx, py, dx)
+        draw_ellipsis(x + dx*2, py, dx)
       else
         gfx.printf("...")
       end
     else
       if ( ellipsis == 1 ) then
-        local py = y + 6
-        draw_ellipsis(x, py)
+        local py = y + math.floor(dy / 4)
+        draw_ellipsis(x, py, dx)
       else
         gfx.printf(".")
       end
     end
-  else
-    if ( customFont )  then
-      local cx = x
-      if ( not cdata ) then
-        return
-      end
-
-      for i=1,#cdata do
-        gfx.x = cx
-        gfx.y = y + customFont[2]
-        gfx.printf("%s", cdata:sub(i,i))
-        cx = cx + customFont[1]
-      end
-    else
-      gfx.printf("%s", cdata)
+  elseif ( cdata ) then
+    local cx = x
+    for i=1,#cdata do
+      gfx.x = cx
+      gfx.y = y + extraFontShift
+      gfx.printf("%s", cdata:sub(i,i))
+      cx = cx + dx
     end
   end
 end
@@ -3431,7 +3456,7 @@ function tracker:customFieldDescription()
   end
 end
 
-function drawPattern(colors, data, scrolly, rows, sig, zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, indicatorShiftX, dlink, xlink)
+function drawPattern(colors, data, scrolly, rows, sig, zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, indicatorShiftX, dlink, xlink, dx, dy, ellipsis)
   local gfx = gfx
   local c1, c2, tx, fc
   for y=1,#yloc do
@@ -3476,7 +3501,7 @@ function drawPattern(colors, data, scrolly, rows, sig, zeroindexed, xloc, yloc, 
         gfx.set(table.unpack(fc[thisfield] or tx))
 
         local cdata = data[thisfield][rows*xlink[x]+absy-1]
-        writeField( cdata, ellipsis, xloc[x], yloc[y], customFont )
+        writeField( cdata, ellipsis, xloc[x], yloc[y], dx, dy, extraFontShift )
       end
     end
   end
@@ -3518,13 +3543,12 @@ function tracker:renderGUI()
   local yshift        = plotData.yshift
   local headerShift   = 0
 
-  local customFont
-  local extraFontShift  = 0
+  local dx              = tracker.grid.dx
+  local dy              = tracker.grid.dy
+  local extraFontShift  = tracker.grid.extraFontShift
 
-  if ( colors.patternFont and colors.patternFontSize and colors.customFontDisplace ) then
+  if ( colors.patternFont and colors.patternFontSize ) then
     gfx.setfont(1, colors.patternFont, colors.patternFontSize)
-    customFont = colors.customFontDisplace
-    extraFontShift = customFont[2]
   else
     gfx.setfont(0)
     headerShift = 4
@@ -3554,14 +3578,14 @@ function tracker:renderGUI()
         gfx.setimgdim(2, gfx.w, gfx.h)
         gfx.set(table.unpack(colors. windowbackground))
         gfx.rect(0, 0, gfx.w, gfx.h)
-        drawPattern(colors, data, scrolly, rows, sig, self.zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, plotData.indicatorShiftX, dlink, xlink)
+        drawPattern(colors, data, scrolly, rows, sig, self.zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, plotData.indicatorShiftX, dlink, xlink, dx, dy, ellipsis)
       end
       gfx.dest = -1
       gfx.x = 0
       gfx.y = 0
       gfx.blit(2, 1, 0)
     else
-      drawPattern(colors, data, scrolly, rows, sig, self.zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, plotData.indicatorShiftX, dlink, xlink)
+      drawPattern(colors, data, scrolly, rows, sig, self.zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, plotData.indicatorShiftX, dlink, xlink, dx, dy, ellipsis)
     end
   
     -- Selector
@@ -3575,7 +3599,22 @@ function tracker:renderGUI()
       gfx.set(table.unpack(colors.selecttext or colors.textcolor))
     
       local cdata = data[dlink[relx]][rows*xlink[relx]+absy-1]
-      writeField( cdata, ellipsis, xloc[relx], yloc[rely], customFont )
+      if (dlink[relx] == 'text' and self.cfg.buzzNoteCols == 1) then
+        if (cdata == -1) then
+          cdata = 0
+        else
+          cdata = string.sub(cdata,1,1)
+        end
+      end
+      if (dlink[relx] == 'octave') then
+        local ctext = data.text[rows*xlink[relx]+absy-1]
+        if ( ctext == -1) then
+          cdata = 0
+        else
+          cdata = string.sub(ctext,3,3)
+        end
+      end
+      writeField( cdata, ellipsis, xloc[relx], yloc[rely], dx, dy, extraFontShift )
     end
 
     -- Pattern Length Indicator
@@ -4487,7 +4526,7 @@ function tracker:placeOff()
   -- Determine fieldtype, channel and row
   local ftype, chan, row = self:getLocation()
   
-  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) or ( ftype == 'end1' ) or ( ftype == 'end2' )) then
+  if ( ( ftype == 'text' ) or ( ftype == 'octave' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) or ( ftype == 'end1' ) or ( ftype == 'end2' )) then
     self:placeOffLowLevel(chan, row)
   end
   
@@ -4575,7 +4614,7 @@ function tracker:shiftAt( x, y, shift, scale, onlyNotes )
 
   if ( selected ) then
     local note = notes[selected]
-    if ( datafields[x] == 'text' ) then
+    if ( datafields[x] == 'text' or datafields[x] == 'octave') then
       -- Note
       local pitch, vel, startppqpos, endppqpos = table.unpack( note )
 
@@ -4812,7 +4851,7 @@ end
 ----------------------
 function tracker:showMore()
   local ftype, chan, row = self:getLocation()
-  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) ) then
+  if ( ( ftype == 'text' ) or ( ftype == 'octave' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) ) then
     if ( self.showDelays[chan] == 1 ) then
       self.showEnd[chan] = 1
       self.hash = 0
@@ -4845,7 +4884,7 @@ function tracker:showLess()
     self.showEnd[chan] = 0
     self.hash = 0
   end
-  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) ) then
+  if ( ( ftype == 'text' ) or ( ftype == 'octave' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) ) then
     self.showDelays[chan] = 0
     self.hash = 0
   end
@@ -4968,6 +5007,18 @@ function tracker:createNote(inChar, shift)
   
   local noteToEdit = noteStart[rows*chan+row]
 
+  local function changeOctave(octave)
+    if ( octave ) then
+      if ( noteToEdit ) then
+        local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToEdit] )
+        pitch = pitch - math.floor(pitch/12)*12 + (octave+1) * 12
+        reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, pitch, nil, true)
+        self:playNote(chan, pitch, vel)
+      end
+      shouldMove = true
+    end
+  end
+  
    -- What are we manipulating here?
   if ( ftype == 'text' ) then
     local note = keys.pitches[char]
@@ -4985,17 +5036,12 @@ function tracker:createNote(inChar, shift)
       
       shouldMove = self:placeNote(pitch, chan, row)
     else
-      local octave = keys.octaves[char]
-      if ( octave ) then
-        if ( noteToEdit ) then
-          local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToEdit] )
-          pitch = pitch - math.floor(pitch/12)*12 + (octave+1) * 12
-          reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, pitch, nil, true)
-          self:playNote(chan, pitch, vel)
-        end
-        shouldMove = true
+      if (tracker.cfg.buzzNoteCols == 0) then
+        changeOctave(keys.octaves[char])
       end
     end
+  elseif ( ftype == 'octave' ) then
+    changeOctave(tonumber(char))
   elseif ( ( ftype == 'vel1' ) and validHex( char ) ) then
     if ( noteToEdit ) then
       local pitch, vel, startppqpos, endppqpos = table.unpack( notes[noteToEdit] )
@@ -5368,7 +5414,7 @@ function tracker:backspace()
   local ftype, chan, row = self:getLocation()
 
    -- What are we manipulating here?
-  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) or ( ftype == 'end1' ) or ( ftype == 'end2' ) ) then
+  if ( ( ftype == 'text' ) or ( ftype == 'octave' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) or ( ftype == 'end1' ) or ( ftype == 'end2' ) ) then
     local noteGrid = data.note
     local noteStart = data.noteStart
     local lastnote
@@ -5548,7 +5594,7 @@ function tracker:delete()
   local ftype, chan, row = self:getLocation()
 
   -- What are we manipulating here?
-  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) or ( ftype == 'end1' ) or ( ftype == 'end2' ) ) then
+  if ( ( ftype == 'text' ) or ( ftype == 'octave' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) or ( ftype == 'end1' ) or ( ftype == 'end2' ) ) then
     local noteGrid = data.note
     local noteStart = data.noteStart
 
@@ -5653,7 +5699,7 @@ function tracker:insert()
   local ftype, chan, row = self:getLocation()
 
   -- What are we manipulating here?
-  if ( ( ftype == 'text' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) or ( ftype == 'end1' ) or ( ftype == 'end2' ) ) then
+  if ( ( ftype == 'text' ) or ( ftype == 'octave' ) or ( ftype == 'vel1' ) or ( ftype == 'vel2' ) or ( ftype == 'delay1' ) or ( ftype == 'delay2' ) or ( ftype == 'end1' ) or ( ftype == 'end2' ) ) then
     local noteGrid = data.note
     local noteStart= data.noteStart
     local notes    = self.notes
@@ -6244,6 +6290,7 @@ function tracker:initializeGrid()
   data.noteStart = {}
   data.note = {}
   data.text = {}
+  data.octave = {}
   data.vel1 = {}
   data.vel2 = {}
   data.delay1 = {}
@@ -6264,6 +6311,7 @@ function tracker:initializeGrid()
     for y=0,rows-1 do
       data.note[rows*x+y]   = nil
       data.text[rows*x+y]   = -1
+      data.octave[rows*x+y]   = ''
       data.vel1[rows*x+y]   = '.'
       data.vel2[rows*x+y]   = '.'
       if ( self.showDelays[x] == 1 ) then
@@ -7274,6 +7322,26 @@ function tracker:update()
   self:updateEnvelopes()
   self:updateNames()
 
+  if (self.cfg.buzzNoteCols == 1) then
+    self.colref['octave'] = -1
+    self.colref['vel1'] = -2
+    self.colref['vel2'] = -3
+  else
+    self.colref['vel1'] = -1
+    self.colref['vel2'] = -2
+  end  
+
+  if (self.cfg.buzzNoteCols == 1) then
+    self.colgroups['text'] = { 'text', 'octave', 'vel1', 'vel2' }
+    self.colgroups['octave'] = { 'text', 'octave', 'vel1', 'vel2' }
+    self.colgroups['vel1'] = { 'text', 'octave', 'vel1', 'vel2' }
+    self.colgroups['vel2'] = { 'text', 'octave', 'vel1', 'vel2' }
+  else
+    self.colgroups['text'] = { 'text', 'vel1', 'vel2' }
+    self.colgroups['vel1'] = { 'text', 'vel1', 'vel2' }
+    self.colgroups['vel2'] = { 'text', 'vel1', 'vel2' }
+  end  
+
   if ( self.take and self.item ) then
 
     -- Remove duplicates potentially caused by legato system
@@ -7816,7 +7884,10 @@ end
 function tracker:getAdvance( chtype, ch, extraShift )
   local hasDelay = 0
   if ( chtype == 'text' ) then
-    return (3 - self.cfg.hideVelocity) + (extrashift or 0)  -- TODO: Get rid of the direct config reference here.
+    -- TODO: Get rid of the direct config references here.
+    return (3 + self.cfg.buzzNoteCols - self.cfg.hideVelocity) + (extrashift or 0)
+  elseif ( chtype == 'octave' ) then
+    return (3 - self.cfg.hideVelocity) + (extrashift or 0)
   elseif ( chtype == 'vel1' ) then
     return 2 + (extrashift or 0)
   elseif ( chtype == 'vel2' ) then
@@ -8102,7 +8173,7 @@ function tracker:copyToClipboard()
     local chtype = datafields[jx]
     local firstNote = 1
     for jy = cp.ystart, cp.ystop do
-      if ( ( chtype == 'text' ) or ( chtype == 'vel1' ) or ( chtype == 'vel2' ) ) then
+      if ( ( chtype == 'text' ) or ( chtype == 'octave' ) or ( chtype == 'vel1' ) or ( chtype == 'vel2' ) ) then
         local loc = chan * rows + jy-1
         if ( noteStart[ loc ] ) then
           -- A note
@@ -8229,7 +8300,7 @@ function tracker:interpolate()
     local datafield = datafields[jx]
     
     -- Notes
-    if ( datafield == 'text' ) then
+    if ( datafield == 'text' or datafield == 'octave') then
       local chan    = idxfields[ jx ]
       local nStart  = noteStart[ chan*rows + cp.ystart - 1 ]
       local nEnd    = noteStart[ chan*rows + cp.ystop - 1 ]
@@ -8671,7 +8742,7 @@ function tracker:insertChord(chord)
   local chtype, chan, origrow = self:getLocation()
 
   -- Don't insert chords if we are at an invalid location
-  if ( chtype ~= 'text' ) then
+  if ( chtype ~= 'text' and chtype ~= 'octave') then
     return
   end
 
@@ -9500,6 +9571,7 @@ tracker.leading_cols = {
   modtxt1 = 'modtxt1',
   modtxt2 = 'modtxt1',
   text = 'text',
+  octave = 'text',
   vel1 = 'text',
   vel2 = 'text',
   delay1 = 'text',
