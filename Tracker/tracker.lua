@@ -852,7 +852,7 @@ tracker.automationBug = 1 -- This fixes a bug in v5.70
 tracker.shiftChordInProgress = false -- is the user currently inputting a chord with the shift key?
 tracker.shiftChordStartXpos = nil -- what column should we return cursor to when shift is released? only set while shiftChordInProgress
 
-keyLayouts = {'QWERTY', 'QWERTZ', 'AZERTY'}
+keyLayouts = {'QWERTY', 'QWERTZ', 'AZERTY', 'Colemak'}
 fontSizes = {12, 14, 16, 18, 20, 22}
 fx1Options = {0, 1, 2, 3}
 fx2Options = {0, 1, 2, 3, 4, 5, 6}
@@ -2196,6 +2196,102 @@ local function setKeyboard( choice )
     swap(keys.pitches, ",", ";")
   end
 
+  if ( tracker.cfg.keyLayout == "Colemak" ) then
+     if ( choice == "buzz" or choice == "default" ) then
+        local c = 12
+        keys.pitches = {}
+        keys.pitches.z = 24-c
+        keys.pitches.x = 26-c
+        keys.pitches.c = 28-c
+        keys.pitches.v = 29-c
+        keys.pitches.b = 31-c
+        keys.pitches.k = 33-c
+        keys.pitches.m = 35-c
+        keys.pitches.r = 25-c
+        keys.pitches.s = 27-c
+        keys.pitches.d = 30-c
+        keys.pitches.h = 32-c
+        keys.pitches.n = 34-c
+        keys.pitches.q = 36-c
+        keys.pitches.w = 38-c
+        keys.pitches.f = 40-c
+        keys.pitches.p = 41-c
+        keys.pitches.g = 43-c
+        keys.pitches.j = 45-c
+        keys.pitches.l = 47-c
+        keys.pitches.u = 48-c
+        keys.pitches.y = 50-c
+        keys.pitches[';'] = 52-c
+        
+        keys.pitches['2'] = 37-c
+        keys.pitches['3'] = 39-c
+        keys.pitches['5'] = 42-c
+        keys.pitches['6'] = 44-c
+        keys.pitches['7'] = 46-c
+        keys.pitches['9'] = 49-c
+        keys.pitches['0'] = 51-c
+        keys.pitches['='] = 54-c
+        
+        keys.pitches[2] = 37-c
+        keys.pitches[3] = 39-c
+        keys.pitches[5] = 42-c
+        keys.pitches[6] = 44-c
+        keys.pitches[7] = 46-c
+        keys.pitches[9] = 49-c
+        keys.pitches[0] = 51-c
+     elseif ( choice == "renoise" ) then
+        keys.pitches = {}
+        local c = 12
+        keys.pitches.z = 24-c
+        keys.pitches.x = 26-c
+        keys.pitches.c = 28-c
+        keys.pitches.v = 29-c
+        keys.pitches.b = 31-c
+        keys.pitches.k = 33-c
+        keys.pitches.m = 35-c
+        keys.pitches[","] = 36-c
+        keys.pitches["."] = 38-c
+        keys.pitches["/"] = 40-c
+
+        keys.pitches.r = 25-c
+        keys.pitches.s = 27-c
+        keys.pitches.d = 30-c
+        keys.pitches.h = 32-c
+        keys.pitches.n = 34-c
+        keys.pitches.i = 37-c
+        keys.pitches.o = 39-c
+
+        keys.pitches.q = 36-c
+        keys.pitches.w = 38-c
+        keys.pitches.f = 40-c
+        keys.pitches.p = 41-c
+        keys.pitches.g = 43-c
+        keys.pitches.j = 45-c
+        keys.pitches.l = 47-c
+        keys.pitches.u = 48-c
+        keys.pitches.y = 50-c
+        keys.pitches[';'] = 52-c
+        keys.pitches['['] = 53-c
+        keys.pitches[']'] = 55-c
+
+        keys.pitches['2'] = 37-c
+        keys.pitches['3'] = 39-c
+        keys.pitches['5'] = 42-c
+        keys.pitches['6'] = 44-c
+        keys.pitches['7'] = 46-c
+        keys.pitches['9'] = 49-c
+        keys.pitches['0'] = 51-c
+        keys.pitches['='] = 54-c
+        
+        keys.pitches[2] = 37-c
+        keys.pitches[3] = 39-c
+        keys.pitches[5] = 42-c
+        keys.pitches[6] = 44-c
+        keys.pitches[7] = 46-c
+        keys.pitches[9] = 49-c
+        keys.pitches[0] = 51-c
+     end
+  end
 end
 
 setKeyboard(tracker.cfg.keyboard)
