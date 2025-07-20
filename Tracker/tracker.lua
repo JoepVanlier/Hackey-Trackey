@@ -982,6 +982,7 @@ CaptureModes =
   RES_SELECTOR = 5,
   SELECT_BLOCK = 6,
   SCROLLBAR = 7,
+  INS_SELECTOR = 8,
 }
 
 local function print(...)
@@ -1592,8 +1593,10 @@ function tracker:loadKeys( keySet )
     keys.removeRow      = { 1,    0,  0,    8 }             -- Remove Row CTRL+Backspace
     keys.wrapDown       = { 1,    0,  1,    6909555 }       -- CTRL + SHIFT + Ins
     keys.wrapUp         = { 1,    0,  1,    8 }             -- CTRL + SHIFT + Backspace
-    
+
     keys.toggleNoteMode = { 1,    0,  0,    20 }            -- CTRL + T / Toggle whether advance should move to next note rather than numeric value
+    keys.instUp         = { 0,    0,  1,    62 }            -- > increase instrument
+    keys.instDown       = { 0,    0,  1,    60 }            -- < decrease instrument
 
     keys.m0             = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m25            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
@@ -1671,6 +1674,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Alt + Click row indicator', 'Change fixed indicator position' },
       { 'CTRL + S / CTRL + A', '(un)Solo / (un)Mute' },   
       { 'CTRL + T', 'Toggle advance to next note mode' },      
+      { '< / >', 'Instrument up/down in sampler mode' },
       { '', '' },
       { 'Harmony helper', '' },
       { 'F9', 'Toggle harmonizer' },
@@ -1761,6 +1765,8 @@ function tracker:loadKeys( keySet )
     keys.wrapUp         = { 1,    0,  1,    8 }             -- CTRL + SHIFT + Backspace
 
     keys.toggleNoteMode = { 1,    0,  0,    20 }            -- CTRL + T / Toggle whether advance should move to next note rather than numeric value
+    keys.instUp         = { 0,    0,  1,    62 }            -- > increase instrument
+    keys.instDown       = { 0,    0,  1,    60 }            -- < decrease instrument
 
     keys.m0             = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m25            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
@@ -1841,6 +1847,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Shift + Click row indicator', 'Change highlighting (RMB resets)' },
       { 'CTRL + Alt + Click row indicator', 'Change fixed indicator position' },
       { 'CTRL + T', 'Toggle advance to next note mode' },
+      { '< / >', 'Instrument up/down in sampler mode' },
       { '', '' },
       { 'Harmony helper', '' },
       { 'F9', 'Toggle harmonizer' },
@@ -1989,6 +1996,8 @@ function tracker:loadKeys( keySet )
     keys.prevTrack      = { 1,    0,  1,    1818584692.0 }  -- CTRL + Shift + <-
 
     keys.toggleNoteMode = { 1,    0,  0,    20 }            -- CTRL + T / Toggle whether advance should move to next note rather than numeric value
+    keys.instUp         = { 0,    0,  1,    62 }            -- > increase instrument
+    keys.instDown       = { 0,    0,  1,    60 }            -- < decrease instrument
 
     help = {
       { 'Shift + Note', 'Advance column after entry' },
@@ -2035,6 +2044,7 @@ function tracker:loadKeys( keySet )
       { 'CTRL + Shift + F11/F12', 'Column octave up' },
       { 'CTRL + Alt + F11/F12', 'Block octave up' },
       { 'CTRL + T', 'Toggle advance to next note mode' },
+      { '< / >', 'Instrument up/down in sampler mode' },
       { '---', '' },
       { 'CTRL + H', 'Toggle harmonizer' },
       { 'CTRL + Click', 'Insert chord' },
@@ -3428,6 +3438,9 @@ function tracker:customFieldDescription()
         return string.format("Unknown effect (%s)", cc_value)
       end
     end
+  elseif (ftype == "vel1") or (ftype == "vel2") then
+    local channelOffset = tracker.cfg.channelOffset
+    return string.format('Instrument channel %2d', chan + channelOffset)
   end
 end
 
@@ -3654,7 +3667,8 @@ function tracker:renderGUI()
   gfx.y = dials[1].ymin + extraFontShift
 
   if ( self.take ) then
-    for i=1,#dials-1 do
+    local dialsmax = 5
+    for i=1,dialsmax-1 do
       if dials[i]:highlight() then
         gfx.set(table.unpack(colors.changed))
       else
@@ -3666,14 +3680,25 @@ function tracker:renderGUI()
     end
     gfx.set(table.unpack(colors.headercolor))
 
-    if ( tracker.newRowPerQn ~= tracker.rowPerQn or dials[#dials]:highlight() ) then
+    if ( tracker.newRowPerQn ~= tracker.rowPerQn or dials[dialsmax]:highlight() ) then
       gfx.set(table.unpack(colors.changed))
     else
       gfx.set(table.unpack(colors.headercolor))
     end
-    gfx.x = dials[#dials].xmin
+    gfx.x = dials[dialsmax].xmin
     gfx.y = bottom + yheight[1] + extraFontShift
-    gfx.printf(dials[#dials].str)
+    gfx.printf(dials[dialsmax].str)
+
+    if (self.tracker_samples == 1) then
+      if dials[#dials]:highlight() then
+        gfx.set(table.unpack(colors.changed))
+      else
+        gfx.set(table.unpack(colors.headercolor))
+      end
+      
+      gfx.x = dials[#dials].xmin
+      gfx.printf(dials[#dials].str)
+    end
   end
 
   gfx.set(table.unpack(colors.headercolor))
@@ -4222,6 +4247,9 @@ function tracker:infoString()
     end
     str[4] = string.format( "Oct [%d]", self.transpose )
     str[5] = string.format( "Res [%d]", tracker.newRowPerQn )
+    if (self.tracker_samples == 1) then
+      str[6] = string.format( "Ins [%d]", self:lastVel())
+    end
     
     local locs = {}
     local xs = plotData.xstart + tw - 5
@@ -4237,7 +4265,7 @@ function tracker:infoString()
     end
     
     local _, yh = gfx.measurestr("X[0]")
-    local capture_modes = {CaptureModes.OUT_SELECTOR, CaptureModes.ENV_SELECTOR, CaptureModes.ADV_SELECTOR, CaptureModes.OCT_SELECTOR, CaptureModes.RES_SELECTOR}
+    local capture_modes = {CaptureModes.OUT_SELECTOR, CaptureModes.ENV_SELECTOR, CaptureModes.ADV_SELECTOR, CaptureModes.OCT_SELECTOR, CaptureModes.RES_SELECTOR, CaptureModes.INS_SELECTOR}
     local y = self:getBottom() + yheight
     for i=1,maxi do
       local width = gfx.measurestr(str[i])
@@ -4876,9 +4904,18 @@ function tracker:placeNote(pitch, chan, row)
   
   -- Is there already a note starting here? Simply change the note.
   if ( noteToEdit ) then
-    reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, pitch, nil, true)
+    if ( self.tracker_samples == 1 ) then
+      -- update instrument as well as pitch
+      reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, pitch, self:lastVel(), true)
+    else
+      reaper.MIDI_SetNote(self.take, noteToEdit, nil, nil, nil, nil, nil, pitch, nil, true)
+    end
     local p2, v2 = table.unpack( notes[noteToEdit] )
-    self:playNote(chan, pitch, v2)
+    if ( self.tracker_samples == 1) then
+      self:playNote(chan, pitch, self:lastVel())
+    else
+      self:playNote(chan, pitch, v2)
+    end
   else
     -- No note yet? See how long the new note can get. Note that we have to ignore any note
     -- we might be interrupting (placed in the middle of)
@@ -10203,6 +10240,16 @@ function tracker:processKeyboardInput()
       end
       self:saveConfig(self.configFile, self.cfg)
       self:forceUpdate()
+    elseif inputs('instUp') then
+      if self.tracker_samples == 1 then
+        self:setLastVel(math.min(self:lastVel() + 1, 16))
+      end
+      self:forceUpdate()
+    elseif inputs('instDown') then
+      if self.tracker_samples == 1 then
+        self:setLastVel(math.max(self:lastVel() - 1, 1))
+      end
+      self:forceUpdate()
     elseif inputs('stop2') then
       reaper.Main_OnCommand(1016, 0)
     elseif inputs('panic') then
@@ -10557,6 +10604,8 @@ local function updateLoop()
         tracker:saveConfig(tracker.configFile, tracker.cfg)
         self.hash = math.random()
       end
+    elseif ( mouse_cap == CaptureModes.INS_SELECTOR ) then
+      tracker.cfg.lastVelSample = getCapValue( 0.05 )
     end
   end
   tracker:infoString()
@@ -10674,6 +10723,15 @@ local function updateLoop()
             tracker:storeSettings()
             tracker:saveConfig(tracker.configFile, tracker.cfg)
             self.hash = math.random()
+          end
+        elseif (#dials > 5 and dials[6]:over()) then
+          local menu_string = ""
+          for i=1,16 do
+            menu_string = menu_string .. "|" .. (tracker:lastVel() == i and "!" or "") .. "Set instrument to " .. i
+          end
+          local menu_response = gfx.showmenu(menu_string)
+          if menu_response > 0 then
+            tracker:setLastVel(math.floor(menu_response));
           end
         else
           local was_docked = gfx.dock(-1)
@@ -10806,6 +10864,8 @@ local function updateLoop()
         setCapMode(CaptureModes.OCT_SELECTOR, tracker.transpose, tracker.minoct, tracker.maxoct) -- Oct
       elseif ( dials[5]:over() ) then
         setCapMode(CaptureModes.RES_SELECTOR, tracker.newRowPerQn, 1, tracker.maxRowPerQn) -- Res
+      elseif ( #dials > 5 and dials[6]:over() ) then
+        setCapMode(CaptureModes.INS_SELECTOR, tracker.cfg.lastVelSample, 1, 16) -- Ins
       elseif ( gfx.mouse_x < plotData.xstart + gfx.measurestr("[Rec]") ) and ( gfx.mouse_x > plotData.xstart ) and (gfx.mouse_y > dials[1].ymin) and (gfx.mouse_y < dials[1].ymax) then
         if ( tracker.lastleft ~= 1 ) then
           tracker:toggleRec()
@@ -11524,6 +11584,9 @@ local function Main()
     keys.removeRow      = { 1,    0,  0,    8 }             -- Remove Row CTRL+Backspace
     keys.wrapDown       = { 1,    0,  1,    6909555 }       -- CTRL + SHIFT + Ins
     keys.wrapUp         = { 1,    0,  1,    8 }             -- CTRL + SHIFT + Backspace
+
+    keys.instUp         = { 0,    0,  1,    62 }            -- > increase instrument
+    keys.instDown       = { 0,    0,  1,    60 }            -- < decrease instrument
 
     keys.m0             = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
     keys.m25            = { 0,    0,  0,    500000000000000000000000 }    -- Unassigned
