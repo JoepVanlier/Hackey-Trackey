@@ -1527,6 +1527,16 @@ function tracker:loadKeys( keySet )
   keys.shiftFullRight = { 1,    1,  0,    500000000000000000000000.0 }
   keys.fullLeft       = { 1,    1,  0,    500000000000000000000000.0 }
   keys.fullRight      = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.advance0       = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.advance1       = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.advance2       = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.advance3       = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.advance4       = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.advance5       = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.advance6       = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.advance7       = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.advance8       = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.advance9       = { 1,    1,  0,    500000000000000000000000.0 }
   
   if keyset == "default" then
     --                    CTRL    ALT SHIFT Keycode
@@ -10391,6 +10401,46 @@ function tracker:processKeyboardInput()
       self.advance = math.max(self.advance - 1, 0)
       self:storeSettings()
       self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advance0') and self.take then
+      self.advance = 0
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advance1') and self.take then
+      self.advance = 1
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advance2') and self.take then
+      self.advance = 2
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advance3') and self.take then
+      self.advance = 3
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advance4') and self.take then
+      self.advance = 4
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advance5') and self.take then
+      self.advance = 5
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advance6') and self.take then
+      self.advance = 6
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advance7') and self.take then
+      self.advance = 7
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advance8') and self.take then
+      self.advance = 8
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advance9') and self.take then
+      self.advance = 9
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
     elseif inputs('advanceDouble') and self.take then
       -- max() with 1 because if they are doubling from 0 they probably
       -- want it to actually increase and not just stay there
@@ -11814,6 +11864,16 @@ local function Main()
     keys.shiftFullRight = { 1,    0,  1,    500000000000000000000000.0 }
     keys.fullLeft       = { 1,    1,  0,    500000000000000000000000.0 }
     keys.fullRight      = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.advance0       = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.advance1       = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.advance2       = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.advance3       = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.advance4       = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.advance5       = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.advance6       = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.advance7       = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.advance8       = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.advance9       = { 1,    1,  0,    500000000000000000000000.0 }
 
     help = {
       { 'Shift + Note', 'Advance column after entry' },
