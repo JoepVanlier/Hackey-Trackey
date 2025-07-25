@@ -929,6 +929,7 @@ tracker.cfg.channelOffset = 1
 tracker.cfg.useCachedRendering = 1
 tracker.cfg.showAvgFrameTime = 0
 tracker.cfg.buzzNoteCols = 0
+tracker.cfg.visualSpace = 0
 
 tracker.tracker_samples = 0
 tracker.cfg.fixedIndicator = 0
@@ -986,6 +987,7 @@ tracker.binaryOptions = {
     { 'noloopGlue', 'Force item to not loop when resizing' },
     { 'wrapAroundSeeking', 'Wrap around when seeking items' },
     { 'buzzNoteCols', 'Buzz-style note columns' },
+    { 'visualSpace', 'Visual space between columns' },
     }
 
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "renoiseC", "buzz2", "sink", "TonE"}
@@ -2579,6 +2581,7 @@ function tracker:linkCC_channel(modmode, ch, data, master, datafield, idx, colsi
     -- Display with CC commands separated per column
     local allmodtypes = data.modtypes
     if ( not allmodtypes ) then
+      padsizes[#padsizes] = 2
       return
     end
 
@@ -2649,6 +2652,7 @@ function tracker:linkCC_channel(modmode, ch, data, master, datafield, idx, colsi
         end
       end
     end
+    padsizes[#padsizes] = 2
   end
 end
 
@@ -2692,7 +2696,7 @@ function tracker:linkData()
       datafield[#datafield+1] = 'fx2'
       idx[#idx+1]             = j
       colsizes[#colsizes+1]   = 1
-      padsizes[#padsizes+1]   = 2
+      padsizes[#padsizes+1]   = (j == #fx.names and 2 or 1)
       grouplink[#grouplink+1] = {-1}
       headers[#headers+1]     = ''
       headerW[#headerW+1]     = 0
@@ -2704,7 +2708,7 @@ function tracker:linkData()
   datafield[#datafield+1] = 'legato'
   idx[#idx+1]             = 0
   colsizes[#colsizes+1]   = 1
-  padsizes[#padsizes+1]   = 1
+  padsizes[#padsizes+1]   = 2
   grouplink[#grouplink+1] = {0}
   headers[#headers+1]     = string.format( 'L' )
   headerW[#headerW+1]     = 1
@@ -2802,7 +2806,7 @@ function tracker:linkData()
       headerW[#headerW+1]     = 0
       hints[#hints+1]         = string.format('Velocity channel %2d', j + channelOffset)
     else
-      padsizes[#padsizes] = 2
+      padsizes[#padsizes] = 2 - math.max(self.cfg.channelCCs, self.tracker_samples)
     end
 
     if ( math.max(self.cfg.channelCCs, self.tracker_samples) == 1 ) then
@@ -2935,6 +2939,7 @@ function tracker:updatePlotLink()
   local xloc = {}
   local xwidth = {}
   local xlink = {}
+  local xspace = {}
   local dlink = {}
   local glink = {}
   local header = {}
@@ -2954,6 +2959,12 @@ function tracker:updatePlotLink()
     description[#hints + 1] = hints[j]
     x = x + colsizes[j] * dx + padsizes[j] * dx
     q = j
+    if (padsizes[j] > 1) and (self.cfg.visualSpace == 1) then
+      x = x - dx
+      xspace[#xspace + 1] = x - (padsizes[j] * dx / 2)
+    else
+      xspace[#xspace + 1] = 0
+    end
 
     if ( (x-2*grid.itempadx) > (fov.abswidth-1.5*originx) ) then
       break
@@ -2969,6 +2980,7 @@ function tracker:updatePlotLink()
   -- Variable xlink indicates the index that is being displayed
   plotData.dlink = dlink
   plotData.xlink = xlink
+  plotData.xspace = xspace
   plotData.glink = glink
   plotData.headers = header
   plotData.headerW = headerWidths
@@ -3593,9 +3605,9 @@ function tracker:customFieldDescription()
   end
 end
 
-function drawPattern(colors, data, scrolly, rows, sig, zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, indicatorShiftX, dlink, xlink, dx, dy, ellipsis)
+function drawPattern(colors, data, scrolly, rows, sig, zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, indicatorShiftX, dlink, xlink, xspace, dx, dy, ellipsis)
   local gfx = gfx
-  local c1, c2, tx, fc
+  local c1, c2, tx, fc, bg
   for y=1,#yloc do
     local absy = y + scrolly
     if ( absy > 0 and absy <= rows ) then
@@ -3615,6 +3627,7 @@ function drawPattern(colors, data, scrolly, rows, sig, zeroindexed, xloc, yloc, 
         tx = colors.textcolor
         fc = colors.normal
       end
+      bg = colors.windowbackground
 
       gfx.y = yloc[y] + extraFontShift
       gfx.x = xloc[1] - indicatorShiftX
@@ -3639,6 +3652,11 @@ function drawPattern(colors, data, scrolly, rows, sig, zeroindexed, xloc, yloc, 
 
         local cdata = data[thisfield][rows*xlink[x]+absy-1]
         writeField( cdata, ellipsis, xloc[x], yloc[y], dx, dy, extraFontShift )
+
+        if xspace[x] ~= 0 then
+          gfx.set(table.unpack(bg))
+          gfx.rect(xspace[x], yloc[y] - yshift, dx, yheight[1] + itempady)
+        end
       end
     end
   end
@@ -3669,6 +3687,7 @@ function tracker:renderGUI()
 
   local dlink         = plotData.dlink
   local xlink         = plotData.xlink
+  local xspace        = plotData.xspace
   local glink         = plotData.glink
   local description   = plotData.description
   local headers       = plotData.headers
@@ -3715,14 +3734,14 @@ function tracker:renderGUI()
         gfx.setimgdim(2, gfx.w, gfx.h)
         gfx.set(table.unpack(colors. windowbackground))
         gfx.rect(0, 0, gfx.w, gfx.h)
-        drawPattern(colors, data, scrolly, rows, sig, self.zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, plotData.indicatorShiftX, dlink, xlink, dx, dy, ellipsis)
+        drawPattern(colors, data, scrolly, rows, sig, self.zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, plotData.indicatorShiftX, dlink, xlink, xspace, dx, dy, ellipsis)
       end
       gfx.dest = -1
       gfx.x = 0
       gfx.y = 0
       gfx.blit(2, 1, 0)
     else
-      drawPattern(colors, data, scrolly, rows, sig, self.zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, plotData.indicatorShiftX, dlink, xlink, dx, dy, ellipsis)
+      drawPattern(colors, data, scrolly, rows, sig, self.zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, plotData.indicatorShiftX, dlink, xlink, xspace, dx, dy, ellipsis)
     end
   
     -- Selector
