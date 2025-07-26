@@ -10908,6 +10908,13 @@ local function updateLoop()
       tracker.cfg.lastVelSample = getCapValue( 0.05 )
     end
   end
+  if ( left == 1 and tracker.lastleft == 0 and (gfx.mouse_cap & 8) > 0 ) then
+    local Inew, Jnew, outsidePattern = tracker:mouseToPatternCoord()
+    if ( Inew and Jnew and outsidePattern == 0 ) then
+      -- Move the cursor pos on initial click
+      tracker:dragBlock(Inew, Jnew)
+    end
+  end
   tracker:infoString()
   if ( left == 0 ) then
     if ( mouse_cap > 0 ) then
@@ -11194,7 +11201,7 @@ local function updateLoop()
     local Inew, Jnew, outsidePattern = tracker:mouseToPatternCoord(mouse_cap == 6)
     if ( Inew and Jnew ) then
       -- Move the cursor pos on initial click
-      if ( tracker.lastleft == 0 and outsidePattern == 0 ) then
+      if ( tracker.lastleft == 0 and outsidePattern == 0 and gfx.mouse_cap & 8 == 0) then
         setCapMode(CaptureModes.SELECT_BLOCK)
         tracker:resetShiftSelect()
         tracker.xpos = Inew
