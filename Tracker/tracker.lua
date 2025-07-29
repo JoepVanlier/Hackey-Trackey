@@ -839,6 +839,7 @@ tracker.xint = 0
 tracker.page = 4
 tracker.lastEnv = 1
 tracker.rowPerQn = 4 -- The default
+tracker.qnPerBar = 4 -- The default
 tracker.newRowPerQn = 4
 tracker.maxRowPerQn = 16
 
@@ -3613,18 +3614,18 @@ function tracker:customFieldDescription()
   end
 end
 
-function drawPattern(colors, data, scrolly, rows, sig, zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, indicatorShiftX, dlink, xlink, xspace, dx, dy, ellipsis)
+function drawPattern(colors, data, scrolly, rows, sig, qnPerBar, zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, indicatorShiftX, dlink, xlink, xspace, dx, dy, ellipsis)
   local gfx = gfx
   local c1, c2, tx, fc, bg
   for y=1,#yloc do
     local absy = y + scrolly
     if ( absy > 0 and absy <= rows ) then
-      if ( (((absy-1)/sig) - math.floor((absy-1)/sig)) == 0 ) then
+      if ( (((absy-1)/(qnPerBar*sig)) - math.floor((absy-1)/(qnPerBar*sig))) == 0 ) then
         c1 = colors.linecolor5
         c2 = colors.linecolor5s
         tx = colors.textcolorbar or colors.textcolor
         fc = colors.bar
-      elseif ( (((absy-1)/(.25*sig)) - math.floor((absy-1)/(.25*sig))) == 0 ) then
+      elseif ( (((absy-1)/sig) - math.floor((absy-1)/sig)) == 0 ) then
         c1 = colors.linecolor2
         c2 = colors.linecolor2s
         tx = colors.textcolor
@@ -3729,6 +3730,7 @@ function tracker:renderGUI()
   -- Render in relative FOV coordinates
   local data  = self.data
   local sig   = self.rowPerQn
+  local qnPerBar = self.qnPerBar
   if ( self.cfg.rowOverride > 0  ) then
     sig = self.cfg.rowOverride
   end
@@ -3742,14 +3744,14 @@ function tracker:renderGUI()
         gfx.setimgdim(2, gfx.w, gfx.h)
         gfx.set(table.unpack(colors. windowbackground))
         gfx.rect(0, 0, gfx.w, gfx.h)
-        drawPattern(colors, data, scrolly, rows, sig, self.zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, plotData.indicatorShiftX, dlink, xlink, xspace, dx, dy, ellipsis)
+        drawPattern(colors, data, scrolly, rows, sig, qnPerBar, self.zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, plotData.indicatorShiftX, dlink, xlink, xspace, dx, dy, ellipsis)
       end
       gfx.dest = -1
       gfx.x = 0
       gfx.y = 0
       gfx.blit(2, 1, 0)
     else
-      drawPattern(colors, data, scrolly, rows, sig, self.zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, plotData.indicatorShiftX, dlink, xlink, xspace, dx, dy, ellipsis)
+      drawPattern(colors, data, scrolly, rows, sig, qnPerBar, self.zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, plotData.indicatorShiftX, dlink, xlink, xspace, dx, dy, ellipsis)
     end
   
     -- Selector
@@ -6058,6 +6060,18 @@ function tracker:getResolution( reso )
   return tracker.cfg.rowPerQn
 end
 
+function tracker:getQnPerBar()
+ -- Determine Qn per Bar for this MIDI item
+  if not self.item then
+    return self.cfg.qnPerBar
+  end
+ 
+  local position = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+  
+  local num, denom, _ = reaper.TimeMap_GetTimeSigAtTime(0, position)
+  return (4 * num / denom)
+end
+
 function tracker:getSettings( )
   local oct, adv, env, modMode, rowOverride
   local foundOpt = 0
@@ -7770,6 +7784,7 @@ function tracker:setTake( take )
         self.hash = reaper.MIDI_GetHash( self.take, false, "?" )
         self.newRowPerQn = self:getResolution()
         self.outChannel = self:getOutChannel()
+        self.qnPerBar = self:getQnPerBar()
         self:update()
   
         if ( self.cfg.alwaysRecord == 1 ) then
