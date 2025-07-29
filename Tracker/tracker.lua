@@ -10223,9 +10223,9 @@ function tracker:processKeyboardInput()
       self:deleteNow()
       reaper.MIDI_Sort(self.take)
     elseif inputs('pgup') and self.take then
-      self.ypos = self.ypos - self.cfg.page
+      self.ypos = self.ypos - self.rowPerQn * self.qnPerBar
     elseif inputs('pgdown') and self.take then
-      self.ypos = self.ypos + self.cfg.page
+      self.ypos = self.ypos + self.rowPerQn * self.qnPerBar
     elseif inputs('undo') and self.take then
       modified = 1
       reaper.Undo_DoUndo2(0)
