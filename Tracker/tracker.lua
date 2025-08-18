@@ -3666,38 +3666,29 @@ function tracker:renderGUI()
   local dials = self.dials
   gfx.y = dials[1].ymin + extraFontShift
 
-  if ( self.take ) then
-    local dialsmax = 5
-    for i=1,dialsmax-1 do
-      if dials[i]:highlight() then
-        gfx.set(table.unpack(colors.changed))
-      else
-        gfx.set(table.unpack(colors.headercolor))
-      end
-      
-      gfx.x = dials[i].xmin
-      gfx.printf(dials[i].str)
-    end
-    gfx.set(table.unpack(colors.headercolor))
-
-    if ( tracker.newRowPerQn ~= tracker.rowPerQn or dials[dialsmax]:highlight() ) then
+  local function drawDial(idx, must_highlight)
+    if dials[idx]:highlight() or must_highlight then
       gfx.set(table.unpack(colors.changed))
     else
       gfx.set(table.unpack(colors.headercolor))
     end
-    gfx.x = dials[dialsmax].xmin
-    gfx.y = bottom + yheight[1] + extraFontShift
-    gfx.printf(dials[dialsmax].str)
+    gfx.x = dials[idx].xmin
+    gfx.printf(dials[idx].str)
+  end
 
-    if (self.tracker_samples == 1) then
-      if dials[#dials]:highlight() then
-        gfx.set(table.unpack(colors.changed))
-      else
-        gfx.set(table.unpack(colors.headercolor))
-      end
-      
-      gfx.x = dials[#dials].xmin
-      gfx.printf(dials[#dials].str)
+  if ( self.take ) then
+    -- Out, Envelope, Advance, Octave
+    for i = 1, 4 do
+      drawDial(i)
+    end
+    gfx.set(table.unpack(colors.headercolor))
+
+    -- Resolution
+    drawDial(5, tracker.newRowPerQn ~= tracker.rowPerQn)
+    
+    -- Instrument (only in sampler mode)
+    if self.tracker_samples == 1 then
+      drawDial(6)
     end
   end
 
