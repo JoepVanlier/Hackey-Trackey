@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.34
+@version 3.35
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -40,11 +40,20 @@
   github page [here](https://github.com/JoepVanlier/Hackey-Trackey/issues). I would
   greatly appreciate it!
 
+  Special thanks go out to rhgg2, craigjoy, jmckernon and r4dian for their code contributions.
+
   Happy trackin' :)
 --]]
 
 --[[
  * Changelog:
+ * v3.35 (2024-08-22)
+  + Corrects the column hint to read instrument rather than velocity in sampler mode (thanks rhgg2!).
+  + Adds a new entry Ins [x] alongside Res/Oct/Adv/etc to indicate current instrument in sampler mode (thanks rhgg2!).
+  + Adds new shortcut keys < and > to change instrument in sampler mode (thanks rhgg2!).
+  + Placing a note where a note already exists will override the existing instrument in sampler mode (thanks rhgg2!).
+  + Fixes tab in sampler mode to actually advance to the next note rather than next field (thanks rhgg2!).
+  + Adds Colemak as a layout for the keyjazz keyboard (thanks rhgg2!).
  * v3.34 (2024-06-16)
   + Small resolution checking fixup.
  * v3.33 (2024-06-16)
@@ -689,7 +698,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.34"
+tracker.name = "Hackey Trackey v3.35"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
