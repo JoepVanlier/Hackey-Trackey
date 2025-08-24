@@ -3534,7 +3534,7 @@ function tracker:customFieldDescription()
         end
         return string.format("Arpeggiate (%s, %s semitones)", to_txt(math.floor(cc_level/16)), to_txt(cc_level % 16))
       elseif cc_value == 11 then
-        return string.format("Retrigger (Vol: %d %%, Count: %d)", math.floor(100 - 100*cc_level/16/8), ((cc_level % 16)))
+        return string.format("Retrigger (Vol: %d %%, Count: %d)", math.floor(100 - 100*math.floor(cc_level/16)/8), ((cc_level % 16)))
       elseif cc_value == 12 then
         return string.format("Sample probability (%d %%)", math.floor(100 * (cc_level / 127)))
       elseif cc_value == 96 then

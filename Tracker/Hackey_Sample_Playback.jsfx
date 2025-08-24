@@ -597,7 +597,7 @@ local(vol_change,
     vol_change = (1.0 - floor(effect_value / 16) / 8);
     count = effect_value % 16;
     dt = floor(samples_per_beat / (count + 1));
-    cv = vol;
+    cv = vol * vol_change;
     loop(count,
       note_schedule_ptr[] = dt; note_schedule_ptr += 1;
       note_schedule_ptr[] = cv; note_schedule_ptr += 1; // Volume
@@ -694,8 +694,8 @@ global(N_SAMPLES, select_by_notes)
 );
 
 function processBacklog()
-instance(note_schedule, note_schedule_ptr, next_backlog)
-local(chan, vol, sample_idx)
+instance(note_schedule, note_schedule_ptr, next_backlog, vol)
+local(sample_idx)
 global()
 (
   // Count down to the next item
