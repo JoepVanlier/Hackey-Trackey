@@ -7763,7 +7763,11 @@ function tracker:checkChange()
 
   -- If we have no take active at the moment, any take is better, so switch even when
   -- follow selection is off.
-  if ( self.cfg.followSelection == 1 or not self.take ) then
+
+  -- If we are both following selection and following song, prefer to
+  -- follow song when playing
+  
+  if ( ( self.cfg.followSelection == 1 and ( self.cfg.followSong == 0 or reaper.GetPlayState() == 0 )) or not self.take ) then
     tracker:grabActiveItem()
     if ( tracker.cfg.loopFollow == 1 ) then
       tracker:setLoopToPattern()
@@ -11627,7 +11631,7 @@ function tracker:grabActiveItem()
       if ( item ) then
         local take = reaper.GetActiveTake(item)
         if take then
-          if ( reaper.TakeIsMIDI( take ) == true ) then
+          if ( reaper.TakeIsMIDI( take ) == true and item ~= tracker.item ) then
             tracker:setItem( item )
             tracker:setTake( take )
             return 1
