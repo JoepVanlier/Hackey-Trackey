@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.35
+@version 3.36
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -47,6 +47,11 @@
 
 --[[
  * Changelog:
+ * v3.36 (2024-09-02)
+  + Adds a configuration option to the tracker to use the octave column as a separate column analogously to buzz (thanks rhgg2!).
+  + Fixed volume change for the sampler retrigger command (thanks rhgg2!).
+  + Fixed percentage readout in the status line for the retrigger effect (thanks rhgg2!).
+  + Fixed a bug in retrigger to ensure that the first retrigger during a volume change already has a volume scaling applied (thanks rhgg2!).
  * v3.35 (2024-08-22)
   + Corrects the column hint to read instrument rather than velocity in sampler mode (thanks rhgg2!).
   + Adds a new entry Ins [x] alongside Res/Oct/Adv/etc to indicate current instrument in sampler mode (thanks rhgg2!).
@@ -698,7 +703,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.35"
+tracker.name = "Hackey Trackey v3.36"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
@@ -2194,6 +2199,7 @@ local function setKeyboard( choice )
     keys.pitches['0'] = 51-c
     keys.pitches['='] = 54-c
     
+    keys.octaves = {}
     keys.pitches[2] = 37-c
     keys.pitches[3] = 39-c
     keys.pitches[5] = 42-c
