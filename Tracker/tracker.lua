@@ -931,6 +931,7 @@ tracker.cfg.useCachedRendering = 1
 tracker.cfg.showAvgFrameTime = 0
 tracker.cfg.buzzNoteCols = 0
 tracker.cfg.wrapAtBottom = 0
+tracker.cfg.playWillStop = 1
 tracker.cfg.visualSpace = 0
 tracker.cfg.barPageUp = 0
 
@@ -991,6 +992,7 @@ tracker.binaryOptions = {
     { 'wrapAroundSeeking', 'Wrap around when seeking items' },
     { 'buzzNoteCols', 'Buzz-style note columns' },
     { 'wrapAtBottom', 'Wrap cursor on advancing past pattern end' },
+    { 'playWillStop', 'Does \"play\" toggle playback state?' },
     { 'visualSpace', 'Visual space between columns' },
     { 'barPageUp', 'Page up/dn moves a bar' },
     }
@@ -10215,23 +10217,29 @@ function tracker:processKeyboardInput()
       local loc = reaper.AddProjectMarker(0, 0, mpos + self:toSeconds(0), 0, "", -1)
       reaper.GoToMarker(0, loc, 0)
       reaper.DeleteProjectMarker(0, loc, 0)
-      togglePlayPause()
-    elseif inputs('playfrom') and self.take then
-      if ( isPlaying() > 0 ) then
-        -- Determine where we stopped relative to the current media object
-        local playpos = reaper.GetPlayPosition()
-        local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
-        local mlen = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
-        if ( playpos > mpos and playpos < (mpos+mlen) ) then
-          self.ypos = math.floor( (playpos-mpos) / mlen * self.rows ) + 1
-        end
+      if (self.cfg.playWillStop == 1 or isPlaying() == 0) then 
+        togglePlayPause()
       end
-  
-      local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
-      local loc = reaper.AddProjectMarker(0, 0, mpos + self:toSeconds(self.ypos-1), 0, "", -1)
-      reaper.GoToMarker(0, loc, 0)
-      reaper.DeleteProjectMarker(0, loc, 0)
-      togglePlayPause()
+    elseif inputs('playfrom') and self.take then
+      if (self.cfg.playWillStop == 1 or isPlaying() == 0) then 
+        if ( isPlaying() > 0 ) then
+          -- Determine where we stopped relative to the current media object
+          local playpos = reaper.GetPlayPosition()
+          local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+          local mlen = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
+          if ( playpos > mpos and playpos < (mpos+mlen) ) then
+            self.ypos = math.floor( (playpos-mpos) / mlen * self.rows ) + 1
+          end
+        end
+        
+        local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+
+        
+        local loc = reaper.AddProjectMarker(0, 0, mpos + self:toSeconds(self.ypos-1), 0, "", -1)
+        reaper.GoToMarker(0, loc, 0)
+        reaper.DeleteProjectMarker(0, loc, 0)
+        togglePlayPause()
+      end
     elseif inputs('insert') and self.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Insert")
