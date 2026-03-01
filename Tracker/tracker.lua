@@ -6859,7 +6859,7 @@ function tracker:insertCCPt( row, modtype )
   for i=ccevtcntOut,0,-1 do
     local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
     msg2, msg3 = encodeProgramChange( chanmsg, msg2, msg3 )
-    if ( ppqpos >= ppqStart ) then
+    if ( ppqpos >= ppqStart and (chanmsg == 192 or chanmsg == 176) ) then
       local moveIt = true
       msg2 = msg2 + chan * self.CCjump
       if ( modtype and ( modtype ~= msg2 ) ) then
@@ -6886,7 +6886,7 @@ function tracker:backspaceCCPt( row, modtype )
     local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
     msg2, msg3 = encodeProgramChange( chanmsg, msg2, msg3 )
     msg2 = msg2 + chan * self.CCjump
-    if ( ppqpos >= ppqStart ) then
+    if ( ppqpos >= ppqStart and (chanmsg == 192 or chanmsg == 176) ) then
       local moveIt = true
       if ( modtype and ( modtype ~= msg2 ) ) then
         moveIt = false
@@ -6910,7 +6910,7 @@ function tracker:deleteCC_range(rowstart, rowend, modtype)
     local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
     msg2, msg3 = encodeProgramChange( chanmsg, msg2, msg3 )
     msg2 = msg2 + chan * self.CCjump
-    if ( ppqpos >= ppqStart and ppqpos < ppqEnd ) then
+    if ( ppqpos >= ppqStart and ppqpos < ppqEnd and (chanmsg == 192 or chanmsg == 176)) then
       local deleteIt = true
 
       if ( modtype ) then
@@ -6962,7 +6962,7 @@ function tracker:getCC( row, modtype )
     if ( ch ) then
       msg2 = msg2 + chan*self.CCjump
     end
-    if ( ppqpos >= ppqStart and ppqpos < ppqEnd ) then
+    if ( ppqpos >= ppqStart and ppqpos < ppqEnd and (chanmsg == 192 or chanmsg == 176) ) then
       local fetchIt = true
       if ( isPC ~= ( chanmsg == 192 ) ) then
         fetchIt = false
@@ -7529,8 +7529,9 @@ function tracker:update()
           for i=0,ccevtcntOut do
             local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
             msg2, msg3 = encodeProgramChange( chanmsg, msg2, msg3 )
-
-            all[msg2 + (chan)*skip] = 1
+            if (chanmsg == 192 or chanmsg == 176) then
+              all[msg2 + (chan)*skip] = 1
+            end
           end
           
           -- Preassign the CCs we need for the sampler for convenience
@@ -7555,7 +7556,9 @@ function tracker:update()
             for i=0,ccevtcntOut do
               local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
               msg2, msg3 = encodeProgramChange( chanmsg, msg2, msg3 )
-              self:assignCC2( ppqpos, msg2 + (chan)*skip, msg3 )
+              if (chanmsg == 192 or chanmsg == 176) then
+                self:assignCC2( ppqpos, msg2 + (chan)*skip, msg3 )
+              end
             end
             self:storeOpenCC()
           else
@@ -7566,7 +7569,7 @@ function tracker:update()
           for i=0,ccevtcntOut do
             local retval, selected, muted, ppqpos, chanmsg, chan, msg2, msg3 = reaper.MIDI_GetCC(self.take, i)
             --msg2, msg3 = encodeProgramChange( chanmsg, msg2, msg3 )
-            if ( chanmsg ~= 192 and chan == 0 ) then
+            if ( chanmsg == 176 and chan == 0 ) then
               self:assignCC( ppqpos, msg2, msg3 )
             end
           end
