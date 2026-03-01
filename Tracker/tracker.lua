@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.36
+@version 3.37
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -47,6 +47,9 @@
 
 --[[
  * Changelog:
+ * v3.37 (2026-03-02)
+  + Fixed aftertouch or pitch bend messages being misinterpreted as CC messages (thanks rhgg2!).
+  + Fixed "Follow selection" and "Follow song" fighting eachother when both are both turned on. If both are enabled prefer to follow song when playing (thanks rhgg2!).
  * v3.36 (2024-09-02)
   + Adds a configuration option to the tracker to use the octave column as a separate column analogously to buzz (thanks rhgg2!).
   + Fixed volume change for the sampler retrigger command (thanks rhgg2!).
