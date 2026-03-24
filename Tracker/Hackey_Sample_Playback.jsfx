@@ -226,9 +226,9 @@ chan14.stop_sample(14);
 chan15.stop_sample(15);
 chan16.stop_sample(16);
 
-function start_playback(buffer_loc, playspeed, offset)
+function start_playback(buffer_loc, playspeed, offset, vol, lpan, rpan)
 instance(start_ptr, x_fade_position, playing, fade_start, position, speed,
-         loop_start, loop_stop, loop_type, stop_position)
+         loop_start, loop_stop, loop_type, stop_position, cleft, cright)
 global(crossfade_samples, SAMPLE_HEADER)
 local(len)
 (
@@ -244,6 +244,8 @@ local(len)
   x_fade_position = crossfade_samples;
   position = offset;
   playing = 1;
+  cleft = lpan * vol;
+  cright = rpan * vol;
   speed = playspeed;
 );
 
@@ -420,6 +422,7 @@ instance(current_playback, sample_location, speed, offset,
          last_arp_1, last_arp_2,
          last_vib_speed, last_vib_depth,
          vol, chan,
+         lpan, rpan,
          pitch, sample_idx,
          note_schedule, note_schedule_ptr, next_backlog,
          playing)
@@ -458,12 +461,12 @@ local(vol_change,
     sample_location[1] > 90 ? (
       (current_playback == 1) ? (
         (!blocked_samples[sample_idx] || (chan == 17)) ? (
-          this.play0.start_playback(sample_location, speed, 0.5 * offset * sample_location[]);
+          this.play0.start_playback(sample_location, speed, 0.5 * offset * sample_location[], vol, lpan, rpan);
         );
         this.play1.stop_playback();
       ) : (
         (!blocked_samples[sample_idx] || (chan == 17)) ? (
-          this.play1.start_playback(sample_location, speed, 0.5 * offset * sample_location[]);
+          this.play1.start_playback(sample_location, speed, 0.5 * offset * sample_location[], vol, lpan, rpan);
         );
         this.play0.stop_playback();
       );
@@ -721,23 +724,25 @@ global()
 );
 
 function play_channel()
-instance(vol, cleft, cright, lpan, rpan, next_backlog)
+instance(vol, lpan, rpan, next_backlog)
 global(ssl, ssr)
 (
   next_backlog > 0 ? ( this.processBacklog() );
 
-  cleft = 0.998 * cleft + 0.002 * lpan * vol;
-  cright = 0.998 * cright + 0.002 * rpan * vol;
-  
+  this.play0.cleft = 0.998 * this.play0.cleft + 0.002 * lpan * vol;
+  this.play0.cright = 0.998 * this.play0.cright + 0.002 * rpan * vol;
+  this.play1.cleft = 0.998 * this.play1.cleft + 0.002 * lpan * vol;
+  this.play1.cright = 0.998 * this.play1.cright + 0.002 * rpan * vol;
+
   this.play0.playing ? (
     this.play0.play();
-    ssl += this.play0.outL * cleft;
-    ssr += this.play0.outR * cright;
+    ssl += this.play0.outL * this.play0.cleft;
+    ssr += this.play0.outR * this.play0.cright;
   );
   this.play1.playing ? (
     this.play1.play();
-    ssl += this.play1.outL * cleft;
-    ssr += this.play1.outR * cright;
+    ssl += this.play1.outL * this.play1.cleft;
+    ssr += this.play1.outR * this.play1.cright;
   );
 );
 
