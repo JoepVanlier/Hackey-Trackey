@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.37
+@version 3.38
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -47,6 +47,13 @@
 
 --[[
  * Changelog:
+ * v3.38 (2026-03-29)
+  + Bind shift-left click the same as right-click (thanks rhgg2!).
+  + Highlight bars as well as beats (thanks rhgg2!).
+  + Added option for "play" to only play, not stop (thanks rhgg2!).
+  + Added option to prevent cursor wrapping at pattern bottom (thanks rhgg2!).
+  + Added option for page up/down to advance by bars  (thanks rhgg2!).
+  + Add option for visual space between columns (thanks rhgg2!).
  * v3.37 (2026-03-02)
   + Fixed aftertouch or pitch bend messages being misinterpreted as CC messages (thanks rhgg2!).
   + Fixed "Follow selection" and "Follow song" fighting eachother when both are both turned on. If both are enabled prefer to follow song when playing (thanks rhgg2!).
@@ -839,6 +846,7 @@ tracker.xint = 0
 tracker.page = 4
 tracker.lastEnv = 1
 tracker.rowPerQn = 4 -- The default
+tracker.qnPerBar = 4 -- The default
 tracker.newRowPerQn = 4
 tracker.maxRowPerQn = 16
 
@@ -929,6 +937,10 @@ tracker.cfg.channelOffset = 1
 tracker.cfg.useCachedRendering = 1
 tracker.cfg.showAvgFrameTime = 0
 tracker.cfg.buzzNoteCols = 0
+tracker.cfg.wrapAtBottom = 0
+tracker.cfg.playWillStop = 1
+tracker.cfg.visualSpace = 0
+tracker.cfg.barPageUp = 0
 
 tracker.tracker_samples = 0
 tracker.cfg.fixedIndicator = 0
@@ -986,6 +998,10 @@ tracker.binaryOptions = {
     { 'noloopGlue', 'Force item to not loop when resizing' },
     { 'wrapAroundSeeking', 'Wrap around when seeking items' },
     { 'buzzNoteCols', 'Buzz-style note columns' },
+    { 'wrapAtBottom', 'Wrap cursor on advancing past pattern end' },
+    { 'playWillStop', 'Does \"play\" toggle playback state?' },
+    { 'visualSpace', 'Visual space between columns' },
+    { 'barPageUp', 'Page up/dn moves a bar' },
     }
 
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "renoiseC", "buzz2", "sink", "TonE"}
@@ -1527,6 +1543,16 @@ function tracker:loadKeys( keySet )
   keys.shiftFullRight = { 1,    1,  0,    500000000000000000000000.0 }
   keys.fullLeft       = { 1,    1,  0,    500000000000000000000000.0 }
   keys.fullRight      = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.advance0       = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.advance1       = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.advance2       = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.advance3       = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.advance4       = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.advance5       = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.advance6       = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.advance7       = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.advance8       = { 1,    1,  0,    500000000000000000000000.0 }
+  keys.advance9       = { 1,    1,  0,    500000000000000000000000.0 }
   
   if keyset == "default" then
     --                    CTRL    ALT SHIFT Keycode
@@ -2569,6 +2595,9 @@ function tracker:linkCC_channel(modmode, ch, data, master, datafield, idx, colsi
     -- Display with CC commands separated per column
     local allmodtypes = data.modtypes
     if ( not allmodtypes ) then
+      if (tracker.cfg.visualSpace == 1) then
+        padsizes[#padsizes] = 2
+      end
       return
     end
 
@@ -2639,6 +2668,9 @@ function tracker:linkCC_channel(modmode, ch, data, master, datafield, idx, colsi
         end
       end
     end
+    if (tracker.cfg.visualSpace == 1) then
+      padsizes[#padsizes] = 2
+    end
   end
 end
 
@@ -2682,7 +2714,11 @@ function tracker:linkData()
       datafield[#datafield+1] = 'fx2'
       idx[#idx+1]             = j
       colsizes[#colsizes+1]   = 1
-      padsizes[#padsizes+1]   = 2
+      if (tracker.cfg.visualSpace == 1) then
+        padsizes[#padsizes+1] = (j == #fx.names and 2 or 1)
+      else
+        padsizes[#padsizes+1] = 2
+      end
       grouplink[#grouplink+1] = {-1}
       headers[#headers+1]     = ''
       headerW[#headerW+1]     = 0
@@ -2694,7 +2730,7 @@ function tracker:linkData()
   datafield[#datafield+1] = 'legato'
   idx[#idx+1]             = 0
   colsizes[#colsizes+1]   = 1
-  padsizes[#padsizes+1]   = 1
+  padsizes[#padsizes+1]   = tracker.cfg.visualspace == 1 and 2 or 1
   grouplink[#grouplink+1] = {0}
   headers[#headers+1]     = string.format( 'L' )
   headerW[#headerW+1]     = 1
@@ -2792,7 +2828,7 @@ function tracker:linkData()
       headerW[#headerW+1]     = 0
       hints[#hints+1]         = string.format('Velocity channel %2d', j + channelOffset)
     else
-      padsizes[#padsizes] = 2
+      padsizes[#padsizes] = 2 - math.max(self.cfg.channelCCs, self.tracker_samples)
     end
 
     if ( math.max(self.cfg.channelCCs, self.tracker_samples) == 1 ) then
@@ -2925,6 +2961,7 @@ function tracker:updatePlotLink()
   local xloc = {}
   local xwidth = {}
   local xlink = {}
+  local xspace = {}
   local dlink = {}
   local glink = {}
   local header = {}
@@ -2944,6 +2981,12 @@ function tracker:updatePlotLink()
     description[#hints + 1] = hints[j]
     x = x + colsizes[j] * dx + padsizes[j] * dx
     q = j
+    if (padsizes[j] > 1) and (self.cfg.visualSpace == 1) then
+      x = x - dx
+      xspace[#xspace + 1] = x - (padsizes[j] * dx / 2)
+    else
+      xspace[#xspace + 1] = 0
+    end
 
     if ( (x-2*grid.itempadx) > (fov.abswidth-1.5*originx) ) then
       break
@@ -2959,6 +3002,7 @@ function tracker:updatePlotLink()
   -- Variable xlink indicates the index that is being displayed
   plotData.dlink = dlink
   plotData.xlink = xlink
+  plotData.xspace = xspace
   plotData.glink = glink
   plotData.headers = header
   plotData.headerW = headerWidths
@@ -3583,18 +3627,18 @@ function tracker:customFieldDescription()
   end
 end
 
-function drawPattern(colors, data, scrolly, rows, sig, zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, indicatorShiftX, dlink, xlink, dx, dy, ellipsis)
+function drawPattern(colors, data, scrolly, rows, sig, qnPerBar, zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, indicatorShiftX, dlink, xlink, xspace, dx, dy, ellipsis)
   local gfx = gfx
-  local c1, c2, tx, fc
+  local c1, c2, tx, fc, bg
   for y=1,#yloc do
     local absy = y + scrolly
     if ( absy > 0 and absy <= rows ) then
-      if ( (((absy-1)/sig) - math.floor((absy-1)/sig)) == 0 ) then
+      if ( (((absy-1)/(qnPerBar*sig)) - math.floor((absy-1)/(qnPerBar*sig))) == 0 ) then
         c1 = colors.linecolor5
         c2 = colors.linecolor5s
         tx = colors.textcolorbar or colors.textcolor
         fc = colors.bar
-      elseif ( (((absy-1)/(.25*sig)) - math.floor((absy-1)/(.25*sig))) == 0 ) then
+      elseif ( (((absy-1)/sig) - math.floor((absy-1)/sig)) == 0 ) then
         c1 = colors.linecolor2
         c2 = colors.linecolor2s
         tx = colors.textcolor
@@ -3605,6 +3649,7 @@ function drawPattern(colors, data, scrolly, rows, sig, zeroindexed, xloc, yloc, 
         tx = colors.textcolor
         fc = colors.normal
       end
+      bg = colors.windowbackground
 
       gfx.y = yloc[y] + extraFontShift
       gfx.x = xloc[1] - indicatorShiftX
@@ -3629,6 +3674,11 @@ function drawPattern(colors, data, scrolly, rows, sig, zeroindexed, xloc, yloc, 
 
         local cdata = data[thisfield][rows*xlink[x]+absy-1]
         writeField( cdata, ellipsis, xloc[x], yloc[y], dx, dy, extraFontShift )
+
+        if xspace[x] ~= 0 then
+          gfx.set(table.unpack(bg))
+          gfx.rect(xspace[x], yloc[y] - yshift, dx, yheight[1] + itempady)
+        end
       end
     end
   end
@@ -3659,6 +3709,7 @@ function tracker:renderGUI()
 
   local dlink         = plotData.dlink
   local xlink         = plotData.xlink
+  local xspace        = plotData.xspace
   local glink         = plotData.glink
   local description   = plotData.description
   local headers       = plotData.headers
@@ -3692,6 +3743,7 @@ function tracker:renderGUI()
   -- Render in relative FOV coordinates
   local data  = self.data
   local sig   = self.rowPerQn
+  local qnPerBar = self.qnPerBar
   if ( self.cfg.rowOverride > 0  ) then
     sig = self.cfg.rowOverride
   end
@@ -3705,14 +3757,14 @@ function tracker:renderGUI()
         gfx.setimgdim(2, gfx.w, gfx.h)
         gfx.set(table.unpack(colors. windowbackground))
         gfx.rect(0, 0, gfx.w, gfx.h)
-        drawPattern(colors, data, scrolly, rows, sig, self.zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, plotData.indicatorShiftX, dlink, xlink, dx, dy, ellipsis)
+        drawPattern(colors, data, scrolly, rows, sig, qnPerBar, self.zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, plotData.indicatorShiftX, dlink, xlink, xspace, dx, dy, ellipsis)
       end
       gfx.dest = -1
       gfx.x = 0
       gfx.y = 0
       gfx.blit(2, 1, 0)
     else
-      drawPattern(colors, data, scrolly, rows, sig, self.zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, plotData.indicatorShiftX, dlink, xlink, dx, dy, ellipsis)
+      drawPattern(colors, data, scrolly, rows, sig, qnPerBar, self.zeroindexed, xloc, yloc, yheight, yshift, itempadx, itempady, tw, extraFontShift, plotData.indicatorShiftX, dlink, xlink, xspace, dx, dy, ellipsis)
     end
   
     -- Selector
@@ -4650,7 +4702,11 @@ function tracker:advanceCursor()
   else
     self.ypos = self.ypos + self.advance
     if self.ypos > self.rows then
-      self.ypos = self.ypos - self.rows
+      if ( self.cfg.wrapAtBottom == 1 ) then 
+        self.ypos = self.ypos - self.rows
+      else
+        self.ypos = self.rows
+      end
     end
   end
 end
@@ -6019,6 +6075,18 @@ function tracker:getResolution( reso )
   end
 
   return tracker.cfg.rowPerQn
+end
+
+function tracker:getQnPerBar()
+ -- Determine Qn per Bar for this MIDI item
+  if not self.item then
+    return self.cfg.qnPerBar
+  end
+ 
+  local position = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+  
+  local num, denom, _ = reaper.TimeMap_GetTimeSigAtTime(0, position)
+  return (4 * num / denom)
 end
 
 function tracker:getSettings( )
@@ -7733,6 +7801,7 @@ function tracker:setTake( take )
         self.hash = reaper.MIDI_GetHash( self.take, false, "?" )
         self.newRowPerQn = self:getResolution()
         self.outChannel = self:getOutChannel()
+        self.qnPerBar = self:getQnPerBar()
         self:update()
   
         if ( self.cfg.alwaysRecord == 1 ) then
@@ -9771,6 +9840,14 @@ function tracker:seek_until_different_leading_col(xp, dir)
   return xp
 end
 
+function tracker:pageJumpSize()
+  if self.cfg.barPageUp == 1 then
+    return self.rowPerQn * self.qnPerBar
+  else
+    return self.cfg.page
+  end
+end
+
 function tracker:insert_hori()
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
   
@@ -9927,12 +10004,12 @@ function tracker:processKeyboardInput()
       self:dragBlock()
     elseif inputs('shiftpgdn') and self.take then
       self:dragBlock()
-      self.ypos = self.ypos + self.cfg.page
+      self.ypos = self.ypos + self:pageJumpSize()
       self:forceCursorInRange()
       self:dragBlock()
     elseif inputs('shiftpgup') and self.take then
       self:dragBlock()
-      self.ypos = self.ypos - self.cfg.page
+      self.ypos = self.ypos - self:pageJumpSize()
       self:forceCursorInRange()
       self:dragBlock()
     elseif inputs('shiftFullLeft') and self.take then
@@ -10147,23 +10224,29 @@ function tracker:processKeyboardInput()
       local loc = reaper.AddProjectMarker(0, 0, mpos + self:toSeconds(0), 0, "", -1)
       reaper.GoToMarker(0, loc, 0)
       reaper.DeleteProjectMarker(0, loc, 0)
-      togglePlayPause()
-    elseif inputs('playfrom') and self.take then
-      if ( isPlaying() > 0 ) then
-        -- Determine where we stopped relative to the current media object
-        local playpos = reaper.GetPlayPosition()
-        local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
-        local mlen = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
-        if ( playpos > mpos and playpos < (mpos+mlen) ) then
-          self.ypos = math.floor( (playpos-mpos) / mlen * self.rows ) + 1
-        end
+      if (self.cfg.playWillStop == 1 or isPlaying() == 0) then 
+        togglePlayPause()
       end
-  
-      local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
-      local loc = reaper.AddProjectMarker(0, 0, mpos + self:toSeconds(self.ypos-1), 0, "", -1)
-      reaper.GoToMarker(0, loc, 0)
-      reaper.DeleteProjectMarker(0, loc, 0)
-      togglePlayPause()
+    elseif inputs('playfrom') and self.take then
+      if (self.cfg.playWillStop == 1 or isPlaying() == 0) then 
+        if ( isPlaying() > 0 ) then
+          -- Determine where we stopped relative to the current media object
+          local playpos = reaper.GetPlayPosition()
+          local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+          local mlen = reaper.GetMediaItemInfo_Value(self.item, "D_LENGTH")
+          if ( playpos > mpos and playpos < (mpos+mlen) ) then
+            self.ypos = math.floor( (playpos-mpos) / mlen * self.rows ) + 1
+          end
+        end
+        
+        local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
+
+        
+        local loc = reaper.AddProjectMarker(0, 0, mpos + self:toSeconds(self.ypos-1), 0, "", -1)
+        reaper.GoToMarker(0, loc, 0)
+        reaper.DeleteProjectMarker(0, loc, 0)
+        togglePlayPause()
+      end
     elseif inputs('insert') and self.take then
       modified = 1
       reaper.Undo_OnStateChange2(0, "Tracker: Insert")
@@ -10179,9 +10262,9 @@ function tracker:processKeyboardInput()
       self:deleteNow()
       reaper.MIDI_Sort(self.take)
     elseif inputs('pgup') and self.take then
-      self.ypos = self.ypos - self.cfg.page
+      self.ypos = self.ypos - self:pageJumpSize()
     elseif inputs('pgdown') and self.take then
-      self.ypos = self.ypos + self.cfg.page
+      self.ypos = self.ypos + self:pageJumpSize()
     elseif inputs('undo') and self.take then
       modified = 1
       reaper.Undo_DoUndo2(0)
@@ -10389,6 +10472,46 @@ function tracker:processKeyboardInput()
       self:saveConfig(self.configFile, self.cfg)
     elseif inputs('advancedown') and self.take then
       self.advance = math.max(self.advance - 1, 0)
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advance0') and self.take then
+      self.advance = 0
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advance1') and self.take then
+      self.advance = 1
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advance2') and self.take then
+      self.advance = 2
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advance3') and self.take then
+      self.advance = 3
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advance4') and self.take then
+      self.advance = 4
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advance5') and self.take then
+      self.advance = 5
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advance6') and self.take then
+      self.advance = 6
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advance7') and self.take then
+      self.advance = 7
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advance8') and self.take then
+      self.advance = 8
+      self:storeSettings()
+      self:saveConfig(self.configFile, self.cfg)
+    elseif inputs('advance9') and self.take then
+      self.advance = 9
       self:storeSettings()
       self:saveConfig(self.configFile, self.cfg)
     elseif inputs('advanceDouble') and self.take then
@@ -10792,6 +10915,13 @@ local function updateLoop()
       tracker.cfg.lastVelSample = getCapValue( 0.05 )
     end
   end
+  if ( left == 1 and tracker.lastleft == 0 and (gfx.mouse_cap & 8) > 0 ) then
+    local Inew, Jnew, outsidePattern = tracker:mouseToPatternCoord()
+    if ( Inew and Jnew and outsidePattern == 0 ) then
+      -- Move the cursor pos on initial click
+      tracker:dragBlock(Inew, Jnew)
+    end
+  end
   tracker:infoString()
   if ( left == 0 ) then
     if ( mouse_cap > 0 ) then
@@ -11078,7 +11208,7 @@ local function updateLoop()
     local Inew, Jnew, outsidePattern = tracker:mouseToPatternCoord(mouse_cap == 6)
     if ( Inew and Jnew ) then
       -- Move the cursor pos on initial click
-      if ( tracker.lastleft == 0 and outsidePattern == 0 ) then
+      if ( tracker.lastleft == 0 and outsidePattern == 0 and gfx.mouse_cap & 8 == 0) then
         setCapMode(CaptureModes.SELECT_BLOCK)
         tracker:resetShiftSelect()
         tracker.xpos = Inew
@@ -11814,6 +11944,16 @@ local function Main()
     keys.shiftFullRight = { 1,    0,  1,    500000000000000000000000.0 }
     keys.fullLeft       = { 1,    1,  0,    500000000000000000000000.0 }
     keys.fullRight      = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.advance0       = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.advance1       = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.advance2       = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.advance3       = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.advance4       = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.advance5       = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.advance6       = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.advance7       = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.advance8       = { 1,    1,  0,    500000000000000000000000.0 }
+    keys.advance9       = { 1,    1,  0,    500000000000000000000000.0 }
 
     help = {
       { 'Shift + Note', 'Advance column after entry' },
