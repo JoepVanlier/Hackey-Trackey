@@ -933,6 +933,7 @@ tracker.cfg.buzzNoteCols = 0
 tracker.cfg.wrapAtBottom = 0
 tracker.cfg.playWillStop = 1
 tracker.cfg.visualSpace = 0
+tracker.cfg.barPageUp = 0
 
 tracker.tracker_samples = 0
 tracker.cfg.fixedIndicator = 0
@@ -993,6 +994,7 @@ tracker.binaryOptions = {
     { 'wrapAtBottom', 'Wrap cursor on advancing past pattern end' },
     { 'playWillStop', 'Does \"play\" toggle playback state?' },
     { 'visualSpace', 'Visual space between columns' },
+    { 'barPageUp', 'Page up/dn moves a bar' },
     }
 
 tracker.colorschemes = {"default", "buzz", "it", "hacker", "renoise", "renoiseB", "renoiseC", "buzz2", "sink", "TonE"}
@@ -9831,6 +9833,14 @@ function tracker:seek_until_different_leading_col(xp, dir)
   return xp
 end
 
+function tracker:pageJumpSize()
+  if self.cfg.barPageUp == 1 then
+    return self.rowPerQn * self.qnPerBar
+  else
+    return self.cfg.page
+  end
+end
+
 function tracker:insert_hori()
   local datafields, padsizes, colsizes, idxfields, headers, grouplink = tracker:grabLinkage()
   
@@ -9987,12 +9997,12 @@ function tracker:processKeyboardInput()
       self:dragBlock()
     elseif inputs('shiftpgdn') and self.take then
       self:dragBlock()
-      self.ypos = self.ypos + self.cfg.page
+      self.ypos = self.ypos + self:pageJumpSize()
       self:forceCursorInRange()
       self:dragBlock()
     elseif inputs('shiftpgup') and self.take then
       self:dragBlock()
-      self.ypos = self.ypos - self.cfg.page
+      self.ypos = self.ypos - self:pageJumpSize()
       self:forceCursorInRange()
       self:dragBlock()
     elseif inputs('shiftFullLeft') and self.take then
@@ -10244,9 +10254,9 @@ function tracker:processKeyboardInput()
       self:deleteNow()
       reaper.MIDI_Sort(self.take)
     elseif inputs('pgup') and self.take then
-      self.ypos = self.ypos - self.rowPerQn * self.qnPerBar
+      self.ypos = self.ypos - self:pageJumpSize()
     elseif inputs('pgdown') and self.take then
-      self.ypos = self.ypos + self.rowPerQn * self.qnPerBar
+      self.ypos = self.ypos + self:pageJumpSize()
     elseif inputs('undo') and self.take then
       modified = 1
       reaper.Undo_DoUndo2(0)
