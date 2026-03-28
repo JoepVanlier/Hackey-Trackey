@@ -2586,7 +2586,9 @@ function tracker:linkCC_channel(modmode, ch, data, master, datafield, idx, colsi
     -- Display with CC commands separated per column
     local allmodtypes = data.modtypes
     if ( not allmodtypes ) then
-      padsizes[#padsizes] = 2
+      if (tracker.cfg.visualSpace == 1) then
+        padsizes[#padsizes] = 2
+      end
       return
     end
 
@@ -2657,7 +2659,9 @@ function tracker:linkCC_channel(modmode, ch, data, master, datafield, idx, colsi
         end
       end
     end
-    padsizes[#padsizes] = 2
+    if (tracker.cfg.visualSpace == 1) then
+      padsizes[#padsizes] = 2
+    end
   end
 end
 
@@ -2701,7 +2705,11 @@ function tracker:linkData()
       datafield[#datafield+1] = 'fx2'
       idx[#idx+1]             = j
       colsizes[#colsizes+1]   = 1
-      padsizes[#padsizes+1]   = (j == #fx.names and 2 or 1)
+      if (tracker.cfg.visualSpace == 1) then
+        padsizes[#padsizes+1] = (j == #fx.names and 2 or 1)
+      else
+        padsizes[#padsizes+1] = 2
+      end
       grouplink[#grouplink+1] = {-1}
       headers[#headers+1]     = ''
       headerW[#headerW+1]     = 0
@@ -2713,7 +2721,7 @@ function tracker:linkData()
   datafield[#datafield+1] = 'legato'
   idx[#idx+1]             = 0
   colsizes[#colsizes+1]   = 1
-  padsizes[#padsizes+1]   = 2
+  padsizes[#padsizes+1]   = tracker.cfg.visualspace == 1 and 2 or 1
   grouplink[#grouplink+1] = {0}
   headers[#headers+1]     = string.format( 'L' )
   headerW[#headerW+1]     = 1
