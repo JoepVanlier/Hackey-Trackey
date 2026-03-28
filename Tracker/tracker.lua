@@ -10235,7 +10235,8 @@ function tracker:processKeyboardInput()
         local mpos = reaper.GetMediaItemInfo_Value(self.item, "D_POSITION")
 
         
-        local loc = reaper.AddProjectMarker(0, 0, mpos + self:toSeconds(self.ypos-1), 0, "", -1)reaper.GoToMarker(0, loc, 0)
+        local loc = reaper.AddProjectMarker(0, 0, mpos + self:toSeconds(self.ypos-1), 0, "", -1)
+        reaper.GoToMarker(0, loc, 0)
         reaper.DeleteProjectMarker(0, loc, 0)
         togglePlayPause()
       end
