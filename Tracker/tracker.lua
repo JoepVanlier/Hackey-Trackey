@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.37
+@version 3.38
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -47,6 +47,13 @@
 
 --[[
  * Changelog:
+ * v3.38 (2026-03-29)
+  + Bind shift-left click the same as right-click (thanks rhgg2!).
+  + Highlight bars as well as beats (thanks rhgg2!).
+  + Added option for "play" to only play, not stop (thanks rhgg2!).
+  + Added option to prevent cursor wrapping at pattern bottom (thanks rhgg2!).
+  + Added option for page up/down to advance by bars  (thanks rhgg2!).
+  + Add option for visual space between columns (thanks rhgg2!).
  * v3.37 (2026-03-02)
   + Fixed aftertouch or pitch bend messages being misinterpreted as CC messages (thanks rhgg2!).
   + Fixed "Follow selection" and "Follow song" fighting eachother when both are both turned on. If both are enabled prefer to follow song when playing (thanks rhgg2!).
