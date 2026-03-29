@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.38
+@version 3.39
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -47,6 +47,9 @@
 
 --[[
  * Changelog:
+ * v3.39 (2026-03-30)
+  + Sampler: Fixed issue where when notes are played in the sampler, they immediately start at the correct velocity and pan, skipping the 15ms ramp. Changes of volume during playback are still ramped (thanks rhgg2!).
+  + Sampler: Fixed issue where the play position didn't correctly take into account the zoom state for the waveform preview.
  * v3.38 (2026-03-29)
   + Bind shift-left click the same as right-click (thanks rhgg2!).
   + Highlight bars as well as beats (thanks rhgg2!).
@@ -713,7 +716,7 @@
 -- gfx = dofile(reaper.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/gfx2imgui.lua')
 
 tracker = {}
-tracker.name = "Hackey Trackey v3.36"
+tracker.name = "Hackey Trackey v3.39"
 
 tracker.configFile = "_hackey_trackey_options_.cfg"
 tracker.keyFile = "userkeys.lua"
