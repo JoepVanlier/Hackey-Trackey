@@ -14,7 +14,7 @@
 @links
   https://github.com/joepvanlier/Hackey-Trackey
 @license MIT
-@version 3.39
+@version 3.40
 @screenshot https://i.imgur.com/c68YjMd.png
 @about
   ### Hackey-Trackey
@@ -47,6 +47,8 @@
 
 --[[
  * Changelog:
+ * v3.40 (2026-10-16)
+  + Hackey Trackey: Fixed issue with FX scaling not being applied
  * v3.39 (2026-03-30)
   + Sampler: Fixed issue where when notes are played in the sampler, they immediately start at the correct velocity and pan, skipping the 15ms ramp. Changes of volume during playback are still ramped (thanks rhgg2!).
   + Sampler: Fixed issue where the play position didn't correctly take into account the zoom state for the waveform preview.
@@ -7099,6 +7101,18 @@ function tracker:addCCPt_channel(row, modtype, value)
   end
 end
 
+function normalize_env_point(env, rawValue)
+  local track, fxidx, paramidx = reaper.Envelope_GetParentTrack(env)
+  local _, minval, maxval = reaper.TrackFX_GetParamEx(track, fxidx, paramidx)
+  return (rawValue - minval) / (maxval - minval)
+end
+
+function scale_env_point(env, normalized_value)
+  local track, fxidx, paramidx = reaper.Envelope_GetParentTrack(env)
+  local _, minval, maxval = reaper.TrackFX_GetParamEx(track, fxidx, paramidx)
+  return normalized_value * (maxval - minval) + minval
+end
+
 -------------------
 -- Add envelope point
 -------------------
@@ -7128,6 +7142,8 @@ function tracker:addEnvPt(fxid, time, value, shape)
     if ( val < 1 ) then
       val = (val - 0.5/255)*2.0 - 1.0
     end
+  else
+    val = scale_env_point(envidx, val)
   end
   
   ptidx, loc = self:getEnvIdx(fxid, time)
@@ -7161,6 +7177,8 @@ function tracker:getEnvPt(fxid, time)
       if ( value < 1 ) then
         value = value*0.5 + 0.5 + 0.5/255
       end
+    else
+      value = normalize_env_point(envidx, value)
     end
 
     return atime, value, shape, tension, ptidx
